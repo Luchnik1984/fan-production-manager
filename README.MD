@@ -43,8 +43,6 @@
      docker logs fan-production-db
 ```
 
-
-
 ### Остановка PostgreSQL
 ```bash
      docker-compose -f docker-compose.yml down
