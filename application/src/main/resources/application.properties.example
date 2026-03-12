@@ -1,4 +1,3 @@
-# Настройки базы данных
 spring.datasource.url=jdbc:postgresql://localhost:5432/fanproduction
 spring.datasource.username=your_username_here
 spring.datasource.password=your_password_here
