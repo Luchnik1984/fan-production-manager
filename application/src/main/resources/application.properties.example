@@ -1,0 +1,11 @@
+# Настройки базы данных
+spring.datasource.url=jdbc:postgresql://localhost:5432/fanproduction
+spring.datasource.username=your_username_here
+spring.datasource.password=your_password_here
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# Настройки Hibernate
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
