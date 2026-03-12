@@ -28,6 +28,12 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+
+        <dependency>
+        <groupId>jakarta.persistence</groupId>
+        <artifactId>jakarta.persistence-api</artifactId>
+        <version>3.1.0</version>
+    </dependency>
         <!-- Другие зависимости для core, если понадобятся, будем добавлять сюда -->
     </dependencies>
 </project>
