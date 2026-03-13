@@ -45,6 +45,12 @@
             <artifactId>spring-data-jpa</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>io.github.cdimascio</groupId>
+            <artifactId>dotenv-java</artifactId>
+            <version>${dotenv.version}</version>
+        </dependency>
+
         <!-- Другие зависимости для core, если понадобятся, будем добавлять сюда -->
     </dependencies>
 </project>
