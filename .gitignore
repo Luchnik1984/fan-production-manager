@@ -83,11 +83,11 @@ application-dev.properties
 application-local.properties
 *.properties
 !application.properties.example
-*-dev.yaml
-*-local.yaml
-*-prod.yaml
-!application.yaml
-!application-example.yaml
+
+# Environment variables
+.env
+.env.local
+.env.*.local
 
 # Логи
 logs/
