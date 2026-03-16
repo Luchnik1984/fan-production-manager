@@ -19,6 +19,10 @@ public class DatabaseConfig {
 
     @Bean
     public DataSource dataSource() {
+
+        System.out.println("=== Environment Information ===");
+        System.out.println("Active environment: " + EnvLoader.getActiveEnv());
+
         String host = EnvLoader.get("DB_HOST");
         int port = EnvLoader.getInt("DB_PORT");
         String dbName = EnvLoader.get("DB_NAME");

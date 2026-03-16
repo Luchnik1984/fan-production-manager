@@ -1,0 +1,29 @@
+# ============================================
+# SPRING BOOT APPLICATION CONFIGURATION
+# ============================================
+
+spring:
+  # ============================================
+  # DATASOURCE CONFIGURATION
+  # ============================================
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 10
+
+  # ============================================
+  # JPA / HIBERNATE CONFIGURATION
+  # ============================================
+  jpa:
+    hibernate:
+      ddl-auto: ${HIBERNATE_DDL}
+    show-sql: ${SHOW_SQL}
+    properties:
+      hibernate:
+        format_sql: ${FORMAT_SQL}
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
