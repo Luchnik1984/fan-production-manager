@@ -78,3 +78,8 @@ mvn -pl application exec:java "-Dexec.mainClass=com.fanproduction.application.te
 ```bash
 mvn -pl application exec:java "-Dexec.mainClass=com.fanproduction.application.test.ManualTest" "-Dexec.classpathScope=test" "-Dapp.env=dev"
 ```
+
+## Запуск приложения
+```bash
+mvn -pl application exec:java "-Dexec.mainClass=com.fanproduction.application.Main"
+```
