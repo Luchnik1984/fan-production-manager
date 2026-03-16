@@ -20,6 +20,10 @@
   cp .env.example .env
 ```
 
+```bash
+  cp .env.example .env.dev
+```
+
 ### Компиляция проекта
 ```bash
   ./mvnw clean compile 
@@ -63,4 +67,14 @@
 ### Удаление контейнера, созданного docker-compose.db.yml
 ```bash
      docker-compose -f docker-compose.yml down --rmi all
+```
+
+
+## Запуски тестов
+```bash
+mvn -pl application exec:java "-Dexec.mainClass=com.fanproduction.application.test.ManualTest" "-Dexec.classpathScope=test"
+```
+
+```bash
+mvn -pl application exec:java "-Dexec.mainClass=com.fanproduction.application.test.ManualTest" "-Dexec.classpathScope=test" "-Dapp.env=dev"
 ```
