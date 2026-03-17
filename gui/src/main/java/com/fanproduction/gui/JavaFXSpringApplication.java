@@ -8,8 +8,11 @@ import lombok.Setter;
 
 public class JavaFXSpringApplication extends Application {
 
-    @Setter
     private static SpringContextProvider springContextProvider;
+
+    public static void setSpringContextProvider(SpringContextProvider provider) {
+        springContextProvider = provider;
+    }
 
     @Override
     public void start(Stage primaryStage) {
