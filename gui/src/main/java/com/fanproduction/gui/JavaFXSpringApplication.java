@@ -14,6 +14,7 @@ public class JavaFXSpringApplication extends Application {
         springContextProvider = provider;
     }
 
+
     @Override
     public void start(Stage primaryStage) {
         if (springContextProvider == null) {
