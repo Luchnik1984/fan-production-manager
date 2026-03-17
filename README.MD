@@ -83,3 +83,10 @@ mvn -pl application exec:java "-Dexec.mainClass=com.fanproduction.application.te
 ```bash
 mvn -pl application exec:java "-Dexec.mainClass=com.fanproduction.application.Main"
 ```
+
+### Собрать и запустить fat JAR
+```bash
+mvn clean package -DskipTests
+
+java -jar application/target/application-0.0.1-SNAPSHOT-jar-with-dependencies.jar
+```
