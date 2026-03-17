@@ -2,6 +2,7 @@ package com.fanproduction.gui;
 
 import com.fanproduction.core.launcher.SpringContextProvider;
 import com.fanproduction.core.util.EnvLoader;
+import com.fanproduction.services.TestService;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
@@ -37,8 +38,11 @@ public class MainWindow {
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        // Проверяем подключение к БД
-        updateDatabaseStatus(statusLabel);
+//        // Проверяем подключение к БД
+//        updateDatabaseStatus(statusLabel);
+
+        // вызываем проверку подключения к БД
+        checkDatabaseConnection(statusLabel);
     }
 
     private MenuBar createMenuBar(Stage primaryStage) {
@@ -172,18 +176,18 @@ public class MainWindow {
         return statusLabel;
     }
 
-    private void updateDatabaseStatus(Label statusLabel) {
-        try {
-            String dbHost = EnvLoader.get("DB_HOST");
-            String dbName = EnvLoader.get("DB_NAME");
-
-            statusLabel.setText("✅ Подключено к БД: " + dbHost + "/" + dbName);
-            statusLabel.setStyle("-fx-padding: 5px; -fx-background-color: #e0ffe0;");
-        } catch (Exception e) {
-            statusLabel.setText("❌ Ошибка подключения к БД: " + e.getMessage());
-            statusLabel.setStyle("-fx-padding: 5px; -fx-background-color: #ffe0e0;");
-        }
-    }
+//    private void updateDatabaseStatus(Label statusLabel) {
+//        try {
+//            String dbHost = EnvLoader.get("DB_HOST");
+//            String dbName = EnvLoader.get("DB_NAME");
+//
+//            statusLabel.setText("✅ Подключено к БД: " + dbHost + "/" + dbName);
+//            statusLabel.setStyle("-fx-padding: 5px; -fx-background-color: #e0ffe0;");
+//        } catch (Exception e) {
+//            statusLabel.setText("❌ Ошибка подключения к БД: " + e.getMessage());
+//            statusLabel.setStyle("-fx-padding: 5px; -fx-background-color: #ffe0e0;");
+//        }
+//    }
 
     private void showAboutDialog() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -191,5 +195,25 @@ public class MainWindow {
         alert.setHeaderText("Fan Production Manager");
         alert.setContentText("Версия 0.1\n\nСистема управления производством вентиляторов");
         alert.showAndWait();
+    }
+
+    private void checkDatabaseConnection(Label statusLabel) {
+        try {
+            // Получаем тестовый сервис из Spring контекста
+            TestService testService = springContext.getBean(TestService.class);
+
+            // Запускаем тест, который создаст пользователя если нужно
+            testService.testDatabaseConnection();
+
+            String dbHost = EnvLoader.get("DB_HOST");
+            String dbName = EnvLoader.get("DB_NAME");
+
+            statusLabel.setText("✅ БД: " + dbHost + "/" + dbName + " (тестовый пользователь создан)");
+            statusLabel.setStyle("-fx-text-fill: green;");
+        } catch (Exception e) {
+            statusLabel.setText("❌ Ошибка: " + e.getMessage());
+            statusLabel.setStyle("-fx-text-fill: red;");
+            e.printStackTrace();
+        }
     }
 }
