@@ -7,6 +7,10 @@ import javafx.application.Application;
 
 public class Main {
     public static void main(String[] args) {
+
+        System.out.println("Java version: " + System.getProperty("java.version"));
+        System.out.println("Classpath: " + System.getProperty("java.class.path"));
+
         // 1. Создаём Spring контекст
         SpringContextProvider springContext = SpringContext.getInstance();
 
