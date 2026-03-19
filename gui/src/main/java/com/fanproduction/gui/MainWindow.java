@@ -2,12 +2,18 @@ package com.fanproduction.gui;
 
 import com.fanproduction.core.launcher.SpringContextProvider;
 import com.fanproduction.core.util.EnvLoader;
+import com.fanproduction.gui.controller.LoginController;
 import com.fanproduction.services.TestService;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+
+import java.io.IOException;
 
 public class MainWindow {
 
@@ -51,13 +57,16 @@ public class MainWindow {
         // Меню "Файл"
         Menu fileMenu = new Menu("Файл");
 
+        MenuItem logoutItem = new MenuItem("Выйти из системы");
+        logoutItem.setOnAction(e -> logout(primaryStage));
+
         MenuItem exitItem = new MenuItem("Выход");
         exitItem.setOnAction(e -> {
             springContext.close();
             primaryStage.close();
         });
 
-        fileMenu.getItems().addAll(exitItem);
+        fileMenu.getItems().addAll(logoutItem, new SeparatorMenuItem(), exitItem);
 
         // Меню "Справка"
         Menu helpMenu = new Menu("Справка");
@@ -70,6 +79,31 @@ public class MainWindow {
         menuBar.getMenus().addAll(fileMenu, helpMenu);
         return menuBar;
     }
+
+    private void logout(Stage primaryStage) {
+        // Закрываем текущее окно
+        primaryStage.close();
+
+        // Открываем окно входа
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/LoginView.fxml"));
+            Parent root = loader.load();
+
+            LoginController loginController = loader.getController();
+            loginController.setSpringContext(springContext);
+
+            Stage loginStage = new Stage();
+            loginController.setPrimaryStage(loginStage);
+
+            Scene scene = new Scene(root, 400, 400);
+            loginStage.setScene(scene);
+            loginStage.setTitle("Fan Production Manager - Вход");
+            loginStage.show();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     private TabPane createTabPane() {
         TabPane tabPane = new TabPane();

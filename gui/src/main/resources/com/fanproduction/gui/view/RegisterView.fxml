@@ -10,53 +10,58 @@
         <Insets bottom="30" left="30" right="30" top="30" />
     </padding>
 
-    <!-- Заголовок -->
     <Label text="Регистрация нового пользователя">
         <font>
             <Font name="System Bold" size="18" />
         </font>
     </Label>
 
-    <!-- Поле Email -->
+    <!-- Email -->
     <VBox spacing="3" style="-fx-pref-width: 300px;">
         <Label text="Email:*" />
         <TextField fx:id="emailField" promptText="Введите email" />
     </VBox>
 
-    <!-- Поле Пароль -->
+    <!-- Пароль -->
     <VBox spacing="3" style="-fx-pref-width: 300px;">
         <Label text="Пароль:*" />
         <PasswordField fx:id="passwordField" promptText="Введите пароль" />
     </VBox>
 
-    <!-- Поле Подтверждение пароля -->
+    <!-- Подтверждение пароля -->
     <VBox spacing="3" style="-fx-pref-width: 300px;">
         <Label text="Подтверждение пароля:*" />
         <PasswordField fx:id="confirmPasswordField" promptText="Повторите пароль" />
     </VBox>
 
-    <!-- Поле Имя -->
+    <!-- Имя -->
     <VBox spacing="3" style="-fx-pref-width: 300px;">
         <Label text="Имя:" />
         <TextField fx:id="firstNameField" promptText="Введите имя" />
     </VBox>
 
-    <!-- Поле Фамилия -->
+    <!-- Фамилия -->
     <VBox spacing="3" style="-fx-pref-width: 300px;">
         <Label text="Фамилия:" />
         <TextField fx:id="lastNameField" promptText="Введите фамилию" />
     </VBox>
 
-    <!-- Поле Телефон -->
+    <!-- Телефон -->
     <VBox spacing="3" style="-fx-pref-width: 300px;">
         <Label text="Телефон:" />
         <TextField fx:id="phoneField" promptText="Введите телефон" />
     </VBox>
 
-    <!-- Поле Роль (только для ADMIN, будет скрыто для обычных пользователей) -->
-    <VBox fx:id="roleBox" spacing="3" style="-fx-pref-width: 300px;" visible="false" managed="false">
-        <Label text="Роль:" />
+    <!-- Выбор роли -->
+    <VBox spacing="3" style="-fx-pref-width: 300px;">
+        <Label text="Роль:*" />
         <ComboBox fx:id="roleComboBox" prefWidth="300" />
+    </VBox>
+
+    <!-- Секретный ключ (для ADMIN) -->
+    <VBox fx:id="secretKeyBox" spacing="3" style="-fx-pref-width: 300px;" visible="false" managed="false">
+        <Label text="Секретный ключ администратора:*" />
+        <PasswordField fx:id="secretKeyField" promptText="Введите секретный ключ" />
     </VBox>
 
     <!-- Сообщение об ошибке -->
