@@ -138,6 +138,19 @@ public class EnvLoader {
         return fallback;
     }
 
+    public static void loadToSystemProperties() {
+        log.info("Loading .env variables into System properties");
+        dotenv.entries().forEach(entry -> {
+            String key = entry.getKey();
+            String value = entry.getValue();
+            // Не перезаписываем, если уже есть (можно перезаписывать, но осторожно)
+            if (System.getProperty(key) == null) {
+                System.setProperty(key, value);
+                log.debug("Set system property: {} = {}", key, value);
+            }
+        });
+    }
+
     public static String getActiveEnv() {
         return ACTIVE_ENV;
     }

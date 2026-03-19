@@ -15,6 +15,9 @@ import java.io.IOException;
 
 public class LoginController {
 
+    private UserService userService;
+
+
     @FXML
     private TextField emailField;
 
@@ -29,9 +32,11 @@ public class LoginController {
 
     public void setSpringContext(SpringContextProvider springContext) {
         this.springContext = springContext;
+        this.userService = springContext.getBean(UserService.class);
     }
 
     public void setPrimaryStage(Stage primaryStage) {
+
         this.primaryStage = primaryStage;
     }
 
@@ -58,12 +63,15 @@ public class LoginController {
             return;
         }
 
-        // TODO: Здесь будет вызов AuthService
-        // Пока просто заглушка для теста
-        if ("admin@test.com".equals(email) && "admin".equals(password)) {
-            openMainWindow();
-        } else {
-            errorLabel.setText("Неверный email или пароль");
+        try {
+            if (userService.authenticate(email, password)) {
+                openMainWindow();
+            } else {
+                errorLabel.setText("Неверный email или пароль");
+            }
+        } catch (Exception e) {
+            errorLabel.setText("Ошибка при входе: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

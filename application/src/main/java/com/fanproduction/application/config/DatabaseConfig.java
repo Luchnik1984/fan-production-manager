@@ -1,8 +1,10 @@
 package com.fanproduction.application.config;
 
 import com.fanproduction.core.util.EnvLoader;
+import org.flywaydb.core.Flyway;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
@@ -19,10 +21,6 @@ public class DatabaseConfig {
 
     @Bean
     public DataSource dataSource() {
-
-        System.out.println("=== Environment Information ===");
-        System.out.println("Active environment: " + EnvLoader.getActiveEnv());
-
         String host = EnvLoader.get("DB_HOST");
         int port = EnvLoader.getInt("DB_PORT");
         String dbName = EnvLoader.get("DB_NAME");
@@ -44,10 +42,35 @@ public class DatabaseConfig {
         return dataSource;
     }
 
+    @Bean(initMethod = "migrate")
+    public Flyway flyway(DataSource dataSource) {
+        System.out.println("=== Initializing Flyway ===");
+        // Диагностика - покажем, какие файлы видит Flyway
+        try {
+            java.nio.file.Path path = java.nio.file.Paths.get("application/src/main/resources/db/migration").toAbsolutePath();
+            System.out.println("Migration path: " + path);
+            java.nio.file.Files.list(path).forEach(p -> {
+                System.out.println("Found file: " + p.getFileName());
+            });
+        } catch (Exception e) {
+            System.out.println("Error listing files: " + e.getMessage());
+        }
+
+        return Flyway.configure()
+                .dataSource(dataSource)
+                .locations("classpath:db/migration")
+                .baselineOnMigrate(true)
+                .validateMigrationNaming(false)  // отключаем строгую проверку имен
+                .load();
+    }
+
     @Bean
-    public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
+    @DependsOn("flyway")
+    public LocalContainerEntityManagerFactoryBean entityManagerFactory(DataSource dataSource) {
+        System.out.println("=== Creating EntityManagerFactory (after Flyway) ===");
+
         LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
-        em.setDataSource(dataSource());
+        em.setDataSource(dataSource);
         em.setPackagesToScan("com.fanproduction.core.entity");
 
         HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
@@ -55,10 +78,9 @@ public class DatabaseConfig {
 
         Properties properties = new Properties();
 
-        // Получаем настройки из переменных
         String ddlAuto = EnvLoader.get("HIBERNATE_DDL");
-        boolean showSql = Boolean.parseBoolean(EnvLoader.get("SHOW_SQL"));
-        boolean formatSql = Boolean.parseBoolean(EnvLoader.get("FORMAT_SQL"));
+        boolean showSql = EnvLoader.getBoolean("SHOW_SQL");
+        boolean formatSql = EnvLoader.getBoolean("FORMAT_SQL");
 
         properties.setProperty("hibernate.hbm2ddl.auto", ddlAuto);
         properties.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
@@ -70,9 +92,9 @@ public class DatabaseConfig {
     }
 
     @Bean
-    public PlatformTransactionManager transactionManager() {
+    public PlatformTransactionManager transactionManager(LocalContainerEntityManagerFactoryBean entityManagerFactory) {
         JpaTransactionManager transactionManager = new JpaTransactionManager();
-        transactionManager.setEntityManagerFactory(entityManagerFactory().getObject());
+        transactionManager.setEntityManagerFactory(entityManagerFactory.getObject());
         return transactionManager;
     }
 }
