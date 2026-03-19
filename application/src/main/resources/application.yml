@@ -3,6 +3,8 @@
 # ============================================
 
 spring:
+  config:
+    import: optional:file:.env[.properties]
   # ============================================
   # DATASOURCE CONFIGURATION
   # ============================================
@@ -27,3 +29,42 @@ spring:
         format_sql: ${FORMAT_SQL}
         dialect: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
+
+  # ============================================
+  # FLYWAY SETTINGS (database migrations)
+  # ============================================
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true} # можно переопределить через .env
+    locations: classpath:db/migration
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
+    validate-on-migrate: true
+    clean-disabled: true
+
+    placeholder-replacement: false  # Отключаем подстановку, если не используем
+
+
+# ============================================
+# LOGGING SETTINGS (на одном уровне с spring)
+# ============================================
+logging:
+  level:
+      org.springframework.boot.context.config: DEBUG
+      org.springframework.boot.autoconfigure.jdbc: TRACE
+      org.springframework.boot.autoconfigure.flyway: DEBUG
+      org.springframework.jdbc: TRACE
+
+#      org.springframework.orm.jpa: DEBUG
+#      org.flywaydb: ${LOG_LEVEL:DEBUG}
+#      org.hibernate: ${LOG_LEVEL:DEBUG}
+#      com.fanproduction: ${LOG_LEVEL:DEBUG}
+#      com.zaxxer.hikari: DEBUG
+#      org.hibernate.type.descriptor.sql: TRACE
+#  pattern:
+#      console: '%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n'
+#  file:
+#    name: ${LOG_DIR:logs}/application-dev.log
+#  logback:
+#    rollingpolicy:
+#      max-file-size: 10MB
+#      max-history: 30
+

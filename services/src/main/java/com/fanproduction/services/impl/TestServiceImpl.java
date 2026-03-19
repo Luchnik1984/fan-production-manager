@@ -2,6 +2,7 @@ package com.fanproduction.services.impl;
 
 import com.fanproduction.core.entity.UserEntity;
 import com.fanproduction.core.enums.Role;
+import com.fanproduction.core.enums.UserStatus;
 import com.fanproduction.repositories.UserRepository;
 import com.fanproduction.services.TestService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,15 +26,30 @@ public class TestServiceImpl implements TestService {
 
         /// Если нет ни одного пользователя, создадим тестового
         if (count == 0) {
-            UserEntity testUser = new UserEntity();
-            testUser.setEmail("test@example.com");
-            testUser.setPassword("password123"); // В реальности нужно шифровать!
-            testUser.setFirstName("Test");
-            testUser.setLastName("User");
-            testUser.setRole(Role.ENGINEER);
+            UserEntity adminUser = new UserEntity();
+            adminUser.setEmail("admin@test.com");
+            adminUser.setPassword("admin"); // TODO: хешировать
+            adminUser.setFirstName("Admin");
+            adminUser.setLastName("User");
+            adminUser.setRole(Role.ADMIN);
+            adminUser.setStatus(UserStatus.ACTIVE);  // ADMIN сразу активен
 
-            userRepository.save(testUser);
-            System.out.println("Test user created with id: " + testUser.getId());
+            userRepository.save(adminUser);
+            System.out.println("Test admin user created with id: "
+                    + adminUser.getId()
+                    + " (ACTIVE)");
+
+            // Создаём тестового ENGINEER (будет PENDING, для проверки модерации)
+            UserEntity engineerUser = new UserEntity();
+            engineerUser.setEmail("engineer@test.com");
+            engineerUser.setPassword("engineer");
+            engineerUser.setFirstName("Test");
+            engineerUser.setLastName("Engineer");
+            engineerUser.setRole(Role.ENGINEER);
+            engineerUser.setStatus(UserStatus.PENDING);  // ожидает подтверждения
+
+            userRepository.save(engineerUser);
+            System.out.println("Test engineer user created with id: " + engineerUser.getId() + " (PENDING)");
         }
 
         System.out.println("=== Test completed ===");
