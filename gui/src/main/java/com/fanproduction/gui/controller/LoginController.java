@@ -1,9 +1,13 @@
 package com.fanproduction.gui.controller;
 
+import com.fanproduction.core.context.SessionContext;
+import com.fanproduction.core.entity.UserEntity;
+import com.fanproduction.core.enums.UserStatus;
 import com.fanproduction.core.launcher.SpringContextProvider;
 import com.fanproduction.core.util.UserPreferences;
 import com.fanproduction.gui.MainWindow;
 import com.fanproduction.services.UserService;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -50,37 +54,111 @@ public class LoginController {
         }
 
         // Очищаем ошибку при вводе
-        emailField.textProperty().addListener((observable, oldValue, newValue) -> errorLabel.setText(""));
-        passwordField.textProperty().addListener((observable, oldValue, newValue) -> errorLabel.setText(""));
+        emailField.textProperty().addListener((observable, oldValue, newValue) -> {
+            errorLabel.setText("");
+            errorLabel.setStyle("");
+        });
+        passwordField.textProperty().addListener((observable, oldValue, newValue) -> {
+            errorLabel.setText("");
+            errorLabel.setStyle("");
+        });
     }
+
 
     @FXML
     private void handleLogin() {
         String email = emailField.getText().trim();
         String password = passwordField.getText();
 
+        System.out.println("=== LOGIN DEBUG ===");
+        System.out.println("Email entered: " + email);
+        System.out.println("Password entered: " + password);
+
         if (email.isEmpty() || password.isEmpty()) {
-            errorLabel.setText("Email и пароль не могут быть пустыми");
+            Platform.runLater(() -> {
+                errorLabel.setText("Email и пароль не могут быть пустыми");
+                errorLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+            });
             return;
         }
 
         try {
+            UserEntity user = userService.getUserByEmail(email);
+            System.out.println("User found: " + (user != null ? user.getEmail() : "null"));
+
+            if (user != null) {
+                System.out.println("User status: " + user.getStatus());
+                System.out.println("User role: " + user.getRole());
+            }
+
+            if (user == null) {
+                System.out.println("Case: User not found");
+                Platform.runLater(() -> {
+                    errorLabel.setText("Пользователь с таким email не найден");
+                    errorLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+                });
+                passwordField.clear();
+                return;
+            }
+
+            if (user.getStatus() != UserStatus.ACTIVE) {
+                System.out.println("Case: User status is " + user.getStatus() + ", not ACTIVE");
+
+                Platform.runLater(() -> {
+                    switch (user.getStatus()) {
+                        case PENDING:
+                            System.out.println("Showing PENDING message");
+                            errorLabel.setText("⏳ Ваша регистрация ожидает подтверждения администратором.\nПосле подтверждения вы сможете войти в систему.");
+                            errorLabel.setStyle("-fx-text-fill: orange; -fx-font-weight: bold;");
+                            break;
+                        case REJECTED:
+                            System.out.println("Showing REJECTED message");
+                            errorLabel.setText("❌ Ваша регистрация отклонена.\nПричина: " +
+                                    (user.getRejectionReason() != null ? user.getRejectionReason() : "не указана"));
+                            errorLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+                            break;
+                        case BLOCKED:
+                            System.out.println("Showing BLOCKED message");
+                            errorLabel.setText("🔒 Ваш аккаунт заблокирован.\nОбратитесь к администратору.");
+                            errorLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+                            break;
+                        default:
+                            errorLabel.setText("Доступ запрещён. Статус аккаунта: " + user.getStatus());
+                            errorLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+                            break;
+                    }
+                });
+
+                passwordField.clear();
+                return;
+            }
+
+            System.out.println("Case: User ACTIVE, checking password");
             if (userService.authenticate(email, password)) {
-                // Если чекбокс отмечен, сохраняем данные для автоматического входа
+                System.out.println("Password correct, login successful");
                 if (rememberMeCheckBox.isSelected()) {
                     UserPreferences.saveRememberData(email, password);
                 } else {
-                    // Если не отмечен, сохраняем только email (как раньше)
                     UserPreferences.saveLastEmail(email);
                 }
+
+                SessionContext.setCurrentUser(user);
                 openMainWindow();
             } else {
-                errorLabel.setText("Неверный email или пароль");
+                System.out.println("Password incorrect");
+                Platform.runLater(() -> {
+                    errorLabel.setText("Неверный пароль");
+                    errorLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+                });
                 passwordField.clear();
             }
         } catch (Exception e) {
-            errorLabel.setText("Ошибка при входе: " + e.getMessage());
+            System.out.println("Exception: " + e.getMessage());
             e.printStackTrace();
+            Platform.runLater(() -> {
+                errorLabel.setText("Ошибка при входе: " + e.getMessage());
+                errorLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+            });
         }
     }
 
@@ -107,6 +185,18 @@ public class LoginController {
 
     private void openMainWindow() {
         try {
+            String email = emailField.getText().trim();
+
+            // Получаем полного пользователя из БД
+            UserEntity currentUser = userService.getUserByEmail(email);
+            if (currentUser == null) {
+                errorLabel.setText("Пользователь не найден");
+                return;
+            }
+
+            // Сохраняем в сессию
+            SessionContext.setCurrentUser(currentUser);
+
             // Создаём новый Stage для главного окна
             Stage mainStage = new Stage();
             MainWindow mainWindow = new MainWindow(springContext);
