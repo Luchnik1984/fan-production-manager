@@ -5,7 +5,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 
-<VBox alignment="CENTER" spacing="20" style="-fx-background-color: #f4f4f4;" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fanproduction.gui.controller.LoginController">
+<VBox alignment="CENTER" spacing="15" style="-fx-background-color: #f4f4f4;" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fanproduction.gui.controller.LoginController">
     <padding>
         <Insets bottom="40" left="40" right="40" top="40" />
     </padding>
@@ -34,6 +34,11 @@
         <Label text="Пароль:" />
         <PasswordField fx:id="passwordField" promptText="Введите пароль" />
     </VBox>
+
+    <!-- Чекбокс "Запомнить меня" -->
+    <HBox alignment="CENTER_LEFT" spacing="5" style="-fx-pref-width: 300px;">
+        <CheckBox fx:id="rememberMeCheckBox" text="Запомнить меня" />
+    </HBox>
 
     <!-- Сообщение об ошибке -->
     <Label fx:id="errorLabel" textFill="red" wrapText="true" style="-fx-pref-width: 300px;" />

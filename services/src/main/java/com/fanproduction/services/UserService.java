@@ -6,4 +6,5 @@ public interface UserService {
     boolean authenticate(String email, String password);
     UserEntity register(UserEntity user);
     boolean isEmailExists(String email);
+    boolean autoLogin(String email);
 }

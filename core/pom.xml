@@ -51,6 +51,15 @@
             <version>${dotenv.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
         <!-- Другие зависимости для core, если понадобятся, будем добавлять сюда -->
     </dependencies>
 </project>

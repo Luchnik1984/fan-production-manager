@@ -1,22 +1,19 @@
 package com.fanproduction.gui.controller;
 
 import com.fanproduction.core.launcher.SpringContextProvider;
+import com.fanproduction.core.util.UserPreferences;
+import com.fanproduction.gui.MainWindow;
 import com.fanproduction.services.UserService;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.stage.Stage;
 
 import java.io.IOException;
 
 public class LoginController {
-
-    private UserService userService;
-
 
     @FXML
     private TextField emailField;
@@ -27,8 +24,12 @@ public class LoginController {
     @FXML
     private Label errorLabel;
 
+    @FXML
+    private CheckBox rememberMeCheckBox;
+
     private SpringContextProvider springContext;
     private Stage primaryStage;
+    private UserService userService;
 
     public void setSpringContext(SpringContextProvider springContext) {
         this.springContext = springContext;
@@ -36,20 +37,21 @@ public class LoginController {
     }
 
     public void setPrimaryStage(Stage primaryStage) {
-
         this.primaryStage = primaryStage;
     }
 
     @FXML
     private void initialize() {
-        // Очищаем сообщение об ошибке при вводе текста
-        emailField.textProperty().addListener((observable, oldValue, newValue) -> {
-            errorLabel.setText("");
-        });
+        // Загружаем сохранённый email, если есть
+        if (UserPreferences.hasLastEmail()) {
+            emailField.setText(UserPreferences.getLastEmail());
+            // Ставим фокус на поле пароля для удобства
+            passwordField.requestFocus();
+        }
 
-        passwordField.textProperty().addListener((observable, oldValue, newValue) -> {
-            errorLabel.setText("");
-        });
+        // Очищаем ошибку при вводе
+        emailField.textProperty().addListener((observable, oldValue, newValue) -> errorLabel.setText(""));
+        passwordField.textProperty().addListener((observable, oldValue, newValue) -> errorLabel.setText(""));
     }
 
     @FXML
@@ -57,7 +59,6 @@ public class LoginController {
         String email = emailField.getText().trim();
         String password = passwordField.getText();
 
-        // Простейшая валидация
         if (email.isEmpty() || password.isEmpty()) {
             errorLabel.setText("Email и пароль не могут быть пустыми");
             return;
@@ -65,9 +66,17 @@ public class LoginController {
 
         try {
             if (userService.authenticate(email, password)) {
+                // Если чекбокс отмечен, сохраняем данные для автоматического входа
+                if (rememberMeCheckBox.isSelected()) {
+                    UserPreferences.saveRememberData(email, password);
+                } else {
+                    // Если не отмечен, сохраняем только email (как раньше)
+                    UserPreferences.saveLastEmail(email);
+                }
                 openMainWindow();
             } else {
                 errorLabel.setText("Неверный email или пароль");
+                passwordField.clear();
             }
         } catch (Exception e) {
             errorLabel.setText("Ошибка при входе: " + e.getMessage());
@@ -78,7 +87,6 @@ public class LoginController {
     @FXML
     private void handleRegister() {
         try {
-            // Загружаем окно регистрации
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/RegisterView.fxml"));
             Parent root = loader.load();
 
@@ -86,7 +94,7 @@ public class LoginController {
             controller.setSpringContext(springContext);
             controller.setPrimaryStage(primaryStage);
 
-            Scene scene = new Scene(root, 400, 600);
+            Scene scene = new Scene(root, 400, 650); // Увеличил высоту для всех полей
             primaryStage.setScene(scene);
             primaryStage.setTitle("Регистрация");
             primaryStage.show();
@@ -97,23 +105,24 @@ public class LoginController {
         }
     }
 
+    private void openMainWindow() {
+        try {
+            // Создаём новый Stage для главного окна
+            Stage mainStage = new Stage();
+            MainWindow mainWindow = new MainWindow(springContext);
+            mainWindow.start(mainStage);
+
+            // Закрываем окно входа
+            primaryStage.close();
+        } catch (Exception e) {
+            errorLabel.setText("Ошибка при открытии главного окна: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     @FXML
     private void handleForgotPassword() {
         // Опционально: окно восстановления пароля
         errorLabel.setText("Функция восстановления пароля будет доступна позже");
-    }
-
-    private void openMainWindow() {
-        try {
-            // Здесь нужно будет создать MainWindow.fxml позже
-            // Пока используем существующий JavaFXSpringApplication
-            com.fanproduction.gui.JavaFXSpringApplication mainApp = new com.fanproduction.gui.JavaFXSpringApplication();
-            mainApp.setSpringContextProvider(springContext);
-            mainApp.start(primaryStage);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            errorLabel.setText("Ошибка загрузки главного окна");
-        }
     }
 }
