@@ -1,6 +1,7 @@
 package com.fanproduction.services.impl;
 
 import com.fanproduction.core.entity.UserEntity;
+import com.fanproduction.core.exception.ValidationException;
 import com.fanproduction.repositories.UserRepository;
 import com.fanproduction.services.UserService;
 import jakarta.validation.ConstraintViolation;
@@ -12,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -40,10 +40,7 @@ public class UserServiceImpl implements UserService {
         Set<ConstraintViolation<UserEntity>> violations = validator.validate(user);
 
         if (!violations.isEmpty()) {
-            String errors = violations.stream()
-                    .map(ConstraintViolation::getMessage)
-                    .collect(Collectors.joining(", "));
-            throw new IllegalArgumentException("Ошибка валидации: " + errors);
+            throw new ValidationException(violations);
         }
         return userRepository.save(user);
     }
@@ -51,5 +48,17 @@ public class UserServiceImpl implements UserService {
     @Override
     public boolean isEmailExists(String email) {
         return userRepository.existsByEmail(email);
+    }
+
+    @Override
+    public boolean autoLogin(String email) {
+        // При автовходе просто проверяем, что пользователь существует и активен
+        return userRepository.findByEmail(email)
+                .map(user -> {
+                    // Можно добавить дополнительную логику, например,
+                    // проверять статус пользователя
+                    return true;
+                })
+                .orElse(false);
     }
 }

@@ -2,6 +2,7 @@ package com.fanproduction.gui;
 
 import com.fanproduction.core.launcher.SpringContextProvider;
 import com.fanproduction.core.util.EnvLoader;
+import com.fanproduction.core.util.UserPreferences;
 import com.fanproduction.gui.controller.LoginController;
 import com.fanproduction.services.TestService;
 import javafx.fxml.FXMLLoader;
@@ -57,7 +58,7 @@ public class MainWindow {
         // Меню "Файл"
         Menu fileMenu = new Menu("Файл");
 
-        MenuItem logoutItem = new MenuItem("Выйти из системы");
+        MenuItem logoutItem = new MenuItem("Выйти из профиля");
         logoutItem.setOnAction(e -> logout(primaryStage));
 
         MenuItem exitItem = new MenuItem("Выход");
@@ -81,10 +82,13 @@ public class MainWindow {
     }
 
     private void logout(Stage primaryStage) {
+        // Очищаем сохранённый email при выходе из профиля
+        UserPreferences.clearRememberData();
+
         // Закрываем текущее окно
         primaryStage.close();
 
-        // Открываем окно входа
+        // Открываем окно входа (создаём новый Stage)
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/LoginView.fxml"));
             Parent root = loader.load();
@@ -95,7 +99,7 @@ public class MainWindow {
             Stage loginStage = new Stage();
             loginController.setPrimaryStage(loginStage);
 
-            Scene scene = new Scene(root, 400, 400);
+            Scene scene = new Scene(root, 400, 450);
             loginStage.setScene(scene);
             loginStage.setTitle("Fan Production Manager - Вход");
             loginStage.show();

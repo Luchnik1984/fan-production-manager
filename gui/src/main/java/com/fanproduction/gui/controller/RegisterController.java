@@ -3,9 +3,11 @@ package com.fanproduction.gui.controller;
 import com.fanproduction.core.entity.UserEntity;
 import com.fanproduction.core.enums.Role;
 import com.fanproduction.core.enums.UserStatus;
+import com.fanproduction.core.exception.ValidationException;
 import com.fanproduction.core.launcher.SpringContextProvider;
 import com.fanproduction.core.security.AdminSecretKeyValidator;
 import com.fanproduction.services.UserService;
+import jakarta.validation.ConstraintViolation;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -16,42 +18,61 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class RegisterController {
 
+    // Поля ввода
     @FXML
     private TextField emailField;
-
     @FXML
     private PasswordField passwordField;
-
     @FXML
     private PasswordField confirmPasswordField;
-
     @FXML
     private TextField firstNameField;
-
     @FXML
     private TextField lastNameField;
-
     @FXML
     private TextField phoneField;
-
     @FXML
     private ComboBox<Role> roleComboBox;
-
     @FXML
     private VBox secretKeyBox;
-
     @FXML
     private PasswordField secretKeyField;
 
+    // Лейблы для ошибок под полями
+    @FXML
+    private Label emailErrorLabel;
+    @FXML
+    private Label passwordErrorLabel;
+    @FXML
+    private Label firstNameErrorLabel;
+    @FXML
+    private Label lastNameErrorLabel;
+    @FXML
+    private Label phoneErrorLabel;
+
+    // Общий лейбл для ошибок
     @FXML
     private Label errorLabel;
 
     private SpringContextProvider springContext;
     private Stage primaryStage;
     private UserService userService;
+
+    // Record для связки поля и его компонентов
+    private record FieldComponents(
+            TextField textField,
+            Label errorLabel,
+            String fieldName
+    ) {}
+
+    private Map<String, FieldComponents> fieldComponentsMap;
 
     public void setSpringContext(SpringContextProvider springContext) {
         this.springContext = springContext;
@@ -64,7 +85,16 @@ public class RegisterController {
 
     @FXML
     private void initialize() {
-        // Заполняем ComboBox ролями (показываем все роли)
+        // Инициализируем маппинг полей
+        fieldComponentsMap = Map.of(
+                "email", new FieldComponents(emailField, emailErrorLabel, "email"),
+                "password", new FieldComponents(passwordField, passwordErrorLabel, "password"),
+                "firstName", new FieldComponents(firstNameField, firstNameErrorLabel, "firstName"),
+                "lastName", new FieldComponents(lastNameField, lastNameErrorLabel, "lastName"),
+                "phone", new FieldComponents(phoneField, phoneErrorLabel, "phone")
+        );
+
+        // Заполняем ComboBox ролями
         roleComboBox.setItems(FXCollections.observableArrayList(Role.values()));
 
         // При выборе роли показываем/скрываем поле для секретного ключа
@@ -77,7 +107,18 @@ public class RegisterController {
             }
         });
 
-        // Очищаем ошибку при вводе в любое поле
+        // Очищаем ошибки при вводе в любое поле
+        setupFieldListeners();
+    }
+
+    private void setupFieldListeners() {
+        // При изменении любого поля сбрасываем его ошибку
+        fieldComponentsMap.values().forEach(components -> components.textField().textProperty().addListener((obs, old, newVal) -> {
+            components.textField().setStyle("");
+            components.errorLabel().setText("");
+        }));
+
+        // Очищаем общую ошибку при любом вводе
         emailField.textProperty().addListener((obs, old, newVal) -> errorLabel.setText(""));
         passwordField.textProperty().addListener((obs, old, newVal) -> errorLabel.setText(""));
         confirmPasswordField.textProperty().addListener((obs, old, newVal) -> errorLabel.setText(""));
@@ -110,27 +151,26 @@ public class RegisterController {
             // Создаём нового пользователя
             UserEntity newUser = new UserEntity();
             newUser.setEmail(emailField.getText().trim().toLowerCase());
-            newUser.setPassword(passwordField.getText()); // TODO: хешировать пароль
+            newUser.setPassword(passwordField.getText());
             newUser.setFirstName(firstNameField.getText().trim());
             newUser.setLastName(lastNameField.getText().trim());
             newUser.setPhone(phoneField.getText().trim());
             newUser.setRole(selectedRole);
 
             // Устанавливаем статус: ADMIN сразу ACTIVE, остальные PENDING
-            if (selectedRole == Role.ADMIN) {
-                newUser.setStatus(UserStatus.ACTIVE);
-            } else {
-                newUser.setStatus(UserStatus.PENDING);
-            }
+            newUser.setStatus(selectedRole == Role.ADMIN ? UserStatus.ACTIVE : UserStatus.PENDING);
 
-            // Регистрируем пользователя через сервис
+            // Регистрируем пользователя
             userService.register(newUser);
 
             // Показываем сообщение об успехе и возвращаемся к окну входа
             showSuccessAndGoToLogin();
 
+        } catch (ValidationException e) {
+            // Показываем детальные ошибки валидации
+            showFieldErrors(e.getViolations());
         } catch (IllegalArgumentException e) {
-            // Ошибки валидации (например, email уже существует)
+            // Ошибка уникальности email или другая бизнес-ошибка
             errorLabel.setText(e.getMessage());
         } catch (Exception e) {
             errorLabel.setText("Ошибка при регистрации: " + e.getMessage());
@@ -138,9 +178,55 @@ public class RegisterController {
         }
     }
 
-    /**
-     * Базовая проверка полей, которые не покрыты валидацией в сервисе
-     */
+    private void showFieldErrors(Set<ConstraintViolation<UserEntity>> violations) {
+        // Сбрасываем все ошибки
+        resetFieldStyles();
+
+        // Группируем нарушения по имени поля
+        Map<String, List<ConstraintViolation<UserEntity>>> violationsByField =
+                violations.stream()
+                        .collect(Collectors.groupingBy(
+                                v -> v.getPropertyPath().toString()
+                        ));
+
+        // Для каждого поля, у которого есть нарушения, показываем ошибку
+        violationsByField.forEach((fieldName, fieldViolations) -> {
+            FieldComponents components = fieldComponentsMap.get(fieldName);
+            if (components != null) {
+                // Берём первое сообщение для этого поля
+                String message = fieldViolations.get(0).getMessage();
+
+                // Подсвечиваем поле
+                components.textField().setStyle("-fx-border-color: red; -fx-border-width: 2;");
+
+                // Показываем сообщение
+                components.errorLabel().setText(message);
+            }
+        });
+
+        // Если есть ошибки, не связанные с конкретным полем, показываем их в общем лейбле
+        List<ConstraintViolation<UserEntity>> globalViolations =
+                violations.stream()
+                        .filter(v -> !fieldComponentsMap.containsKey(v.getPropertyPath().toString()))
+                        .toList();
+
+        if (!globalViolations.isEmpty()) {
+            String globalErrors = globalViolations.stream()
+                    .map(ConstraintViolation::getMessage)
+                    .collect(Collectors.joining("\n"));
+            errorLabel.setText(globalErrors);
+        }
+    }
+
+    private void resetFieldStyles() {
+        // Функционально проходим по всем компонентам
+        fieldComponentsMap.values().forEach(components -> {
+            components.textField().setStyle("");
+            components.errorLabel().setText("");
+        });
+        errorLabel.setText("");
+    }
+
     private boolean validateRequiredFields() {
         // Проверка на пустой email
         if (emailField.getText().trim().isEmpty()) {

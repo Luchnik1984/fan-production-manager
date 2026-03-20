@@ -5,7 +5,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 
-<VBox alignment="CENTER" spacing="15" style="-fx-background-color: #f4f4f4;" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fanproduction.gui.controller.RegisterController">
+<VBox alignment="CENTER" spacing="10" style="-fx-background-color: #f4f4f4;" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fanproduction.gui.controller.RegisterController">
     <padding>
         <Insets bottom="30" left="30" right="30" top="30" />
     </padding>
@@ -20,12 +20,14 @@
     <VBox spacing="3" style="-fx-pref-width: 300px;">
         <Label text="Email:*" />
         <TextField fx:id="emailField" promptText="Введите email" />
+        <Label fx:id="emailErrorLabel" text="" textFill="red" style="-fx-font-size: 10px;" wrapText="true" />
     </VBox>
 
     <!-- Пароль -->
     <VBox spacing="3" style="-fx-pref-width: 300px;">
         <Label text="Пароль:*" />
         <PasswordField fx:id="passwordField" promptText="Введите пароль" />
+        <Label fx:id="passwordErrorLabel" text="" textFill="red" style="-fx-font-size: 10px;" wrapText="true" />
     </VBox>
 
     <!-- Подтверждение пароля -->
@@ -38,18 +40,21 @@
     <VBox spacing="3" style="-fx-pref-width: 300px;">
         <Label text="Имя:" />
         <TextField fx:id="firstNameField" promptText="Введите имя" />
+        <Label fx:id="firstNameErrorLabel" text="" textFill="red" style="-fx-font-size: 10px;" wrapText="true" />
     </VBox>
 
     <!-- Фамилия -->
     <VBox spacing="3" style="-fx-pref-width: 300px;">
         <Label text="Фамилия:" />
         <TextField fx:id="lastNameField" promptText="Введите фамилию" />
+        <Label fx:id="lastNameErrorLabel" text="" textFill="red" style="-fx-font-size: 10px;" wrapText="true" />
     </VBox>
 
     <!-- Телефон -->
     <VBox spacing="3" style="-fx-pref-width: 300px;">
         <Label text="Телефон:" />
         <TextField fx:id="phoneField" promptText="Введите телефон" />
+        <Label fx:id="phoneErrorLabel" text="" textFill="red" style="-fx-font-size: 10px;" wrapText="true" />
     </VBox>
 
     <!-- Выбор роли -->
@@ -64,8 +69,8 @@
         <PasswordField fx:id="secretKeyField" promptText="Введите секретный ключ" />
     </VBox>
 
-    <!-- Сообщение об ошибке -->
-    <Label fx:id="errorLabel" textFill="red" wrapText="true" style="-fx-pref-width: 300px;" />
+    <!-- Общий лейбл для ошибок -->
+    <Label fx:id="errorLabel" text="" textFill="red" wrapText="true" style="-fx-pref-width: 300px;" />
 
     <!-- Кнопки -->
     <HBox alignment="CENTER" spacing="10">
