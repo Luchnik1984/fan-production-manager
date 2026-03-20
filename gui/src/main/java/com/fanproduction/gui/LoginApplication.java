@@ -1,5 +1,8 @@
 package com.fanproduction.gui;
 
+import com.fanproduction.core.context.SessionContext;
+import com.fanproduction.core.entity.UserEntity;
+import com.fanproduction.core.enums.UserStatus;
 import com.fanproduction.core.launcher.SpringContextProvider;
 import com.fanproduction.core.util.UserPreferences;
 import com.fanproduction.gui.controller.LoginController;
@@ -28,14 +31,14 @@ public class LoginApplication extends Application {
         if (UserPreferences.hasValidToken()) {
             String email = UserPreferences.getEmailFromToken();
             UserService userService = springContext.getBean(UserService.class);
+            UserEntity user = userService.getUserByEmail(email);
 
-            // Пытаемся автоматически войти
-            if (userService.autoLogin(email)) {
-                // Успешный автовход - открываем главное окно
+            // Проверяем, что пользователь существует и активен
+            if (user != null && user.getStatus() == UserStatus.ACTIVE) {
+                SessionContext.setCurrentUser(user);
                 openMainWindow(primaryStage);
                 return;
             } else {
-                // Если автовход не удался, очищаем токен
                 UserPreferences.clearRememberData();
             }
         }

@@ -1,9 +1,11 @@
 package com.fanproduction.gui;
 
+import com.fanproduction.core.context.SessionContext;
 import com.fanproduction.core.launcher.SpringContextProvider;
 import com.fanproduction.core.util.EnvLoader;
 import com.fanproduction.core.util.UserPreferences;
 import com.fanproduction.gui.controller.LoginController;
+import com.fanproduction.gui.controller.ModerationController;
 import com.fanproduction.services.TestService;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -112,29 +114,78 @@ public class MainWindow {
     private TabPane createTabPane() {
         TabPane tabPane = new TabPane();
 
-        // Вкладка "Производственный журнал"
+        // Вкладка "Производственный журнал" (доступна всем)
         Tab journalTab = new Tab("Производственный журнал");
         journalTab.setContent(createJournalTabContent());
         journalTab.setClosable(false);
+        tabPane.getTabs().add(journalTab);
 
-        // Вкладка "Карточки продукции"
-        Tab cardsTab = new Tab("Карточки продукции");
-        cardsTab.setContent(createCardsTabContent());
-        cardsTab.setClosable(false);
+        // Вкладка "Карточки продукции" (доступна ENGINEER и ADMIN)
+        if (isEngineerOrAdmin()) {
+            Tab cardsTab = new Tab("Карточки продукции");
+            cardsTab.setContent(createCardsTabContent());
+            cardsTab.setClosable(false);
+            tabPane.getTabs().add(cardsTab);
+        }
 
-        // Вкладка "Документы"
-        Tab documentsTab = new Tab("Документы");
-        documentsTab.setContent(createDocumentsTabContent());
-        documentsTab.setClosable(false);
+        // Вкладка "Документы" (доступна ENGINEER и ADMIN)
+        if (isEngineerOrAdmin()) {
+            Tab documentsTab = new Tab("Документы");
+            documentsTab.setContent(createDocumentsTabContent());
+            documentsTab.setClosable(false);
+            tabPane.getTabs().add(documentsTab);
+        }
 
-        // Вкладка "Справочники"
-        Tab referencesTab = new Tab("Справочники");
-        referencesTab.setContent(createReferencesTabContent());
-        referencesTab.setClosable(false);
+        // Вкладка "Справочники" (доступна ENGINEER и ADMIN)
+        if (isEngineerOrAdmin()) {
+            Tab referencesTab = new Tab("Справочники");
+            referencesTab.setContent(createReferencesTabContent());
+            referencesTab.setClosable(false);
+            tabPane.getTabs().add(referencesTab);
+        }
 
-        tabPane.getTabs().addAll(journalTab, cardsTab, documentsTab, referencesTab);
+        // Вкладка "Модерация пользователей" (только ADMIN)
+        if (SessionContext.isAdmin()) {
+            Tab moderationTab = new Tab("Модерация пользователей");
+            moderationTab.setContent(createModerationTabContent());
+            moderationTab.setClosable(false);
+            tabPane.getTabs().add(moderationTab);
+        }
 
         return tabPane;
+    }
+
+    private boolean isEngineerOrAdmin() {
+        return SessionContext.isAdmin() || SessionContext.isEngineer();
+    }
+
+    private VBox createModerationTabContent() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/ModerationView.fxml"));
+            VBox content = loader.load();
+
+            ModerationController controller = loader.getController();
+            controller.setSpringContext(springContext);
+
+            return content;
+        } catch (IOException e) {
+            e.printStackTrace();
+            VBox errorBox = new VBox(10);
+            errorBox.getChildren().add(new Label("Ошибка загрузки модуля модерации: " + e.getMessage()));
+            return errorBox;
+        }
+    }
+
+    private boolean isCurrentUserAdmin() {
+        // TODO: получить роль текущего пользователя
+        // Пока возвращаем true для тестирования
+        return true;
+    }
+
+    private String getCurrentUserRole() {
+        return SessionContext.getCurrentUser() != null
+                ? SessionContext.getCurrentUser().getRole().name()
+                : "GUEST";
     }
 
     private VBox createJournalTabContent() {
@@ -213,19 +264,6 @@ public class MainWindow {
         statusLabel.setStyle("-fx-padding: 5px; -fx-background-color: #f0f0f0;");
         return statusLabel;
     }
-
-//    private void updateDatabaseStatus(Label statusLabel) {
-//        try {
-//            String dbHost = EnvLoader.get("DB_HOST");
-//            String dbName = EnvLoader.get("DB_NAME");
-//
-//            statusLabel.setText("✅ Подключено к БД: " + dbHost + "/" + dbName);
-//            statusLabel.setStyle("-fx-padding: 5px; -fx-background-color: #e0ffe0;");
-//        } catch (Exception e) {
-//            statusLabel.setText("❌ Ошибка подключения к БД: " + e.getMessage());
-//            statusLabel.setStyle("-fx-padding: 5px; -fx-background-color: #ffe0e0;");
-//        }
-//    }
 
     private void showAboutDialog() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);

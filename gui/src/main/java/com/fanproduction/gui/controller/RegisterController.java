@@ -163,8 +163,13 @@ public class RegisterController {
             // Регистрируем пользователя
             userService.register(newUser);
 
-            // Показываем сообщение об успехе и возвращаемся к окну входа
-            showSuccessAndGoToLogin();
+            // Показываем разное сообщение в зависимости от роли
+            if (selectedRole == Role.ADMIN) {
+                showSuccessMessage("Пользователь успешно зарегистрирован! Вы можете войти в систему.");
+            } else {
+                showSuccessMessage("Запрос на регистрацию отправлен.\n" +
+                        "Приложение будет доступно после подтверждения статуса администратором.");
+            }
 
         } catch (ValidationException e) {
             // Показываем детальные ошибки валидации
@@ -287,5 +292,14 @@ public class RegisterController {
             e.printStackTrace();
             errorLabel.setText("Ошибка загрузки окна входа");
         }
+    }
+
+    private void showSuccessMessage(String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Регистрация");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+        goToLogin();
     }
 }
