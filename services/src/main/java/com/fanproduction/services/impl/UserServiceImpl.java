@@ -1,5 +1,6 @@
 package com.fanproduction.services.impl;
 
+import com.fanproduction.core.dto.ProfileDto;
 import com.fanproduction.core.dto.UserDto;
 import com.fanproduction.core.entity.UserEntity;
 import com.fanproduction.core.enums.UserStatus;
@@ -25,18 +26,6 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private UserRepository userRepository;
 
-//    @Override
-//    public boolean authenticate(String email, String password) {
-//        return userRepository.findByEmail(email)
-//                .map(user -> {
-//                    // Пользователь должен быть ACTIVE, чтобы войти
-//                    if (user.getStatus() != UserStatus.ACTIVE) {
-//                        return false;
-//                    }
-//                    return password.equals(user.getPassword()); // TODO: добавить шифрование
-//                })
-//                .orElse(false);
-//    }
 
     @Override
     public boolean authenticate(String email, String password) {
@@ -149,5 +138,113 @@ public class UserServiceImpl implements UserService {
                 user.getApprovedAt(),
                 user.getRejectionReason()
         );
+    }
+
+    @Override
+    public ProfileDto getCurrentUserProfile(String email) {
+        String normalizedEmail = email.trim().toLowerCase();
+        return userRepository.findByEmail(normalizedEmail)
+                .map(this::mapToProfileDto)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+    }
+
+    @Override
+    @Transactional
+    public void updateProfile(String email, String firstName, String lastName, String phone) {
+        String normalizedEmail = email.trim().toLowerCase();
+        UserEntity user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+
+        // Обновляем только те поля, которые могут быть изменены
+        if (firstName != null) {
+            user.setFirstName(firstName.trim());
+        }
+        if (lastName != null) {
+            user.setLastName(lastName.trim());
+        }
+        if (phone != null) {
+            user.setPhone(phone.trim());
+        }
+
+        // Валидация обновлённых данных
+        ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+        Validator validator = factory.getValidator();
+        Set<ConstraintViolation<UserEntity>> violations = validator.validate(user);
+
+        if (!violations.isEmpty()) {
+            throw new ValidationException(violations);
+        }
+
+        userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(String email, String oldPassword, String newPassword) {
+        String normalizedEmail = email.trim().toLowerCase();
+        UserEntity user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+
+        // Проверяем старый пароль
+        if (!user.getPassword().equals(oldPassword)) {
+            throw new IllegalArgumentException("Неверный текущий пароль");
+        }
+
+        // Проверяем новый пароль (минимальная длина)
+        if (newPassword == null || newPassword.length() < 4) {
+            throw new IllegalArgumentException("Новый пароль должен содержать не менее 4 символов");
+        }
+
+        // Обновляем пароль
+        user.setPassword(newPassword);
+        userRepository.save(user);
+    }
+
+    private ProfileDto mapToProfileDto(UserEntity user) {
+        return new ProfileDto(
+                user.getId(),
+                user.getEmail(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getPhone(),
+                user.getRole(),
+                user.getStatus(),
+                user.getCreatedAt(),
+                user.getLastLoginAt(),
+                user.getLoginCount()
+        );
+    }
+
+    @Override
+    @Transactional
+    public void updateLoginInfo(UserEntity user) {
+        userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void blockUser(Long userId, String adminEmail, String reason) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+
+        user.setStatus(UserStatus.BLOCKED);
+        user.setApprovedBy(adminEmail);
+        user.setApprovedAt(LocalDateTime.now());
+        user.setRejectionReason(reason != null && !reason.isEmpty() ? reason : "Блокировка");
+
+        userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void unblockUser(Long userId, String adminEmail) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+
+        user.setStatus(UserStatus.ACTIVE);
+        user.setApprovedBy(adminEmail);
+        user.setApprovedAt(LocalDateTime.now());
+
+        userRepository.save(user);
     }
 }

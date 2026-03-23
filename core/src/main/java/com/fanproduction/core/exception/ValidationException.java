@@ -2,10 +2,9 @@ package com.fanproduction.core.exception;
 
 import com.fanproduction.core.entity.UserEntity;
 import jakarta.validation.ConstraintViolation;
-
 import java.util.Set;
 
-public class ValidationException  extends RuntimeException {
+public class ValidationException extends RuntimeException {
     private final Set<ConstraintViolation<UserEntity>> violations;
 
     public ValidationException(Set<ConstraintViolation<UserEntity>> violations) {

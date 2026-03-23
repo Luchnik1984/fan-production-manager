@@ -6,26 +6,24 @@ import com.fanproduction.core.enums.UserStatus;
 import com.fanproduction.core.exception.ValidationException;
 import com.fanproduction.core.launcher.SpringContextProvider;
 import com.fanproduction.core.security.AdminSecretKeyValidator;
+import com.fanproduction.core.util.SafeExecutor;
 import com.fanproduction.services.UserService;
-import jakarta.validation.ConstraintViolation;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.util.Pair;
 
-import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.function.Consumer;
 
 public class RegisterController {
 
-    // Поля ввода
     @FXML
     private TextField emailField;
     @FXML
@@ -44,8 +42,6 @@ public class RegisterController {
     private VBox secretKeyBox;
     @FXML
     private PasswordField secretKeyField;
-
-    // Лейблы для ошибок под полями
     @FXML
     private Label emailErrorLabel;
     @FXML
@@ -56,23 +52,13 @@ public class RegisterController {
     private Label lastNameErrorLabel;
     @FXML
     private Label phoneErrorLabel;
-
-    // Общий лейбл для ошибок
     @FXML
     private Label errorLabel;
 
     private SpringContextProvider springContext;
     private Stage primaryStage;
     private UserService userService;
-
-    // Record для связки поля и его компонентов
-    private record FieldComponents(
-            TextField textField,
-            Label errorLabel,
-            String fieldName
-    ) {}
-
-    private Map<String, FieldComponents> fieldComponentsMap;
+    private final Map<String, Consumer<String>> errorHandlers = new HashMap<>();
 
     public void setSpringContext(SpringContextProvider springContext) {
         this.springContext = springContext;
@@ -85,70 +71,76 @@ public class RegisterController {
 
     @FXML
     private void initialize() {
-        // Инициализируем маппинг полей
-        fieldComponentsMap = Map.of(
-                "email", new FieldComponents(emailField, emailErrorLabel, "email"),
-                "password", new FieldComponents(passwordField, passwordErrorLabel, "password"),
-                "firstName", new FieldComponents(firstNameField, firstNameErrorLabel, "firstName"),
-                "lastName", new FieldComponents(lastNameField, lastNameErrorLabel, "lastName"),
-                "phone", new FieldComponents(phoneField, phoneErrorLabel, "phone")
+        initErrorHandlers();
+        setupFieldListeners();
+        setupRoleListener();
+        roleComboBox.setItems(FXCollections.observableArrayList(Role.values()));
+    }
+
+    private void initErrorHandlers() {
+        errorHandlers.put("email", msg -> emailErrorLabel.setText(msg));
+        errorHandlers.put("password", msg -> passwordErrorLabel.setText(msg));
+        errorHandlers.put("firstName", msg -> firstNameErrorLabel.setText(msg));
+        errorHandlers.put("lastName", msg -> lastNameErrorLabel.setText(msg));
+        errorHandlers.put("phone", msg -> phoneErrorLabel.setText(msg));
+    }
+
+    private void setupFieldListeners() {
+        // Создаём список полей и соответствующих лейблов ошибок
+        List<Pair<TextField, Label>> fields = List.of(
+                new Pair<>(emailField, emailErrorLabel),
+                new Pair<>(passwordField, passwordErrorLabel),
+                new Pair<>(confirmPasswordField, passwordErrorLabel),
+                new Pair<>(firstNameField, firstNameErrorLabel),
+                new Pair<>(lastNameField, lastNameErrorLabel),
+                new Pair<>(phoneField, phoneErrorLabel),
+                new Pair<>(secretKeyField, errorLabel)
         );
 
-        // Заполняем ComboBox ролями
-        roleComboBox.setItems(FXCollections.observableArrayList(Role.values()));
+        // Для каждого поля добавляем слушатель
+        fields.forEach(pair -> {
+            TextField field = pair.getKey();
+            Label errorLabel = pair.getValue();
+            field.textProperty().addListener((obs, old, newVal) -> errorLabel.setText(""));
+        });
+    }
 
-        // При выборе роли показываем/скрываем поле для секретного ключа
+
+
+        private void setupRoleListener() {
         roleComboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             boolean isAdmin = (newVal == Role.ADMIN);
             secretKeyBox.setVisible(isAdmin);
             secretKeyBox.setManaged(isAdmin);
-            if (!isAdmin) {
-                secretKeyField.clear();
-            }
+            if (!isAdmin) secretKeyField.clear();
+            clearAllErrors();
         });
-
-        // Очищаем ошибки при вводе в любое поле
-        setupFieldListeners();
     }
 
-    private void setupFieldListeners() {
-        // При изменении любого поля сбрасываем его ошибку
-        fieldComponentsMap.values().forEach(components -> components.textField().textProperty().addListener((obs, old, newVal) -> {
-            components.textField().setStyle("");
-            components.errorLabel().setText("");
-        }));
-
-        // Очищаем общую ошибку при любом вводе
-        emailField.textProperty().addListener((obs, old, newVal) -> errorLabel.setText(""));
-        passwordField.textProperty().addListener((obs, old, newVal) -> errorLabel.setText(""));
-        confirmPasswordField.textProperty().addListener((obs, old, newVal) -> errorLabel.setText(""));
-        firstNameField.textProperty().addListener((obs, old, newVal) -> errorLabel.setText(""));
-        lastNameField.textProperty().addListener((obs, old, newVal) -> errorLabel.setText(""));
-        phoneField.textProperty().addListener((obs, old, newVal) -> errorLabel.setText(""));
-        roleComboBox.valueProperty().addListener((obs, old, newVal) -> errorLabel.setText(""));
-        secretKeyField.textProperty().addListener((obs, old, newVal) -> errorLabel.setText(""));
+    private void clearAllErrors() {
+        emailErrorLabel.setText("");
+        passwordErrorLabel.setText("");
+        firstNameErrorLabel.setText("");
+        lastNameErrorLabel.setText("");
+        phoneErrorLabel.setText("");
+        errorLabel.setText("");
     }
 
     @FXML
     private void handleRegister() {
-        // Базовая проверка обязательных полей
-        if (!validateRequiredFields()) {
-            return;
-        }
+        if (!validateRequiredFields()) return;
 
         Role selectedRole = roleComboBox.getValue();
 
-        // Если выбрана роль ADMIN, проверяем секретный ключ
         if (selectedRole == Role.ADMIN) {
             String secretKey = secretKeyField.getText();
             if (!AdminSecretKeyValidator.validate(secretKey)) {
-                errorLabel.setText("Неверный секретный ключ администратора");
+                showError("Неверный секретный ключ администратора");
                 return;
             }
         }
 
-        try {
-            // Создаём нового пользователя
+        SafeExecutor.execute(() -> {
             UserEntity newUser = new UserEntity();
             newUser.setEmail(emailField.getText().trim().toLowerCase());
             newUser.setPassword(passwordField.getText());
@@ -156,117 +148,111 @@ public class RegisterController {
             newUser.setLastName(lastNameField.getText().trim());
             newUser.setPhone(phoneField.getText().trim());
             newUser.setRole(selectedRole);
-
-            // Устанавливаем статус: ADMIN сразу ACTIVE, остальные PENDING
             newUser.setStatus(selectedRole == Role.ADMIN ? UserStatus.ACTIVE : UserStatus.PENDING);
 
-            // Регистрируем пользователя
             userService.register(newUser);
 
-            // Показываем разное сообщение в зависимости от роли
-            if (selectedRole == Role.ADMIN) {
-                showSuccessMessage("Пользователь успешно зарегистрирован! Вы можете войти в систему.");
-            } else {
-                showSuccessMessage("Запрос на регистрацию отправлен.\n" +
-                        "Приложение будет доступно после подтверждения статуса администратором.");
-            }
+            Platform.runLater(() -> {
+                if (selectedRole == Role.ADMIN) {
+                    showSuccess("Пользователь успешно зарегистрирован! Вы можете войти в систему.");
+                } else {
+                    showSuccess("Запрос на регистрацию отправлен.\nПриложение будет доступно после подтверждения статуса администратором.");
+                }
+            });
+        }, this::handleException);
+    }
 
-        } catch (ValidationException e) {
-            // Показываем детальные ошибки валидации
-            showFieldErrors(e.getViolations());
-        } catch (IllegalArgumentException e) {
-            // Ошибка уникальности email или другая бизнес-ошибка
-            errorLabel.setText(e.getMessage());
-        } catch (Exception e) {
-            errorLabel.setText("Ошибка при регистрации: " + e.getMessage());
+    private void handleException(Exception e) {
+        clearAllErrors();
+
+        if (e instanceof ValidationException ve) {
+            ve.getViolations().forEach(violation -> {
+                String fieldName = violation.getPropertyPath().toString();
+                String message = violation.getMessage();
+
+                errorHandlers.getOrDefault(fieldName, msg -> errorLabel.setText("Ошибка: " + msg))
+                        .accept(message);
+            });
+        } else if (e instanceof IllegalArgumentException iae) {
+            String message = iae.getMessage();
+            if (message != null) {
+                errorHandlers.entrySet().stream()
+                        .filter(entry -> message.toLowerCase().contains(entry.getKey()))
+                        .findFirst()
+                        .ifPresentOrElse(
+                                entry -> entry.getValue().accept(message),
+                                () -> showError(message)
+                        );
+            }
+        } else {
+            showError("Ошибка при регистрации. Попробуйте позже.");
             e.printStackTrace();
         }
     }
 
-    private void showFieldErrors(Set<ConstraintViolation<UserEntity>> violations) {
-        // Сбрасываем все ошибки
-        resetFieldStyles();
-
-        // Группируем нарушения по имени поля
-        Map<String, List<ConstraintViolation<UserEntity>>> violationsByField =
-                violations.stream()
-                        .collect(Collectors.groupingBy(
-                                v -> v.getPropertyPath().toString()
-                        ));
-
-        // Для каждого поля, у которого есть нарушения, показываем ошибку
-        violationsByField.forEach((fieldName, fieldViolations) -> {
-            FieldComponents components = fieldComponentsMap.get(fieldName);
-            if (components != null) {
-                // Берём первое сообщение для этого поля
-                String message = fieldViolations.get(0).getMessage();
-
-                // Подсвечиваем поле
-                components.textField().setStyle("-fx-border-color: red; -fx-border-width: 2;");
-
-                // Показываем сообщение
-                components.errorLabel().setText(message);
-            }
-        });
-
-        // Если есть ошибки, не связанные с конкретным полем, показываем их в общем лейбле
-        List<ConstraintViolation<UserEntity>> globalViolations =
-                violations.stream()
-                        .filter(v -> !fieldComponentsMap.containsKey(v.getPropertyPath().toString()))
-                        .toList();
-
-        if (!globalViolations.isEmpty()) {
-            String globalErrors = globalViolations.stream()
-                    .map(ConstraintViolation::getMessage)
-                    .collect(Collectors.joining("\n"));
-            errorLabel.setText(globalErrors);
-        }
-    }
-
-    private void resetFieldStyles() {
-        // Функционально проходим по всем компонентам
-        fieldComponentsMap.values().forEach(components -> {
-            components.textField().setStyle("");
-            components.errorLabel().setText("");
-        });
-        errorLabel.setText("");
-    }
-
     private boolean validateRequiredFields() {
-        // Проверка на пустой email
-        if (emailField.getText().trim().isEmpty()) {
-            errorLabel.setText("Email не может быть пустым");
-            return false;
+        boolean isValid = true;
+
+        // Проверка email
+        String email = emailField.getText().trim();
+        if (email.isEmpty()) {
+            emailErrorLabel.setText("Email не может быть пустым");
+            isValid = false;
         }
 
-        // Проверка на пустой пароль
-        if (passwordField.getText().isEmpty()) {
-            errorLabel.setText("Пароль не может быть пустым");
-            return false;
+        // Проверка пароля
+        String password = passwordField.getText();
+        if (password.isEmpty()) {
+            passwordErrorLabel.setText("Пароль не может быть пустым");
+            isValid = false;
         }
 
-        // Проверка совпадения паролей
-        if (!passwordField.getText().equals(confirmPasswordField.getText())) {
-            errorLabel.setText("Пароли не совпадают");
-            return false;
+        // Проверка подтверждения пароля (только если пароль не пустой)
+        if (!password.isEmpty() && !password.equals(confirmPasswordField.getText())) {
+            passwordErrorLabel.setText("Пароли не совпадают");
+            isValid = false;
         }
 
-        // Проверка выбора роли
+        // Проверка роли
         if (roleComboBox.getValue() == null) {
             errorLabel.setText("Выберите роль");
-            return false;
+            errorLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+            isValid = false;
         }
 
-        return true;
+        // Имя
+        if (firstNameField.getText().trim().isEmpty()) {
+            firstNameErrorLabel.setText("Имя не может быть пустым");
+            isValid = false;
+        }
+
+        // Фамилия
+        if (lastNameField.getText().trim().isEmpty()) {
+            lastNameErrorLabel.setText("Фамилия не может быть пустой");
+            isValid = false;
+        }
+
+        // Телефон
+        if (phoneField.getText().trim().isEmpty()) {
+            phoneErrorLabel.setText("Телефон не может быть пустым");
+            isValid = false;
+        }
+
+        return isValid;
     }
 
-    private void showSuccessAndGoToLogin() {
+    private void showSuccess(String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Регистрация");
         alert.setHeaderText(null);
-        alert.setContentText("Пользователь успешно зарегистрирован!");
+        alert.setContentText(message);
         alert.showAndWait();
         goToLogin();
+    }
+
+    private void showError(String message) {
+        errorLabel.setText(message);
+        errorLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
     }
 
     @FXML
@@ -275,31 +261,17 @@ public class RegisterController {
     }
 
     private void goToLogin() {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/LoginView.fxml"));
-            Parent root = loader.load();
+        SafeExecutor.loadFxml("/com/fanproduction/gui/view/LoginView.fxml",
+                (root, controller) -> {
+                    LoginController loginController = (LoginController) controller;
+                    loginController.setSpringContext(springContext);
+                    loginController.setPrimaryStage(primaryStage);
 
-            LoginController controller = loader.getController();
-            controller.setSpringContext(springContext);
-            controller.setPrimaryStage(primaryStage);
-
-            Scene scene = new Scene(root, 400, 400);
-            primaryStage.setScene(scene);
-            primaryStage.setTitle("Fan Production Manager - Вход");
-            primaryStage.show();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            errorLabel.setText("Ошибка загрузки окна входа");
-        }
-    }
-
-    private void showSuccessMessage(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Регистрация");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-        goToLogin();
+                    Scene scene = new Scene(root, 400, 450);
+                    primaryStage.setScene(scene);
+                    primaryStage.setTitle("Fan Production Manager - Вход");
+                },
+                e -> Platform.runLater(() -> showError("Ошибка загрузки окна входа: " + e.getMessage()))
+        );
     }
 }

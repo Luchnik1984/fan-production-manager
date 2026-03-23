@@ -39,5 +39,7 @@
     <HBox spacing="10" alignment="CENTER_RIGHT">
         <Button fx:id="approveButton" text="Подтвердить" style="-fx-background-color: #4CAF50; -fx-text-fill: white;" disable="true" />
         <Button fx:id="rejectButton" text="Отклонить" style="-fx-background-color: #f44336; -fx-text-fill: white;" disable="true" />
+        <Button fx:id="blockButton" text="Заблокировать" style="-fx-background-color: #ff9800; -fx-text-fill: white;" disable="true" />
+        <Button fx:id="unblockButton" text="Разблокировать" style="-fx-background-color: #2196F3; -fx-text-fill: white;" disable="true" />
     </HBox>
 </VBox>

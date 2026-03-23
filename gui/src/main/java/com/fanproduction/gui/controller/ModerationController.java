@@ -1,6 +1,5 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.core.context.SessionContext;
 import com.fanproduction.core.dto.UserDto;
 import com.fanproduction.core.enums.UserStatus;
 import com.fanproduction.core.launcher.SpringContextProvider;
@@ -17,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 
 public class ModerationController {
 
@@ -62,12 +62,18 @@ public class ModerationController {
     private Button rejectButton;
 
     @FXML
+    private Button blockButton;
+
+    @FXML
+    private Button unblockButton;
+
+    @FXML
     private Label statusLabel;
 
     private SpringContextProvider springContext;
     private UserService userService;
     private String currentAdminEmail;
-    private ObservableList<UserDto> userList = FXCollections.observableArrayList();
+    private final ObservableList<UserDto> userList = FXCollections.observableArrayList();
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
@@ -80,80 +86,76 @@ public class ModerationController {
     }
 
     private void loadCurrentUser() {
-        currentAdminEmail = SessionContext.getCurrentUser() != null
-                ? SessionContext.getCurrentUser().getEmail()
-                : "unknown";
+        currentAdminEmail = com.fanproduction.core.context.SessionContext.getCurrentUser().getEmail();
     }
 
     @FXML
     private void initialize() {
-
-        // Проверяем права доступа
-        if (!SessionContext.isAdmin()) {
-            statusLabel.setText("Доступ запрещён. Требуются права администратора.");
-            approveButton.setDisable(true);
-            rejectButton.setDisable(true);
-            statusFilterComboBox.setDisable(true);
-            usersTable.setDisable(true);
-            return;
-        }
-
         // Настройка фильтра по статусу
         statusFilterComboBox.setItems(FXCollections.observableArrayList(UserStatus.values()));
-        statusFilterComboBox.setValue(UserStatus.PENDING); // по умолчанию показываем ожидающих
+        statusFilterComboBox.setValue(UserStatus.PENDING);
         statusFilterComboBox.valueProperty().addListener((obs, old, newVal) -> loadUsers());
 
         // Настройка кнопок
         approveButton.setOnAction(e -> approveUser());
         rejectButton.setOnAction(e -> rejectUser());
+        blockButton.setOnAction(e -> blockUser());
+        unblockButton.setOnAction(e -> unblockUser());
 
         // Отключаем кнопки, если ничего не выбрано
-        usersTable.getSelectionModel().selectedItemProperty().addListener((obs, old, newVal) -> {
-            boolean hasSelection = newVal != null;
-            approveButton.setDisable(!hasSelection);
-            rejectButton.setDisable(!hasSelection);
-        });
+        usersTable.getSelectionModel().selectedItemProperty().addListener((obs, old, newVal) -> updateButtonsState(newVal));
+    }
+
+    private void updateButtonsState(UserDto selected) {
+        boolean hasSelection = selected != null;
+        approveButton.setDisable(!hasSelection);
+        rejectButton.setDisable(!hasSelection);
+        blockButton.setDisable(!hasSelection);
+        unblockButton.setDisable(!hasSelection);
+
+        if (selected != null) {
+            // Настраиваем кнопки в зависимости от текущего статуса
+            boolean isPending = selected.status() == UserStatus.PENDING;
+            boolean isActive = selected.status() == UserStatus.ACTIVE;
+            boolean isBlocked = selected.status() == UserStatus.BLOCKED;
+            boolean isRejected = selected.status() == UserStatus.REJECTED;
+
+            approveButton.setDisable(!isPending);
+            rejectButton.setDisable(!isPending);
+            blockButton.setDisable(!isActive);
+            unblockButton.setDisable(!isBlocked);
+        }
     }
 
     private void setupTable() {
-        // Настройка колонок
         idColumn.setCellValueFactory(cellData -> new SimpleLongProperty(cellData.getValue().id()).asObject());
-
         emailColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().email()));
-
         nameColumn.setCellValueFactory(cellData -> {
             String firstName = cellData.getValue().firstName() != null ? cellData.getValue().firstName() : "";
             String lastName = cellData.getValue().lastName() != null ? cellData.getValue().lastName() : "";
             String fullName = firstName + " " + lastName;
             return new SimpleStringProperty(fullName.trim());
         });
-
         phoneColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
                 cellData.getValue().phone() != null ? cellData.getValue().phone() : ""
         ));
-
         roleColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
                 cellData.getValue().role().toString()
         ));
-
         statusColumn.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().status()));
-
         createdAtColumn.setCellValueFactory(cellData -> {
             if (cellData.getValue().createdAt() != null) {
                 return new SimpleStringProperty(cellData.getValue().createdAt().format(DATE_FORMATTER));
             }
             return new SimpleStringProperty("");
         });
-
         approvedByColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
                 cellData.getValue().approvedBy() != null ? cellData.getValue().approvedBy() : ""
         ));
-
         rejectionReasonColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
                 cellData.getValue().rejectionReason() != null ? cellData.getValue().rejectionReason() : ""
         ));
 
-        // Настройка цвета для статуса
         statusColumn.setCellFactory(column -> new TableCell<UserDto, UserStatus>() {
             @Override
             protected void updateItem(UserStatus item, boolean empty) {
@@ -219,14 +221,15 @@ public class ModerationController {
         UserDto selected = usersTable.getSelectionModel().getSelectedItem();
         if (selected == null) return;
 
-        // Создаём диалог для ввода причины
         TextInputDialog reasonDialog = new TextInputDialog();
         reasonDialog.setTitle("Отклонение");
         reasonDialog.setHeaderText("Отклонение регистрации пользователя " + selected.email());
         reasonDialog.setContentText("Укажите причину отклонения:");
 
-        reasonDialog.showAndWait().ifPresent(reason -> {
-            if (reason.trim().isEmpty()) {
+        Optional<String> result = reasonDialog.showAndWait();
+        if (result.isPresent()) {
+            String reason = result.get().trim();
+            if (reason.isEmpty()) {
                 showErrorMessage("Необходимо указать причину отклонения");
                 return;
             }
@@ -245,7 +248,55 @@ public class ModerationController {
                     showErrorMessage("Ошибка при отклонении: " + e.getMessage());
                 }
             }
-        });
+        }
+    }
+
+    private void blockUser() {
+        UserDto selected = usersTable.getSelectionModel().getSelectedItem();
+        if (selected == null) return;
+
+        TextInputDialog reasonDialog = new TextInputDialog();
+        reasonDialog.setTitle("Блокировка");
+        reasonDialog.setHeaderText("Блокировка пользователя " + selected.email());
+        reasonDialog.setContentText("Укажите причину блокировки (необязательно):");
+
+        Optional<String> result = reasonDialog.showAndWait();
+        String reason = result.orElse("");
+
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Подтверждение");
+        confirmAlert.setHeaderText("Блокировка пользователя");
+        confirmAlert.setContentText("Вы уверены, что хотите заблокировать пользователя " + selected.email() + "?");
+
+        if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+            try {
+                userService.blockUser(selected.id(), currentAdminEmail, reason);
+                showSuccessMessage("Пользователь " + selected.email() + " заблокирован");
+                loadUsers();
+            } catch (Exception e) {
+                showErrorMessage("Ошибка при блокировке: " + e.getMessage());
+            }
+        }
+    }
+
+    private void unblockUser() {
+        UserDto selected = usersTable.getSelectionModel().getSelectedItem();
+        if (selected == null) return;
+
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Подтверждение");
+        confirmAlert.setHeaderText("Разблокировка пользователя");
+        confirmAlert.setContentText("Вы уверены, что хотите разблокировать пользователя " + selected.email() + "?");
+
+        if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+            try {
+                userService.unblockUser(selected.id(), currentAdminEmail);
+                showSuccessMessage("Пользователь " + selected.email() + " разблокирован");
+                loadUsers();
+            } catch (Exception e) {
+                showErrorMessage("Ошибка при разблокировке: " + e.getMessage());
+            }
+        }
     }
 
     private void showSuccessMessage(String message) {

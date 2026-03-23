@@ -1,6 +1,7 @@
 package com.fanproduction.application;
 
 import com.fanproduction.application.launcher.SpringContext;
+import com.fanproduction.core.exception.GlobalExceptionHandler;
 import com.fanproduction.core.launcher.SpringContextProvider;
 import com.fanproduction.core.util.EnvLoader;
 import com.fanproduction.gui.LoginApplication;
@@ -34,13 +35,17 @@ public class Main {
             e.printStackTrace();
         }
 
-        // 1. Создаём Spring контекст
+        // Регистрируем глобальный обработчик исключений
+        GlobalExceptionHandler.register();
+
+
+        //  Создаём Spring контекст
         SpringContextProvider springContext = SpringContext.getInstance();
 
-        // 2. Передаём его в JavaFX приложение (окно входа)
+        //  Передаём его в JavaFX приложение (окно входа)
         LoginApplication.setSpringContext(springContext);
 
-        // 3. Запускаем JavaFX с окном входа
+        //  Запускаем JavaFX с окном входа
         Application.launch(LoginApplication.class, args);
     }
 }

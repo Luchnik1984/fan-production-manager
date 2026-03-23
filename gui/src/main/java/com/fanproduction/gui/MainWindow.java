@@ -6,14 +6,16 @@ import com.fanproduction.core.util.EnvLoader;
 import com.fanproduction.core.util.UserPreferences;
 import com.fanproduction.gui.controller.LoginController;
 import com.fanproduction.gui.controller.ModerationController;
+import com.fanproduction.gui.controller.ProfileController;
 import com.fanproduction.services.TestService;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -21,25 +23,24 @@ import java.io.IOException;
 public class MainWindow {
 
     private final SpringContextProvider springContext;
+    private Stage primaryStage;
 
     public MainWindow(SpringContextProvider springContext) {
         this.springContext = springContext;
     }
 
     public void start(Stage primaryStage) {
+        this.primaryStage = primaryStage;
         primaryStage.setTitle("Fan Production Manager");
 
         BorderPane root = new BorderPane();
 
-        // ========== Верхнее меню ==========
-        MenuBar menuBar = createMenuBar(primaryStage);
+        MenuBar menuBar = createMenuBar();
         root.setTop(menuBar);
 
-        // ========== Центральная область с вкладками ==========
         TabPane tabPane = createTabPane();
         root.setCenter(tabPane);
 
-        // ========== Нижняя панель статуса ==========
         Label statusLabel = createStatusBar();
         root.setBottom(statusLabel);
 
@@ -47,21 +48,20 @@ public class MainWindow {
         primaryStage.setScene(scene);
         primaryStage.show();
 
-//        // Проверяем подключение к БД
-//        updateDatabaseStatus(statusLabel);
-
-        // вызываем проверку подключения к БД
         checkDatabaseConnection(statusLabel);
     }
 
-    private MenuBar createMenuBar(Stage primaryStage) {
+    private MenuBar createMenuBar() {
         MenuBar menuBar = new MenuBar();
 
         // Меню "Файл"
         Menu fileMenu = new Menu("Файл");
 
+        MenuItem profileItem = new MenuItem("Мой профиль");
+        profileItem.setOnAction(e -> openProfileWindow());
+
         MenuItem logoutItem = new MenuItem("Выйти из профиля");
-        logoutItem.setOnAction(e -> logout(primaryStage));
+        logoutItem.setOnAction(e -> logout());
 
         MenuItem exitItem = new MenuItem("Выход");
         exitItem.setOnAction(e -> {
@@ -69,7 +69,7 @@ public class MainWindow {
             primaryStage.close();
         });
 
-        fileMenu.getItems().addAll(logoutItem, new SeparatorMenuItem(), exitItem);
+        fileMenu.getItems().addAll(profileItem, new SeparatorMenuItem(), logoutItem, new SeparatorMenuItem(), exitItem);
 
         // Меню "Справка"
         Menu helpMenu = new Menu("Справка");
@@ -82,34 +82,6 @@ public class MainWindow {
         menuBar.getMenus().addAll(fileMenu, helpMenu);
         return menuBar;
     }
-
-    private void logout(Stage primaryStage) {
-        // Очищаем сохранённый email при выходе из профиля
-        UserPreferences.clearRememberData();
-
-        // Закрываем текущее окно
-        primaryStage.close();
-
-        // Открываем окно входа (создаём новый Stage)
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/LoginView.fxml"));
-            Parent root = loader.load();
-
-            LoginController loginController = loader.getController();
-            loginController.setSpringContext(springContext);
-
-            Stage loginStage = new Stage();
-            loginController.setPrimaryStage(loginStage);
-
-            Scene scene = new Scene(root, 400, 450);
-            loginStage.setScene(scene);
-            loginStage.setTitle("Fan Production Manager - Вход");
-            loginStage.show();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
 
     private TabPane createTabPane() {
         TabPane tabPane = new TabPane();
@@ -155,39 +127,6 @@ public class MainWindow {
         return tabPane;
     }
 
-    private boolean isEngineerOrAdmin() {
-        return SessionContext.isAdmin() || SessionContext.isEngineer();
-    }
-
-    private VBox createModerationTabContent() {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/ModerationView.fxml"));
-            VBox content = loader.load();
-
-            ModerationController controller = loader.getController();
-            controller.setSpringContext(springContext);
-
-            return content;
-        } catch (IOException e) {
-            e.printStackTrace();
-            VBox errorBox = new VBox(10);
-            errorBox.getChildren().add(new Label("Ошибка загрузки модуля модерации: " + e.getMessage()));
-            return errorBox;
-        }
-    }
-
-    private boolean isCurrentUserAdmin() {
-        // TODO: получить роль текущего пользователя
-        // Пока возвращаем true для тестирования
-        return true;
-    }
-
-    private String getCurrentUserRole() {
-        return SessionContext.getCurrentUser() != null
-                ? SessionContext.getCurrentUser().getRole().name()
-                : "GUEST";
-    }
-
     private VBox createJournalTabContent() {
         VBox vbox = new VBox(10);
         vbox.setStyle("-fx-padding: 20px;");
@@ -199,9 +138,7 @@ public class MainWindow {
         placeholder.setStyle("-fx-font-style: italic;");
 
         Button refreshBtn = new Button("Обновить");
-        refreshBtn.setOnAction(e ->
-                System.out.println("Журнал: запрос на обновление")
-        );
+        refreshBtn.setOnAction(e -> System.out.println("Журнал: запрос на обновление"));
 
         vbox.getChildren().addAll(title, placeholder, refreshBtn);
         return vbox;
@@ -218,9 +155,7 @@ public class MainWindow {
         placeholder.setStyle("-fx-font-style: italic;");
 
         Button addCardBtn = new Button("Создать карточку");
-        addCardBtn.setOnAction(e ->
-                System.out.println("Карточки: создание новой карточки")
-        );
+        addCardBtn.setOnAction(e -> System.out.println("Карточки: создание новой карточки"));
 
         vbox.getChildren().addAll(title, placeholder, addCardBtn);
         return vbox;
@@ -237,9 +172,7 @@ public class MainWindow {
         placeholder.setStyle("-fx-font-style: italic;");
 
         Button generateTzBtn = new Button("Сформировать ТЗ");
-        generateTzBtn.setOnAction(e ->
-                System.out.println("Документы: генерация ТЗ")
-        );
+        generateTzBtn.setOnAction(e -> System.out.println("Документы: генерация ТЗ"));
 
         vbox.getChildren().addAll(title, placeholder, generateTzBtn);
         return vbox;
@@ -259,10 +192,104 @@ public class MainWindow {
         return vbox;
     }
 
+    private VBox createModerationTabContent() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/ModerationView.fxml"));
+            VBox content = loader.load();
+
+            ModerationController controller = loader.getController();
+            controller.setSpringContext(springContext);
+
+            return content;
+        } catch (IOException e) {
+            e.printStackTrace();
+            VBox errorBox = new VBox(10);
+            errorBox.getChildren().add(new Label("Ошибка загрузки модуля модерации: " + e.getMessage()));
+            return errorBox;
+        }
+    }
+
     private Label createStatusBar() {
         Label statusLabel = new Label("Статус: подключение к БД...");
         statusLabel.setStyle("-fx-padding: 5px; -fx-background-color: #f0f0f0;");
         return statusLabel;
+    }
+
+    private void checkDatabaseConnection(Label statusLabel) {
+        try {
+            TestService testService = springContext.getBean(TestService.class);
+            testService.testDatabaseConnection();
+
+            String dbHost = EnvLoader.get("DB_HOST");
+            String dbName = EnvLoader.get("DB_NAME");
+
+            statusLabel.setText("✅ БД: " + dbHost + "/" + dbName);
+            statusLabel.setStyle("-fx-padding: 5px; -fx-background-color: #e0ffe0;");
+        } catch (Exception e) {
+            statusLabel.setText("❌ Ошибка: " + e.getMessage());
+            statusLabel.setStyle("-fx-padding: 5px; -fx-background-color: #ffe0e0;");
+            e.printStackTrace();
+        }
+    }
+
+    private boolean isEngineerOrAdmin() {
+        return SessionContext.isAdmin() || SessionContext.isEngineer();
+    }
+
+    private void openProfileWindow() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/ProfileView.fxml"));
+            Parent root = loader.load();
+
+            ProfileController controller = loader.getController();
+            controller.setSpringContext(springContext);
+
+            Stage profileStage = new Stage();
+            profileStage.setTitle("Мой профиль");
+            profileStage.setScene(new Scene(root, 500, 650));
+            profileStage.initModality(Modality.WINDOW_MODAL);
+            profileStage.initOwner(primaryStage);
+            profileStage.show();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            showError("Ошибка открытия профиля");
+        }
+    }
+
+    private void logout() {
+        // Очищаем все сохранённые данные
+        UserPreferences.clearRememberData();
+
+        // Закрываем текущее окно
+        primaryStage.close();
+
+        // Открываем окно входа
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/LoginView.fxml"));
+            Parent root = loader.load();
+
+            LoginController loginController = loader.getController();
+            loginController.setSpringContext(springContext);
+
+            Stage loginStage = new Stage();
+            loginController.setPrimaryStage(loginStage);
+
+            Scene scene = new Scene(root, 400, 450);
+            loginStage.setScene(scene);
+            loginStage.setTitle("Fan Production Manager - Вход");
+            loginStage.show();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void showError(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Ошибка");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     private void showAboutDialog() {
@@ -271,25 +298,5 @@ public class MainWindow {
         alert.setHeaderText("Fan Production Manager");
         alert.setContentText("Версия 0.1\n\nСистема управления производством вентиляторов");
         alert.showAndWait();
-    }
-
-    private void checkDatabaseConnection(Label statusLabel) {
-        try {
-            // Получаем тестовый сервис из Spring контекста
-            TestService testService = springContext.getBean(TestService.class);
-
-            // Запускаем тест, который создаст пользователя если нужно
-            testService.testDatabaseConnection();
-
-            String dbHost = EnvLoader.get("DB_HOST");
-            String dbName = EnvLoader.get("DB_NAME");
-
-            statusLabel.setText("✅ БД: " + dbHost + "/" + dbName + " (тестовый пользователь создан)");
-            statusLabel.setStyle("-fx-text-fill: green;");
-        } catch (Exception e) {
-            statusLabel.setText("❌ Ошибка: " + e.getMessage());
-            statusLabel.setStyle("-fx-text-fill: red;");
-            e.printStackTrace();
-        }
     }
 }
