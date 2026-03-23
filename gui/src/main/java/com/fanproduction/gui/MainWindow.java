@@ -8,7 +8,6 @@ import com.fanproduction.gui.controller.LoginController;
 import com.fanproduction.gui.controller.ModerationController;
 import com.fanproduction.gui.controller.ProfileController;
 import com.fanproduction.services.TestService;
-import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
