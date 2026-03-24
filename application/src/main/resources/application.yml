@@ -42,6 +42,14 @@ spring:
 
     placeholder-replacement: false  # Отключаем подстановку, если не используем
 
+# ============================================
+# AUDIT LOG SETTINGS
+# ============================================
+audit:
+  retention:
+    days: ${AUDIT_RETENTION_DAYS:90}
+    max-records: ${AUDIT_MAX_RECORDS:50000}
+
 
 # ============================================
 # LOGGING SETTINGS (на одном уровне с spring)

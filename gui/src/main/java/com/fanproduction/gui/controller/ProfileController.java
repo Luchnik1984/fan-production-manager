@@ -6,6 +6,7 @@ import com.fanproduction.core.enums.UserStatus;
 import com.fanproduction.core.exception.ValidationException;
 import com.fanproduction.core.launcher.SpringContextProvider;
 import com.fanproduction.core.util.SafeExecutor;
+import com.fanproduction.services.AuditService;
 import com.fanproduction.services.UserService;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -48,6 +49,7 @@ public class ProfileController {
 
     private SpringContextProvider springContext;
     private UserService userService;
+    private AuditService auditService;
     private Stage stage;
     private ProfileDto profile;
 
@@ -57,6 +59,7 @@ public class ProfileController {
     public void setSpringContext(SpringContextProvider springContext) {
         this.springContext = springContext;
         this.userService = springContext.getBean(UserService.class);
+        this.auditService = springContext.getBean(AuditService.class);
     }
 
     public void setStage(Stage stage) {
@@ -152,12 +155,13 @@ public class ProfileController {
         }
 
         SafeExecutor.execute(() -> {
-            userService.updateProfile(
-                    profile.email(),
-                    firstNameField.getText().trim(),
-                    lastNameField.getText().trim(),
-                    phoneField.getText().trim()
-            );
+            String email = profile.email();
+            String firstName = firstNameField.getText().trim();
+            String lastName = lastNameField.getText().trim();
+            String phone = phoneField.getText().trim();
+
+            userService.updateProfile(email, firstName, lastName, phone);
+
             Platform.runLater(() -> {
                 showSuccess("Профиль успешно обновлён");
                 loadProfile();
