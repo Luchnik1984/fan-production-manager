@@ -1,3 +1,5 @@
+-- V3__create_audit_log_table.sql
+-- Создание таблицы аудита действий пользователей
 
 CREATE TABLE IF NOT EXISTS audit_log (
                                          id BIGSERIAL PRIMARY KEY,
