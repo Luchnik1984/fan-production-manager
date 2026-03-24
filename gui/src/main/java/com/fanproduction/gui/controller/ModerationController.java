@@ -3,6 +3,7 @@ package com.fanproduction.gui.controller;
 import com.fanproduction.core.dto.UserDto;
 import com.fanproduction.core.enums.UserStatus;
 import com.fanproduction.core.launcher.SpringContextProvider;
+import com.fanproduction.services.AuditService;
 import com.fanproduction.services.UserService;
 import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -72,14 +73,16 @@ public class ModerationController {
 
     private SpringContextProvider springContext;
     private UserService userService;
+    private AuditService auditService;
     private String currentAdminEmail;
-    private final ObservableList<UserDto> userList = FXCollections.observableArrayList();
+    private ObservableList<UserDto> userList = FXCollections.observableArrayList();
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     public void setSpringContext(SpringContextProvider springContext) {
         this.springContext = springContext;
         this.userService = springContext.getBean(UserService.class);
+        this.auditService = springContext.getBean(AuditService.class);
         loadCurrentUser();
         setupTable();
         loadUsers();
@@ -91,18 +94,15 @@ public class ModerationController {
 
     @FXML
     private void initialize() {
-        // Настройка фильтра по статусу
         statusFilterComboBox.setItems(FXCollections.observableArrayList(UserStatus.values()));
         statusFilterComboBox.setValue(UserStatus.PENDING);
         statusFilterComboBox.valueProperty().addListener((obs, old, newVal) -> loadUsers());
 
-        // Настройка кнопок
         approveButton.setOnAction(e -> approveUser());
         rejectButton.setOnAction(e -> rejectUser());
         blockButton.setOnAction(e -> blockUser());
         unblockButton.setOnAction(e -> unblockUser());
 
-        // Отключаем кнопки, если ничего не выбрано
         usersTable.getSelectionModel().selectedItemProperty().addListener((obs, old, newVal) -> updateButtonsState(newVal));
     }
 
@@ -114,7 +114,6 @@ public class ModerationController {
         unblockButton.setDisable(!hasSelection);
 
         if (selected != null) {
-            // Настраиваем кнопки в зависимости от текущего статуса
             boolean isPending = selected.status() == UserStatus.PENDING;
             boolean isActive = selected.status() == UserStatus.ACTIVE;
             boolean isBlocked = selected.status() == UserStatus.BLOCKED;
@@ -210,6 +209,8 @@ public class ModerationController {
             try {
                 userService.approveUser(selected.id(), currentAdminEmail);
                 showSuccessMessage("Пользователь " + selected.email() + " подтверждён");
+                auditService.log(currentAdminEmail, com.fanproduction.core.enums.AuditAction.APPROVE_USER,
+                        "Подтверждена регистрация пользователя: " + selected.email());
                 loadUsers();
             } catch (Exception e) {
                 showErrorMessage("Ошибка при подтверждении: " + e.getMessage());
@@ -243,6 +244,8 @@ public class ModerationController {
                 try {
                     userService.rejectUser(selected.id(), currentAdminEmail, reason);
                     showSuccessMessage("Регистрация пользователя " + selected.email() + " отклонена");
+                    auditService.log(currentAdminEmail, com.fanproduction.core.enums.AuditAction.REJECT_USER,
+                            "Отклонена регистрация пользователя: " + selected.email() + ". Причина: " + reason);
                     loadUsers();
                 } catch (Exception e) {
                     showErrorMessage("Ошибка при отклонении: " + e.getMessage());
@@ -272,6 +275,8 @@ public class ModerationController {
             try {
                 userService.blockUser(selected.id(), currentAdminEmail, reason);
                 showSuccessMessage("Пользователь " + selected.email() + " заблокирован");
+                auditService.log(currentAdminEmail, com.fanproduction.core.enums.AuditAction.BLOCK_USER,
+                        "Заблокирован пользователь: " + selected.email() + ". Причина: " + reason);
                 loadUsers();
             } catch (Exception e) {
                 showErrorMessage("Ошибка при блокировке: " + e.getMessage());
@@ -292,6 +297,8 @@ public class ModerationController {
             try {
                 userService.unblockUser(selected.id(), currentAdminEmail);
                 showSuccessMessage("Пользователь " + selected.email() + " разблокирован");
+                auditService.log(currentAdminEmail, com.fanproduction.core.enums.AuditAction.UNBLOCK_USER,
+                        "Разблокирован пользователь: " + selected.email());
                 loadUsers();
             } catch (Exception e) {
                 showErrorMessage("Ошибка при разблокировке: " + e.getMessage());

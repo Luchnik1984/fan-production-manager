@@ -4,6 +4,7 @@ import com.fanproduction.core.context.SessionContext;
 import com.fanproduction.core.launcher.SpringContextProvider;
 import com.fanproduction.core.util.EnvLoader;
 import com.fanproduction.core.util.UserPreferences;
+import com.fanproduction.gui.controller.AuditController;
 import com.fanproduction.gui.controller.LoginController;
 import com.fanproduction.gui.controller.ModerationController;
 import com.fanproduction.gui.controller.ProfileController;
@@ -121,6 +122,14 @@ public class MainWindow {
             moderationTab.setContent(createModerationTabContent());
             moderationTab.setClosable(false);
             tabPane.getTabs().add(moderationTab);
+        }
+
+        // Вкладка "Журнал аудита" (только ADMIN)
+        if (SessionContext.isAdmin()) {
+            Tab auditTab = new Tab("Журнал аудита");
+            auditTab.setContent(createAuditTabContent());
+            auditTab.setClosable(false);
+            tabPane.getTabs().add(auditTab);
         }
 
         return tabPane;
@@ -297,5 +306,22 @@ public class MainWindow {
         alert.setHeaderText("Fan Production Manager");
         alert.setContentText("Версия 0.1\n\nСистема управления производством вентиляторов");
         alert.showAndWait();
+    }
+
+    private VBox createAuditTabContent() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/AuditView.fxml"));
+            VBox content = loader.load();
+
+            AuditController controller = loader.getController();
+            controller.setSpringContext(springContext);
+
+            return content;
+        } catch (IOException e) {
+            e.printStackTrace();
+            VBox errorBox = new VBox(10);
+            errorBox.getChildren().add(new Label("Ошибка загрузки журнала аудита: " + e.getMessage()));
+            return errorBox;
+        }
     }
 }
