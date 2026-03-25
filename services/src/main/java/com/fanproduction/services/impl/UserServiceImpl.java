@@ -1,5 +1,6 @@
 package com.fanproduction.services.impl;
 
+import com.fanproduction.core.context.SessionContext;
 import com.fanproduction.core.dto.ProfileDto;
 import com.fanproduction.core.dto.UserDto;
 import com.fanproduction.core.entity.UserEntity;
@@ -14,6 +15,7 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,11 +33,38 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private AuditService auditService;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
+
+    private void checkAdmin() {
+        if (!SessionContext.isAdmin()) {
+            throw new SecurityException("Доступ запрещён. Требуются права администратора");
+        }
+    }
+
+    private void checkAuthenticated() {
+        if (!SessionContext.isAuthenticated()) {
+            throw new SecurityException("Пользователь не авторизован");
+        }
+    }
+
+    private void checkOwner(String email) {
+        checkAuthenticated();
+        String currentUserEmail = SessionContext.getCurrentUser().getEmail();
+        if (!currentUserEmail.equals(email) && !SessionContext.isAdmin()) {
+            throw new SecurityException("Доступ запрещён. Вы можете изменять только свой профиль");
+        }
+    }
+
+    // ==================== ОСНОВНЫЕ МЕТОДЫ ====================
+
     @Override
     public boolean authenticate(String email, String password) {
         String normalizedEmail = email.trim().toLowerCase();
         return userRepository.findByEmail(normalizedEmail)
-                .map(user -> password.equals(user.getPassword()))
+                .map(user -> passwordEncoder.matches(password, user.getPassword()))
                 .orElse(false);
     }
 
@@ -45,6 +74,8 @@ public class UserServiceImpl implements UserService {
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new IllegalArgumentException("Пользователь с таким email уже существует");
         }
+
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
 
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
         Validator validator = factory.getValidator();
@@ -56,7 +87,6 @@ public class UserServiceImpl implements UserService {
 
         UserEntity savedUser = userRepository.save(user);
 
-        // Логируем регистрацию
         auditService.log(savedUser.getEmail(), AuditAction.REGISTER,
                 "Регистрация пользователя с ролью: " + savedUser.getRole());
 
@@ -77,6 +107,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserDto> getUsersByStatus(UserStatus status) {
+        checkAdmin();
         return userRepository.findByStatus(status).stream()
                 .map(this::mapToUserDto)
                 .collect(Collectors.toList());
@@ -84,6 +115,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserDto> getAllUsers() {
+        checkAdmin();
         return userRepository.findAll().stream()
                 .map(this::mapToUserDto)
                 .collect(Collectors.toList());
@@ -92,12 +124,24 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void approveUser(Long userId, String adminEmail) {
+        checkAdmin();
+
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+
+        // Разрешаем подтверждать PENDING и REJECTED
+        if (user.getStatus() != UserStatus.PENDING && user.getStatus() != UserStatus.REJECTED) {
+            throw new IllegalArgumentException("Подтверждение возможно только для ожидающих или отклонённых пользователей");
+        }
 
         user.setStatus(UserStatus.ACTIVE);
         user.setApprovedBy(adminEmail);
         user.setApprovedAt(LocalDateTime.now());
+
+        // Очищаем причину отклонения, если была
+        if (user.getStatus() == UserStatus.REJECTED) {
+            user.setRejectionReason(null);
+        }
 
         userRepository.save(user);
 
@@ -108,6 +152,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void rejectUser(Long userId, String adminEmail, String reason) {
+        checkAdmin();
+
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
@@ -125,6 +171,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void blockUser(Long userId, String adminEmail, String reason) {
+        checkAdmin();
+
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
@@ -142,6 +190,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void unblockUser(Long userId, String adminEmail) {
+        checkAdmin();
+
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
@@ -170,6 +220,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public ProfileDto getCurrentUserProfile(String email) {
+        checkAuthenticated();
+
         String normalizedEmail = email.trim().toLowerCase();
         return userRepository.findByEmail(normalizedEmail)
                 .map(this::mapToProfileDto)
@@ -179,6 +231,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void updateProfile(String email, String firstName, String lastName, String phone) {
+        checkOwner(email);
+
         String normalizedEmail = email.trim().toLowerCase();
         UserEntity user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
@@ -210,11 +264,13 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void changePassword(String email, String oldPassword, String newPassword) {
+        checkOwner(email);
+
         String normalizedEmail = email.trim().toLowerCase();
         UserEntity user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
-        if (!user.getPassword().equals(oldPassword)) {
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
             throw new IllegalArgumentException("Неверный текущий пароль");
         }
 
@@ -222,7 +278,7 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("Новый пароль должен содержать не менее 4 символов");
         }
 
-        user.setPassword(newPassword);
+        user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
 
         auditService.log(email, AuditAction.CHANGE_PASSWORD,
@@ -237,6 +293,8 @@ public class UserServiceImpl implements UserService {
         auditService.log(user.getEmail(), AuditAction.LOGIN_SUCCESS,
                 "Вход в систему (счётчик входов: " + user.getLoginCount() + ")");
     }
+
+    // ==================== МАППЕРЫ ====================
 
     private UserDto mapToUserDto(UserEntity user) {
         return new UserDto(

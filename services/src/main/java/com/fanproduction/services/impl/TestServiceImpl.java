@@ -6,6 +6,7 @@ import com.fanproduction.core.enums.UserStatus;
 import com.fanproduction.repositories.UserRepository;
 import com.fanproduction.services.TestService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,54 +16,52 @@ public class TestServiceImpl implements TestService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @Override
     @Transactional
     public void testDatabaseConnection() {
         System.out.println("=== Testing database connection ===");
 
-        // Проверяем, есть ли пользователи
         long count = userRepository.count();
         System.out.println("Current users in database: " + count);
 
-        /// Если нет ни одного пользователя, создадим тестового
         if (count == 0) {
-            // Создаём тестового ADMIN (будет ACTIVE)
+            // Создаём тестового ADMIN
             UserEntity adminUser = new UserEntity();
             adminUser.setEmail("admin@test.com");
-            adminUser.setPassword("admin");
+            adminUser.setPassword(passwordEncoder.encode("admin"));
             adminUser.setFirstName("Admin");
             adminUser.setLastName("User");
             adminUser.setRole(Role.ADMIN);
-            adminUser.setStatus(UserStatus.ACTIVE);  // ADMIN сразу активен
-
+            adminUser.setStatus(UserStatus.ACTIVE);
             userRepository.save(adminUser);
-            System.out.println("✅ Test admin user created with id: " + adminUser.getId() + " (ACTIVE)");
+            System.out.println("✅ Test admin user created with id: " + adminUser.getId());
 
-            // Создаём тестового ENGINEER (будет PENDING)
+            // Создаём тестового ENGINEER
             UserEntity engineerUser = new UserEntity();
             engineerUser.setEmail("engineer@test.com");
-            engineerUser.setPassword("engineer");
+            engineerUser.setPassword(passwordEncoder.encode("engineer"));
             engineerUser.setFirstName("Test");
             engineerUser.setLastName("Engineer");
             engineerUser.setRole(Role.ENGINEER);
-            engineerUser.setStatus(UserStatus.PENDING);  // ожидает подтверждения
-
+            engineerUser.setStatus(UserStatus.PENDING);
             userRepository.save(engineerUser);
-            System.out.println("✅ Test engineer user created with id: " + engineerUser.getId() + " (PENDING)");
+            System.out.println("✅ Test engineer user created with id: " + engineerUser.getId());
 
-            // Создаём тестового MANAGER (будет PENDING)
+            // Создаём тестового MANAGER
             UserEntity managerUser = new UserEntity();
             managerUser.setEmail("manager@test.com");
-            managerUser.setPassword("manager");
+            managerUser.setPassword(passwordEncoder.encode("manager"));
             managerUser.setFirstName("Test");
             managerUser.setLastName("Manager");
             managerUser.setRole(Role.MANAGER);
             managerUser.setStatus(UserStatus.PENDING);
-
             userRepository.save(managerUser);
-            System.out.println("✅ Test manager user created with id: " + managerUser.getId() + " (PENDING)");
-
+            System.out.println("✅ Test manager user created with id: " + managerUser.getId());
         }
+
         System.out.println("=== Test completed ===");
     }
 }

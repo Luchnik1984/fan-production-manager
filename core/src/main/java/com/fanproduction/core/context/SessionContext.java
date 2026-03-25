@@ -1,6 +1,7 @@
 package com.fanproduction.core.context;
 
 import com.fanproduction.core.entity.UserEntity;
+import com.fanproduction.core.enums.Role;
 
 public class SessionContext {
     private static final ThreadLocal<UserEntity> currentUser = new ThreadLocal<>();
@@ -23,16 +24,16 @@ public class SessionContext {
 
     public static boolean isAdmin() {
         UserEntity user = currentUser.get();
-        return user != null && user.getRole().name().equals("ADMIN");
+        return user != null && user.getRole() == Role.ADMIN;
     }
 
     public static boolean isEngineer() {
         UserEntity user = currentUser.get();
-        return user != null && user.getRole().name().equals("ENGINEER");
+        return user != null && user.getRole() == Role.ENGINEER;
     }
 
     public static boolean isManager() {
         UserEntity user = currentUser.get();
-        return user != null && user.getRole().name().equals("MANAGER");
+        return user != null && user.getRole() == Role.MANAGER;
     }
 }
