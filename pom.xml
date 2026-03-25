@@ -50,6 +50,7 @@
 		<module>services</module>
 		<module>gui</module>
 		<module>application</module>
+		<module>api</module>
 	</modules>
 
 </project>
