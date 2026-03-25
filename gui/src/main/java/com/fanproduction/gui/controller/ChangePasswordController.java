@@ -27,7 +27,7 @@ public class ChangePasswordController {
         PasswordField oldPasswordField = new PasswordField();
         oldPasswordField.setPromptText("Текущий пароль");
         PasswordField newPasswordField = new PasswordField();
-        newPasswordField.setPromptText("Новый пароль");
+        newPasswordField.setPromptText("Новый пароль (мин. 4 символа)");
         PasswordField confirmPasswordField = new PasswordField();
         confirmPasswordField.setPromptText("Подтверждение пароля");
 
@@ -84,13 +84,14 @@ public class ChangePasswordController {
                     messageLabel.setText(ex.getMessage());
                 } else {
                     messageLabel.setText("Ошибка при смене пароля. Попробуйте позже.");
+                    ex.printStackTrace();
                 }
             }));
         });
 
         cancelButton.setOnAction(e -> dialog.close());
 
-        Scene scene = new Scene(grid, 400, 250);
+        Scene scene = new Scene(grid, 450, 280);
         dialog.setScene(scene);
         dialog.showAndWait();
     }

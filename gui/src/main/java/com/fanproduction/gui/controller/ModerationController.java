@@ -1,5 +1,6 @@
 package com.fanproduction.gui.controller;
 
+import com.fanproduction.core.context.SessionContext;
 import com.fanproduction.core.dto.UserDto;
 import com.fanproduction.core.enums.UserStatus;
 import com.fanproduction.core.launcher.SpringContextProvider;
@@ -88,8 +89,11 @@ public class ModerationController {
         loadUsers();
     }
 
-    private void loadCurrentUser() {
-        currentAdminEmail = com.fanproduction.core.context.SessionContext.getCurrentUser().getEmail();
+    private void loadCurrentUser() {if (SessionContext.isAuthenticated()) {
+        currentAdminEmail = SessionContext.getCurrentUser().getEmail();
+    } else {
+        currentAdminEmail = "unknown";
+    }
     }
 
     @FXML
@@ -119,9 +123,26 @@ public class ModerationController {
             boolean isBlocked = selected.status() == UserStatus.BLOCKED;
             boolean isRejected = selected.status() == UserStatus.REJECTED;
 
-            approveButton.setDisable(!isPending);
+            System.out.println("=== BUTTON STATE DEBUG ===");
+            System.out.println("User: " + selected.email());
+            System.out.println("Status: " + selected.status());
+            System.out.println("isPending: " + isPending);
+            System.out.println("isActive: " + isActive);
+            System.out.println("isBlocked: " + isBlocked);
+            System.out.println("isRejected: " + isRejected);
+            System.out.println("approveButton enabled: " + (isPending || isRejected));
+            System.out.println("==========================");
+
+            // Подтвердить можно PENDING и REJECTED (используем isRejected!)
+            approveButton.setDisable(!(isPending || isRejected));
+
+            // Отклонить можно только PENDING
             rejectButton.setDisable(!isPending);
+
+            // Заблокировать можно только ACTIVE
             blockButton.setDisable(!isActive);
+
+            // Разблокировать можно только BLOCKED
             unblockButton.setDisable(!isBlocked);
         }
     }
@@ -200,6 +221,10 @@ public class ModerationController {
         UserDto selected = usersTable.getSelectionModel().getSelectedItem();
         if (selected == null) return;
 
+        System.out.println("=== APPROVE USER ===");
+        System.out.println("User: " + selected.email());
+        System.out.println("Status: " + selected.status());
+
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
         confirmAlert.setTitle("Подтверждение");
         confirmAlert.setHeaderText("Подтверждение регистрации");
@@ -207,12 +232,16 @@ public class ModerationController {
 
         if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
             try {
+                System.out.println("Calling approveUser with ID: " + selected.id());
                 userService.approveUser(selected.id(), currentAdminEmail);
+                System.out.println("User approved successfully");
                 showSuccessMessage("Пользователь " + selected.email() + " подтверждён");
                 auditService.log(currentAdminEmail, com.fanproduction.core.enums.AuditAction.APPROVE_USER,
                         "Подтверждена регистрация пользователя: " + selected.email());
                 loadUsers();
             } catch (Exception e) {
+                System.err.println("Error: " + e.getMessage());
+                e.printStackTrace();
                 showErrorMessage("Ошибка при подтверждении: " + e.getMessage());
             }
         }
