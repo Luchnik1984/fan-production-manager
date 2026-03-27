@@ -33,6 +33,8 @@ public interface UserService {
 
     UserEntity getUserByEmail(String email);
 
+    UserEntity getUserById(Long id);
+
     ProfileDto getCurrentUserProfile(String email);
 
     void updateProfile(String email, String firstName, String lastName, String phone);
@@ -40,4 +42,9 @@ public interface UserService {
     void changePassword(String email, String oldPassword, String newPassword);
 
     void updateLoginInfo(UserEntity user);
+
+    UserDto getUserDtoByEmail(String email);
+
+    UserDto getUserDtoById(Long id);
+
 }

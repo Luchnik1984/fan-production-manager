@@ -219,6 +219,11 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public UserEntity getUserById(Long id) {
+        return userRepository.findById(id).orElse(null);
+    }
+
+    @Override
     public ProfileDto getCurrentUserProfile(String email) {
         checkAuthenticated();
 
@@ -292,6 +297,21 @@ public class UserServiceImpl implements UserService {
 
         auditService.log(user.getEmail(), AuditAction.LOGIN_SUCCESS,
                 "Вход в систему (счётчик входов: " + user.getLoginCount() + ")");
+    }
+
+    @Override
+    public UserDto getUserDtoByEmail(String email) {
+        String normalizedEmail = email.trim().toLowerCase();
+        return userRepository.findByEmail(normalizedEmail)
+                .map(this::mapToUserDto)
+                .orElse(null);
+    }
+
+    @Override
+    public UserDto getUserDtoById(Long id) {
+        return userRepository.findById(id)
+                .map(this::mapToUserDto)
+                .orElse(null);
     }
 
     // ==================== МАППЕРЫ ====================
