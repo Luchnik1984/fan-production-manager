@@ -6,6 +6,8 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
 
+import java.io.File;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,22 +31,39 @@ public class EnvInitializer implements ApplicationContextInitializer<Configurabl
             System.out.println("No profile specified, loading default: " + envFile);
         }
 
-        try {
-            Dotenv dotenv = Dotenv.configure()
-                    .filename(envFile)
-                    .ignoreIfMissing()
-                    .load();
+        // Ищем .env файл в корне проекта
+        String rootPath = Paths.get("").toAbsolutePath().toString();
+        File envFilePath = new File(rootPath, envFile);
 
-            Map<String, Object> envMap = new HashMap<>();
-            dotenv.entries().forEach(entry -> {
-                envMap.put(entry.getKey(), entry.getValue());
-                System.out.println("Loaded: " + entry.getKey() + "=" + entry.getValue());
-            });
+        if (!envFilePath.exists()) {
+            rootPath = Paths.get("").toAbsolutePath().getParent().toString();
+            envFilePath = new File(rootPath, envFile);
+        }
 
-            environment.getPropertySources().addFirst(new MapPropertySource("dotenv", envMap));
+        System.out.println("Looking for .env at: " + envFilePath.getAbsolutePath());
 
-        } catch (Exception e) {
-            System.out.println("Could not load " + envFile + ", using system environment variables");
+        if (envFilePath.exists()) {
+            System.out.println("Found .env file at: " + envFilePath.getAbsolutePath());
+            try {
+                Dotenv dotenv = Dotenv.configure()
+                        .directory(rootPath)
+                        .filename(envFile)
+                        .load();
+
+                Map<String, Object> envMap = new HashMap<>();
+                dotenv.entries().forEach(entry -> {
+                    envMap.put(entry.getKey(), entry.getValue());
+                    System.out.println("Loaded from .env: " + entry.getKey() + "=" + entry.getValue());
+                });
+
+                environment.getPropertySources().addFirst(new MapPropertySource("dotenv", envMap));
+
+            } catch (Exception e) {
+                System.out.println("Error loading .env file: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println(".env file not found at: " + envFilePath.getAbsolutePath());
         }
     }
 }
