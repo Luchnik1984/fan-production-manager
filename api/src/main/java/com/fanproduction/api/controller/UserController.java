@@ -1,0 +1,119 @@
+package com.fanproduction.api.controller;
+
+import com.fanproduction.api.dto.ApiResponse;
+import com.fanproduction.api.dto.BlockRequest;
+import com.fanproduction.api.dto.ChangePasswordRequest;
+import com.fanproduction.api.dto.RejectRequest;
+import com.fanproduction.api.dto.UpdateProfileRequest;
+import com.fanproduction.core.dto.UserDto;
+import com.fanproduction.core.context.SessionContext;
+import com.fanproduction.services.UserService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+public class UserController {
+
+    private final UserService userService;
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<List<UserDto>> getAllUsers() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        System.out.println("=== getAllUsers ===");
+        System.out.println("Auth: " + auth);
+        System.out.println("Authorities: " + auth.getAuthorities());
+
+        List<UserDto> users = userService.getAllUsers();
+        return ApiResponse.success(users);
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<UserDto> getUserById(@PathVariable Long id) {
+        UserDto user = userService.getUserDtoById(id);
+        if (user == null) {
+            return ApiResponse.error("Пользователь не найден");
+        }
+        return ApiResponse.success(user);
+    }
+
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<UserDto> getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        System.out.println("=== getCurrentUser ===");
+        System.out.println("Authentication: " + auth);
+
+        if (auth == null) {
+            return ApiResponse.error("Пользователь не авторизован");
+        }
+
+        String email = auth.getName();
+        System.out.println("Email: " + email);
+
+        UserDto user = userService.getUserDtoByEmail(email);
+        System.out.println("UserDto: " + user);
+
+        if (user == null) {
+            return ApiResponse.error("Пользователь не найден");
+        }
+        return ApiResponse.success(user);
+    }
+
+    @PutMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<Void> updateCurrentUser(@RequestBody UpdateProfileRequest request) {
+        String email = SessionContext.getCurrentUser().getEmail();
+        userService.updateProfile(email, request.getFirstName(), request.getLastName(), request.getPhone());
+        return ApiResponse.success("Профиль обновлён", null);
+    }
+
+    @PostMapping("/me/change-password")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<Void> changePassword(@RequestBody ChangePasswordRequest request) {
+        String email = SessionContext.getCurrentUser().getEmail();
+        userService.changePassword(email, request.getOldPassword(), request.getNewPassword());
+        return ApiResponse.success("Пароль изменён", null);
+    }
+
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> approveUser(@PathVariable Long id) {
+        String adminEmail = SessionContext.getCurrentUser().getEmail();
+        userService.approveUser(id, adminEmail);
+        return ApiResponse.success("Пользователь подтверждён", null);
+    }
+
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> rejectUser(@PathVariable Long id, @RequestBody RejectRequest request) {
+        String adminEmail = SessionContext.getCurrentUser().getEmail();
+        userService.rejectUser(id, adminEmail, request.getReason());
+        return ApiResponse.success("Регистрация отклонена", null);
+    }
+
+    @PostMapping("/{id}/block")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> blockUser(@PathVariable Long id, @RequestBody(required = false) BlockRequest request) {
+        String adminEmail = SessionContext.getCurrentUser().getEmail();
+        String reason = request != null ? request.getReason() : null;
+        userService.blockUser(id, adminEmail, reason);
+        return ApiResponse.success("Пользователь заблокирован", null);
+    }
+
+    @PostMapping("/{id}/unblock")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> unblockUser(@PathVariable Long id) {
+        String adminEmail = SessionContext.getCurrentUser().getEmail();
+        userService.unblockUser(id, adminEmail);
+        return ApiResponse.success("Пользователь разблокирован", null);
+    }
+}
