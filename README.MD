@@ -28,6 +28,11 @@
 ```bash
   ./mvnw clean compile 
 ```
+### Запуск API
+```bash
+mvn -pl api spring-boot:run
+```
+
 ## Сборка пакета:
 ```bash
    ./mvnw package 
