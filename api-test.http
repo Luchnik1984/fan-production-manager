@@ -28,3 +28,30 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkBtYWlsLnJ1Iiwicm9sZ
 ###
 GET http://localhost:8083/api/users/me
 Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkBtYWlsLnJ1Iiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzc0NjE0NjkzLCJleHAiOjE3NzQ3MDEwOTN9.g-DAVEg-7cAYXdParzB67HRHN80PXBKwckJMGqbw0tk
+
+### Регистрация нового пользователя
+POST http://localhost:8083/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "newuser@test.com",
+  "password": "password123",
+  "firstName": "New",
+  "lastName": "User",
+  "phone": "+79001234567",
+  "role": "ENGINEER"
+}
+
+### Регистрация нового админа
+POST http://localhost:8083/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "newadmin@test.com",
+  "password": "admin123",
+  "firstName": "New",
+  "lastName": "Admin",
+  "phone": "+79001234568",
+  "role": "ADMIN",
+  "secretKey": "Abra-Cadabra!"
+}

@@ -15,5 +15,6 @@ public interface AuditService {
     int deleteOlderThan(int days);
     int keepOnlyLast(int count);
     int getTotalCount();
+
 }
 

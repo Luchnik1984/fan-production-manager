@@ -69,6 +69,7 @@
         <Label fx:id="phoneErrorLabel" text="" textFill="red" style="-fx-font-size: 10px;" wrapText="true" />
     </VBox>
 
+
     <!-- Общий лейбл для ошибок -->
     <Label fx:id="errorLabel" text="" textFill="red" wrapText="true" style="-fx-pref-width: 300px;" />
 
