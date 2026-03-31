@@ -9,6 +9,7 @@ import com.fanproduction.core.enums.Role;
 import com.fanproduction.core.enums.UserStatus;
 import com.fanproduction.core.security.AdminSecretKeyValidator;
 import com.fanproduction.services.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,33 @@ public class AuthController {
     public AuthResponse login(@RequestBody AuthRequest request) {
         log.info("Login attempt for email: {}", request.getEmail());
 
+        UserEntity user = userService.getUserByEmail(request.getEmail());
+        if (user == null) {
+            log.warn("User not found: {}", request.getEmail());
+            throw new BadCredentialsException("Пользователь с таким email не найден");
+        }
+
+        // Проверяем статус ДО аутентификации
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            log.warn("User not active: {}, status: {}", request.getEmail(), user.getStatus());
+            String message;
+            switch (user.getStatus()) {
+                case PENDING:
+                    message = "⏳ Ваша регистрация ожидает подтверждения администратором. После подтверждения вы сможете войти в систему.";
+                    break;
+                case REJECTED:
+                    message = "❌ Ваша регистрация отклонена администратором.";
+                    break;
+                case BLOCKED:
+                    message = "🔒 Ваш аккаунт заблокирован. Обратитесь к администратору.";
+                    break;
+                default:
+                    message = "Аккаунт не активирован. Статус: " + user.getStatus();
+                    break;
+            }
+            throw new BadCredentialsException(message);
+        }
+
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
@@ -42,7 +70,6 @@ public class AuthController {
 
             log.info("Authentication successful: {}", authentication.isAuthenticated());
 
-            UserEntity user = userService.getUserByEmail(request.getEmail());
             String token = jwtService.generateToken(user.getEmail(), user.getRole().name());
 
             AuthResponse response = new AuthResponse();
@@ -51,14 +78,15 @@ public class AuthController {
             response.setRole(user.getRole().name());
 
             return response;
+
         } catch (Exception e) {
             log.error("Authentication failed: {}", e.getMessage());
-            throw new BadCredentialsException("Invalid email or password");
+            throw new BadCredentialsException("Неверный пароль");
         }
     }
 
     @PostMapping("/register")
-    public AuthResponse register(@RequestBody RegisterRequest request) {
+    public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
         log.info("Register attempt for email: {}", request.getEmail());
 
         // Проверка секретного ключа для ADMIN
@@ -76,7 +104,7 @@ public class AuthController {
             throw new BadCredentialsException("Invalid role: " + request.getRole());
         }
 
-        // Создаём пользователя
+        // Создаём пользователя (пароль хешируется здесь, НЕ в UserService!)
         UserEntity newUser = new UserEntity();
         newUser.setEmail(request.getEmail().trim().toLowerCase());
         newUser.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -94,7 +122,6 @@ public class AuthController {
 
         UserEntity savedUser = userService.register(newUser);
 
-        // Генерируем токен для нового пользователя
         String token = jwtService.generateToken(savedUser.getEmail(), savedUser.getRole().name());
 
         AuthResponse response = new AuthResponse();

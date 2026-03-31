@@ -7,7 +7,10 @@
     <top>
         <MenuBar>
             <Menu text="Файл">
-                <MenuItem text="Выйти" onAction="#handleExit" />
+                <MenuItem text="Мой профиль" onAction="#handleOpenProfile" />
+                <SeparatorMenuItem />
+                <MenuItem text="Выйти из профиля" onAction="#handleLogout" />
+                <MenuItem text="Выход" onAction="#handleExit" />
             </Menu>
             <Menu text="Справка">
                 <MenuItem text="О программе" onAction="#handleAbout" />
@@ -15,11 +18,8 @@
         </MenuBar>
     </top>
     <center>
-        <TabPane>
-            <Tab text="Главная" closable="false">
-                <Label text="Добро пожаловать в Fan Production Manager!" />
-            </Tab>
-        </TabPane>
+        <!-- Вкладки будут созданы в коде -->
+        <Label text="Загрузка..." />
     </center>
     <bottom>
         <Label fx:id="statusLabel" text="Загрузка..." style="-fx-padding: 5; -fx-background-color: #f0f0f0;" />

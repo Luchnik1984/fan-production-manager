@@ -1,6 +1,7 @@
 package com.fanproduction.gui.client;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
@@ -75,17 +76,23 @@ public class ApiClient {
 
     public static <T> T post(String path, Object body, Class<T> responseClass) throws Exception {
         String bodyJson = objectMapper.writeValueAsString(body);
+        System.out.println("POST " + BASE_URL + path);
+        System.out.println("Body: " + bodyJson);
 
         HttpRequest request = createRequestBuilder(path)
                 .POST(HttpRequest.BodyPublishers.ofString(bodyJson))
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println("Response status: " + response.statusCode());
+        System.out.println("Response body: " + response.body());
 
         if (response.statusCode() >= 200 && response.statusCode() < 300) {
             return objectMapper.readValue(response.body(), responseClass);
         } else {
-            throw new RuntimeException("API error: " + response.statusCode() + " - " + response.body());
+            String errorMessage = response.body();
+            System.out.println("ERROR: " + errorMessage);
+            throw new RuntimeException(errorMessage);
         }
     }
 
@@ -134,6 +141,36 @@ public class ApiClient {
             return objectMapper.readValue(response.body(), typeReference);
         } else {
             throw new RuntimeException("API error: " + response.statusCode() + " - " + response.body());
+        }
+    }
+
+    private static String extractErrorMessage(String responseBody) {
+        try {
+            JsonNode node = objectMapper.readTree(responseBody);
+            // Сначала ищем поле "message" (оно содержит понятный текст)
+            if (node.has("message")) {
+                String message = node.get("message").asText();
+                if (message != null && !message.isEmpty() && !"Forbidden".equals(message)) {
+                    return message;
+                }
+            }
+            // Если нет message или оно "Forbidden", ищем в trace
+            if (node.has("trace")) {
+                String trace = node.get("trace").asText();
+                if (trace.contains("Account is not active")) {
+                    return "Account is not active. Status: PENDING";
+                }
+                if (trace.contains("User not found")) {
+                    return "User not found";
+                }
+            }
+            // Если ничего не нашли, возвращаем error
+            if (node.has("error")) {
+                return node.get("error").asText();
+            }
+            return responseBody;
+        } catch (Exception e) {
+            return responseBody;
         }
     }
 }

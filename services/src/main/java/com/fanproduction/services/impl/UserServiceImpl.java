@@ -75,8 +75,6 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("Пользователь с таким email уже существует");
         }
 
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
         Validator validator = factory.getValidator();
         Set<ConstraintViolation<UserEntity>> violations = validator.validate(user);

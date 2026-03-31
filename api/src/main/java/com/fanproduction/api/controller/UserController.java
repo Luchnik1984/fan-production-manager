@@ -7,6 +7,8 @@ import com.fanproduction.api.dto.RejectRequest;
 import com.fanproduction.api.dto.UpdateProfileRequest;
 import com.fanproduction.core.dto.UserDto;
 import com.fanproduction.core.context.SessionContext;
+import com.fanproduction.core.entity.UserEntity;
+import com.fanproduction.core.enums.UserStatus;
 import com.fanproduction.services.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,16 +27,23 @@ public class UserController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<List<UserDto>> getAllUsers() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    public ApiResponse<List<UserDto>> getAllUsers(@RequestParam(required = false) String status) {
         System.out.println("=== getAllUsers ===");
-        System.out.println("Auth: " + auth);
-        System.out.println("Authorities: " + auth.getAuthorities());
+        System.out.println("Status filter: " + status);
 
-        List<UserDto> users = userService.getAllUsers();
+        List<UserDto> users;
+        if (status != null && !status.isEmpty()) {
+            try {
+                UserStatus userStatus = UserStatus.valueOf(status);
+                users = userService.getUsersByStatus(userStatus);
+            } catch (IllegalArgumentException e) {
+                return ApiResponse.error("Invalid status: " + status);
+            }
+        } else {
+            users = userService.getAllUsers();
+        }
         return ApiResponse.success(users);
     }
-
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<UserDto> getUserById(@PathVariable Long id) {
@@ -115,5 +124,15 @@ public class UserController {
         String adminEmail = SessionContext.getCurrentUser().getEmail();
         userService.unblockUser(id, adminEmail);
         return ApiResponse.success("Пользователь разблокирован", null);
+    }
+
+    @GetMapping("/check-status")
+    @PreAuthorize("permitAll()")
+    public ApiResponse<String> checkUserStatus(@RequestParam String email) {
+        UserEntity user = userService.getUserByEmail(email);
+        if (user == null) {
+            return ApiResponse.error("Пользователь не найден");
+        }
+        return ApiResponse.success(user.getStatus().toString());
     }
 }

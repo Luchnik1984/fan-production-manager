@@ -48,10 +48,32 @@ Content-Type: application/json
 
 {
   "email": "newadmin@test.com",
-  "password": "admin123",
+  "password": "123456789",
   "firstName": "New",
   "lastName": "Admin",
   "phone": "+79001234568",
   "role": "ADMIN",
   "secretKey": "Abra-Cadabra!"
+}
+###
+POST http://localhost:8083/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "admin@test.ru",
+  "password": "123456789",
+  "firstName": "Admin",
+  "lastName": "User",
+  "phone": "+79001234567",
+  "role": "ADMIN",
+  "secretKey": "Abra-Cadabra!"
+}
+
+###
+POST http://localhost:8083/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@test.ru",
+  "password": "123456789"
 }

@@ -8,16 +8,13 @@ import com.fanproduction.gui.dto.UpdateProfileRequest;
 import com.fanproduction.gui.dto.UserDto;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
-import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class ProfileController {
@@ -62,7 +59,6 @@ public class ProfileController {
     private void initialize() {
         loadProfile();
 
-        // Очищаем ошибки при вводе
         firstNameField.textProperty().addListener((obs, old, newVal) -> {
             firstNameErrorLabel.setText("");
             messageLabel.setText("");
@@ -88,11 +84,11 @@ public class ProfileController {
                         currentUser = response.getData();
                         updateUI();
                     } else {
-                        showError("Не удалось загрузить профиль: " + response.getMessage());
+                        showAlert("Ошибка", "Не удалось загрузить профиль: " + response.getMessage(), Alert.AlertType.ERROR);
                     }
                 });
             } catch (Exception e) {
-                Platform.runLater(() -> showError("Ошибка загрузки профиля: " + e.getMessage()));
+                Platform.runLater(() -> showAlert("Ошибка", "Ошибка загрузки профиля: " + e.getMessage(), Alert.AlertType.ERROR));
                 e.printStackTrace();
             }
         }).start();
@@ -102,7 +98,6 @@ public class ProfileController {
         emailLabel.setText(currentUser.getEmail());
         roleLabel.setText(currentUser.getRole());
 
-        // Отображение статуса с цветом
         String status = currentUser.getStatus();
         switch (status) {
             case "ACTIVE" -> statusLabel.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
@@ -152,14 +147,14 @@ public class ProfileController {
 
                 Platform.runLater(() -> {
                     if (response.isSuccess()) {
-                        showSuccess("Профиль успешно обновлён");
+                        showAlert("Успешно", "Профиль успешно обновлён", Alert.AlertType.INFORMATION);
                         loadProfile();
                     } else {
-                        showError(response.getMessage());
+                        showAlert("Ошибка", response.getMessage(), Alert.AlertType.ERROR);
                     }
                 });
             } catch (Exception e) {
-                Platform.runLater(() -> showError("Ошибка сохранения: " + e.getMessage()));
+                Platform.runLater(() -> showAlert("Ошибка", "Ошибка сохранения: " + e.getMessage(), Alert.AlertType.ERROR));
                 e.printStackTrace();
             }
         }).start();
@@ -235,11 +230,7 @@ public class ProfileController {
 
                     Platform.runLater(() -> {
                         if (response.isSuccess()) {
-                            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                            alert.setTitle("Успешно");
-                            alert.setHeaderText(null);
-                            alert.setContentText("Пароль успешно изменён");
-                            alert.showAndWait();
+                            showAlert("Успешно", "Пароль успешно изменён", Alert.AlertType.INFORMATION);
                             dialog.close();
                         } else {
                             messageLabel.setText(response.getMessage());
@@ -258,13 +249,12 @@ public class ProfileController {
         dialog.setScene(scene);
         dialog.showAndWait();
     }
-    private void showSuccess(String message) {
-        messageLabel.setText(message);
-        messageLabel.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
-    }
 
-    private void showError(String message) {
-        messageLabel.setText(message);
-        messageLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+    private void showAlert(String title, String message, Alert.AlertType type) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 }
