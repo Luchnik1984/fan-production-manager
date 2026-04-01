@@ -64,27 +64,72 @@ public class LoginController {
 
                 Platform.runLater(() -> {
                     ApiClient.setAuthToken(loginResponse.getToken());
-                    openMainWindow(loginResponse.getRole());
+                    openMainWindow(loginResponse.getRole(), loginResponse.getEmail());
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     String errorMsg = e.getMessage();
                     System.out.println("Login error: " + errorMsg);
 
-                    // Обрабатываем различные сообщения об ошибках
-                    if (errorMsg.contains("ожидает подтверждения") || errorMsg.contains("PENDING")) {
-                        showAlert("Внимание", "⏳ Ваша регистрация ожидает подтверждения администратором.", Alert.AlertType.WARNING);
-                    } else if (errorMsg.contains("отклонена") || errorMsg.contains("REJECTED")) {
-                        showAlert("Отказ", "❌ Ваша регистрация отклонена администратором.", Alert.AlertType.ERROR);
-                    } else if (errorMsg.contains("заблокирован") || errorMsg.contains("BLOCKED")) {
-                        showAlert("Блокировка", "🔒 Ваш аккаунт заблокирован. Обратитесь к администратору.", Alert.AlertType.ERROR);
-                    } else if (errorMsg.contains("не найден")) {
-                        showAlert("Ошибка", "Пользователь с таким email не найден", Alert.AlertType.ERROR);
-                    } else if (errorMsg.contains("Неверный пароль") || errorMsg.contains("Bad credentials")) {
-                        showAlert("Ошибка", "Неверный пароль", Alert.AlertType.ERROR);
+                    // Обрабатываем различные сообщения об ошибках.
+
+                    // 1. Проверка на статус PENDING (ожидание подтверждения)
+                    if (errorMsg.contains("ожидает подтверждения") ||
+                            errorMsg.contains("подтверждения администратором") ||
+                            errorMsg.contains("PENDING")) {
+                        showAlert("Внимание",
+                                """
+                                        ⏳ Ваша регистрация ожидает подтверждения администратором.
+                                        
+                                        После подтверждения вы сможете войти в систему.""",
+                                Alert.AlertType.WARNING);
+
+                        // 2. Проверка на статус REJECTED (отклонена)
+                    } else if (errorMsg.contains("отклонена") ||
+                            errorMsg.contains("REJECTED")) {
+                        showAlert("Отказ",
+                                """
+                                        ❌ Ваша регистрация отклонена администратором.
+                                        
+                                        Обратитесь к администратору для уточнения причин.""",
+                                Alert.AlertType.ERROR);
+
+                        // 3. Проверка на статус BLOCKED (заблокирован)
+                    } else if (errorMsg.contains("заблокирован") ||
+                            errorMsg.contains("BLOCKED")) {
+                        showAlert("Блокировка",
+                                """
+                                        🔒 Ваш аккаунт заблокирован.
+                                        
+                                        Обратитесь к администратору для выяснения причин.""",
+                                Alert.AlertType.ERROR);
+
+                        // 4. Пользователь не найден
+                    } else if (errorMsg.contains("не найден") ||
+                            errorMsg.contains("User not found")) {
+                        showAlert("Ошибка",
+                                """
+                                        Пользователь с таким email не найден.
+                                        
+                                        Проверьте правильность ввода email.""",
+                                Alert.AlertType.ERROR);
+
+                        // 5. Неверный пароль
+                    } else if (errorMsg.contains("Неверный пароль") ||
+                            errorMsg.contains("Bad credentials") ||
+                            errorMsg.contains("пароль")) {
+                        showAlert("Ошибка",
+                                """
+                                        Неверный пароль.
+                                        
+                                        Пожалуйста, проверьте правильность ввода пароля.""",
+                                Alert.AlertType.ERROR);
+
+                        // 6. Все остальные ошибки
                     } else {
                         showAlert("Ошибка", "Ошибка входа: " + errorMsg, Alert.AlertType.ERROR);
                     }
+
                     passwordField.clear();
                 });
                 e.printStackTrace();
@@ -92,16 +137,18 @@ public class LoginController {
         }).start();
     }
 
-    private void openMainWindow(String userRole) {
+    private void openMainWindow(String userRole, String userEmail) {
         try {
             Stage mainStage = new Stage();
 
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/MainWindow.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(
+                    "/com/fanproduction/gui/view/MainWindow.fxml"));
             Parent root = loader.load();
 
             MainWindowController controller = loader.getController();
             controller.setStage(mainStage);
             controller.setCurrentUserRole(userRole);
+            controller.setCurrentUserEmail(userEmail);  // Добавляем передачу email
 
             Scene scene = new Scene(root, 1024, 768);
             mainStage.setScene(scene);
