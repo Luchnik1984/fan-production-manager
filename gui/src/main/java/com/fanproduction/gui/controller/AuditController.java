@@ -23,15 +23,13 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Контроллер для просмотра журнала аудита.
- * Доступен только для пользователей с ролью ADMIN.
- */
 public class AuditController {
 
+    // ==================== FXML ЭЛЕМЕНТЫ ====================
 
     @FXML
     private ComboBox<String> actionFilterComboBox;
@@ -78,29 +76,95 @@ public class AuditController {
     @FXML
     private Button resetButton;
 
-
-    private final ObservableList<AuditLogDto> auditList = FXCollections.observableArrayList();
+      private final ObservableList<AuditLogDto> auditList = FXCollections.observableArrayList();
     private int currentPage = 0;
     private int totalPages = 0;
     private int totalElements = 0;
     private static final int PAGE_SIZE = 20;
 
     private String currentUserFilter = null;
-    private String currentActionFilter = null;
+    private String currentActionFilter = null;  // Хранит английское название для API
 
     private static final DateTimeFormatter DISPLAY_FORMATTER =
             DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
 
-    private static final DateTimeFormatter API_FORMATTER =
-            DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-    // Список возможных действий для фильтра
-    private static final List<String> ACTION_OPTIONS = List.of(
-            "LOGIN_SUCCESS", "LOGIN_FAILED", "LOGOUT", "REGISTER",
-            "APPROVE_USER", "REJECT_USER", "BLOCK_USER", "UNBLOCK_USER",
-            "CREATE_CARD", "UPDATE_CARD", "DELETE_CARD",
-            "GENERATE_TZ", "GENERATE_PASSPORT", "GENERATE_PLATE",
-            "UPDATE_PROFILE", "CHANGE_PASSWORD"
+    /**
+     * Маппинг английских названий действий на русские
+     */
+    private static final Map<String, String> ACTION_RUSSIAN_MAP = new HashMap<>();
+
+    /**
+     * Маппинг русских названий действий на английские (для фильтра)
+     */
+    private static final Map<String, String> ACTION_ENGLISH_MAP = new HashMap<>();
+
+    static {
+        // Вход/выход
+        ACTION_RUSSIAN_MAP.put("LOGIN_SUCCESS", "Вход в систему");
+        ACTION_RUSSIAN_MAP.put("LOGIN_FAILED", "Ошибка входа");
+        ACTION_RUSSIAN_MAP.put("LOGOUT", "Выход из системы");
+
+        // Управление пользователями
+        ACTION_RUSSIAN_MAP.put("REGISTER", "Регистрация");
+        ACTION_RUSSIAN_MAP.put("APPROVE_USER", "Подтверждение пользователя");
+        ACTION_RUSSIAN_MAP.put("REJECT_USER", "Отклонение пользователя");
+        ACTION_RUSSIAN_MAP.put("BLOCK_USER", "Блокировка пользователя");
+        ACTION_RUSSIAN_MAP.put("UNBLOCK_USER", "Разблокировка пользователя");
+
+        // Карточки продукции
+        ACTION_RUSSIAN_MAP.put("CREATE_CARD", "Создание карточки");
+        ACTION_RUSSIAN_MAP.put("UPDATE_CARD", "Редактирование карточки");
+        ACTION_RUSSIAN_MAP.put("DELETE_CARD", "Удаление карточки");
+
+        // Генерация документов
+        ACTION_RUSSIAN_MAP.put("GENERATE_TZ", "Генерация ТЗ");
+        ACTION_RUSSIAN_MAP.put("GENERATE_PASSPORT", "Генерация паспорта");
+        ACTION_RUSSIAN_MAP.put("GENERATE_PLATE", "Генерация таблички");
+
+        // Профиль
+        ACTION_RUSSIAN_MAP.put("UPDATE_PROFILE", "Обновление профиля");
+        ACTION_RUSSIAN_MAP.put("CHANGE_PASSWORD", "Смена пароля");
+
+        // Создаем обратный маппинг (русский -> английский)
+        for (Map.Entry<String, String> entry : ACTION_RUSSIAN_MAP.entrySet()) {
+            ACTION_ENGLISH_MAP.put(entry.getValue(), entry.getKey());
+        }
+    }
+
+    /**
+     * Преобразует английское название действия в русское
+     */
+    private String getRussianAction(String englishAction) {
+        return ACTION_RUSSIAN_MAP.getOrDefault(englishAction, englishAction);
+    }
+
+    /**
+     * Преобразует русское название действия в английское (для фильтра)
+     */
+    private String getEnglishAction(String russianAction) {
+        return ACTION_ENGLISH_MAP.getOrDefault(russianAction, russianAction);
+    }
+
+    // Список русских названий для выпадающего списка
+    private static final List<String> ACTION_FILTER_OPTIONS = List.of(
+            "Все действия",
+            "Вход в систему",
+            "Ошибка входа",
+            "Выход из системы",
+            "Регистрация",
+            "Подтверждение пользователя",
+            "Отклонение пользователя",
+            "Блокировка пользователя",
+            "Разблокировка пользователя",
+            "Создание карточки",
+            "Редактирование карточки",
+            "Удаление карточки",
+            "Генерация ТЗ",
+            "Генерация паспорта",
+            "Генерация таблички",
+            "Обновление профиля",
+            "Смена пароля"
     );
 
 
@@ -115,14 +179,14 @@ public class AuditController {
      * Настраивает фильтры (выпадающий список и поле ввода)
      */
     private void setupFilters() {
-        // Добавляем пустой элемент для сброса фильтра
-        actionFilterComboBox.getItems().add("");
-        actionFilterComboBox.getItems().addAll(ACTION_OPTIONS);
-        actionFilterComboBox.setValue("");
+        // Заполняем выпадающий список русскими названиями
+        actionFilterComboBox.getItems().addAll(ACTION_FILTER_OPTIONS);
+        actionFilterComboBox.setValue("Все действия");
 
         actionFilterComboBox.valueProperty().addListener((obs, old, newVal) -> {
-            if (newVal != null && !newVal.isEmpty()) {
-                currentActionFilter = newVal;
+            if (newVal != null && !"Все действия".equals(newVal)) {
+                // Преобразуем русское название в английское для API
+                currentActionFilter = getEnglishAction(newVal);
             } else {
                 currentActionFilter = null;
             }
@@ -145,8 +209,9 @@ public class AuditController {
         usernameColumn.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getUsername()));
 
+        // Отображаем русское название действия
         actionColumn.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getAction()));
+                new SimpleStringProperty(getRussianAction(cellData.getValue().getAction())));
 
         detailsColumn.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getDetails() != null ?
@@ -156,7 +221,7 @@ public class AuditController {
                 new SimpleStringProperty(cellData.getValue().getIpAddress() != null ?
                         cellData.getValue().getIpAddress() : ""));
 
-        // Цветовая подсветка действий
+        // Цветовая подсветка действий (по русским названиям)
         actionColumn.setCellFactory(column -> new TableCell<AuditLogDto, String>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -166,11 +231,11 @@ public class AuditController {
                     setStyle("");
                 } else {
                     setText(item);
-                    if (item.contains("SUCCESS") || item.contains("APPROVE") ||
-                            item.contains("UNBLOCK") || item.contains("LOGIN_SUCCESS")) {
+                    if (item.contains("Вход") || item.contains("Подтверждение") ||
+                            item.contains("Разблокировка")) {
                         setStyle("-fx-text-fill: green;");
-                    } else if (item.contains("FAILED") || item.contains("REJECT") ||
-                            item.contains("BLOCK") || item.contains("LOGIN_FAILED")) {
+                    } else if (item.contains("Ошибка") || item.contains("Отклонение") ||
+                            item.contains("Блокировка")) {
                         setStyle("-fx-text-fill: red;");
                     } else {
                         setStyle("-fx-text-fill: #333;");
@@ -187,7 +252,6 @@ public class AuditController {
      * Загружает журнал аудита с сервера
      */
     private void loadAuditLogs() {
-        // Показываем индикатор загрузки
         statusLabel.setText("Загрузка...");
 
         new Thread(() -> {
@@ -212,7 +276,6 @@ public class AuditController {
                     if (response.isSuccess() && response.getData() != null) {
                         Map<String, Object> data = response.getData();
 
-                        // Извлекаем список записей
                         @SuppressWarnings("unchecked")
                         List<Map<String, Object>> content =
                                 (List<Map<String, Object>>) data.get("content");
@@ -226,23 +289,18 @@ public class AuditController {
                             dto.setDetails((String) item.get("details"));
                             dto.setIpAddress((String) item.get("ipAddress"));
 
-                            // Парсим timestamp (формат: "2026-04-01T14:33:36.274528")
                             String timestampStr = (String) item.get("timestamp");
                             if (timestampStr != null && !timestampStr.isEmpty()) {
                                 try {
-                                    // Удаляем наносекунды если нужно (оставляем только до миллисекунд)
-                                    // LocalDateTime.parse работает с ISO форматом
                                     dto.setTimestamp(LocalDateTime.parse(timestampStr));
                                 } catch (Exception e) {
                                     System.err.println("Failed to parse timestamp: " + timestampStr);
-                                    e.printStackTrace();
                                 }
                             }
 
                             auditList.add(dto);
                         }
 
-                        // Извлекаем информацию о пагинации
                         totalPages = ((Number) data.get("totalPages")).intValue();
                         totalElements = ((Number) data.get("totalElements")).intValue();
 
@@ -293,7 +351,7 @@ public class AuditController {
     @FXML
     private void handleReset() {
         userFilterField.clear();
-        actionFilterComboBox.setValue("");
+        actionFilterComboBox.setValue("Все действия");
         currentPage = 0;
         currentUserFilter = null;
         currentActionFilter = null;
@@ -349,7 +407,6 @@ public class AuditController {
             try (Workbook workbook = new XSSFWorkbook()) {
                 Sheet sheet = workbook.createSheet("Журнал аудита");
 
-                // Стиль для заголовков
                 CellStyle headerStyle = workbook.createCellStyle();
                 Font headerFont = workbook.createFont();
                 headerFont.setBold(true);
@@ -357,7 +414,6 @@ public class AuditController {
                 headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
                 headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
-                // Заголовки
                 String[] headers = {"Время", "Пользователь", "Действие", "Детали", "IP адрес"};
                 Row headerRow = sheet.createRow(0);
                 for (int i = 0; i < headers.length; i++) {
@@ -366,19 +422,17 @@ public class AuditController {
                     cell.setCellStyle(headerStyle);
                 }
 
-                // Данные
                 int rowNum = 1;
                 for (AuditLogDto log : auditList) {
                     Row row = sheet.createRow(rowNum++);
                     row.createCell(0).setCellValue(
                             log.getTimestamp() != null ? log.getTimestamp().format(DISPLAY_FORMATTER) : "");
                     row.createCell(1).setCellValue(log.getUsername());
-                    row.createCell(2).setCellValue(log.getAction());
+                    row.createCell(2).setCellValue(getRussianAction(log.getAction()));
                     row.createCell(3).setCellValue(log.getDetails() != null ? log.getDetails() : "");
                     row.createCell(4).setCellValue(log.getIpAddress() != null ? log.getIpAddress() : "");
                 }
 
-                // Автоширина колонок
                 for (int i = 0; i < headers.length; i++) {
                     sheet.autoSizeColumn(i);
                 }
@@ -418,7 +472,7 @@ public class AuditController {
                     writer.printf("\"%s\";\"%s\";\"%s\";\"%s\";\"%s\"%n",
                             log.getTimestamp() != null ? log.getTimestamp().format(DISPLAY_FORMATTER) : "",
                             escapeCsv(log.getUsername()),
-                            log.getAction(),
+                            escapeCsv(getRussianAction(log.getAction())),
                             escapeCsv(log.getDetails() != null ? log.getDetails() : ""),
                             escapeCsv(log.getIpAddress() != null ? log.getIpAddress() : "")
                     );
@@ -438,7 +492,6 @@ public class AuditController {
         if (value == null) return "";
         return value.replace("\"", "\"\"");
     }
-
 
     private void showAlert(String title, String message, Alert.AlertType type) {
         Alert alert = new Alert(type);
