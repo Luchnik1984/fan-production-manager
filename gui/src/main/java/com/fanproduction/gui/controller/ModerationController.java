@@ -1,20 +1,19 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.core.context.SessionContext;
-import com.fanproduction.core.dto.UserDto;
-import com.fanproduction.core.enums.UserStatus;
-import com.fanproduction.core.launcher.SpringContextProvider;
-import com.fanproduction.services.AuditService;
-import com.fanproduction.services.UserService;
+import com.fanproduction.gui.dto.BlockRequest;
+import com.fanproduction.gui.dto.RejectRequest;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fanproduction.gui.client.ApiClient;
+import com.fanproduction.gui.dto.ApiResponse;
+import com.fanproduction.gui.dto.UserDto;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleLongProperty;
-import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import javafx.stage.Stage;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -22,10 +21,8 @@ import java.util.Optional;
 
 public class ModerationController {
 
-    private static final Logger log = LoggerFactory.getLogger(ModerationController.class);
-
     @FXML
-    private ComboBox<UserStatus> statusFilterComboBox;
+    private ComboBox<String> statusFilterComboBox;
 
     @FXML
     private TableView<UserDto> usersTable;
@@ -46,7 +43,7 @@ public class ModerationController {
     private TableColumn<UserDto, String> roleColumn;
 
     @FXML
-    private TableColumn<UserDto, UserStatus> statusColumn;
+    private TableColumn<UserDto, String> statusColumn;
 
     @FXML
     private TableColumn<UserDto, String> createdAtColumn;
@@ -72,42 +69,84 @@ public class ModerationController {
     @FXML
     private Label statusLabel;
 
-    private SpringContextProvider springContext;
-    private UserService userService;
-    private AuditService auditService;
-    private String currentAdminEmail;
+    private Stage stage;
     private ObservableList<UserDto> userList = FXCollections.observableArrayList();
+    private String currentStatusFilter = "PENDING";
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
-    public void setSpringContext(SpringContextProvider springContext) {
-        this.springContext = springContext;
-        this.userService = springContext.getBean(UserService.class);
-        this.auditService = springContext.getBean(AuditService.class);
-        loadCurrentUser();
-        setupTable();
-        loadUsers();
-    }
-
-    private void loadCurrentUser() {if (SessionContext.isAuthenticated()) {
-        currentAdminEmail = SessionContext.getCurrentUser().getEmail();
-    } else {
-        currentAdminEmail = "unknown";
-    }
+    public void setStage(Stage stage) {
+        this.stage = stage;
     }
 
     @FXML
     private void initialize() {
-        statusFilterComboBox.setItems(FXCollections.observableArrayList(UserStatus.values()));
-        statusFilterComboBox.setValue(UserStatus.PENDING);
-        statusFilterComboBox.valueProperty().addListener((obs, old, newVal) -> loadUsers());
+        // Настройка фильтра по статусу
+        statusFilterComboBox.getItems().addAll("PENDING", "ACTIVE", "REJECTED", "BLOCKED", "ALL");
+        statusFilterComboBox.setValue("PENDING");
+        statusFilterComboBox.valueProperty().addListener((obs, old, newVal) -> {
+            currentStatusFilter = newVal;
+            loadUsers();
+        });
 
+        // Настройка кнопок
         approveButton.setOnAction(e -> approveUser());
         rejectButton.setOnAction(e -> rejectUser());
         blockButton.setOnAction(e -> blockUser());
         unblockButton.setOnAction(e -> unblockUser());
 
+        // Отключаем кнопки, если ничего не выбрано
         usersTable.getSelectionModel().selectedItemProperty().addListener((obs, old, newVal) -> updateButtonsState(newVal));
+
+        setupTable();
+        loadUsers();
+    }
+
+    private void setupTable() {
+        idColumn.setCellValueFactory(cellData -> new SimpleLongProperty(cellData.getValue().getId()).asObject());
+        emailColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getEmail()));
+        nameColumn.setCellValueFactory(cellData -> {
+            String firstName = cellData.getValue().getFirstName() != null ? cellData.getValue().getFirstName() : "";
+            String lastName = cellData.getValue().getLastName() != null ? cellData.getValue().getLastName() : "";
+            return new SimpleStringProperty((firstName + " " + lastName).trim());
+        });
+        phoneColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
+                cellData.getValue().getPhone() != null ? cellData.getValue().getPhone() : ""
+        ));
+        roleColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getRole()));
+        statusColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getStatus()));
+        createdAtColumn.setCellValueFactory(cellData -> {
+            if (cellData.getValue().getCreatedAt() != null) {
+                return new SimpleStringProperty(cellData.getValue().getCreatedAt().format(DATE_FORMATTER));
+            }
+            return new SimpleStringProperty("");
+        });
+        approvedByColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
+                cellData.getValue().getApprovedBy() != null ? cellData.getValue().getApprovedBy() : ""
+        ));
+        rejectionReasonColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
+                cellData.getValue().getRejectionReason() != null ? cellData.getValue().getRejectionReason() : ""
+        ));
+
+        // Цвет для статуса
+        statusColumn.setCellFactory(column -> new TableCell<UserDto, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    switch (item) {
+                        case "PENDING" -> setStyle("-fx-text-fill: orange; -fx-font-weight: bold;");
+                        case "ACTIVE" -> setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
+                        case "REJECTED" -> setStyle("-fx-text-fill: red;");
+                        case "BLOCKED" -> setStyle("-fx-text-fill: gray;");
+                    }
+                }
+            }
+        });
     }
 
     private void updateButtonsState(UserDto selected) {
@@ -118,132 +157,74 @@ public class ModerationController {
         unblockButton.setDisable(!hasSelection);
 
         if (selected != null) {
-            boolean isPending = selected.status() == UserStatus.PENDING;
-            boolean isActive = selected.status() == UserStatus.ACTIVE;
-            boolean isBlocked = selected.status() == UserStatus.BLOCKED;
-            boolean isRejected = selected.status() == UserStatus.REJECTED;
-
-            System.out.println("=== BUTTON STATE DEBUG ===");
-            System.out.println("User: " + selected.email());
-            System.out.println("Status: " + selected.status());
-            System.out.println("isPending: " + isPending);
-            System.out.println("isActive: " + isActive);
-            System.out.println("isBlocked: " + isBlocked);
-            System.out.println("isRejected: " + isRejected);
-            System.out.println("approveButton enabled: " + (isPending || isRejected));
-            System.out.println("==========================");
-
-            // Подтвердить можно PENDING и REJECTED (используем isRejected!)
-            approveButton.setDisable(!(isPending || isRejected));
-
-            // Отклонить можно только PENDING
-            rejectButton.setDisable(!isPending);
-
-            // Заблокировать можно только ACTIVE
-            blockButton.setDisable(!isActive);
-
-            // Разблокировать можно только BLOCKED
-            unblockButton.setDisable(!isBlocked);
+            String status = selected.getStatus();
+            approveButton.setDisable(!(status.equals("PENDING") || status.equals("REJECTED")));
+            rejectButton.setDisable(!status.equals("PENDING"));
+            blockButton.setDisable(!status.equals("ACTIVE"));
+            unblockButton.setDisable(!status.equals("BLOCKED"));
         }
-    }
-
-    private void setupTable() {
-        idColumn.setCellValueFactory(cellData -> new SimpleLongProperty(cellData.getValue().id()).asObject());
-        emailColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().email()));
-        nameColumn.setCellValueFactory(cellData -> {
-            String firstName = cellData.getValue().firstName() != null ? cellData.getValue().firstName() : "";
-            String lastName = cellData.getValue().lastName() != null ? cellData.getValue().lastName() : "";
-            String fullName = firstName + " " + lastName;
-            return new SimpleStringProperty(fullName.trim());
-        });
-        phoneColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
-                cellData.getValue().phone() != null ? cellData.getValue().phone() : ""
-        ));
-        roleColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
-                cellData.getValue().role().toString()
-        ));
-        statusColumn.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().status()));
-        createdAtColumn.setCellValueFactory(cellData -> {
-            if (cellData.getValue().createdAt() != null) {
-                return new SimpleStringProperty(cellData.getValue().createdAt().format(DATE_FORMATTER));
-            }
-            return new SimpleStringProperty("");
-        });
-        approvedByColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
-                cellData.getValue().approvedBy() != null ? cellData.getValue().approvedBy() : ""
-        ));
-        rejectionReasonColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
-                cellData.getValue().rejectionReason() != null ? cellData.getValue().rejectionReason() : ""
-        ));
-
-        statusColumn.setCellFactory(column -> new TableCell<UserDto, UserStatus>() {
-            @Override
-            protected void updateItem(UserStatus item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
-                } else {
-                    setText(item.toString());
-                    switch (item) {
-                        case PENDING -> setStyle("-fx-text-fill: orange; -fx-font-weight: bold;");
-                        case ACTIVE -> setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
-                        case REJECTED -> setStyle("-fx-text-fill: red;");
-                        case BLOCKED -> setStyle("-fx-text-fill: gray;");
-                    }
-                }
-            }
-        });
     }
 
     private void loadUsers() {
-        try {
-            UserStatus selectedStatus = statusFilterComboBox.getValue();
-            List<UserDto> users;
+        new Thread(() -> {
+            try {
+                String url;
+                if ("ALL".equals(currentStatusFilter)) {
+                    url = "/users";
+                } else {
+                    url = "/users?status=" + currentStatusFilter;
+                }
 
-            if (selectedStatus != null) {
-                users = userService.getUsersByStatus(selectedStatus);
-            } else {
-                users = userService.getAllUsers();
+                System.out.println("Loading users from: " + url);
+                System.out.println("Current token: " + ApiClient.getAuthToken());
+
+                ApiResponse<List<UserDto>> response = ApiClient.get(url,
+                        new TypeReference<ApiResponse<List<UserDto>>>() {});
+
+                Platform.runLater(() -> {
+                    if (response.isSuccess() && response.getData() != null) {
+                        userList.setAll(response.getData());
+                        usersTable.setItems(userList);
+                        statusLabel.setText("Найдено пользователей: " + userList.size());
+                    } else {
+                        showAlert("Ошибка", "Не удалось загрузить пользователей: " + response.getMessage(), Alert.AlertType.ERROR);
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", "Ошибка загрузки: " + e.getMessage(), Alert.AlertType.ERROR));
+                e.printStackTrace();
             }
-
-            userList.setAll(users);
-            usersTable.setItems(userList);
-            statusLabel.setText("Найдено пользователей: " + userList.size());
-
-        } catch (Exception e) {
-            log.error("Ошибка загрузки пользователей", e);
-            statusLabel.setText("Ошибка загрузки: " + e.getMessage());
-        }
+        }).start();
     }
 
     private void approveUser() {
         UserDto selected = usersTable.getSelectionModel().getSelectedItem();
         if (selected == null) return;
 
-        System.out.println("=== APPROVE USER ===");
-        System.out.println("User: " + selected.email());
-        System.out.println("Status: " + selected.status());
-
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
         confirmAlert.setTitle("Подтверждение");
         confirmAlert.setHeaderText("Подтверждение регистрации");
-        confirmAlert.setContentText("Вы уверены, что хотите подтвердить регистрацию пользователя " + selected.email() + "?");
+        confirmAlert.setContentText("Вы уверены, что хотите подтвердить регистрацию пользователя " + selected.getEmail() + "?");
 
         if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
-            try {
-                System.out.println("Calling approveUser with ID: " + selected.id());
-                userService.approveUser(selected.id(), currentAdminEmail);
-                System.out.println("User approved successfully");
-                showSuccessMessage("Пользователь " + selected.email() + " подтверждён");
-                auditService.log(currentAdminEmail, com.fanproduction.core.enums.AuditAction.APPROVE_USER,
-                        "Подтверждена регистрация пользователя: " + selected.email());
-                loadUsers();
-            } catch (Exception e) {
-                System.err.println("Error: " + e.getMessage());
-                e.printStackTrace();
-                showErrorMessage("Ошибка при подтверждении: " + e.getMessage());
-            }
+            new Thread(() -> {
+                try {
+                    ApiResponse<Void> response = ApiClient.post("/users/" + selected.getId() + "/approve", null,
+                            new TypeReference<ApiResponse<Void>>() {});
+
+                    Platform.runLater(() -> {
+                        if (response.isSuccess()) {
+                            showAlert("Успешно", "Пользователь " + selected.getEmail() + " подтверждён", Alert.AlertType.INFORMATION);
+                            loadUsers();
+                        } else {
+                            showAlert("Ошибка", "Ошибка при подтверждении: " + response.getMessage(), Alert.AlertType.ERROR);
+                        }
+                    });
+                } catch (Exception e) {
+                    Platform.runLater(() -> showAlert("Ошибка", "Ошибка: " + e.getMessage(), Alert.AlertType.ERROR));
+                    e.printStackTrace();
+                }
+            }).start();
         }
     }
 
@@ -253,32 +234,41 @@ public class ModerationController {
 
         TextInputDialog reasonDialog = new TextInputDialog();
         reasonDialog.setTitle("Отклонение");
-        reasonDialog.setHeaderText("Отклонение регистрации пользователя " + selected.email());
+        reasonDialog.setHeaderText("Отклонение регистрации пользователя " + selected.getEmail());
         reasonDialog.setContentText("Укажите причину отклонения:");
 
         Optional<String> result = reasonDialog.showAndWait();
         if (result.isPresent()) {
             String reason = result.get().trim();
             if (reason.isEmpty()) {
-                showErrorMessage("Необходимо указать причину отклонения");
+                showAlert("Ошибка", "Необходимо указать причину отклонения", Alert.AlertType.ERROR);
                 return;
             }
 
             Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
             confirmAlert.setTitle("Подтверждение");
             confirmAlert.setHeaderText("Отклонение регистрации");
-            confirmAlert.setContentText("Вы уверены, что хотите отклонить регистрацию пользователя " + selected.email() + "?\n\nПричина: " + reason);
+            confirmAlert.setContentText("Вы уверены, что хотите отклонить регистрацию пользователя " + selected.getEmail() + "?\n\nПричина: " + reason);
 
             if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
-                try {
-                    userService.rejectUser(selected.id(), currentAdminEmail, reason);
-                    showSuccessMessage("Регистрация пользователя " + selected.email() + " отклонена");
-                    auditService.log(currentAdminEmail, com.fanproduction.core.enums.AuditAction.REJECT_USER,
-                            "Отклонена регистрация пользователя: " + selected.email() + ". Причина: " + reason);
-                    loadUsers();
-                } catch (Exception e) {
-                    showErrorMessage("Ошибка при отклонении: " + e.getMessage());
-                }
+                new Thread(() -> {
+                    try {
+                        ApiResponse<Void> response = ApiClient.post("/users/" + selected.getId() + "/reject",
+                                new RejectRequest(reason), new TypeReference<ApiResponse<Void>>() {});
+
+                        Platform.runLater(() -> {
+                            if (response.isSuccess()) {
+                                showAlert("Успешно", "Регистрация пользователя " + selected.getEmail() + " отклонена", Alert.AlertType.INFORMATION);
+                                loadUsers();
+                            } else {
+                                showAlert("Ошибка", "Ошибка при отклонении: " + response.getMessage(), Alert.AlertType.ERROR);
+                            }
+                        });
+                    } catch (Exception e) {
+                        Platform.runLater(() -> showAlert("Ошибка", "Ошибка: " + e.getMessage(), Alert.AlertType.ERROR));
+                        e.printStackTrace();
+                    }
+                }).start();
             }
         }
     }
@@ -289,7 +279,7 @@ public class ModerationController {
 
         TextInputDialog reasonDialog = new TextInputDialog();
         reasonDialog.setTitle("Блокировка");
-        reasonDialog.setHeaderText("Блокировка пользователя " + selected.email());
+        reasonDialog.setHeaderText("Блокировка пользователя " + selected.getEmail());
         reasonDialog.setContentText("Укажите причину блокировки (необязательно):");
 
         Optional<String> result = reasonDialog.showAndWait();
@@ -298,18 +288,27 @@ public class ModerationController {
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
         confirmAlert.setTitle("Подтверждение");
         confirmAlert.setHeaderText("Блокировка пользователя");
-        confirmAlert.setContentText("Вы уверены, что хотите заблокировать пользователя " + selected.email() + "?");
+        confirmAlert.setContentText("Вы уверены, что хотите заблокировать пользователя " + selected.getEmail() + "?");
 
         if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
-            try {
-                userService.blockUser(selected.id(), currentAdminEmail, reason);
-                showSuccessMessage("Пользователь " + selected.email() + " заблокирован");
-                auditService.log(currentAdminEmail, com.fanproduction.core.enums.AuditAction.BLOCK_USER,
-                        "Заблокирован пользователь: " + selected.email() + ". Причина: " + reason);
-                loadUsers();
-            } catch (Exception e) {
-                showErrorMessage("Ошибка при блокировке: " + e.getMessage());
-            }
+            new Thread(() -> {
+                try {
+                    ApiResponse<Void> response = ApiClient.post("/users/" + selected.getId() + "/block",
+                            new BlockRequest(reason), new TypeReference<ApiResponse<Void>>() {});
+
+                    Platform.runLater(() -> {
+                        if (response.isSuccess()) {
+                            showAlert("Успешно", "Пользователь " + selected.getEmail() + " заблокирован", Alert.AlertType.INFORMATION);
+                            loadUsers();
+                        } else {
+                            showAlert("Ошибка", "Ошибка при блокировке: " + response.getMessage(), Alert.AlertType.ERROR);
+                        }
+                    });
+                } catch (Exception e) {
+                    Platform.runLater(() -> showAlert("Ошибка", "Ошибка: " + e.getMessage(), Alert.AlertType.ERROR));
+                    e.printStackTrace();
+                }
+            }).start();
         }
     }
 
@@ -320,32 +319,33 @@ public class ModerationController {
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
         confirmAlert.setTitle("Подтверждение");
         confirmAlert.setHeaderText("Разблокировка пользователя");
-        confirmAlert.setContentText("Вы уверены, что хотите разблокировать пользователя " + selected.email() + "?");
+        confirmAlert.setContentText("Вы уверены, что хотите разблокировать пользователя " + selected.getEmail() + "?");
 
         if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
-            try {
-                userService.unblockUser(selected.id(), currentAdminEmail);
-                showSuccessMessage("Пользователь " + selected.email() + " разблокирован");
-                auditService.log(currentAdminEmail, com.fanproduction.core.enums.AuditAction.UNBLOCK_USER,
-                        "Разблокирован пользователь: " + selected.email());
-                loadUsers();
-            } catch (Exception e) {
-                showErrorMessage("Ошибка при разблокировке: " + e.getMessage());
-            }
+            new Thread(() -> {
+                try {
+                    ApiResponse<Void> response = ApiClient.post("/users/" + selected.getId() + "/unblock", null,
+                            new TypeReference<ApiResponse<Void>>() {});
+
+                    Platform.runLater(() -> {
+                        if (response.isSuccess()) {
+                            showAlert("Успешно", "Пользователь " + selected.getEmail() + " разблокирован", Alert.AlertType.INFORMATION);
+                            loadUsers();
+                        } else {
+                            showAlert("Ошибка", "Ошибка при разблокировке: " + response.getMessage(), Alert.AlertType.ERROR);
+                        }
+                    });
+                } catch (Exception e) {
+                    Platform.runLater(() -> showAlert("Ошибка", "Ошибка: " + e.getMessage(), Alert.AlertType.ERROR));
+                    e.printStackTrace();
+                }
+            }).start();
         }
     }
 
-    private void showSuccessMessage(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Успешно");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
-
-    private void showErrorMessage(String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Ошибка");
+    private void showAlert(String title, String message, Alert.AlertType type) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();

@@ -1,24 +1,19 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.core.entity.UserEntity;
-import com.fanproduction.core.enums.Role;
-import com.fanproduction.core.enums.UserStatus;
-import com.fanproduction.core.exception.ValidationException;
-import com.fanproduction.core.launcher.SpringContextProvider;
-import com.fanproduction.core.security.AdminSecretKeyValidator;
-import com.fanproduction.core.util.SafeExecutor;
-import com.fanproduction.services.UserService;
+import com.fanproduction.gui.client.ApiClient;
+import com.fanproduction.gui.dto.AuthResponse;
+import com.fanproduction.gui.dto.RegisterRequest;
 import javafx.application.Platform;
-import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import javafx.util.Pair;
 
+import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -37,7 +32,7 @@ public class RegisterController {
     @FXML
     private TextField phoneField;
     @FXML
-    private ComboBox<Role> roleComboBox;
+    private ComboBox<String> roleComboBox;
     @FXML
     private VBox secretKeyBox;
     @FXML
@@ -55,15 +50,10 @@ public class RegisterController {
     @FXML
     private Label errorLabel;
 
-    private SpringContextProvider springContext;
     private Stage primaryStage;
-    private UserService userService;
-    private final Map<String, Consumer<String>> errorHandlers = new HashMap<>();
 
-    public void setSpringContext(SpringContextProvider springContext) {
-        this.springContext = springContext;
-        this.userService = springContext.getBean(UserService.class);
-    }
+    // Map для связи имени поля с лейблом ошибки
+    private final Map<String, Label> errorLabels = new HashMap<>();
 
     public void setPrimaryStage(Stage primaryStage) {
         this.primaryStage = primaryStage;
@@ -71,207 +61,185 @@ public class RegisterController {
 
     @FXML
     private void initialize() {
-        initErrorHandlers();
-        setupFieldListeners();
-        setupRoleListener();
-        roleComboBox.setItems(FXCollections.observableArrayList(Role.values()));
-    }
+        // Инициализируем маппинг полей на лейблы ошибок
+        errorLabels.put("email", emailErrorLabel);
+        errorLabels.put("password", passwordErrorLabel);
+        errorLabels.put("firstName", firstNameErrorLabel);
+        errorLabels.put("lastName", lastNameErrorLabel);
+        errorLabels.put("phone", phoneErrorLabel);
 
-    private void initErrorHandlers() {
-        errorHandlers.put("email", msg -> emailErrorLabel.setText(msg));
-        errorHandlers.put("password", msg -> passwordErrorLabel.setText(msg));
-        errorHandlers.put("firstName", msg -> firstNameErrorLabel.setText(msg));
-        errorHandlers.put("lastName", msg -> lastNameErrorLabel.setText(msg));
-        errorHandlers.put("phone", msg -> phoneErrorLabel.setText(msg));
-    }
-
-    private void setupFieldListeners() {
-        // Создаём список полей и соответствующих лейблов ошибок
-        List<Pair<TextField, Label>> fields = List.of(
-                new Pair<>(emailField, emailErrorLabel),
-                new Pair<>(passwordField, passwordErrorLabel),
-                new Pair<>(confirmPasswordField, passwordErrorLabel),
-                new Pair<>(firstNameField, firstNameErrorLabel),
-                new Pair<>(lastNameField, lastNameErrorLabel),
-                new Pair<>(phoneField, phoneErrorLabel),
-                new Pair<>(secretKeyField, errorLabel)
-        );
-
-        // Для каждого поля добавляем слушатель
-        fields.forEach(pair -> {
-            TextField field = pair.getKey();
-            Label errorLabel = pair.getValue();
-            field.textProperty().addListener((obs, old, newVal) -> errorLabel.setText(""));
-        });
-    }
-
-
-
-        private void setupRoleListener() {
-        roleComboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            boolean isAdmin = (newVal == Role.ADMIN);
+        roleComboBox.getItems().addAll("ENGINEER", "MANAGER", "ADMIN");
+        roleComboBox.getSelectionModel().selectedItemProperty().addListener((obs, old, newVal) -> {
+            boolean isAdmin = "ADMIN".equals(newVal);
             secretKeyBox.setVisible(isAdmin);
             secretKeyBox.setManaged(isAdmin);
             if (!isAdmin) secretKeyField.clear();
             clearAllErrors();
         });
+
+        // Очищаем ошибки при вводе
+        setupFieldListeners();
+    }
+
+    private void setupFieldListeners() {
+        Consumer<TextField> setupListener = field ->
+                field.textProperty().addListener((obs, old, newVal) -> clearAllErrors());
+
+        setupListener.accept(emailField);
+        setupListener.accept(passwordField);
+        setupListener.accept(confirmPasswordField);
+        setupListener.accept(firstNameField);
+        setupListener.accept(lastNameField);
+        setupListener.accept(phoneField);
+        setupListener.accept(secretKeyField);
     }
 
     private void clearAllErrors() {
-        emailErrorLabel.setText("");
-        passwordErrorLabel.setText("");
-        firstNameErrorLabel.setText("");
-        lastNameErrorLabel.setText("");
-        phoneErrorLabel.setText("");
+        errorLabels.values().forEach(label -> label.setText(""));
         errorLabel.setText("");
     }
 
     @FXML
     private void handleRegister() {
-        if (!validateRequiredFields()) return;
+        String email = emailField.getText().trim();
+        String password = passwordField.getText();
+        String confirmPassword = confirmPasswordField.getText();
+        String firstName = firstNameField.getText().trim();
+        String lastName = lastNameField.getText().trim();
+        String phone = phoneField.getText().trim();
+        String role = roleComboBox.getValue();
 
-        Role selectedRole = roleComboBox.getValue();
+        // Базовая валидация на клиенте
+        if (email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty() || role == null) {
+            showAlert("Ошибка", "Заполните все обязательные поля", Alert.AlertType.ERROR);
+            return;
+        }
 
-        if (selectedRole == Role.ADMIN) {
+        if (!password.equals(confirmPassword)) {
+            showAlert("Ошибка", "Пароли не совпадают", Alert.AlertType.ERROR);
+            return;
+        }
+
+        if (password.length() < 4) {
+            showAlert("Ошибка", "Пароль должен содержать не менее 4 символов", Alert.AlertType.ERROR);
+            return;
+        }
+
+        RegisterRequest request = new RegisterRequest();
+        request.setEmail(email);
+        request.setPassword(password);
+        request.setFirstName(firstName);
+        request.setLastName(lastName);
+        request.setPhone(phone);
+        request.setRole(role);
+
+        if ("ADMIN".equals(role)) {
             String secretKey = secretKeyField.getText();
-            if (!AdminSecretKeyValidator.validate(secretKey)) {
-                showError("Неверный секретный ключ администратора");
+            if (secretKey == null || secretKey.isEmpty()) {
+                showAlert("Ошибка", "Для регистрации администратора требуется секретный ключ", Alert.AlertType.ERROR);
                 return;
             }
+            request.setSecretKey(secretKey);
         }
 
-        SafeExecutor.execute(() -> {
-            UserEntity newUser = new UserEntity();
-            newUser.setEmail(emailField.getText().trim().toLowerCase());
-            newUser.setPassword(passwordField.getText());
-            newUser.setFirstName(firstNameField.getText().trim());
-            newUser.setLastName(lastNameField.getText().trim());
-            newUser.setPhone(phoneField.getText().trim());
-            newUser.setRole(selectedRole);
-            newUser.setStatus(selectedRole == Role.ADMIN ? UserStatus.ACTIVE : UserStatus.PENDING);
+        new Thread(() -> {
+            try {
+                AuthResponse response = ApiClient.post("/auth/register", request, AuthResponse.class);
 
-            userService.register(newUser);
+                Platform.runLater(() -> {
+                    if (response != null && response.getToken() != null) {
+                        String message = "ADMIN".equals(role)
+                                ? "Администратор успешно зарегистрирован! Вы можете войти."
+                                : "Регистрация успешна! После подтверждения администратором вы сможете войти.";
+                        showAlert("Успешно", message, Alert.AlertType.INFORMATION);
+                        goToLogin();
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    String errorMsg = e.getMessage();
+                    System.out.println("Registration error: " + errorMsg);
 
-            Platform.runLater(() -> {
-                if (selectedRole == Role.ADMIN) {
-                    showSuccess("Пользователь успешно зарегистрирован! Вы можете войти в систему.");
-                } else {
-                    showSuccess("Запрос на регистрацию отправлен.\nПриложение будет доступно после подтверждения статуса администратором.");
-                }
-            });
-        }, this::handleException);
-    }
+                    // Пробуем распарсить ошибки валидации из JSON
+                    Map<String, String> validationErrors = parseValidationErrors(errorMsg);
 
-    private void handleException(Exception e) {
-        clearAllErrors();
-
-        if (e instanceof ValidationException ve) {
-            ve.getViolations().forEach(violation -> {
-                String fieldName = violation.getPropertyPath().toString();
-                String message = violation.getMessage();
-
-                errorHandlers.getOrDefault(fieldName, msg -> errorLabel.setText("Ошибка: " + msg))
-                        .accept(message);
-            });
-        } else if (e instanceof IllegalArgumentException iae) {
-            String message = iae.getMessage();
-            if (message != null) {
-                errorHandlers.entrySet().stream()
-                        .filter(entry -> message.toLowerCase().contains(entry.getKey()))
-                        .findFirst()
-                        .ifPresentOrElse(
-                                entry -> entry.getValue().accept(message),
-                                () -> showError(message)
-                        );
+                    if (!validationErrors.isEmpty()) {
+                        // Показываем ошибки под соответствующими полями
+                        validationErrors.forEach((field, message) -> {
+                            Label errorLabel = errorLabels.get(field);
+                            if (errorLabel != null) {
+                                errorLabel.setText(message);
+                            } else {
+                                // Если поле не найдено, показываем в общем лейбле
+                                errorLabel.setText("Ошибка: " + message);
+                            }
+                        });
+                    } else {
+                        // Если не удалось распарсить, показываем общее сообщение
+                        showAlert("Ошибка", "Ошибка регистрации: " + errorMsg, Alert.AlertType.ERROR);
+                    }
+                });
+                e.printStackTrace();
             }
-        } else {
-            showError("Ошибка при регистрации. Попробуйте позже.");
-            e.printStackTrace();
+        }).start();
+    }
+
+    /**
+     * Парсит ошибки валидации из JSON ответа сервера
+     * Ожидается формат: {"fieldName":"error message","fieldName2":"error message2"}
+     */
+    private Map<String, String> parseValidationErrors(String responseBody) {
+        Map<String, String> errors = new HashMap<>();
+        if (responseBody == null || responseBody.isEmpty()) {
+            return errors;
+        }
+
+        try {
+            // Пробуем распарсить как JSON
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            com.fasterxml.jackson.databind.JsonNode node = mapper.readTree(responseBody);
+
+            if (node.isObject()) {
+                node.fields().forEachRemaining(entry -> {
+                    String field = entry.getKey();
+                    String message = entry.getValue().asText();
+                    errors.put(field, message);
+                });
+            }
+        } catch (Exception ex) {
+            // Если не JSON, возвращаем пустой Map
+            System.out.println("Failed to parse validation errors: " + ex.getMessage());
+        }
+
+        return errors;
+    }
+
+    private void goToLogin() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/LoginView.fxml"));
+            Parent root = loader.load();
+
+            LoginController controller = loader.getController();
+            controller.setPrimaryStage(primaryStage);
+
+            Scene scene = new Scene(root, 400, 450);
+            primaryStage.setScene(scene);
+            primaryStage.setTitle("Вход");
+        } catch (IOException e) {
+            showAlert("Ошибка", "Ошибка загрузки окна входа", Alert.AlertType.ERROR);
         }
     }
 
-    private boolean validateRequiredFields() {
-        boolean isValid = true;
-
-        // Проверка email
-        String email = emailField.getText().trim();
-        if (email.isEmpty()) {
-            emailErrorLabel.setText("Email не может быть пустым");
-            isValid = false;
-        }
-
-        // Проверка пароля
-        String password = passwordField.getText();
-        if (password.isEmpty()) {
-            passwordErrorLabel.setText("Пароль не может быть пустым");
-            isValid = false;
-        }
-
-        // Проверка подтверждения пароля (только если пароль не пустой)
-        if (!password.isEmpty() && !password.equals(confirmPasswordField.getText())) {
-            passwordErrorLabel.setText("Пароли не совпадают");
-            isValid = false;
-        }
-
-        // Проверка роли
-        if (roleComboBox.getValue() == null) {
-            errorLabel.setText("Выберите роль");
-            errorLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
-            isValid = false;
-        }
-
-        // Имя
-        if (firstNameField.getText().trim().isEmpty()) {
-            firstNameErrorLabel.setText("Имя не может быть пустым");
-            isValid = false;
-        }
-
-        // Фамилия
-        if (lastNameField.getText().trim().isEmpty()) {
-            lastNameErrorLabel.setText("Фамилия не может быть пустой");
-            isValid = false;
-        }
-
-        // Телефон
-        if (phoneField.getText().trim().isEmpty()) {
-            phoneErrorLabel.setText("Телефон не может быть пустым");
-            isValid = false;
-        }
-
-        return isValid;
-    }
-
-    private void showSuccess(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Регистрация");
+    private void showAlert(String title, String message, Alert.AlertType type) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
-        goToLogin();
-    }
-
-    private void showError(String message) {
-        errorLabel.setText(message);
-        errorLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
     }
 
     @FXML
     private void handleBack() {
         goToLogin();
-    }
-
-    private void goToLogin() {
-        SafeExecutor.loadFxml("/com/fanproduction/gui/view/LoginView.fxml",
-                (root, controller) -> {
-                    LoginController loginController = (LoginController) controller;
-                    loginController.setSpringContext(springContext);
-                    loginController.setPrimaryStage(primaryStage);
-
-                    Scene scene = new Scene(root, 400, 450);
-                    primaryStage.setScene(scene);
-                    primaryStage.setTitle("Fan Production Manager - Вход");
-                },
-                e -> Platform.runLater(() -> showError("Ошибка загрузки окна входа: " + e.getMessage()))
-        );
     }
 }

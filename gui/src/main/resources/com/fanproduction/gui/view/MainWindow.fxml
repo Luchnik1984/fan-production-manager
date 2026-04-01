@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane fx:id="root" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fanproduction.gui.controller.MainWindowController">
+    <top>
+        <MenuBar>
+            <Menu text="Файл">
+                <MenuItem text="Мой профиль" onAction="#handleOpenProfile" />
+                <SeparatorMenuItem />
+                <MenuItem text="Выйти из профиля" onAction="#handleLogout" />
+                <MenuItem text="Выход" onAction="#handleExit" />
+            </Menu>
+            <Menu text="Справка">
+                <MenuItem text="О программе" onAction="#handleAbout" />
+            </Menu>
+        </MenuBar>
+    </top>
+    <center>
+        <!-- Вкладки будут созданы в коде -->
+        <Label text="Загрузка..." />
+    </center>
+    <bottom>
+        <Label fx:id="statusLabel" text="Загрузка..." style="-fx-padding: 5; -fx-background-color: #f0f0f0;" />
+    </bottom>
+</BorderPane>

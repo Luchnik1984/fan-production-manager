@@ -1,12 +1,6 @@
 package com.fanproduction.gui;
 
-import com.fanproduction.core.context.SessionContext;
-import com.fanproduction.core.entity.UserEntity;
-import com.fanproduction.core.enums.UserStatus;
-import com.fanproduction.core.launcher.SpringContextProvider;
-import com.fanproduction.core.util.UserPreferences;
 import com.fanproduction.gui.controller.LoginController;
-import com.fanproduction.services.UserService;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -15,44 +9,12 @@ import javafx.stage.Stage;
 
 public class LoginApplication extends Application {
 
-    private static SpringContextProvider springContext;
-
-    public static void setSpringContext(SpringContextProvider context) {
-        springContext = context;
-    }
-
     @Override
     public void start(Stage primaryStage) throws Exception {
-        if (springContext == null) {
-            throw new IllegalStateException("Spring context not initialized!");
-        }
-
-        // Проверяем, есть ли действительный токен для автоматического входа
-        if (UserPreferences.hasValidToken()) {
-            String email = UserPreferences.getEmailFromToken();
-            UserService userService = springContext.getBean(UserService.class);
-            UserEntity user = userService.getUserByEmail(email);
-
-            // Проверяем, что пользователь существует и активен
-            if (user != null && user.getStatus() == UserStatus.ACTIVE) {
-                SessionContext.setCurrentUser(user);
-                openMainWindow(primaryStage);
-                return;
-            } else {
-                UserPreferences.clearRememberData();
-            }
-        }
-
-        // Если нет токена или автовход не удался, показываем окно входа
-        showLoginWindow(primaryStage);
-    }
-
-    private void showLoginWindow(Stage primaryStage) throws Exception {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/LoginView.fxml"));
         Parent root = loader.load();
 
         LoginController controller = loader.getController();
-        controller.setSpringContext(springContext);
         controller.setPrimaryStage(primaryStage);
 
         Scene scene = new Scene(root, 400, 450);
@@ -61,18 +23,7 @@ public class LoginApplication extends Application {
         primaryStage.show();
     }
 
-    private void openMainWindow(Stage primaryStage) {
-        try {
-            MainWindow mainWindow = new MainWindow(springContext);
-            mainWindow.start(primaryStage);
-        } catch (Exception e) {
-            e.printStackTrace();
-            // Если не удалось открыть главное окно, показываем окно входа
-            try {
-                showLoginWindow(primaryStage);
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-        }
+    public static void main(String[] args) {
+        launch(args);
     }
 }

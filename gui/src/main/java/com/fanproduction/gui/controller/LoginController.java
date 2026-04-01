@@ -1,14 +1,8 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.core.context.SessionContext;
-import com.fanproduction.core.entity.UserEntity;
-import com.fanproduction.core.enums.AuditAction;
-import com.fanproduction.core.enums.UserStatus;
-import com.fanproduction.core.launcher.SpringContextProvider;
-import com.fanproduction.core.util.UserPreferences;
-import com.fanproduction.gui.MainWindow;
-import com.fanproduction.services.AuditService;
-import com.fanproduction.services.UserService;
+import com.fanproduction.gui.client.ApiClient;
+import com.fanproduction.gui.dto.AuthResponse;
+import com.fanproduction.gui.dto.LoginRequest;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -18,7 +12,6 @@ import javafx.scene.control.*;
 import javafx.stage.Stage;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 
 public class LoginController {
 
@@ -34,16 +27,7 @@ public class LoginController {
     @FXML
     private CheckBox rememberMeCheckBox;
 
-    private SpringContextProvider springContext;
     private Stage primaryStage;
-    private UserService userService;
-    private AuditService auditService;
-
-    public void setSpringContext(SpringContextProvider springContext) {
-        this.springContext = springContext;
-        this.userService = springContext.getBean(UserService.class);
-        this.auditService = springContext.getBean(AuditService.class);
-    }
 
     public void setPrimaryStage(Stage primaryStage) {
         this.primaryStage = primaryStage;
@@ -51,19 +35,13 @@ public class LoginController {
 
     @FXML
     private void initialize() {
-        if (UserPreferences.hasLastEmail()) {
-            emailField.setText(UserPreferences.getLastEmail());
-            passwordField.requestFocus();
-        }
+        emailField.textProperty().addListener((obs, old, newVal) -> clearError());
+        passwordField.textProperty().addListener((obs, old, newVal) -> clearError());
+    }
 
-        emailField.textProperty().addListener((obs, old, newVal) -> {
-            errorLabel.setText("");
-            errorLabel.setStyle("");
-        });
-        passwordField.textProperty().addListener((obs, old, newVal) -> {
-            errorLabel.setText("");
-            errorLabel.setStyle("");
-        });
+    private void clearError() {
+        errorLabel.setText("");
+        errorLabel.setStyle("");
     }
 
     @FXML
@@ -72,109 +50,118 @@ public class LoginController {
         String password = passwordField.getText();
 
         if (email.isEmpty() || password.isEmpty()) {
-            showError("Email и пароль не могут быть пустыми");
+            showAlert("Ошибка", "Email и пароль не могут быть пустыми", Alert.AlertType.ERROR);
             return;
         }
 
+        LoginRequest request = new LoginRequest();
+        request.setEmail(email);
+        request.setPassword(password);
+
         new Thread(() -> {
             try {
-                UserEntity user = userService.getUserByEmail(email);
+                AuthResponse loginResponse = ApiClient.post("/auth/login", request, AuthResponse.class);
 
-                if (user == null) {
-                    showError("Пользователь с таким email не найден");
-                    auditService.log(email, AuditAction.LOGIN_FAILED, "Пользователь не найден");
-                    Platform.runLater(() -> passwordField.clear());
-                    return;
-                }
+                Platform.runLater(() -> {
+                    ApiClient.setAuthToken(loginResponse.getToken());
+                    System.out.println("=== JWT TOKEN ===");
+                    System.out.println(loginResponse.getToken());
+                    System.out.println("=================");
+                    openMainWindow(loginResponse.getRole(), loginResponse.getEmail());
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    String errorMsg = e.getMessage();
+                    System.out.println("Login error: " + errorMsg);
 
-                // Проверка статуса
-                if (user.getStatus() != UserStatus.ACTIVE) {
-                    String message;
-                    Alert.AlertType alertType;
+                    // Обрабатываем различные сообщения об ошибках.
 
-                    switch (user.getStatus()) {
-                        case PENDING:
-                            message = "⏳ Ваша регистрация ожидает подтверждения администратором.\nПосле подтверждения вы сможете войти в систему.";
-                            alertType = Alert.AlertType.WARNING;  // Оранжевое окно
-                            break;
-                        case REJECTED:
-                            message = "❌ Ваша регистрация отклонена.\nПричина: " +
-                                    (user.getRejectionReason() != null ? user.getRejectionReason() : "не указана");
-                            alertType = Alert.AlertType.ERROR;
-                            break;
-                        case BLOCKED:
-                            message = "🔒 Ваш аккаунт заблокирован.\nОбратитесь к администратору.";
-                            alertType = Alert.AlertType.ERROR;
-                            break;
-                        default:
-                            message = "Доступ запрещён. Статус аккаунта: " + user.getStatus();
-                            alertType = Alert.AlertType.ERROR;
-                            break;
+                    // 1. Проверка на статус PENDING (ожидание подтверждения)
+                    if (errorMsg.contains("ожидает подтверждения") ||
+                            errorMsg.contains("подтверждения администратором") ||
+                            errorMsg.contains("PENDING")) {
+                        showAlert("Внимание",
+                                """
+                                        ⏳ Ваша регистрация ожидает подтверждения администратором.
+                                        
+                                        После подтверждения вы сможете войти в систему.""",
+                                Alert.AlertType.WARNING);
+
+                        // 2. Проверка на статус REJECTED (отклонена)
+                    } else if (errorMsg.contains("отклонена") ||
+                            errorMsg.contains("REJECTED")) {
+                        showAlert("Отказ",
+                                """
+                                        ❌ Ваша регистрация отклонена администратором.
+                                        
+                                        Обратитесь к администратору для уточнения причин.""",
+                                Alert.AlertType.ERROR);
+
+                        // 3. Проверка на статус BLOCKED (заблокирован)
+                    } else if (errorMsg.contains("заблокирован") ||
+                            errorMsg.contains("BLOCKED")) {
+                        showAlert("Блокировка",
+                                """
+                                        🔒 Ваш аккаунт заблокирован.
+                                        
+                                        Обратитесь к администратору для выяснения причин.""",
+                                Alert.AlertType.ERROR);
+
+                        // 4. Пользователь не найден
+                    } else if (errorMsg.contains("не найден") ||
+                            errorMsg.contains("User not found")) {
+                        showAlert("Ошибка",
+                                """
+                                        Пользователь с таким email не найден.
+                                        
+                                        Проверьте правильность ввода email.""",
+                                Alert.AlertType.ERROR);
+
+                        // 5. Неверный пароль
+                    } else if (errorMsg.contains("Неверный пароль") ||
+                            errorMsg.contains("Bad credentials") ||
+                            errorMsg.contains("пароль")) {
+                        showAlert("Ошибка",
+                                """
+                                        Неверный пароль.
+                                        
+                                        Пожалуйста, проверьте правильность ввода пароля.""",
+                                Alert.AlertType.ERROR);
+
+                        // 6. Все остальные ошибки
+                    } else {
+                        showAlert("Ошибка", "Ошибка входа: " + errorMsg, Alert.AlertType.ERROR);
                     }
 
-                    showAlert(message, alertType);
-                    auditService.log(email, AuditAction.LOGIN_FAILED,
-                            "Попытка входа с неактивным статусом: " + user.getStatus());
-                    Platform.runLater(() -> passwordField.clear());
-                    return;
-                }
-
-                // Проверка пароля
-                if (userService.authenticate(email, password)) {
-                    Platform.runLater(() -> {
-                        if (rememberMeCheckBox.isSelected()) {
-                            UserPreferences.saveRememberData(email, password);
-                        } else {
-                            UserPreferences.saveLastEmail(email);
-                        }
-
-                        user.setLastLoginAt(LocalDateTime.now());
-                        user.setLoginCount(user.getLoginCount() + 1);
-                        userService.updateLoginInfo(user);
-
-                        SessionContext.setCurrentUser(user);
-                        openMainWindow();
-                    });
-                    auditService.log(email, AuditAction.LOGIN_SUCCESS, "Успешный вход в систему");
-                } else {
-                    showError("Неверный пароль");
-                    auditService.log(email, AuditAction.LOGIN_FAILED, "Неверный пароль");
-                    Platform.runLater(() -> passwordField.clear());
-                }
-            } catch (Exception e) {
-                showError("Ошибка при входе: " + e.getMessage());
+                    passwordField.clear();
+                });
                 e.printStackTrace();
             }
         }).start();
     }
 
-    private void showError(String message) {
-        showAlert(message, Alert.AlertType.ERROR);
-    }
+    private void openMainWindow(String userRole, String userEmail) {
+        try {
+            Stage mainStage = new Stage();
 
-    private void showAlert(String message, Alert.AlertType alertType) {
-        System.out.println("Showing alert: " + message + " (type: " + alertType + ")");
-        Platform.runLater(() -> {
-            Alert alert = new Alert(alertType);
-            if (alertType == Alert.AlertType.ERROR) {
-                alert.setTitle("Ошибка входа");
-            } else if (alertType == Alert.AlertType.WARNING) {
-                alert.setTitle("Внимание");
-            } else {
-                alert.setTitle("Информация");
-            }
-            alert.setHeaderText(null);
-            alert.setContentText(message);
-            alert.showAndWait();
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(
+                    "/com/fanproduction/gui/view/MainWindow.fxml"));
+            Parent root = loader.load();
 
-            // Также обновляем label
-            errorLabel.setText(message);
-            if (alertType == Alert.AlertType.WARNING) {
-                errorLabel.setStyle("-fx-text-fill: orange; -fx-font-weight: bold;");
-            } else {
-                errorLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
-            }
-        });
+            MainWindowController controller = loader.getController();
+            controller.setStage(mainStage);
+            controller.setCurrentUserRole(userRole);
+            controller.setCurrentUserEmail(userEmail);  // Добавляем передачу email
+
+            Scene scene = new Scene(root, 1024, 768);
+            mainStage.setScene(scene);
+            mainStage.setTitle("Fan Production Manager - Главное окно");
+            mainStage.show();
+
+            primaryStage.close();
+        } catch (IOException e) {
+            showAlert("Ошибка", "Ошибка открытия главного окна: " + e.getMessage(), Alert.AlertType.ERROR);
+        }
     }
 
     @FXML
@@ -184,7 +171,6 @@ public class LoginController {
             Parent root = loader.load();
 
             RegisterController controller = loader.getController();
-            controller.setSpringContext(springContext);
             controller.setPrimaryStage(primaryStage);
 
             Scene scene = new Scene(root, 400, 650);
@@ -192,28 +178,20 @@ public class LoginController {
             primaryStage.setTitle("Регистрация");
 
         } catch (IOException e) {
-            showError("Ошибка загрузки окна регистрации: " + e.getMessage());
+            showAlert("Ошибка", "Ошибка загрузки окна регистрации: " + e.getMessage(), Alert.AlertType.ERROR);
         }
     }
 
-    private void openMainWindow() {
-        try {
-            Stage mainStage = new Stage();
-            MainWindow mainWindow = new MainWindow(springContext);
-            mainWindow.start(mainStage);
-            primaryStage.close();
-        } catch (Exception e) {
-            showError("Ошибка при открытии главного окна: " + e.getMessage());
-        }
+    private void showAlert(String title, String message, Alert.AlertType type) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     @FXML
     private void handleForgotPassword() {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Информация");
-        alert.setHeaderText(null);
-        alert.setContentText("Функция восстановления пароля будет доступна позже");
-        alert.showAndWait();
+        showAlert("Информация", "Функция восстановления пароля будет доступна позже", Alert.AlertType.INFORMATION);
     }
-
 }
