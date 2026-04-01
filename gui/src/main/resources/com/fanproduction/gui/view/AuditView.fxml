@@ -4,7 +4,8 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<VBox spacing="10" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fanproduction.gui.backup.AuditController">
+<VBox spacing="10" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.fanproduction.gui.controller.AuditController">
     <padding>
         <Insets bottom="10" left="10" right="10" top="10" />
     </padding>
@@ -12,9 +13,9 @@
     <!-- Панель фильтров -->
     <HBox spacing="10" alignment="CENTER_LEFT">
         <Label text="Фильтр по действию:" />
-        <ComboBox fx:id="actionFilterComboBox" prefWidth="150" />
+        <ComboBox fx:id="actionFilterComboBox" prefWidth="180" />
         <Label text="Пользователь:" />
-        <TextField fx:id="userFilterField" promptText="Email пользователя" />
+        <TextField fx:id="userFilterField" promptText="Email пользователя" prefWidth="200" />
         <Button fx:id="searchButton" text="Поиск" onAction="#handleSearch" />
         <Button fx:id="resetButton" text="Сбросить" onAction="#handleReset" />
         <Region HBox.hgrow="ALWAYS" />

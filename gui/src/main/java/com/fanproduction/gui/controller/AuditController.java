@@ -1,9 +1,10 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.core.dto.AuditLogDto;
-import com.fanproduction.core.enums.AuditAction;
-import com.fanproduction.core.launcher.SpringContextProvider;
-import com.fanproduction.services.AuditService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fanproduction.gui.client.ApiClient;
+import com.fanproduction.gui.dto.ApiResponse;
+import com.fanproduction.gui.dto.AuditLogDto;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -13,22 +14,27 @@ import javafx.stage.FileChooser;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
 
+/**
+ * Контроллер для просмотра журнала аудита.
+ * Доступен только для пользователей с ролью ADMIN.
+ */
 public class AuditController {
 
+
     @FXML
-    private ComboBox<AuditAction> actionFilterComboBox;
+    private ComboBox<String> actionFilterComboBox;
 
     @FXML
     private TextField userFilterField;
@@ -72,51 +78,85 @@ public class AuditController {
     @FXML
     private Button resetButton;
 
-    private SpringContextProvider springContext;
-    private AuditService auditService;
+
     private final ObservableList<AuditLogDto> auditList = FXCollections.observableArrayList();
     private int currentPage = 0;
     private int totalPages = 0;
+    private int totalElements = 0;
     private static final int PAGE_SIZE = 20;
+
     private String currentUserFilter = null;
-    private AuditAction currentActionFilter = null;
+    private String currentActionFilter = null;
 
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
+    private static final DateTimeFormatter DISPLAY_FORMATTER =
+            DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
 
-    public void setSpringContext(SpringContextProvider springContext) {
-        this.springContext = springContext;
-        this.auditService = springContext.getBean(AuditService.class);
-        setupTable();
-        loadAuditLogs();
-        updateStatusInfo();
-    }
+    private static final DateTimeFormatter API_FORMATTER =
+            DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
+    // Список возможных действий для фильтра
+    private static final List<String> ACTION_OPTIONS = List.of(
+            "LOGIN_SUCCESS", "LOGIN_FAILED", "LOGOUT", "REGISTER",
+            "APPROVE_USER", "REJECT_USER", "BLOCK_USER", "UNBLOCK_USER",
+            "CREATE_CARD", "UPDATE_CARD", "DELETE_CARD",
+            "GENERATE_TZ", "GENERATE_PASSPORT", "GENERATE_PLATE",
+            "UPDATE_PROFILE", "CHANGE_PASSWORD"
+    );
+
 
     @FXML
     private void initialize() {
-        actionFilterComboBox.setItems(FXCollections.observableArrayList(AuditAction.values()));
-        actionFilterComboBox.getSelectionModel().selectedItemProperty().addListener(
-                (obs, old, newVal) -> handleSearch()
-        );
+        setupFilters();
+        setupTable();
+        loadAuditLogs();
+    }
+
+    /**
+     * Настраивает фильтры (выпадающий список и поле ввода)
+     */
+    private void setupFilters() {
+        // Добавляем пустой элемент для сброса фильтра
+        actionFilterComboBox.getItems().add("");
+        actionFilterComboBox.getItems().addAll(ACTION_OPTIONS);
+        actionFilterComboBox.setValue("");
+
+        actionFilterComboBox.valueProperty().addListener((obs, old, newVal) -> {
+            if (newVal != null && !newVal.isEmpty()) {
+                currentActionFilter = newVal;
+            } else {
+                currentActionFilter = null;
+            }
+            handleSearch();
+        });
+
         userFilterField.setOnAction(e -> handleSearch());
     }
 
+    /**
+     * Настраивает таблицу (колонки и их отображение)
+     */
     private void setupTable() {
-        timestampColumn.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().timestamp().format(DATE_FORMATTER))
-        );
-        usernameColumn.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().username())
-        );
-        actionColumn.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().action().toString())
-        );
-        detailsColumn.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().details() != null ? cellData.getValue().details() : "")
-        );
-        ipAddressColumn.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().ipAddress() != null ? cellData.getValue().ipAddress() : "")
-        );
+        timestampColumn.setCellValueFactory(cellData -> {
+            LocalDateTime timestamp = cellData.getValue().getTimestamp();
+            String formatted = timestamp != null ? timestamp.format(DISPLAY_FORMATTER) : "";
+            return new SimpleStringProperty(formatted);
+        });
 
+        usernameColumn.setCellValueFactory(cellData ->
+                new SimpleStringProperty(cellData.getValue().getUsername()));
+
+        actionColumn.setCellValueFactory(cellData ->
+                new SimpleStringProperty(cellData.getValue().getAction()));
+
+        detailsColumn.setCellValueFactory(cellData ->
+                new SimpleStringProperty(cellData.getValue().getDetails() != null ?
+                        cellData.getValue().getDetails() : ""));
+
+        ipAddressColumn.setCellValueFactory(cellData ->
+                new SimpleStringProperty(cellData.getValue().getIpAddress() != null ?
+                        cellData.getValue().getIpAddress() : ""));
+
+        // Цветовая подсветка действий
         actionColumn.setCellFactory(column -> new TableCell<AuditLogDto, String>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -126,9 +166,11 @@ public class AuditController {
                     setStyle("");
                 } else {
                     setText(item);
-                    if (item.contains("SUCCESS") || item.contains("APPROVE") || item.contains("UNBLOCK")) {
+                    if (item.contains("SUCCESS") || item.contains("APPROVE") ||
+                            item.contains("UNBLOCK") || item.contains("LOGIN_SUCCESS")) {
                         setStyle("-fx-text-fill: green;");
-                    } else if (item.contains("FAILED") || item.contains("REJECT") || item.contains("BLOCK")) {
+                    } else if (item.contains("FAILED") || item.contains("REJECT") ||
+                            item.contains("BLOCK") || item.contains("LOGIN_FAILED")) {
                         setStyle("-fx-text-fill: red;");
                     } else {
                         setStyle("-fx-text-fill: #333;");
@@ -136,58 +178,122 @@ public class AuditController {
                 }
             }
         });
+
+        auditTable.setItems(auditList);
     }
 
+
+    /**
+     * Загружает журнал аудита с сервера
+     */
     private void loadAuditLogs() {
-        Pageable pageable = PageRequest.of(currentPage, PAGE_SIZE, Sort.by("timestamp").descending());
+        // Показываем индикатор загрузки
+        statusLabel.setText("Загрузка...");
 
-        try {
-            Page<AuditLogDto> page;
+        new Thread(() -> {
+            try {
+                StringBuilder url = new StringBuilder("/audit?page=" + currentPage + "&size=" + PAGE_SIZE);
 
-            if (currentUserFilter != null && !currentUserFilter.isEmpty()) {
-                page = auditService.getLogsByUser(currentUserFilter, pageable);
-            } else if (currentActionFilter != null) {
-                page = auditService.getLogsByAction(currentActionFilter, pageable);
-            } else {
-                page = auditService.getLogs(pageable);
+                if (currentUserFilter != null && !currentUserFilter.isEmpty()) {
+                    url.append("&username=").append(currentUserFilter);
+                }
+                if (currentActionFilter != null && !currentActionFilter.isEmpty()) {
+                    url.append("&action=").append(currentActionFilter);
+                }
+
+                System.out.println("Loading audit logs: " + url);
+
+                TypeReference<ApiResponse<Map<String, Object>>> typeRef =
+                        new TypeReference<>() {};
+
+                ApiResponse<Map<String, Object>> response = ApiClient.get(url.toString(), typeRef);
+
+                Platform.runLater(() -> {
+                    if (response.isSuccess() && response.getData() != null) {
+                        Map<String, Object> data = response.getData();
+
+                        // Извлекаем список записей
+                        @SuppressWarnings("unchecked")
+                        List<Map<String, Object>> content =
+                                (List<Map<String, Object>>) data.get("content");
+
+                        auditList.clear();
+                        for (Map<String, Object> item : content) {
+                            AuditLogDto dto = new AuditLogDto();
+                            dto.setId(((Number) item.get("id")).longValue());
+                            dto.setUsername((String) item.get("username"));
+                            dto.setAction((String) item.get("action"));
+                            dto.setDetails((String) item.get("details"));
+                            dto.setIpAddress((String) item.get("ipAddress"));
+
+                            // Парсим timestamp (формат: "2026-04-01T14:33:36.274528")
+                            String timestampStr = (String) item.get("timestamp");
+                            if (timestampStr != null && !timestampStr.isEmpty()) {
+                                try {
+                                    // Удаляем наносекунды если нужно (оставляем только до миллисекунд)
+                                    // LocalDateTime.parse работает с ISO форматом
+                                    dto.setTimestamp(LocalDateTime.parse(timestampStr));
+                                } catch (Exception e) {
+                                    System.err.println("Failed to parse timestamp: " + timestampStr);
+                                    e.printStackTrace();
+                                }
+                            }
+
+                            auditList.add(dto);
+                        }
+
+                        // Извлекаем информацию о пагинации
+                        totalPages = ((Number) data.get("totalPages")).intValue();
+                        totalElements = ((Number) data.get("totalElements")).intValue();
+
+                        updatePaginationControls();
+                        statusLabel.setText("Всего записей: " + totalElements);
+
+                        System.out.println("Loaded " + auditList.size() + " audit records");
+
+                    } else {
+                        statusLabel.setText("Ошибка загрузки: " + response.getMessage());
+                        showAlert("Ошибка", "Не удалось загрузить журнал аудита: " + response.getMessage(),
+                                Alert.AlertType.ERROR);
+                    }
+                });
+
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    statusLabel.setText("Ошибка: " + e.getMessage());
+                    showAlert("Ошибка", "Не удалось загрузить журнал аудита: " + e.getMessage(),
+                            Alert.AlertType.ERROR);
+                });
+                e.printStackTrace();
             }
-
-            totalPages = page.getTotalPages();
-            auditList.setAll(page.getContent());
-            auditTable.setItems(auditList);
-
-            pageLabel.setText("Страница " + (currentPage + 1) + " из " + Math.max(1, totalPages));
-
-            prevButton.setDisable(currentPage == 0);
-            nextButton.setDisable(currentPage >= totalPages - 1);
-
-        } catch (Exception e) {
-            statusLabel.setText("Ошибка загрузки: " + e.getMessage());
-            e.printStackTrace();
-        }
+        }).start();
     }
 
-    private void updateStatusInfo() {
-        try {
-            int total = auditService.getTotalCount();
-            statusLabel.setText("Всего записей: " + total);
-        } catch (Exception e) {
-            statusLabel.setText("Всего записей: ?");
-        }
+    /**
+     * Обновляет состояние элементов управления пагинацией
+     */
+    private void updatePaginationControls() {
+        pageLabel.setText("Страница " + (currentPage + 1) + " из " + Math.max(1, totalPages));
+        prevButton.setDisable(currentPage == 0);
+        nextButton.setDisable(currentPage >= totalPages - 1);
     }
+
+    // ==================== ОБРАБОТЧИКИ СОБЫТИЙ ====================
 
     @FXML
     private void handleSearch() {
         currentPage = 0;
         currentUserFilter = userFilterField.getText().trim();
-        currentActionFilter = actionFilterComboBox.getValue();
+        if (currentUserFilter.isEmpty()) {
+            currentUserFilter = null;
+        }
         loadAuditLogs();
     }
 
     @FXML
     private void handleReset() {
         userFilterField.clear();
-        actionFilterComboBox.getSelectionModel().clearSelection();
+        actionFilterComboBox.setValue("");
         currentPage = 0;
         currentUserFilter = null;
         currentActionFilter = null;
@@ -226,6 +332,10 @@ public class AuditController {
         });
     }
 
+
+    /**
+     * Экспорт в Excel (XLSX)
+     */
     private void exportToExcel() {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Сохранить журнал аудита");
@@ -239,6 +349,7 @@ public class AuditController {
             try (Workbook workbook = new XSSFWorkbook()) {
                 Sheet sheet = workbook.createSheet("Журнал аудита");
 
+                // Стиль для заголовков
                 CellStyle headerStyle = workbook.createCellStyle();
                 Font headerFont = workbook.createFont();
                 headerFont.setBold(true);
@@ -246,6 +357,7 @@ public class AuditController {
                 headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
                 headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
+                // Заголовки
                 String[] headers = {"Время", "Пользователь", "Действие", "Детали", "IP адрес"};
                 Row headerRow = sheet.createRow(0);
                 for (int i = 0; i < headers.length; i++) {
@@ -254,16 +366,19 @@ public class AuditController {
                     cell.setCellStyle(headerStyle);
                 }
 
+                // Данные
                 int rowNum = 1;
                 for (AuditLogDto log : auditList) {
                     Row row = sheet.createRow(rowNum++);
-                    row.createCell(0).setCellValue(log.timestamp().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss")));
-                    row.createCell(1).setCellValue(log.username());
-                    row.createCell(2).setCellValue(log.action().toString());
-                    row.createCell(3).setCellValue(log.details() != null ? log.details() : "");
-                    row.createCell(4).setCellValue(log.ipAddress() != null ? log.ipAddress() : "");
+                    row.createCell(0).setCellValue(
+                            log.getTimestamp() != null ? log.getTimestamp().format(DISPLAY_FORMATTER) : "");
+                    row.createCell(1).setCellValue(log.getUsername());
+                    row.createCell(2).setCellValue(log.getAction());
+                    row.createCell(3).setCellValue(log.getDetails() != null ? log.getDetails() : "");
+                    row.createCell(4).setCellValue(log.getIpAddress() != null ? log.getIpAddress() : "");
                 }
 
+                // Автоширина колонок
                 for (int i = 0; i < headers.length; i++) {
                     sheet.autoSizeColumn(i);
                 }
@@ -272,15 +387,20 @@ public class AuditController {
                     workbook.write(fos);
                 }
 
-                showInfo("Экспорт в Excel завершён: " + file.getName());
+                showAlert("Успешно", "Экспорт в Excel завершён: " + file.getName(),
+                        Alert.AlertType.INFORMATION);
 
             } catch (IOException e) {
-                showError("Ошибка экспорта в Excel: " + e.getMessage());
+                showAlert("Ошибка", "Ошибка экспорта в Excel: " + e.getMessage(),
+                        Alert.AlertType.ERROR);
                 e.printStackTrace();
             }
         }
     }
 
+    /**
+     * Экспорт в CSV
+     */
     private void exportToCsv() {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Сохранить журнал аудита");
@@ -291,22 +411,25 @@ public class AuditController {
 
         File file = fileChooser.showSaveDialog(auditTable.getScene().getWindow());
         if (file != null) {
-            try (PrintWriter writer = new PrintWriter(file, "UTF-8")) {
+            try (PrintWriter writer = new PrintWriter(file, StandardCharsets.UTF_8)) {
                 writer.println("Время;Пользователь;Действие;Детали;IP адрес");
 
                 for (AuditLogDto log : auditList) {
                     writer.printf("\"%s\";\"%s\";\"%s\";\"%s\";\"%s\"%n",
-                            log.timestamp().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss")),
-                            escapeCsv(log.username()),
-                            log.action().toString(),
-                            escapeCsv(log.details() != null ? log.details() : ""),
-                            escapeCsv(log.ipAddress() != null ? log.ipAddress() : "")
+                            log.getTimestamp() != null ? log.getTimestamp().format(DISPLAY_FORMATTER) : "",
+                            escapeCsv(log.getUsername()),
+                            log.getAction(),
+                            escapeCsv(log.getDetails() != null ? log.getDetails() : ""),
+                            escapeCsv(log.getIpAddress() != null ? log.getIpAddress() : "")
                     );
                 }
 
-                showInfo("Экспорт в CSV завершён: " + file.getName());
+                showAlert("Успешно", "Экспорт в CSV завершён: " + file.getName(),
+                        Alert.AlertType.INFORMATION);
+
             } catch (IOException e) {
-                showError("Ошибка экспорта в CSV: " + e.getMessage());
+                showAlert("Ошибка", "Ошибка экспорта в CSV: " + e.getMessage(),
+                        Alert.AlertType.ERROR);
             }
         }
     }
@@ -316,17 +439,10 @@ public class AuditController {
         return value.replace("\"", "\"\"");
     }
 
-    private void showInfo(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Информация");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
 
-    private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Ошибка");
+    private void showAlert(String title, String message, Alert.AlertType type) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();

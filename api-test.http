@@ -77,3 +77,10 @@ Content-Type: application/json
   "email": "admin@test.ru",
   "password": "123456789"
 }
+
+
+###
+GET http://localhost:8083/api/audit
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkBtYWlsLnJ1Iiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzc1MDUwMDAyLCJleHAiOjE3NzUxMzY0MDJ9.SJhBabUl3LgJnlk8yLNzAOg2zSgpMIDCZJ5YuPB2POI
+
+

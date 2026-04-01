@@ -64,6 +64,9 @@ public class LoginController {
 
                 Platform.runLater(() -> {
                     ApiClient.setAuthToken(loginResponse.getToken());
+                    System.out.println("=== JWT TOKEN ===");
+                    System.out.println(loginResponse.getToken());
+                    System.out.println("=================");
                     openMainWindow(loginResponse.getRole(), loginResponse.getEmail());
                 });
             } catch (Exception e) {

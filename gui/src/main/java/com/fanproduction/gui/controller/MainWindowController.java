@@ -146,11 +146,11 @@ public class MainWindowController {
             tabPane.getTabs().add(moderationTab);
         }
 
-        // Вкладка "Журнал аудита" — ТОЛЬКО ДЛЯ ADMIN (будет добавлена позже)
-        // if ("ADMIN".equals(currentUserRole)) {
-        //     Tab auditTab = createAuditTab();
-        //     tabPane.getTabs().add(auditTab);
-        // }
+        // Вкладка "Журнал аудита" — ТОЛЬКО ДЛЯ ADMIN
+         if ("ADMIN".equals(currentUserRole)) {
+             Tab auditTab = createAuditTab();
+             tabPane.getTabs().add(auditTab);
+         }
 
         return tabPane;
     }
@@ -370,6 +370,29 @@ public class MainWindowController {
                 e.printStackTrace();
             }
         }).start();
+    }
+
+    /**
+     * Создает вкладку журнала аудита (только для ADMIN)
+     */
+    private Tab createAuditTab() {
+        Tab tab = new Tab("Журнал аудита");
+        tab.setClosable(false);
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/AuditView.fxml"));
+            Parent content = loader.load();
+            tab.setContent(content);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            VBox errorBox = new VBox(10);
+            errorBox.setStyle("-fx-padding: 20px;");
+            errorBox.getChildren().add(new Label("Ошибка загрузки журнала аудита: " + e.getMessage()));
+            tab.setContent(errorBox);
+        }
+
+        return tab;
     }
 
     @FXML
