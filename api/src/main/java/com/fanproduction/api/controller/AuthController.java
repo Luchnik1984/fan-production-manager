@@ -20,6 +20,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -71,9 +74,16 @@ public class AuthController {
             log.info("Authentication successful: {}", authentication.isAuthenticated());
 
             String token = jwtService.generateToken(user.getEmail(), user.getRole().name());
+            String refreshToken = jwtService.generateRefreshToken(user.getEmail());
+
+            // Обновляем информацию о последнем входе
+            user.setLastLoginAt(LocalDateTime.now());
+            user.setLoginCount(user.getLoginCount() + 1);
+            userService.updateLoginInfo(user);
 
             AuthResponse response = new AuthResponse();
             response.setToken(token);
+            response.setRefreshToken(refreshToken);
             response.setEmail(user.getEmail());
             response.setRole(user.getRole().name());
 
@@ -130,6 +140,37 @@ public class AuthController {
         response.setRole(savedUser.getRole().name());
 
         log.info("User registered: {}", savedUser.getEmail());
+
+        return response;
+    }
+
+    @PostMapping("/refresh")
+    public AuthResponse refreshToken(@RequestBody Map<String, String> request) {
+        String refreshToken = request.get("refreshToken");
+
+        if (refreshToken == null || refreshToken.isEmpty()) {
+            throw new BadCredentialsException("Refresh token is required");
+        }
+
+        if (!jwtService.isTokenValid(refreshToken) || !jwtService.isRefreshToken(refreshToken)) {
+            throw new BadCredentialsException("Invalid refresh token");
+        }
+
+        String email = jwtService.extractEmail(refreshToken);
+        UserEntity user = userService.getUserByEmail(email);
+
+        if (user == null || user.getStatus() != UserStatus.ACTIVE) {
+            throw new BadCredentialsException("User not found or not active");
+        }
+
+        String newToken = jwtService.generateToken(user.getEmail(), user.getRole().name());
+        String newRefreshToken = jwtService.generateRefreshToken(user.getEmail());
+
+        AuthResponse response = new AuthResponse();
+        response.setToken(newToken);
+        response.setRefreshToken(newRefreshToken);
+        response.setEmail(user.getEmail());
+        response.setRole(user.getRole().name());
 
         return response;
     }
