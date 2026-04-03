@@ -1,5 +1,6 @@
 package com.fanproduction.gui.controller;
 
+import com.fanproduction.core.util.UserPreferences;
 import com.fanproduction.gui.client.ApiClient;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
@@ -65,8 +66,6 @@ public class MainWindowController {
         this.currentUserEmail = email;
         updateStatusBarUserInfo();
     }
-
-    // ==================== ИНИЦИАЛИЗАЦИЯ ====================
 
     @FXML
     private void initialize() {
@@ -382,6 +381,18 @@ public class MainWindowController {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/AuditView.fxml"));
             Parent content = loader.load();
+
+            // Сохраняем ссылку на контроллер
+            AuditController controller = loader.getController();
+
+            // Добавляем слушатель на выделение вкладки
+            tab.setOnSelectionChanged(event -> {
+                if (tab.isSelected() && controller != null) {
+                    // При переключении на вкладку аудита обновляем данные
+                    controller.refresh();
+                }
+            });
+
             tab.setContent(content);
 
         } catch (IOException e) {
@@ -420,6 +431,10 @@ public class MainWindowController {
 
     @FXML
     private void handleLogout() {
+
+        // Очищаем сохранённые данные "Запомнить меня"
+        UserPreferences.clearRememberData();
+
         if (timeUpdater != null) {
             timeUpdater.stop();
         }
