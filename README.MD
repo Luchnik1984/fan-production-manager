@@ -85,17 +85,29 @@ mvn -pl application exec:java "-Dexec.mainClass=com.fanproduction.application.te
 ```
 
 ## Запуск приложения
+
+### Компиляция проекта
 ```bash
-mvn -pl application exec:java "-Dexec.mainClass=com.fanproduction.application.Main"
+  mvn clean compile 
+```
+
+### Инсталляция проекта
+```bash
+  mvn clean install 
+```
+
+### Запуск API
+```bash
+mvn -pl api spring-boot:run
+```
+
+### Запуск GUI
+```bash
+mvn -pl gui clean compile exec:java "-Dexec.mainClass=com.fanproduction.gui.LoginApplication"
 ```
 
 ### Собрать и запустить fat JAR
 ```bash
-java -jar application/target/application-0.0.1-SNAPSHOT-jar-with-dependencies.jar
-mvn clean package -DskipTests
-```
-
-```bash
-java -jar application/target/application-0.0.1-SNAPSHOT.jar
+java -jar gui/target/gui-0.0.1-SNAPSHOT.jar
 mvn clean package -DskipTests
 ```

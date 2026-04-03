@@ -1,20 +1,20 @@
 package com.fanproduction.services.impl;
 
-import com.fanproduction.core.context.SessionContext;
 import com.fanproduction.core.dto.ProfileDto;
 import com.fanproduction.core.dto.UserDto;
 import com.fanproduction.core.entity.UserEntity;
 import com.fanproduction.core.enums.AuditAction;
 import com.fanproduction.core.enums.UserStatus;
+import com.fanproduction.core.event.AuditEvent;
 import com.fanproduction.core.exception.ValidationException;
 import com.fanproduction.repositories.UserRepository;
-import com.fanproduction.services.AuditService;
 import com.fanproduction.services.UserService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,31 +31,15 @@ public class UserServiceImpl implements UserService {
     private UserRepository userRepository;
 
     @Autowired
-    private AuditService auditService;
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
+    private ApplicationEventPublisher eventPublisher;  // ← Добавляем издатель событий
 
     // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
 
-    private void checkAdmin() {
-        if (!SessionContext.isAdmin()) {
-            throw new SecurityException("Доступ запрещён. Требуются права администратора");
-        }
-    }
-
-    private void checkAuthenticated() {
-        if (!SessionContext.isAuthenticated()) {
-            throw new SecurityException("Пользователь не авторизован");
-        }
-    }
-
-    private void checkOwner(String email) {
-        checkAuthenticated();
-        String currentUserEmail = SessionContext.getCurrentUser().getEmail();
-        if (!currentUserEmail.equals(email) && !SessionContext.isAdmin()) {
-            throw new SecurityException("Доступ запрещён. Вы можете изменять только свой профиль");
-        }
+    private void publishAuditEvent(String username, AuditAction action, String details) {
+        eventPublisher.publishEvent(new AuditEvent(this, username, action, details));
     }
 
     // ==================== ОСНОВНЫЕ МЕТОДЫ ====================
@@ -85,7 +69,8 @@ public class UserServiceImpl implements UserService {
 
         UserEntity savedUser = userRepository.save(user);
 
-        auditService.log(savedUser.getEmail(), AuditAction.REGISTER,
+        // Публикуем событие аудита
+        publishAuditEvent(savedUser.getEmail(), AuditAction.REGISTER,
                 "Регистрация пользователя с ролью: " + savedUser.getRole());
 
         return savedUser;
@@ -105,7 +90,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserDto> getUsersByStatus(UserStatus status) {
-        checkAdmin();
         return userRepository.findByStatus(status).stream()
                 .map(this::mapToUserDto)
                 .collect(Collectors.toList());
@@ -113,7 +97,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserDto> getAllUsers() {
-        checkAdmin();
         return userRepository.findAll().stream()
                 .map(this::mapToUserDto)
                 .collect(Collectors.toList());
@@ -122,12 +105,9 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void approveUser(Long userId, String adminEmail) {
-        checkAdmin();
-
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
-        // Разрешаем подтверждать PENDING и REJECTED
         if (user.getStatus() != UserStatus.PENDING && user.getStatus() != UserStatus.REJECTED) {
             throw new IllegalArgumentException("Подтверждение возможно только для ожидающих или отклонённых пользователей");
         }
@@ -136,22 +116,19 @@ public class UserServiceImpl implements UserService {
         user.setApprovedBy(adminEmail);
         user.setApprovedAt(LocalDateTime.now());
 
-        // Очищаем причину отклонения, если была
         if (user.getStatus() == UserStatus.REJECTED) {
             user.setRejectionReason(null);
         }
 
         userRepository.save(user);
 
-        auditService.log(adminEmail, AuditAction.APPROVE_USER,
+        publishAuditEvent(adminEmail, AuditAction.APPROVE_USER,
                 "Подтверждена регистрация пользователя: " + user.getEmail());
     }
 
     @Override
     @Transactional
     public void rejectUser(Long userId, String adminEmail, String reason) {
-        checkAdmin();
-
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
@@ -162,15 +139,13 @@ public class UserServiceImpl implements UserService {
 
         userRepository.save(user);
 
-        auditService.log(adminEmail, AuditAction.REJECT_USER,
+        publishAuditEvent(adminEmail, AuditAction.REJECT_USER,
                 "Отклонена регистрация пользователя: " + user.getEmail() + ". Причина: " + reason);
     }
 
     @Override
     @Transactional
     public void blockUser(Long userId, String adminEmail, String reason) {
-        checkAdmin();
-
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
@@ -181,15 +156,13 @@ public class UserServiceImpl implements UserService {
 
         userRepository.save(user);
 
-        auditService.log(adminEmail, AuditAction.BLOCK_USER,
+        publishAuditEvent(adminEmail, AuditAction.BLOCK_USER,
                 "Заблокирован пользователь: " + user.getEmail() + ". Причина: " + reason);
     }
 
     @Override
     @Transactional
     public void unblockUser(Long userId, String adminEmail) {
-        checkAdmin();
-
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
@@ -199,7 +172,7 @@ public class UserServiceImpl implements UserService {
 
         userRepository.save(user);
 
-        auditService.log(adminEmail, AuditAction.UNBLOCK_USER,
+        publishAuditEvent(adminEmail, AuditAction.UNBLOCK_USER,
                 "Разблокирован пользователь: " + user.getEmail());
     }
 
@@ -223,8 +196,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public ProfileDto getCurrentUserProfile(String email) {
-        checkAuthenticated();
-
         String normalizedEmail = email.trim().toLowerCase();
         return userRepository.findByEmail(normalizedEmail)
                 .map(this::mapToProfileDto)
@@ -234,8 +205,6 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void updateProfile(String email, String firstName, String lastName, String phone) {
-        checkOwner(email);
-
         String normalizedEmail = email.trim().toLowerCase();
         UserEntity user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
@@ -260,15 +229,13 @@ public class UserServiceImpl implements UserService {
 
         userRepository.save(user);
 
-        auditService.log(email, AuditAction.UPDATE_PROFILE,
+        publishAuditEvent(email, AuditAction.UPDATE_PROFILE,
                 "Обновлён профиль пользователя: " + email);
     }
 
     @Override
     @Transactional
     public void changePassword(String email, String oldPassword, String newPassword) {
-        checkOwner(email);
-
         String normalizedEmail = email.trim().toLowerCase();
         UserEntity user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
@@ -284,7 +251,7 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
 
-        auditService.log(email, AuditAction.CHANGE_PASSWORD,
+        publishAuditEvent(email, AuditAction.CHANGE_PASSWORD,
                 "Смена пароля пользователя: " + email);
     }
 
@@ -293,7 +260,7 @@ public class UserServiceImpl implements UserService {
     public void updateLoginInfo(UserEntity user) {
         userRepository.save(user);
 
-        auditService.log(user.getEmail(), AuditAction.LOGIN_SUCCESS,
+        publishAuditEvent(user.getEmail(), AuditAction.LOGIN_SUCCESS,
                 "Вход в систему (счётчик входов: " + user.getLoginCount() + ")");
     }
 

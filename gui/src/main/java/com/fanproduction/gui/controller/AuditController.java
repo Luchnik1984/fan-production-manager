@@ -173,19 +173,28 @@ public class AuditController {
         setupFilters();
         setupTable();
         loadAuditLogs();
+
+    }
+
+    /**
+     * Публичный метод для обновления данных (вызывается из MainWindowController
+     * при переключении на вкладку аудита)
+     */
+    public void refresh() {
+        // Сбрасываем на первую страницу, но сохраняем фильтры
+        currentPage = 0;
+        loadAuditLogs();
     }
 
     /**
      * Настраивает фильтры (выпадающий список и поле ввода)
      */
     private void setupFilters() {
-        // Заполняем выпадающий список русскими названиями
         actionFilterComboBox.getItems().addAll(ACTION_FILTER_OPTIONS);
         actionFilterComboBox.setValue("Все действия");
 
         actionFilterComboBox.valueProperty().addListener((obs, old, newVal) -> {
             if (newVal != null && !"Все действия".equals(newVal)) {
-                // Преобразуем русское название в английское для API
                 currentActionFilter = getEnglishAction(newVal);
             } else {
                 currentActionFilter = null;
@@ -209,7 +218,6 @@ public class AuditController {
         usernameColumn.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getUsername()));
 
-        // Отображаем русское название действия
         actionColumn.setCellValueFactory(cellData ->
                 new SimpleStringProperty(getRussianAction(cellData.getValue().getAction())));
 
@@ -221,7 +229,6 @@ public class AuditController {
                 new SimpleStringProperty(cellData.getValue().getIpAddress() != null ?
                         cellData.getValue().getIpAddress() : ""));
 
-        // Цветовая подсветка действий (по русским названиям)
         actionColumn.setCellFactory(column -> new TableCell<AuditLogDto, String>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -307,12 +314,8 @@ public class AuditController {
                         updatePaginationControls();
                         statusLabel.setText("Всего записей: " + totalElements);
 
-                        System.out.println("Loaded " + auditList.size() + " audit records");
-
                     } else {
                         statusLabel.setText("Ошибка загрузки: " + response.getMessage());
-                        showAlert("Ошибка", "Не удалось загрузить журнал аудита: " + response.getMessage(),
-                                Alert.AlertType.ERROR);
                     }
                 });
 

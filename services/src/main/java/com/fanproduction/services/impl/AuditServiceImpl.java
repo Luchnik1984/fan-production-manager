@@ -1,9 +1,9 @@
 package com.fanproduction.services.impl;
 
-import com.fanproduction.core.context.SessionContext;
 import com.fanproduction.core.dto.AuditLogDto;
 import com.fanproduction.core.entity.AuditLog;
 import com.fanproduction.core.enums.AuditAction;
+import com.fanproduction.core.security.CurrentUserProvider;
 import com.fanproduction.repositories.AuditLogRepository;
 import com.fanproduction.services.AuditService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +23,9 @@ public class AuditServiceImpl implements AuditService {
     @Autowired
     private AuditLogRepository auditLogRepository;
 
+    @Autowired
+    private CurrentUserProvider currentUserProvider;
+
     @Value("${audit.retention.days:90}")
     private int retentionDays;
 
@@ -32,9 +35,10 @@ public class AuditServiceImpl implements AuditService {
     @Override
     @Transactional
     public void log(AuditAction action, String details) {
-        String username = SessionContext.getCurrentUser() != null
-                ? SessionContext.getCurrentUser().getEmail()
-                : "SYSTEM";
+        String username = currentUserProvider.getCurrentUserEmail();
+        if (username == null) {
+            username = "SYSTEM";
+        }
         log(username, action, details);
     }
 
@@ -48,7 +52,8 @@ public class AuditServiceImpl implements AuditService {
         log.setIpAddress(getIpAddress());
         auditLogRepository.save(log);
 
-        // Проверяем размер журнала после каждой записи (можно вынести в отдельную задачу)
+        // Проверяем размер журнала после каждой записи
+        // Вызовы идут ВНУТРИ транзакции, поэтому отдельные @Transactional не нужны
         checkAndCleanup();
     }
 
@@ -68,21 +73,18 @@ public class AuditServiceImpl implements AuditService {
     }
 
     @Override
-    @Transactional
     public int deleteOlderThan(int days) {
         LocalDateTime cutoff = LocalDateTime.now().minusDays(days);
         return auditLogRepository.deleteByTimestampBefore(cutoff);
     }
 
     @Override
-    @Transactional
     public int keepOnlyLast(int count) {
         long total = auditLogRepository.count();
         if (total <= count) {
             return 0;
         }
         long toDelete = total - count;
-        // Получаем ID записи, после которой нужно удалить всё
         return auditLogRepository.deleteOldest(toDelete);
     }
 
@@ -91,6 +93,10 @@ public class AuditServiceImpl implements AuditService {
         return (int) auditLogRepository.count();
     }
 
+    /**
+     * Проверяет и очищает старые записи.
+     * Вызывается из транзакционного метода log(), поэтому выполняется в той же транзакции.
+     */
     private void checkAndCleanup() {
         // Проверяем по времени
         if (retentionDays > 0) {

@@ -49,8 +49,8 @@
 		<module>repositories</module>
 		<module>services</module>
 		<module>gui</module>
-		<module>application</module>
 		<module>api</module>
+		<!--		<module>application</module>-->
 	</modules>
 
 </project>

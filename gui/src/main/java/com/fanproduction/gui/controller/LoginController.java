@@ -1,8 +1,10 @@
 package com.fanproduction.gui.controller;
 
+import com.fanproduction.core.util.UserPreferences;
 import com.fanproduction.gui.client.ApiClient;
 import com.fanproduction.gui.dto.AuthResponse;
 import com.fanproduction.gui.dto.LoginRequest;
+import com.fanproduction.gui.dto.RefreshTokenRequest;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -10,6 +12,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
+import lombok.Setter;
 
 import java.io.IOException;
 
@@ -27,21 +30,62 @@ public class LoginController {
     @FXML
     private CheckBox rememberMeCheckBox;
 
+    @Setter
     private Stage primaryStage;
-
-    public void setPrimaryStage(Stage primaryStage) {
-        this.primaryStage = primaryStage;
-    }
 
     @FXML
     private void initialize() {
         emailField.textProperty().addListener((obs, old, newVal) -> clearError());
         passwordField.textProperty().addListener((obs, old, newVal) -> clearError());
+
+        // Пытаемся автоматически войти по refresh token
+        attemptAutoLogin();
     }
 
     private void clearError() {
         errorLabel.setText("");
         errorLabel.setStyle("");
+    }
+
+    /**
+     * Попытка автоматического входа по сохранённому refresh token
+     */
+    private void attemptAutoLogin() {
+        if (UserPreferences.hasValidRefreshToken()) {
+            String refreshToken = UserPreferences.getRefreshToken();
+            String savedEmail = UserPreferences.getSavedEmail();
+
+            if (savedEmail != null && !savedEmail.isEmpty()) {
+                emailField.setText(savedEmail);
+                rememberMeCheckBox.setSelected(true);
+
+                // Пытаемся обновить токен
+                new Thread(() -> {
+                    try {
+                        RefreshTokenRequest request = new RefreshTokenRequest();
+                        request.setRefreshToken(refreshToken);
+
+                        AuthResponse response = ApiClient.post("/auth/refresh", request, AuthResponse.class);
+
+                        Platform.runLater(() -> {
+                            ApiClient.setAuthToken(response.getToken());
+                            // Обновляем refresh token
+                            if (rememberMeCheckBox.isSelected()) {
+                                UserPreferences.saveRefreshToken(response.getEmail(), response.getRefreshToken());
+                            }
+                            openMainWindow(response.getRole(), response.getEmail());
+                        });
+
+                    } catch (Exception e) {
+                        // Если не удалось, просто показываем окно входа
+                        Platform.runLater(() -> {
+                            UserPreferences.clearRememberData();
+                            passwordField.requestFocus();
+                        });
+                    }
+                }).start();
+            }
+        }
     }
 
     @FXML
@@ -63,20 +107,22 @@ public class LoginController {
                 AuthResponse loginResponse = ApiClient.post("/auth/login", request, AuthResponse.class);
 
                 Platform.runLater(() -> {
+                    // Сохраняем refresh token, если выбран "Запомнить меня"
+                    if (rememberMeCheckBox.isSelected()) {
+                        UserPreferences.saveRefreshToken(loginResponse.getEmail(), loginResponse.getRefreshToken());
+                    } else {
+                        UserPreferences.clearRememberData();
+                    }
+
                     ApiClient.setAuthToken(loginResponse.getToken());
-                    System.out.println("=== JWT TOKEN ===");
-                    System.out.println(loginResponse.getToken());
-                    System.out.println("=================");
                     openMainWindow(loginResponse.getRole(), loginResponse.getEmail());
                 });
+
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     String errorMsg = e.getMessage();
                     System.out.println("Login error: " + errorMsg);
 
-                    // Обрабатываем различные сообщения об ошибках.
-
-                    // 1. Проверка на статус PENDING (ожидание подтверждения)
                     if (errorMsg.contains("ожидает подтверждения") ||
                             errorMsg.contains("подтверждения администратором") ||
                             errorMsg.contains("PENDING")) {
@@ -87,7 +133,6 @@ public class LoginController {
                                         После подтверждения вы сможете войти в систему.""",
                                 Alert.AlertType.WARNING);
 
-                        // 2. Проверка на статус REJECTED (отклонена)
                     } else if (errorMsg.contains("отклонена") ||
                             errorMsg.contains("REJECTED")) {
                         showAlert("Отказ",
@@ -97,7 +142,6 @@ public class LoginController {
                                         Обратитесь к администратору для уточнения причин.""",
                                 Alert.AlertType.ERROR);
 
-                        // 3. Проверка на статус BLOCKED (заблокирован)
                     } else if (errorMsg.contains("заблокирован") ||
                             errorMsg.contains("BLOCKED")) {
                         showAlert("Блокировка",
@@ -107,7 +151,6 @@ public class LoginController {
                                         Обратитесь к администратору для выяснения причин.""",
                                 Alert.AlertType.ERROR);
 
-                        // 4. Пользователь не найден
                     } else if (errorMsg.contains("не найден") ||
                             errorMsg.contains("User not found")) {
                         showAlert("Ошибка",
@@ -117,7 +160,6 @@ public class LoginController {
                                         Проверьте правильность ввода email.""",
                                 Alert.AlertType.ERROR);
 
-                        // 5. Неверный пароль
                     } else if (errorMsg.contains("Неверный пароль") ||
                             errorMsg.contains("Bad credentials") ||
                             errorMsg.contains("пароль")) {
@@ -128,7 +170,6 @@ public class LoginController {
                                         Пожалуйста, проверьте правильность ввода пароля.""",
                                 Alert.AlertType.ERROR);
 
-                        // 6. Все остальные ошибки
                     } else {
                         showAlert("Ошибка", "Ошибка входа: " + errorMsg, Alert.AlertType.ERROR);
                     }
@@ -144,14 +185,13 @@ public class LoginController {
         try {
             Stage mainStage = new Stage();
 
-            FXMLLoader loader = new FXMLLoader(getClass().getResource(
-                    "/com/fanproduction/gui/view/MainWindow.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/MainWindow.fxml"));
             Parent root = loader.load();
 
             MainWindowController controller = loader.getController();
             controller.setStage(mainStage);
             controller.setCurrentUserRole(userRole);
-            controller.setCurrentUserEmail(userEmail);  // Добавляем передачу email
+            controller.setCurrentUserEmail(userEmail);
 
             Scene scene = new Scene(root, 1024, 768);
             mainStage.setScene(scene);
@@ -159,6 +199,7 @@ public class LoginController {
             mainStage.show();
 
             primaryStage.close();
+
         } catch (IOException e) {
             showAlert("Ошибка", "Ошибка открытия главного окна: " + e.getMessage(), Alert.AlertType.ERROR);
         }

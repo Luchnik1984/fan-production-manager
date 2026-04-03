@@ -1,5 +1,6 @@
-package com.fanproduction.core.exception;
+package com.fanproduction.gui.util;
 
+import com.fanproduction.core.exception.ValidationException;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import org.slf4j.Logger;
@@ -49,8 +50,10 @@ public class GlobalExceptionHandler implements Thread.UncaughtExceptionHandler {
         if (e.getMessage() != null && e.getMessage().contains("connection")) {
             return "Потеряно соединение с базой данных. Проверьте подключение.";
         }
-        return "Произошла непредвиденная ошибка. Пожалуйста, перезапустите приложение.\n\n" +
-                "Если ошибка повторяется, обратитесь в службу поддержки.";
+        return """
+                Произошла непредвиденная ошибка. Пожалуйста, перезапустите приложение.
+                
+                Если ошибка повторяется, обратитесь в службу поддержки.""";
     }
 
     public static void register() {
