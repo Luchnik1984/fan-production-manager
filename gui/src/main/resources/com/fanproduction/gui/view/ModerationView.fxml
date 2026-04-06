@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="10" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fanproduction.gui.controller.ModerationController">
+    <padding>
+        <Insets bottom="10" left="10" right="10" top="10" />
+    </padding>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Фильтр по статусу:" />
+        <ComboBox fx:id="statusFilterComboBox" prefWidth="120" />
+        <Region HBox.hgrow="ALWAYS" />
+        <Label fx:id="statusLabel" text="Найдено: 0" />
+    </HBox>
+
+    <TableView fx:id="usersTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="idColumn" text="ID" prefWidth="60" />
+            <TableColumn fx:id="emailColumn" text="Email" prefWidth="200" />
+            <TableColumn fx:id="nameColumn" text="Имя" prefWidth="150" />
+            <TableColumn fx:id="phoneColumn" text="Телефон" prefWidth="120" />
+            <TableColumn fx:id="roleColumn" text="Роль" prefWidth="100" />
+            <TableColumn fx:id="statusColumn" text="Статус" prefWidth="100" />
+            <TableColumn fx:id="createdAtColumn" text="Дата регистрации" prefWidth="150" />
+            <TableColumn fx:id="approvedByColumn" text="Подтвердил" prefWidth="150" />
+            <TableColumn fx:id="rejectionReasonColumn" text="Причина отклонения" prefWidth="200" />
+        </columns>
+    </TableView>
+
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button fx:id="approveButton" text="Подтвердить" style="-fx-background-color: #4CAF50; -fx-text-fill: white;" disable="true" />
+        <Button fx:id="rejectButton" text="Отклонить" style="-fx-background-color: #f44336; -fx-text-fill: white;" disable="true" />
+        <Button fx:id="blockButton" text="Заблокировать" style="-fx-background-color: #ff9800; -fx-text-fill: white;" disable="true" />
+        <Button fx:id="unblockButton" text="Разблокировать" style="-fx-background-color: #2196F3; -fx-text-fill: white;" disable="true" />
+    </HBox>
+</VBox>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="10" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.fanproduction.gui.controller.AuditController">
+    <padding>
+        <Insets bottom="10" left="10" right="10" top="10" />
+    </padding>
+
+    <!-- Панель фильтров -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Фильтр по действию:" />
+        <ComboBox fx:id="actionFilterComboBox" prefWidth="180" />
+        <Label text="Пользователь:" />
+        <TextField fx:id="userFilterField" promptText="Email пользователя" prefWidth="200" />
+        <Button fx:id="searchButton" text="Поиск" onAction="#handleSearch" />
+        <Button fx:id="resetButton" text="Сбросить" onAction="#handleReset" />
+        <Region HBox.hgrow="ALWAYS" />
+        <Label fx:id="statusLabel" text="Всего: 0" />
+    </HBox>
+
+    <!-- Таблица аудита -->
+    <TableView fx:id="auditTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="timestampColumn" text="Время" prefWidth="150" />
+            <TableColumn fx:id="usernameColumn" text="Пользователь" prefWidth="150" />
+            <TableColumn fx:id="actionColumn" text="Действие" prefWidth="120" />
+            <TableColumn fx:id="detailsColumn" text="Детали" prefWidth="400" />
+            <TableColumn fx:id="ipAddressColumn" text="IP адрес" prefWidth="120" />
+        </columns>
+        <columnResizePolicy>
+            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+        </columnResizePolicy>
+    </TableView>
+
+    <!-- Панель пагинации и экспорта -->
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button fx:id="exportButton" text="Экспорт" onAction="#showExportDialog" />
+        <Button fx:id="prevButton" text="Предыдущая" onAction="#handlePrevPage" disable="true" />
+        <Label fx:id="pageLabel" text="Страница 1 из 1" />
+        <Button fx:id="nextButton" text="Следующая" onAction="#handleNextPage" disable="true" />
+    </HBox>
+</VBox>

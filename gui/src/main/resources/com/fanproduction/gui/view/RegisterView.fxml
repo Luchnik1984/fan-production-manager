@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox alignment="CENTER" spacing="10" style="-fx-background-color: #f4f4f4;" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fanproduction.gui.controller.RegisterController">
+    <padding>
+        <Insets bottom="30" left="30" right="30" top="30" />
+    </padding>
+
+    <Label text="Регистрация нового пользователя">
+        <font>
+            <Font name="System Bold" size="18" />
+        </font>
+    </Label>
+
+    <!-- ========== ВЫБОР РОЛИ ========== -->
+    <VBox spacing="3" style="-fx-pref-width: 300px;">
+        <Label text="Роль:*" />
+        <ComboBox fx:id="roleComboBox" prefWidth="300" />
+    </VBox>
+
+    <!-- ========== Секретный ключ (для ADMIN) ========== -->
+    <VBox fx:id="secretKeyBox" spacing="3" style="-fx-pref-width: 300px;" visible="false" managed="false">
+        <Label text="Секретный ключ администратора:*" />
+        <PasswordField fx:id="secretKeyField" promptText="Введите секретный ключ" />
+    </VBox>
+
+    <!-- ========== Email ========== -->
+    <VBox spacing="3" style="-fx-pref-width: 300px;">
+        <Label text="Email:*" />
+        <TextField fx:id="emailField" promptText="example@mail.ru" />
+        <Label fx:id="emailErrorLabel" text="" textFill="red" style="-fx-font-size: 10px;" wrapText="true" />
+    </VBox>
+
+    <!-- ========== Пароль ========== -->
+    <VBox spacing="3" style="-fx-pref-width: 300px;">
+        <Label text="Пароль:*" />
+        <PasswordField fx:id="passwordField" promptText="не менее 4 символов" />
+        <Label fx:id="passwordErrorLabel" text="" textFill="red" style="-fx-font-size: 10px;" wrapText="true" />
+    </VBox>
+
+    <!-- ========== Подтверждение пароля ========== -->
+    <VBox spacing="3" style="-fx-pref-width: 300px;">
+        <Label text="Подтверждение пароля:*" />
+        <PasswordField fx:id="confirmPasswordField" promptText="повторите пароль" />
+    </VBox>
+
+    <!-- ========== Имя ========== -->
+    <VBox spacing="3" style="-fx-pref-width: 300px;">
+        <Label text="Имя:*" />
+        <TextField fx:id="firstNameField" promptText="от 2 до 50 символов" />
+        <Label fx:id="firstNameErrorLabel" text="" textFill="red" style="-fx-font-size: 10px;" wrapText="true" />
+    </VBox>
+
+    <!-- ========== Фамилия ========== -->
+    <VBox spacing="3" style="-fx-pref-width: 300px;">
+        <Label text="Фамилия:*" />
+        <TextField fx:id="lastNameField" promptText="от 2 до 50 символов" />
+        <Label fx:id="lastNameErrorLabel" text="" textFill="red" style="-fx-font-size: 10px;" wrapText="true" />
+    </VBox>
+
+    <!-- ========== Телефон ========== -->
+    <VBox spacing="3" style="-fx-pref-width: 300px;">
+        <Label text="Телефон:*" />
+        <TextField fx:id="phoneField" promptText="+7 XXX XXX-XX-XX" />
+        <Label fx:id="phoneErrorLabel" text="" textFill="red" style="-fx-font-size: 10px;" wrapText="true" />
+    </VBox>
+
+    <!-- Общий лейбл для ошибок -->
+    <Label fx:id="errorLabel" text="" textFill="red" wrapText="true" style="-fx-pref-width: 300px;" />
+
+    <!-- Кнопки -->
+    <HBox alignment="CENTER" spacing="10">
+        <Button fx:id="registerButton" mnemonicParsing="false" onAction="#handleRegister" prefWidth="120" text="Зарегистрировать" />
+        <Button fx:id="backButton" mnemonicParsing="false" onAction="#handleBack" prefWidth="120" text="Назад" />
+    </HBox>
+
+    <Label text="* обязательные поля" style="-fx-font-size: 10px; -fx-text-fill: gray;" />
+</VBox>

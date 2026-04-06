@@ -1,0 +1,20 @@
+package com.fanproduction.core.enums;
+
+public enum AuditAction {
+    LOGIN_SUCCESS,
+    LOGIN_FAILED,
+    LOGOUT,
+    REGISTER,
+    APPROVE_USER,
+    REJECT_USER,
+    BLOCK_USER,
+    UNBLOCK_USER,
+    CREATE_CARD,
+    UPDATE_CARD,
+    DELETE_CARD,
+    GENERATE_TZ,
+    GENERATE_PASSPORT,
+    GENERATE_PLATE,
+    UPDATE_PROFILE,
+    CHANGE_PASSWORD
+}

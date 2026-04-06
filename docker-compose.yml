@@ -5,11 +5,11 @@ services:
     image: postgres:15-alpine
     container_name: fan-production-db
     environment:
-      POSTGRES_DB: fanproduction
-      POSTGRES_USER: fanuser
-      POSTGRES_PASSWORD: fanpassword
+      POSTGRES_DB: ${DB_NAME:-production}
+      POSTGRES_USER: ${DB_USERNAME:-user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
     ports:
-      - "5434:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped

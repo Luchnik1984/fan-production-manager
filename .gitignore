@@ -81,6 +81,14 @@ Thumbs.db
 # Файлы конфигурации с паролями (никогда не коммитить!)
 application-dev.properties
 application-local.properties
+*.properties
+!application.properties.example
+
+# Environment variables
+.env
+.env.dev
+.env.local
+.env.*.local
 
 # Логи
 logs/

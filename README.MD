@@ -12,11 +12,27 @@
 - Docker desktop v29.1.2
 
 ## Команды:
+### Файл настроек окружения
+- Создайте файл настроек окружения.
+  Файл содержит настройки подключения к БД и приложения.
+  Отредактируйте его
+```bash
+  cp .env.example .env
+```
+
+```bash
+  cp .env.example .env.dev
+```
 
 ### Компиляция проекта
 ```bash
   ./mvnw clean compile 
 ```
+### Запуск API
+```bash
+mvn -pl api spring-boot:run
+```
+
 ## Сборка пакета:
 ```bash
    ./mvnw package 
@@ -43,8 +59,6 @@
      docker logs fan-production-db
 ```
 
-
-
 ### Остановка PostgreSQL
 ```bash
      docker-compose -f docker-compose.yml down
@@ -58,4 +72,42 @@
 ### Удаление контейнера, созданного docker-compose.db.yml
 ```bash
      docker-compose -f docker-compose.yml down --rmi all
+```
+
+
+## Запуски тестов
+```bash
+mvn -pl application exec:java "-Dexec.mainClass=com.fanproduction.application.test.ManualTest" "-Dexec.classpathScope=test"
+```
+
+```bash
+mvn -pl application exec:java "-Dexec.mainClass=com.fanproduction.application.test.ManualTest" "-Dexec.classpathScope=test" "-Dapp.env=dev"
+```
+
+## Запуск приложения
+
+### Компиляция проекта
+```bash
+  mvn clean compile 
+```
+
+### Инсталляция проекта
+```bash
+  mvn clean install 
+```
+
+### Запуск API
+```bash
+mvn -pl api spring-boot:run
+```
+
+### Запуск GUI
+```bash
+mvn -pl gui clean compile exec:java "-Dexec.mainClass=com.fanproduction.gui.LoginApplication"
+```
+
+### Собрать и запустить fat JAR
+```bash
+java -jar gui/target/gui-0.0.1-SNAPSHOT.jar
+mvn clean package -DskipTests
 ```
