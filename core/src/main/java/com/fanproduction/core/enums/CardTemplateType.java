@@ -1,24 +1,27 @@
 package com.fanproduction.core.enums;
 
+import lombok.Getter;
+
 /**
  * Типы карточек продукции.
  */
+@Getter
 public enum CardTemplateType {
-    MOTOR("Электродвигатель"),
-    AXIAL_FAN("Осевой вентилятор"),
-    RADIAL_FAN("Радиальный вентилятор"),
-    DUCT_FAN("Канальный вентилятор"),
-    CUP("Стакан"),
-    ACCESSORY("Комплектующее");
+    MOTOR("Электродвигатель", "motor"),
+    MOTOR_WHEEL("Мотор-колесо", "motorWheel"),
+    RADIAL_WHEEL("Радиальное колесо", "radialWheel"),
+    AXIAL_FAN("Осевой вентилятор", "axialFan"),
+    RADIAL_FAN("Радиальный вентилятор", "radialFan"),
+    DUCT_FAN("Канальный вентилятор", "ductFan"),
+    CUP("Стакан", "cup"),
+    ACCESSORY("Комплектующее", "accessory");
 
     private final String displayName;
+    private final String entityName;
 
-    CardTemplateType(String displayName) {
+    CardTemplateType(String displayName, String entityName) {
         this.displayName = displayName;
-    }
-
-    public String getDisplayName() {
-        return displayName;
+        this.entityName = entityName;
     }
 
     public static CardTemplateType fromDisplayName(String displayName) {
@@ -28,5 +31,14 @@ public enum CardTemplateType {
             }
         }
         throw new IllegalArgumentException("Unknown display name: " + displayName);
+    }
+
+    public static CardTemplateType fromEntityName(String entityName) {
+        for (CardTemplateType type : values()) {
+            if (type.entityName.equals(entityName)) {
+                return type;
+            }
+        }
+        throw new IllegalArgumentException("Unknown entity name: " + entityName);
     }
 }
