@@ -139,6 +139,10 @@ public class MainWindowController {
         Tab referencesTab = createPlaceholderTab("Справочники", "Электродвигатели, материалы, сертификаты");
         tabPane.getTabs().add(referencesTab);
 
+        // Вкладка "Карточки" — доступна всем
+        Tab catalogTab = createCatalogTab();
+        tabPane.getTabs().add(catalogTab);
+
         // Вкладка "Модерация" — ТОЛЬКО ДЛЯ ADMIN
         if ("ADMIN".equals(currentUserRole)) {
             Tab moderationTab = createModerationTab();
@@ -146,10 +150,11 @@ public class MainWindowController {
         }
 
         // Вкладка "Журнал аудита" — ТОЛЬКО ДЛЯ ADMIN
-         if ("ADMIN".equals(currentUserRole)) {
+        if ("ADMIN".equals(currentUserRole)) {
              Tab auditTab = createAuditTab();
              tabPane.getTabs().add(auditTab);
          }
+
 
         return tabPane;
     }
@@ -400,6 +405,28 @@ public class MainWindowController {
             VBox errorBox = new VBox(10);
             errorBox.setStyle("-fx-padding: 20px;");
             errorBox.getChildren().add(new Label("Ошибка загрузки журнала аудита: " + e.getMessage()));
+            tab.setContent(errorBox);
+        }
+
+        return tab;
+    }
+
+    /**
+     * Создаёт вкладку каталога продукции
+     */
+    private Tab createCatalogTab() {
+        Tab tab = new Tab("Карточки");
+        tab.setClosable(false);
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/CatalogView.fxml"));
+            Parent content = loader.load();
+            tab.setContent(content);
+        } catch (IOException e) {
+            e.printStackTrace();
+            VBox errorBox = new VBox(10);
+            errorBox.setStyle("-fx-padding: 20px;");
+            errorBox.getChildren().add(new Label("Ошибка загрузки каталога: " + e.getMessage()));
             tab.setContent(errorBox);
         }
 
