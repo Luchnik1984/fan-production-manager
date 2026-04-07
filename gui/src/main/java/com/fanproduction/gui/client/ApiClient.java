@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -19,15 +21,9 @@ public class ApiClient {
     private static final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule());
 
+    @Getter
+    @Setter
     private static String authToken;
-
-    public static void setAuthToken(String token) {
-        authToken = token;
-    }
-
-    public static String getAuthToken() {
-        return authToken;
-    }
 
     public static void clearAuthToken() {
         authToken = null;
@@ -171,6 +167,41 @@ public class ApiClient {
             return responseBody;
         } catch (Exception e) {
             return responseBody;
+        }
+    }
+
+    /**
+     * DELETE запрос
+     */
+    public static <T> T delete(String path, TypeReference<T> typeReference) throws Exception {
+        HttpRequest request = createRequestBuilder(path)
+                .DELETE()
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() >= 200 && response.statusCode() < 300) {
+            if (typeReference != null) {
+                return objectMapper.readValue(response.body(), typeReference);
+            }
+            return null;
+        } else {
+            throw new RuntimeException("API error: " + response.statusCode() + " - " + response.body());
+        }
+    }
+
+    /**
+     * DELETE запрос без возвращаемого типа
+     */
+    public static void delete(String path) throws Exception {
+        HttpRequest request = createRequestBuilder(path)
+                .DELETE()
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new RuntimeException("API error: " + response.statusCode() + " - " + response.body());
         }
     }
 }
