@@ -10,6 +10,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.stage.Stage;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -217,9 +218,7 @@ public class CatalogController {
                         }
                     });
                 } catch (Exception e) {
-                    Platform.runLater(() -> {
-                        statusLabel.setText("Ошибка поиска: " + e.getMessage());
-                    });
+                    Platform.runLater(() -> statusLabel.setText("Ошибка поиска: " + e.getMessage()));
                 }
             }).start();
         } else {
@@ -254,8 +253,25 @@ public class CatalogController {
 
     @FXML
     private void handleCreate() {
-        // TODO: Открыть диалог создания карточки
-        showAlert("Информация", "Форма создания карточки будет доступна в следующем US", Alert.AlertType.INFORMATION);
+        // Получаем Stage из текущего окна
+        Stage ownerStage = (Stage) productsTable.getScene().getWindow();
+
+        // Диалог выбора типа карточки
+        ChoiceDialog<String> typeDialog = new ChoiceDialog<>("AXIAL_FAN",
+                "MOTOR", "MOTOR_WHEEL", "RADIAL_WHEEL", "AXIAL_FAN", "RADIAL_FAN", "DUCT_FAN", "CUP", "ACCESSORY");
+        typeDialog.setTitle("Создание карточки");
+        typeDialog.setHeaderText("Выберите тип создаваемой карточки");
+        typeDialog.setContentText("Тип продукции:");
+
+        typeDialog.showAndWait().ifPresent(cardType -> {
+            CardFormController form = new CardFormController(
+                    ownerStage,
+                    cardType,
+                    null,
+                    this::handleRefresh
+            );
+            form.show();
+        });
     }
 
     @FXML
@@ -265,8 +281,16 @@ public class CatalogController {
             showAlert("Внимание", "Выберите карточку для редактирования", Alert.AlertType.WARNING);
             return;
         }
-        // TODO: Открыть диалог редактирования карточки
-        showAlert("Информация", "Форма редактирования карточки будет доступна в следующем US", Alert.AlertType.INFORMATION);
+
+        Stage ownerStage = (Stage) productsTable.getScene().getWindow();
+
+        CardFormController form = new CardFormController(
+                ownerStage,
+                selected.getCardType(),
+                selected,
+                this::handleRefresh
+        );
+        form.show();
     }
 
     @FXML
@@ -295,9 +319,7 @@ public class CatalogController {
                         }
                     });
                 } catch (Exception e) {
-                    Platform.runLater(() -> {
-                        showAlert("Ошибка", "Ошибка удаления: " + e.getMessage(), Alert.AlertType.ERROR);
-                    });
+                    Platform.runLater(() -> showAlert("Ошибка", "Ошибка удаления: " + e.getMessage(), Alert.AlertType.ERROR));
                 }
             }).start();
         }
