@@ -28,13 +28,6 @@ public class TableColumnConfigurator {
         nameCol.setPrefWidth(300);
         allColumns.add(nameCol);
 
-        // Код (опционально, но полезно для поиска)
-        TableColumn<ProductCardDto, String> codeCol = new TableColumn<>("Код");
-        codeCol.setCellValueFactory(cellData -> new SimpleStringProperty(
-                cellData.getValue().getCode() != null ? cellData.getValue().getCode() : "—"));
-        codeCol.setPrefWidth(120);
-        allColumns.add(codeCol);
-
         // Специфичные колонки для типа
         if (cardType != null) {
             allColumns.addAll(getSpecificColumns(cardType));
@@ -100,9 +93,13 @@ public class TableColumnConfigurator {
                 break;
 
             case "MOTOR_WHEEL":
+                columns.add(createStringColumn("Производитель", "manufacturer", 120));
+                columns.add(createStringColumn("Тип лопаток", "bladeType", 120));
                 columns.add(createStringColumn("Размер", "size", 80));
                 columns.add(createStringColumn("Полюсов", "poles", 80));
+                columns.add(createStringColumn("Напряжение (В)", "voltage", 90));
                 columns.add(createStringColumn("Мощность (КВт)", "powerKw", 100));
+                columns.add(createStringColumn("Масса (кг)", "weightKg", 80));
                 break;
 
             case "RADIAL_WHEEL":

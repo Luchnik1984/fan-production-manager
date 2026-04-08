@@ -50,6 +50,17 @@ public class CardViewController {
         FIELD_RUSSIAN_NAMES.put("explosionProof", "Взрывозащищённый");
         FIELD_RUSSIAN_NAMES.put("explosionMarking", "Маркировка взрывозащиты");
         FIELD_RUSSIAN_NAMES.put("fullMarking", "Полная маркировка");
+
+        // Поля мотор-колеса
+        FIELD_RUSSIAN_NAMES.put("manufacturer", "Производитель");
+        FIELD_RUSSIAN_NAMES.put("bladeType", "Тип лопаток");
+        FIELD_RUSSIAN_NAMES.put("size", "Размер");
+        FIELD_RUSSIAN_NAMES.put("voltageCode", "Код напряжения");
+//        FIELD_RUSSIAN_NAMES.put("voltage", "Напряжение (В)");
+//        FIELD_RUSSIAN_NAMES.put("powerKw", "Мощность (КВт)");
+//        FIELD_RUSSIAN_NAMES.put("ratedSpeedRpm", "Номинальная скорость (об/мин)");
+//        FIELD_RUSSIAN_NAMES.put("actualSpeedRpm", "Фактическая скорость (об/мин)");
+//        FIELD_RUSSIAN_NAMES.put("weightKg", "Масса (кг)");
     }
 
     public static void show(Stage owner, ProductCardDto card) {

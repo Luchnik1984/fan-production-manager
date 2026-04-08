@@ -80,18 +80,42 @@ public class FieldMetadataService {
         metadataMap.put("MOTOR", motorFields);
 
         // ========== Мотор-колесо (MOTOR_WHEEL) ==========
-        metadataMap.put("MOTOR_WHEEL", Arrays.asList(
-                createField("manufacturer", "Производитель", "text", false, null, null, null),
-                createField("bladeType", "Тип лопаток", "combobox", true, "RO", new String[]{"RO", "RE"}, null, "RO - впередзагнутые, RE - назадзагнутые"),
-                createField("size", "Размер", "number", true, null, null, null, "Например: 310"),
-                createField("poles", "Количество полюсов", "number", true, "4", null, null),
-                createField("voltageCode", "Код напряжения", "combobox", true, "D", new String[]{"E", "D"}, null, "E - 220В, D - 380В"),
-                createField("powerKw", "Мощность (КВт)", "double", true, null, null, null),
-                createField("ratedSpeedRpm", "Номинальная скорость", "number", false, null, null, null),
-                createField("actualSpeedRpm", "Фактическая скорость", "number", false, null, null, null),
-                createField("voltage", "Напряжение (В)", "number", true, "380", null, null),
-                createField("weightKg", "Масса (кг)", "double", false, null, null, null)
-        ));
+        List<FieldMetadataDto> motorWheelFields = new ArrayList<>();
+
+        // Производитель
+        motorWheelFields.add(createField("manufacturer", "Производитель", "text", false, null, null, null, "Например: Siemens, ABB"));
+
+        // Тип лопаток (выпадающий список)
+        motorWheelFields.add(createField("bladeType", "Тип лопаток", "combobox", true, "впередзагнутые",
+                new String[]{"впередзагнутые", "назадзагнутые"}, null, "впередзагнутые / назадзагнутые"));
+
+        // Размер
+        motorWheelFields.add(createField("size", "Размер", "number", true, null, null, null, "310, 400, 500..."));
+
+        // Количество полюсов
+        motorWheelFields.add(createField("poles", "Количество полюсов", "combobox", true, "4",
+                new String[]{"2", "4", "6", "8", "10", "12"}, null, "2, 4, 6, 8, 10, 12"));
+
+        // Код напряжения (выпадающий список)
+        motorWheelFields.add(createField("voltageCode", "Код напряжения", "combobox", true, "D",
+                new String[]{"E", "D"}, null, "E - 220В, D - 380В"));
+
+        // Напряжение (заполняется автоматически)
+        motorWheelFields.add(createField("voltage", "Напряжение (В)", "number", true, null, null, null, "заполняется автоматически из кода"));
+
+        // Мощность
+        motorWheelFields.add(createField("powerKw", "Мощность (КВт)", "double", true, null, null, null, "5,5"));
+
+        // Номинальная скорость
+        motorWheelFields.add(createField("ratedSpeedRpm", "Номинальная скорость (об/мин)", "number", false, null, null, null, "6000 / полюсов"));
+
+        // Фактическая скорость
+        motorWheelFields.add(createField("actualSpeedRpm", "Фактическая скорость (об/мин)", "number", false, null, null, null));
+
+        // Масса
+        motorWheelFields.add(createField("weightKg", "Масса (кг)", "double", false, null, null, null));
+
+        metadataMap.put("MOTOR_WHEEL", motorWheelFields);
 
         // ========== Радиальное колесо (RADIAL_WHEEL) ==========
         metadataMap.put("RADIAL_WHEEL", Arrays.asList(

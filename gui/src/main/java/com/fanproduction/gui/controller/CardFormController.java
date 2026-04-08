@@ -444,6 +444,65 @@ public class CardFormController {
         return "";
     }
 
+    /**
+     * Настройка специальных полей для мотор-колеса
+     */
+    private void setupMotorWheelSpecificFields() {
+        // Автоматическое заполнение напряжения из кода напряжения
+        ComboBox<String> voltageCodeCombo = (ComboBox<String>) fieldControls.get("voltageCode");
+        TextField voltageField = (TextField) fieldControls.get("voltage");
+
+        if (voltageCodeCombo != null && voltageField != null) {
+            voltageCodeCombo.valueProperty().addListener((obs, old, val) -> {
+                if ("E".equals(val)) {
+                    voltageField.setText("220");
+                } else if ("D".equals(val)) {
+                    voltageField.setText("380");
+                } else {
+                    voltageField.setText("");
+                }
+            });
+
+            // Устанавливаем начальное значение
+            String initialCode = voltageCodeCombo.getValue();
+            if ("E".equals(initialCode)) {
+                voltageField.setText("220");
+            } else if ("D".equals(initialCode)) {
+                voltageField.setText("380");
+            }
+        }
+
+        // Автоматический расчёт номинальной скорости
+        ComboBox<String> polesCombo = (ComboBox<String>) fieldControls.get("poles");
+        TextField ratedSpeedField = (TextField) fieldControls.get("ratedSpeedRpm");
+
+        if (polesCombo != null && ratedSpeedField != null) {
+            polesCombo.valueProperty().addListener((obs, old, val) -> {
+                if (val != null) {
+                    try {
+                        int poles = Integer.parseInt(val);
+                        int ratedSpeed = 6000 / poles;
+                        ratedSpeedField.setText(String.valueOf(ratedSpeed));
+                    } catch (NumberFormatException e) {
+                        ratedSpeedField.setText("");
+                    }
+                }
+            });
+
+            // Устанавливаем начальное значение
+            String initialPoles = polesCombo.getValue();
+            if (initialPoles != null) {
+                try {
+                    int poles = Integer.parseInt(initialPoles);
+                    int ratedSpeed = 6000 / poles;
+                    ratedSpeedField.setText(String.valueOf(ratedSpeed));
+                } catch (NumberFormatException e) {
+                    ratedSpeedField.setText("");
+                }
+            }
+        }
+    }
+
     private Object getControlValue(Control control, String fieldName, FieldMetadataDto metadata) {
         if (control instanceof TextField) {
             String text = ((TextField) control).getText().trim();

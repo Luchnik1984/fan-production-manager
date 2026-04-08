@@ -202,6 +202,10 @@ public class CatalogController {
                 return name + " " + builtMarking;
             }
         }
+        // Для мотор-колеса: "Мотор-колесо" + наименование
+        if ("MOTOR_WHEEL".equals(cardType)) {
+            return "Мотор-колесо " + name;
+        }
 
         return name;
     }
