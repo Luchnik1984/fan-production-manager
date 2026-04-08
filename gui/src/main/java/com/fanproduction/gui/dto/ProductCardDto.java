@@ -16,6 +16,7 @@ public class ProductCardDto {
     private String cardType;
     private String cardTypeDisplay;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     private String createdBy;
     private Map<String, Object> fields;
 }

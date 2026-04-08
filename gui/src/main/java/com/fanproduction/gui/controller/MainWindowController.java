@@ -127,10 +127,6 @@ public class MainWindowController {
         Tab journalTab = createPlaceholderTab("Журнал", "Производственный журнал");
         tabPane.getTabs().add(journalTab);
 
-        // Вкладка "Карточки" — доступна всем
-        Tab cardsTab = createPlaceholderTab("Карточки", "Каталог продукции");
-        tabPane.getTabs().add(cardsTab);
-
         // Вкладка "Документы" — доступна всем
         Tab documentsTab = createPlaceholderTab("Документы", "Генерация ТЗ, паспортов, табличек");
         tabPane.getTabs().add(documentsTab);

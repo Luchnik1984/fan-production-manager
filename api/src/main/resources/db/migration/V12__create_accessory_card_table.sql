@@ -1,4 +1,4 @@
--- V11__create_accessory_card_table.sql
+-- V12__create_accessory_card_table.sql
 -- Создание таблицы для комплектующих
 
 CREATE TABLE IF NOT EXISTS accessory_card (

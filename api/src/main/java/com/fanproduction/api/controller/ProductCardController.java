@@ -18,7 +18,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -152,7 +154,16 @@ public class ProductCardController {
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<List<ProductCardResponse>> searchCards(@RequestParam String query) {
         List<BaseProductCard> cards = productCardService.searchByName(query);
-        List<ProductCardResponse> responses = cards.stream()
+
+        // Дополнительный поиск по специфичным полям
+        List<BaseProductCard> additionalCards = productCardService.searchByFields(query);
+
+        // Объединяем и убираем дубликаты
+        Set<BaseProductCard> allCards = new LinkedHashSet<>();
+        allCards.addAll(cards);
+        allCards.addAll(additionalCards);
+
+        List<ProductCardResponse> responses = allCards.stream()
                 .map(productCardMapper::toResponse)
                 .collect(Collectors.toList());
         return ApiResponse.success(responses);

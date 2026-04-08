@@ -16,4 +16,5 @@ public class FieldMetadataDto {
     private String referenceType;  // для ссылок: MOTOR, MOTOR_WHEEL, RADIAL_WHEEL
     private String validation;     // regex для валидации
     private String hint;           // подсказка
+    private boolean visible = true; // видимость поля (добавляем новое поле)
 }

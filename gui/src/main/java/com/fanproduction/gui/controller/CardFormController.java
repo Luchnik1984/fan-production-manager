@@ -15,9 +15,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Контроллер для формы создания/редактирования карточки продукции.
@@ -33,6 +31,15 @@ public class CardFormController {
     private final Map<String, Control> fieldControls = new HashMap<>();
     private final Map<String, FieldMetadataDto> fieldMetadata = new HashMap<>();
     private final Map<String, TextField> referenceFields = new HashMap<>();
+
+    // Специальные поля для электродвигателя
+    private TextField ratedSpeedField;
+    private TextField fullMarkingField;
+    private String lastAutoMarking = "";
+
+    private final Map<String, Integer> fieldRows = new HashMap<>();
+    private final Map<String, Label> fieldLabels = new HashMap<>();
+    private final Map<String, Label> fieldHints = new HashMap<>();
 
     public CardFormController(Stage owner, String cardType, ProductCardDto existingCard, Runnable onSaveCallback) {
         this.stage = new Stage();
@@ -60,14 +67,13 @@ public class CardFormController {
 
         ScrollPane scrollPane = new ScrollPane(formGrid);
         scrollPane.setFitToWidth(true);
-        scrollPane.setPrefHeight(400);
+        scrollPane.setPrefHeight(450);
 
         Button saveButton = new Button("Сохранить");
         Button cancelButton = new Button("Отмена");
 
         saveButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
 
-        // Сохраняем ссылки на кнопки для использования в лямбде
         final Button finalSaveButton = saveButton;
 
         saveButton.setOnAction(e -> saveCard(finalSaveButton));
@@ -78,7 +84,7 @@ public class CardFormController {
 
         mainLayout.getChildren().addAll(titleLabel, scrollPane, buttonBox);
 
-        Scene scene = new Scene(mainLayout, 650, 550);
+        Scene scene = new Scene(mainLayout, 700, 600);
         stage.setScene(scene);
     }
 
@@ -92,7 +98,7 @@ public class CardFormController {
 
         int row = 0;
 
-        // Поле "Наименование"
+        // Поле "Наименование" (есть у всех карточек)
         Label nameLabel = new Label("Наименование:");
         nameLabel.setStyle("-fx-font-weight: bold;");
         TextField nameField = new TextField();
@@ -105,7 +111,7 @@ public class CardFormController {
         fieldControls.put("name", nameField);
         row++;
 
-        // Динамические поля
+        // Динамические поля - добавляем ВСЕ поля (и видимые, и скрытые)
         for (FieldMetadataDto field : fields) {
             Label label = new Label(field.getLabel() + (field.isRequired() ? " *" : ":"));
             label.setStyle("-fx-font-weight: bold;");
@@ -117,15 +123,41 @@ public class CardFormController {
                 grid.add(control, 1, row);
                 fieldControls.put(field.getName(), control);
                 fieldMetadata.put(field.getName(), field);
+                fieldLabels.put(field.getName(), label);
+                fieldRows.put(field.getName(), row);
 
+                // Устанавливаем видимость в соответствии с метаданными
+                boolean isVisible = field.isVisible();
+                label.setVisible(isVisible);
+                label.setManaged(isVisible);
+                control.setVisible(isVisible);
+                control.setManaged(isVisible);
+
+                // Подсказка
                 if (field.getHint() != null && !field.getHint().isEmpty()) {
                     Label hintLabel = new Label(field.getHint());
                     hintLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #888;");
                     grid.add(hintLabel, 1, row + 1);
+                    fieldHints.put(field.getName(), hintLabel);
+                    hintLabel.setVisible(isVisible);
+                    hintLabel.setManaged(isVisible);
                     row++;
                 }
             }
             row++;
+        }
+
+        // Автоматическое заполнение наименования для электродвигателя
+        if ("MOTOR".equals(cardType) && existingCard == null) {
+            TextField nameFieldCtrl = (TextField) fieldControls.get("name");
+            if (nameFieldCtrl != null && nameFieldCtrl.getText().isEmpty()) {
+                nameFieldCtrl.setText("Электродвигатель");
+            }
+        }
+
+        // Настройка специальных полей для электродвигателя
+        if ("MOTOR".equals(cardType)) {
+            setupMotorSpecificFields();
         }
 
         return grid;
@@ -166,19 +198,18 @@ public class CardFormController {
                 }
                 if (existingValue != null) comboBox.setValue(String.valueOf(existingValue));
                 if (field.getDefaultValue() != null && existingValue == null) comboBox.setValue(field.getDefaultValue());
+                comboBox.setPromptText(field.getHint());
                 return comboBox;
 
             case "boolean":
                 CheckBox checkBox = new CheckBox();
                 if (existingValue instanceof Boolean) checkBox.setSelected((Boolean) existingValue);
+                if (field.getDefaultValue() != null && existingValue == null) {
+                    checkBox.setSelected(Boolean.parseBoolean(field.getDefaultValue()));
+                }
                 return checkBox;
 
             case "reference":
-                // Для reference полей используем обычное TextField с кнопкой
-                // Но возвращаем HBox, который не является Control.
-                // Поэтому мы не можем вернуть его как Control.
-                // Вместо этого создадим отдельную обработку для reference полей.
-                // Пока возвращаем TextField, а кнопку добавим отдельно.
                 TextField refField = new TextField();
                 refField.setEditable(false);
                 refField.setPromptText("Не выбран");
@@ -187,10 +218,7 @@ public class CardFormController {
                     refField.setUserData(existingValue);
                 }
                 referenceFields.put(field.getName(), refField);
-
-                // Создаём HBox и добавляем в grid отдельно
-                // Для этого вернём специальный маркер, а добавление обработаем в createFormGrid
-                return null; // Возвращаем null, добавим отдельно
+                return refField;
 
             default:
                 TextField defaultField = new TextField();
@@ -199,12 +227,228 @@ public class CardFormController {
         }
     }
 
+    /**
+     * Настройка специальных полей для карточки электродвигателя
+     */
+    private void setupMotorSpecificFields() {
+        // Сохраняем ссылки на специальные поля
+        if (fieldControls.containsKey("ratedSpeedRpm")) {
+            ratedSpeedField = (TextField) fieldControls.get("ratedSpeedRpm");
+            ratedSpeedField.setEditable(true);
+        }
+
+        if (fieldControls.containsKey("fullMarking")) {
+            fullMarkingField = (TextField) fieldControls.get("fullMarking");
+            fullMarkingField.setEditable(true);
+        }
+
+        // Настройка условного отображения полей
+        setupConditionalVisibility();
+
+        // Добавляем слушатели для автоматического обновления номинальной скорости
+        Control polesControl = fieldControls.get("poles");
+        if (polesControl instanceof ComboBox) {
+            @SuppressWarnings("unchecked")
+            ComboBox<String> polesCombo = (ComboBox<String>) polesControl;
+            polesCombo.valueProperty().addListener((obs, old, val) -> {
+                updateRatedSpeed();
+                updateFullMarking();
+            });
+            updateRatedSpeed();
+        }
+
+        // Слушатели для обновления полной маркировки
+        TextField seriesField = (TextField) fieldControls.get("series");
+        if (seriesField != null) {
+            seriesField.textProperty().addListener((obs, old, val) -> updateFullMarking());
+        }
+
+        TextField motorTypeField = (TextField) fieldControls.get("motorType");
+        if (motorTypeField != null) {
+            motorTypeField.textProperty().addListener((obs, old, val) -> updateFullMarking());
+        }
+
+        Control climateControl = fieldControls.get("climateType");
+        if (climateControl instanceof ComboBox) {
+            @SuppressWarnings("unchecked")
+            ComboBox<String> climateCombo = (ComboBox<String>) climateControl;
+            climateCombo.valueProperty().addListener((obs, old, val) -> updateFullMarking());
+        } else if (climateControl instanceof TextField) {
+            ((TextField) climateControl).textProperty().addListener((obs, old, val) -> updateFullMarking());
+        }
+
+        updateFullMarking();
+    }
+
+    /**
+     * Настройка условного отображения полей (огнестойкий, взрывозащищённый)
+     */
+    private void setupConditionalVisibility() {
+        // Огнестойкий -> поле предельной температуры
+        CheckBox fireproofCheck = (CheckBox) fieldControls.get("fireproof");
+        Control tempField = fieldControls.get("maxTemperature");
+        Label tempLabel = fieldLabels.get("maxTemperature");
+        Label tempHint = fieldHints.get("maxTemperature");
+
+        if (fireproofCheck != null && tempField != null) {
+            // Устанавливаем начальную видимость
+            boolean isVisible = fireproofCheck.isSelected();
+            if (tempLabel != null) {
+                tempLabel.setVisible(isVisible);
+                tempLabel.setManaged(isVisible);
+            }
+            tempField.setVisible(isVisible);
+            tempField.setManaged(isVisible);
+            if (tempHint != null) {
+                tempHint.setVisible(isVisible);
+                tempHint.setManaged(isVisible);
+            }
+
+            // Слушатель изменения галочки
+            fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
+                if (tempLabel != null) {
+                    tempLabel.setVisible(val);
+                    tempLabel.setManaged(val);
+                }
+                tempField.setVisible(val);
+                tempField.setManaged(val);
+                if (tempHint != null) {
+                    tempHint.setVisible(val);
+                    tempHint.setManaged(val);
+                }
+            });
+        }
+
+        // Взрывозащищённый -> поле маркировки взрывозащиты
+        CheckBox explosionCheck = (CheckBox) fieldControls.get("explosionProof");
+        Control markingField = fieldControls.get("explosionMarking");
+        Label markingLabel = fieldLabels.get("explosionMarking");
+        Label markingHint = fieldHints.get("explosionMarking");
+
+        if (explosionCheck != null && markingField != null) {
+            // Устанавливаем начальную видимость
+            boolean isVisible = explosionCheck.isSelected();
+            if (markingLabel != null) {
+                markingLabel.setVisible(isVisible);
+                markingLabel.setManaged(isVisible);
+            }
+            markingField.setVisible(isVisible);
+            markingField.setManaged(isVisible);
+            if (markingHint != null) {
+                markingHint.setVisible(isVisible);
+                markingHint.setManaged(isVisible);
+            }
+
+            // Слушатель изменения галочки
+            explosionCheck.selectedProperty().addListener((obs, old, val) -> {
+                if (markingLabel != null) {
+                    markingLabel.setVisible(val);
+                    markingLabel.setManaged(val);
+                }
+                markingField.setVisible(val);
+                markingField.setManaged(val);
+                if (markingHint != null) {
+                    markingHint.setVisible(val);
+                    markingHint.setManaged(val);
+                }
+            });
+        }
+    }
+
+    /**
+     * Обновляет номинальную скорость на основе количества полюсов
+     */
+    private void updateRatedSpeed() {
+        if (ratedSpeedField == null) return;
+
+        Control polesControl = fieldControls.get("poles");
+        if (polesControl instanceof ComboBox) {
+            @SuppressWarnings("unchecked")
+            ComboBox<String> polesCombo = (ComboBox<String>) polesControl;
+            String value = polesCombo.getValue();
+            if (value != null) {
+                try {
+                    int poles = Integer.parseInt(value);
+                    int ratedSpeed = 6000 / poles;
+                    ratedSpeedField.setText(String.valueOf(ratedSpeed));
+                } catch (NumberFormatException e) {
+                    ratedSpeedField.setText("");
+                }
+            } else {
+                ratedSpeedField.setText("");
+            }
+        } else if (polesControl instanceof TextField) {
+            String text = ((TextField) polesControl).getText().trim();
+            if (!text.isEmpty()) {
+                try {
+                    int poles = Integer.parseInt(text);
+                    int ratedSpeed = 6000 / poles;
+                    ratedSpeedField.setText(String.valueOf(ratedSpeed));
+                } catch (NumberFormatException e) {
+                    ratedSpeedField.setText("");
+                }
+            } else {
+                ratedSpeedField.setText("");
+            }
+        }
+    }
+
+    /**
+     * Обновляет полную маркировку на основе заполненных полей
+     */
+    private void updateFullMarking() {
+        if (fullMarkingField == null) return;
+
+        String series = getFieldValue("series");
+        String motorType = getFieldValue("motorType");
+        String poles = getFieldValue("poles");
+        String climateType = getFieldValue("climateType");
+
+        StringBuilder marking = new StringBuilder();
+        if (series != null && !series.isEmpty()) {
+            marking.append(series).append(" ");
+        }
+        if (motorType != null && !motorType.isEmpty()) {
+            marking.append(motorType);
+        }
+        if (poles != null && !poles.isEmpty()) {
+            marking.append(poles);
+        }
+        if (climateType != null && !climateType.isEmpty()) {
+            marking.append(" ").append(climateType);
+        }
+
+        String newMarking = marking.toString().trim();
+        String currentMarking = fullMarkingField.getText();
+
+        if (currentMarking == null || currentMarking.isEmpty() ||
+                currentMarking.equals(lastAutoMarking)) {
+            fullMarkingField.setText(newMarking);
+            lastAutoMarking = newMarking;
+        }
+    }
+
+    /**
+     * Получает значение поля по имени
+     */
+    private String getFieldValue(String fieldName) {
+        Control control = fieldControls.get(fieldName);
+        if (control == null) return "";
+
+        if (control instanceof TextField) {
+            return ((TextField) control).getText().trim();
+        } else if (control instanceof ComboBox) {
+            Object value = ((ComboBox<?>) control).getValue();
+            return value != null ? value.toString() : "";
+        }
+        return "";
+    }
+
     private Object getControlValue(Control control, String fieldName, FieldMetadataDto metadata) {
         if (control instanceof TextField) {
             String text = ((TextField) control).getText().trim();
             if (text.isEmpty()) return null;
 
-            // Преобразование для числовых полей
             if (metadata != null) {
                 if ("number".equals(metadata.getType())) {
                     try {
@@ -230,7 +474,6 @@ public class CardFormController {
     }
 
     private void saveCard(Button saveButton) {
-        // Сбор данных
         Map<String, Object> fields = new HashMap<>();
 
         for (Map.Entry<String, Control> entry : fieldControls.entrySet()) {
@@ -255,14 +498,12 @@ public class CardFormController {
             }
         }
 
-        // Получаем наименование
         String name = "";
         Control nameControl = fieldControls.get("name");
         if (nameControl instanceof TextField) {
             name = ((TextField) nameControl).getText().trim();
         }
 
-        // Делаем переменные effectively final
         final String finalName = name;
         final Map<String, Object> finalFields = fields;
         final Long finalId = existingCard != null ? existingCard.getId() : null;
@@ -272,7 +513,6 @@ public class CardFormController {
             return;
         }
 
-        // Валидация обязательных полей
         for (Map.Entry<String, FieldMetadataDto> entry : fieldMetadata.entrySet()) {
             FieldMetadataDto field = entry.getValue();
             if (field.isRequired()) {

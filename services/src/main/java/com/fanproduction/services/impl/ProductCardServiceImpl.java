@@ -17,10 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -164,5 +161,27 @@ public class ProductCardServiceImpl implements ProductCardService {
     private String getCurrentUser() {
         // Временная реализация
         return "system";
+    }
+
+    @Override
+    public List<BaseProductCard> searchByFields(String query) {
+        List<BaseProductCard> results = new ArrayList<>();
+        String likePattern = "%" + query.toLowerCase() + "%";
+
+        // Поиск по электродвигателям
+        List<MotorCardEntity> motors = motorCardRepository.searchByFields(likePattern);
+        results.addAll(motors);
+
+        // Поиск по мотор-колёсам
+        List<MotorWheelCardEntity> motorWheels = motorWheelCardRepository.searchByFields(likePattern);
+        results.addAll(motorWheels);
+
+        // Поиск по радиальным колёсам
+        List<RadialWheelCardEntity> radialWheels = radialWheelCardRepository.searchByFields(likePattern);
+        results.addAll(radialWheels);
+
+        // TODO: добавить поиск по другим типам карточек
+
+        return results;
     }
 }

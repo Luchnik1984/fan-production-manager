@@ -1,4 +1,4 @@
--- V12__create_motor_wheel_card_table.sql
+-- V9__create_motor_wheel_card_table.sql
 -- Создание таблицы для мотор-колёс
 
 CREATE TABLE IF NOT EXISTS motor_wheel_card (
@@ -16,7 +16,6 @@ CREATE TABLE IF NOT EXISTS motor_wheel_card (
     FOREIGN KEY (id) REFERENCES base_product_card(id) ON DELETE CASCADE
     );
 
--- Индексы для быстрого поиска
 CREATE INDEX IF NOT EXISTS idx_motor_wheel_size ON motor_wheel_card(size);
 CREATE INDEX IF NOT EXISTS idx_motor_wheel_poles ON motor_wheel_card(poles);
-CREATE INDEX IF NOT EXISTS idx_motor_wheel_blade_type ON motor_wheel_card(blade_type);
+CREATE INDEX IF NOT EXISTS idx_motor_wheel_blade_type ON motor_wheel_card(blade_type)

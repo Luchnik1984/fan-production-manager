@@ -20,7 +20,13 @@ import lombok.NoArgsConstructor;
 public class MotorCardEntity extends BaseProductCard {
 
     /**
-     * Тип электродвигателя (например: 100L)
+     * Серия электродвигателя (АИР, 5АИ, ВАО и т.д.)
+     */
+    @Column(name = "series", length = 50)
+    private String series;
+
+    /**
+     * Тип электродвигателя (100L, 112M)
      */
     @Column(name = "motor_type", length = 20)
     private String motorType;
@@ -38,8 +44,7 @@ public class MotorCardEntity extends BaseProductCard {
     private Double powerKw;
 
     /**
-     * Скорость вращения для маркировки (об/мин)
-     * Рассчитывается: 6000 / poles
+     * Скорость вращения для маркировки (об/мин) = 6000 / poles
      */
     @Column(name = "rated_speed_rpm")
     private Integer ratedSpeedRpm;
@@ -57,9 +62,9 @@ public class MotorCardEntity extends BaseProductCard {
     private Integer shaftSize;
 
     /**
-     * Исполнение по способу монтажа (IM 1081, IM 3081, IM B14)
+     * Исполнение по способу монтажа (IM1081, IM3081, IM B14)
      */
-    @Column(name = "mounting_type", length = 20)
+    @Column(name = "mounting_type", length = 50)
     private String mountingType;
 
     /**
@@ -85,4 +90,41 @@ public class MotorCardEntity extends BaseProductCard {
      */
     @Column(name = "weight_kg")
     private Double weightKg;
+
+    /**
+     * Общего применения
+     */
+    @Column(name = "general_purpose")
+    private Boolean generalPurpose = true;
+
+    /**
+     * Огнестойкий
+     */
+    @Column(name = "fireproof")
+    private Boolean fireproof = false;
+
+    /**
+     * Предельная температура (°C)
+     */
+    @Column(name = "max_temperature")
+    private Integer maxTemperature;
+
+    /**
+     * Взрывозащищённый
+     */
+    @Column(name = "explosion_proof")
+    private Boolean explosionProof = false;
+
+    /**
+     * Маркировка взрывозащиты
+     */
+    @Column(name = "explosion_marking", length = 100)
+    private String explosionMarking;
+
+    /**
+     * Полная маркировка (формируется автоматически)
+     */
+    @Column(name = "full_marking", length = 200)
+    private String fullMarking;
 }
+

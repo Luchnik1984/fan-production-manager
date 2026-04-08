@@ -19,19 +19,65 @@ public class FieldMetadataService {
 
     private void initMetadata() {
         // ========== Электродвигатель (MOTOR) ==========
-        metadataMap.put("MOTOR", Arrays.asList(
-                createField("motorType", "Тип двигателя", "text", true, "100L2", null, null, "Например: 100L, 132M"),
-                createField("poles", "Количество полюсов", "number", true, "4", null, null, "2, 4, 6, 8"),
-                createField("powerKw", "Мощность (КВт)", "double", true, null, null, null, "Например: 5,5"),
-                createField("ratedSpeedRpm", "Номинальная скорость (об/мин)", "number", false, null, null, null, "6000 / полюсов"),
-                createField("actualSpeedRpm", "Фактическая скорость (об/мин)", "number", false, null, null, null),
-                createField("shaftSize", "Размер вала (мм)", "number", true, null, null, null),
-                createField("mountingType", "Исполнение по монтажу", "text", true, null, null, null, "IM1081, IM3081, IM B14"),
-                createField("climateType", "Климатическое исполнение", "combobox", true, "У1", new String[]{"У1", "У2", "УХЛ", "У3"}, null),
-                createField("voltage", "Напряжение (В)", "number", true, "380", null, null, "220, 380, 660"),
-                createField("operationMode", "Режим работы", "combobox", false, "S1", new String[]{"S1", "S2", "S3", "S4", "S5"}, null),
-                createField("weightKg", "Масса (кг)", "double", false, null, null, null)
-        ));
+        List<FieldMetadataDto> motorFields = new ArrayList<>();
+
+        // 1. Серия (АИР, 5АИ, ВАО и т.д.)
+        motorFields.add(createField("series", "Серия", "text", true, null, null, null, "АИР, 5АИ, ВАО..."));
+
+        // 2. Тип двигателя (100L, 112M и т.д.)
+        motorFields.add(createField("motorType", "Тип двигателя", "text", true, null, null, null, "100L, 112M, 132S..."));
+
+        // 3. Количество полюсов (выпадающий список)
+        motorFields.add(createField("poles", "Количество полюсов", "combobox", true, "4",
+                new String[]{"2", "4", "6", "8", "10", "12"}, null, "2, 4, 6, 8, 10, 12"));
+
+        // 4. Мощность (КВт)
+        motorFields.add(createField("powerKw", "Мощность (КВт)", "double", true, null, null, null, "5,5"));
+
+        // 5. Номинальная скорость (рассчитывается автоматически, но можно редактировать)
+        motorFields.add(createField("ratedSpeedRpm", "Номинальная скорость (об/мин)", "number", false, null, null, null, "6000 / полюсов"));
+
+        // 6. Фактическая скорость
+        motorFields.add(createField("actualSpeedRpm", "Фактическая скорость (об/мин)", "number", false, null, null, null));
+
+        // 7. Размер вала
+        motorFields.add(createField("shaftSize", "Размер вала (мм)", "number", true, null, null, null, "28, 38, 48..."));
+
+        // 8. Исполнение по монтажу
+        motorFields.add(createField("mountingType", "Исполнение по монтажу", "text", true, null, null, null, "IM1081, IM3081, IM B14..."));
+
+        // 9. Климатическое исполнение (просто поле ввода)
+        motorFields.add(createField("climateType", "Климатическое исполнение и категория размещения", "text", true, "У1", null, null, "У1, У2, УХЛ1, Т2, О2, М1..."));
+
+        // 10. Напряжение (выпадающий список)
+        motorFields.add(createField("voltage", "Напряжение (В)", "combobox", true, "380", new String[]{"220", "380", "660"}, null, "220, 380, 660"));
+
+        // 11. Режим работы (выпадающий список S1-S9)
+        motorFields.add(createField("operationMode", "Режим работы", "combobox", false, "S1",
+                new String[]{"S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9"}, null, "S1-S9"));
+
+        // 12. Масса
+        motorFields.add(createField("weightKg", "Масса (кг)", "double", false, null, null, null));
+
+        // 13. Галочка "Общего применения"
+        motorFields.add(createField("generalPurpose", "Общего применения", "boolean", false, "true", null, null));
+
+        // 14. Галочка "Огнестойкий"
+        motorFields.add(createField("fireproof", "Огнестойкий", "boolean", false, "false", null, null));
+
+        // 15. Предельная температура (появляется при огнестойком)
+        motorFields.add(createField("maxTemperature", "Предельная температура (°C)", "number", false, null, null, null, "появляется при выборе Огнестойкий", false));
+
+        // 16. Галочка "Взрывозащищённый"
+        motorFields.add(createField("explosionProof", "Взрывозащищённый", "boolean", false, "false", null, null));
+
+        // 17. Маркировка взрывозащиты (появляется при взрывозащищённом)
+        motorFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, null, null, null, "1 Ex d IIB T4, 2Ex e II T3...", false));
+
+        // 18. Полная маркировка (редактируемое поле, формируется автоматически)
+        motorFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
+
+        metadataMap.put("MOTOR", motorFields);
 
         // ========== Мотор-колесо (MOTOR_WHEEL) ==========
         metadataMap.put("MOTOR_WHEEL", Arrays.asList(
@@ -79,7 +125,8 @@ public class FieldMetadataService {
     }
 
     private FieldMetadataDto createField(String name, String label, String type, boolean required,
-                                         String defaultValue, String[] options, String referenceType, String hint) {
+                                         String defaultValue, String[] options, String referenceType,
+                                         String hint, boolean visible) {
         FieldMetadataDto field = new FieldMetadataDto();
         field.setName(name);
         field.setLabel(label);
@@ -89,12 +136,18 @@ public class FieldMetadataService {
         field.setOptions(options);
         field.setReferenceType(referenceType);
         field.setHint(hint);
+        field.setVisible(visible);
         return field;
     }
 
     private FieldMetadataDto createField(String name, String label, String type, boolean required,
+                                         String defaultValue, String[] options, String referenceType, String hint) {
+        return createField(name, label, type, required, defaultValue, options, referenceType, hint, true);
+    }
+
+    private FieldMetadataDto createField(String name, String label, String type, boolean required,
                                          String defaultValue, String[] options, String referenceType) {
-        return createField(name, label, type, required, defaultValue, options, referenceType, null);
+        return createField(name, label, type, required, defaultValue, options, referenceType, null, true);
     }
 
     /**

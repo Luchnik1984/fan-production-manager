@@ -3,22 +3,17 @@ package com.fanproduction.gui.controller;
 import com.fanproduction.gui.client.ProductCardClient;
 import com.fanproduction.gui.dto.ApiResponse;
 import com.fanproduction.gui.dto.ProductCardDto;
+import com.fanproduction.gui.service.TableColumnConfigurator;
 import javafx.application.Platform;
-import javafx.beans.property.SimpleLongProperty;
-import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
 
-import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.*;
 
-/**
- * Контроллер для вкладки "Каталог продукции".
- */
 public class CatalogController {
 
     @FXML
@@ -29,24 +24,6 @@ public class CatalogController {
 
     @FXML
     private TableView<ProductCardDto> productsTable;
-
-    @FXML
-    private TableColumn<ProductCardDto, Long> idColumn;
-
-    @FXML
-    private TableColumn<ProductCardDto, String> nameColumn;
-
-    @FXML
-    private TableColumn<ProductCardDto, String> codeColumn;
-
-    @FXML
-    private TableColumn<ProductCardDto, String> typeColumn;
-
-    @FXML
-    private TableColumn<ProductCardDto, String> createdAtColumn;
-
-    @FXML
-    private TableColumn<ProductCardDto, String> createdByColumn;
 
     @FXML
     private Label statusLabel;
@@ -79,9 +56,6 @@ public class CatalogController {
     private static final int PAGE_SIZE = 20;
     private String currentTypeFilter = null;
 
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
-
-    // Соответствие типов для отображения
     private static final Map<String, String> TYPE_DISPLAY_MAP = Map.of(
             "MOTOR", "Электродвигатель",
             "MOTOR_WHEEL", "Мотор-колесо",
@@ -96,12 +70,10 @@ public class CatalogController {
     @FXML
     private void initialize() {
         setupFilters();
-        setupTable();
         loadProducts();
     }
 
     private void setupFilters() {
-        // Добавляем типы для фильтрации
         typeFilterComboBox.getItems().add("Все типы");
         typeFilterComboBox.getItems().addAll(TYPE_DISPLAY_MAP.values());
         typeFilterComboBox.setValue("Все типы");
@@ -110,7 +82,6 @@ public class CatalogController {
             if ("Все типы".equals(newVal)) {
                 currentTypeFilter = null;
             } else {
-                // Находим соответствующий enum
                 for (Map.Entry<String, String> entry : TYPE_DISPLAY_MAP.entrySet()) {
                     if (entry.getValue().equals(newVal)) {
                         currentTypeFilter = entry.getKey();
@@ -122,32 +93,6 @@ public class CatalogController {
         });
 
         searchField.setOnAction(e -> handleSearch());
-    }
-
-    private void setupTable() {
-        idColumn.setCellValueFactory(cellData -> new SimpleLongProperty(cellData.getValue().getId()).asObject());
-        nameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getName()));
-        codeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
-                cellData.getValue().getCode() != null ? cellData.getValue().getCode() : "—"));
-        typeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
-                TYPE_DISPLAY_MAP.getOrDefault(cellData.getValue().getCardType(), cellData.getValue().getCardType())));
-        createdAtColumn.setCellValueFactory(cellData -> {
-            if (cellData.getValue().getCreatedAt() != null) {
-                return new SimpleStringProperty(cellData.getValue().getCreatedAt().format(DATE_FORMATTER));
-            }
-            return new SimpleStringProperty("");
-        });
-        createdByColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
-                cellData.getValue().getCreatedBy() != null ? cellData.getValue().getCreatedBy() : ""));
-
-        productsTable.setItems(productList);
-
-        // Обработка двойного клика для редактирования
-        productsTable.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 2) {
-                handleEdit();
-            }
-        });
     }
 
     private void loadProducts() {
@@ -162,19 +107,41 @@ public class CatalogController {
                     if (response.isSuccess() && response.getData() != null) {
                         Map<String, Object> data = response.getData();
 
-                        // Извлекаем список карточек
                         @SuppressWarnings("unchecked")
-                        List<ProductCardDto> content = (List<ProductCardDto>) data.get("content");
+                        List<Map<String, Object>> content = (List<Map<String, Object>>) data.get("content");
 
                         productList.clear();
-                        productList.addAll(content);
+                        for (Map<String, Object> item : content) {
+                            ProductCardDto dto = new ProductCardDto();
+                            dto.setId(((Number) item.get("id")).longValue());
+                            dto.setName((String) item.get("name"));
+                            dto.setCode((String) item.get("code"));
+                            dto.setCardType((String) item.get("cardType"));
+                            dto.setCreatedAt(parseDateTime(item.get("createdAt")));
+                            dto.setUpdatedAt(parseDateTime(item.get("updatedAt")));
+                            dto.setCreatedBy((String) item.get("createdBy"));
 
-                        // Извлекаем информацию о пагинации
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> fields = (Map<String, Object>) item.get("fields");
+                            dto.setFields(fields);
+
+                            // Формируем отображаемое наименование
+                            String displayName = buildDisplayName(dto);
+                            dto.setCardTypeDisplay(displayName);
+
+                            productList.add(dto);
+                        }
+
                         totalPages = ((Number) data.get("totalPages")).intValue();
                         totalElements = ((Number) data.get("totalElements")).intValue();
 
                         updatePaginationControls();
                         statusLabel.setText("Всего записей: " + totalElements);
+
+                        // Настраиваем колонки в зависимости от выбранного типа
+                        TableColumnConfigurator.setupColumns(productsTable, currentTypeFilter);
+                        productsTable.setItems(productList);
+
                     } else {
                         statusLabel.setText("Ошибка загрузки: " + response.getMessage());
                         showAlert("Ошибка", "Не удалось загрузить каталог: " + response.getMessage(), Alert.AlertType.ERROR);
@@ -190,6 +157,44 @@ public class CatalogController {
         }).start();
     }
 
+    /**
+     * Формирует отображаемое наименование для карточки
+     */
+    private String buildDisplayName(ProductCardDto dto) {
+        String cardType = dto.getCardType();
+        Map<String, Object> fields = dto.getFields();
+        String name = dto.getName();
+
+        if ("MOTOR".equals(cardType) && fields != null) {
+            String series = (String) fields.get("series");
+            String motorType = (String) fields.get("motorType");
+            Object polesObj = fields.get("poles");
+            String poles = polesObj != null ? polesObj.toString() : "";
+            String climateType = (String) fields.get("climateType");
+
+            StringBuilder marking = new StringBuilder();
+            if (series != null && !series.isEmpty()) {
+                marking.append(series).append(" ");
+            }
+            if (motorType != null && !motorType.isEmpty()) {
+                marking.append(motorType);
+            }
+            if (!poles.isEmpty()) {
+                marking.append(poles);
+            }
+            if (climateType != null && !climateType.isEmpty()) {
+                marking.append(" ").append(climateType);
+            }
+
+            String builtMarking = marking.toString().trim();
+            if (!builtMarking.isEmpty()) {
+                return name + " " + builtMarking;
+            }
+        }
+
+        return name;
+    }
+
     private void updatePaginationControls() {
         pageLabel.setText("Страница " + (currentPage + 1) + " из " + Math.max(1, totalPages));
         prevButton.setDisable(currentPage == 0);
@@ -200,32 +205,59 @@ public class CatalogController {
     private void handleSearch() {
         String query = searchField.getText().trim();
         if (!query.isEmpty()) {
-            // Поиск
+            final String lowerQuery = query.toLowerCase();
+
             new Thread(() -> {
                 try {
                     ApiResponse<List<ProductCardDto>> response = ProductCardClient.searchCards(query);
+
                     Platform.runLater(() -> {
                         if (response.isSuccess() && response.getData() != null) {
+                            List<ProductCardDto> filtered = new ArrayList<>();
+                            for (ProductCardDto dto : response.getData()) {
+                                if (matchesSearch(dto, lowerQuery)) {
+                                    String displayName = buildDisplayName(dto);
+                                    dto.setCardTypeDisplay(displayName);
+                                    filtered.add(dto);
+                                }
+                            }
                             productList.clear();
-                            productList.addAll(response.getData());
+                            productList.addAll(filtered);
                             statusLabel.setText("Найдено: " + productList.size());
-                            // Отключаем пагинацию при поиске
                             prevButton.setDisable(true);
                             nextButton.setDisable(true);
                             pageLabel.setText("Результаты поиска");
+                            // Для поиска показываем все колонки (без фильтра по типу)
+                            TableColumnConfigurator.setupColumns(productsTable, null);
+                            productsTable.setItems(productList);
                         } else {
                             statusLabel.setText("Ничего не найдено");
                         }
                     });
                 } catch (Exception e) {
-                    Platform.runLater(() -> statusLabel.setText("Ошибка поиска: " + e.getMessage()));
+                    Platform.runLater(() -> {
+                        statusLabel.setText("Ошибка поиска: " + e.getMessage());
+                    });
+                    e.printStackTrace();
                 }
             }).start();
         } else {
-            // Сброс поиска - загружаем все с пагинацией
             currentPage = 0;
             loadProducts();
         }
+    }
+
+    private boolean matchesSearch(ProductCardDto dto, String query) {
+        if (query == null || query.isEmpty()) return true;
+        if (dto.getName() != null && dto.getName().toLowerCase().contains(query)) return true;
+        if (dto.getCode() != null && dto.getCode().toLowerCase().contains(query)) return true;
+        Map<String, Object> fields = dto.getFields();
+        if (fields != null) {
+            for (Object value : fields.values()) {
+                if (value != null && value.toString().toLowerCase().contains(query)) return true;
+            }
+        }
+        return false;
     }
 
     @FXML
@@ -253,17 +285,25 @@ public class CatalogController {
 
     @FXML
     private void handleCreate() {
-        // Получаем Stage из текущего окна
         Stage ownerStage = (Stage) productsTable.getScene().getWindow();
 
-        // Диалог выбора типа карточки
-        ChoiceDialog<String> typeDialog = new ChoiceDialog<>("AXIAL_FAN",
-                "MOTOR", "MOTOR_WHEEL", "RADIAL_WHEEL", "AXIAL_FAN", "RADIAL_FAN", "DUCT_FAN", "CUP", "ACCESSORY");
+        Map<String, String> typeMap = new LinkedHashMap<>();
+        typeMap.put("Электродвигатель", "MOTOR");
+        typeMap.put("Мотор-колесо", "MOTOR_WHEEL");
+        typeMap.put("Радиальное колесо", "RADIAL_WHEEL");
+        typeMap.put("Осевой вентилятор", "AXIAL_FAN");
+        typeMap.put("Радиальный вентилятор", "RADIAL_FAN");
+        typeMap.put("Канальный вентилятор", "DUCT_FAN");
+        typeMap.put("Стакан", "CUP");
+        typeMap.put("Комплектующее", "ACCESSORY");
+
+        ChoiceDialog<String> typeDialog = new ChoiceDialog<>("Электродвигатель", typeMap.keySet());
         typeDialog.setTitle("Создание карточки");
         typeDialog.setHeaderText("Выберите тип создаваемой карточки");
         typeDialog.setContentText("Тип продукции:");
 
-        typeDialog.showAndWait().ifPresent(cardType -> {
+        typeDialog.showAndWait().ifPresent(russianType -> {
+            String cardType = typeMap.get(russianType);
             CardFormController form = new CardFormController(
                     ownerStage,
                     cardType,
@@ -319,9 +359,23 @@ public class CatalogController {
                         }
                     });
                 } catch (Exception e) {
-                    Platform.runLater(() -> showAlert("Ошибка", "Ошибка удаления: " + e.getMessage(), Alert.AlertType.ERROR));
+                    Platform.runLater(() -> {
+                        showAlert("Ошибка", "Ошибка удаления: " + e.getMessage(), Alert.AlertType.ERROR);
+                    });
                 }
             }).start();
+        }
+    }
+
+    private LocalDateTime parseDateTime(Object dateObj) {
+        if (dateObj == null) return null;
+        try {
+            if (dateObj instanceof LocalDateTime) return (LocalDateTime) dateObj;
+            String dateStr = dateObj.toString();
+            if (dateStr.isEmpty()) return null;
+            return LocalDateTime.parse(dateStr);
+        } catch (Exception e) {
+            return null;
         }
     }
 
