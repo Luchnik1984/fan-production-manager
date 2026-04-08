@@ -142,6 +142,17 @@ public class CatalogController {
                         TableColumnConfigurator.setupColumns(productsTable, currentTypeFilter);
                         productsTable.setItems(productList);
 
+                        // Обработка двойного щелчка для просмотра карточки
+                        productsTable.setOnMouseClicked(event -> {
+                            if (event.getClickCount() == 2) {
+                                ProductCardDto selected = productsTable.getSelectionModel().getSelectedItem();
+                                if (selected != null) {
+                                    Stage ownerStage = (Stage) productsTable.getScene().getWindow();
+                                    CardViewController.show(ownerStage, selected);
+                                }
+                            }
+                        });
+
                     } else {
                         statusLabel.setText("Ошибка загрузки: " + response.getMessage());
                         showAlert("Ошибка", "Не удалось загрузить каталог: " + response.getMessage(), Alert.AlertType.ERROR);
@@ -235,9 +246,7 @@ public class CatalogController {
                         }
                     });
                 } catch (Exception e) {
-                    Platform.runLater(() -> {
-                        statusLabel.setText("Ошибка поиска: " + e.getMessage());
-                    });
+                    Platform.runLater(() -> statusLabel.setText("Ошибка поиска: " + e.getMessage()));
                     e.printStackTrace();
                 }
             }).start();
@@ -359,9 +368,7 @@ public class CatalogController {
                         }
                     });
                 } catch (Exception e) {
-                    Platform.runLater(() -> {
-                        showAlert("Ошибка", "Ошибка удаления: " + e.getMessage(), Alert.AlertType.ERROR);
-                    });
+                    Platform.runLater(() -> showAlert("Ошибка", "Ошибка удаления: " + e.getMessage(), Alert.AlertType.ERROR));
                 }
             }).start();
         }
