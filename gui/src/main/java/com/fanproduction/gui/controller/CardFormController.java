@@ -1,9 +1,10 @@
 package com.fanproduction.gui.controller;
 
 import com.fanproduction.gui.client.ProductCardClient;
-import com.fanproduction.gui.dto.ApiResponse;
-import com.fanproduction.gui.dto.FieldMetadataDto;
-import com.fanproduction.gui.dto.ProductCardDto;
+import com.fanproduction.gui.configurator.CardFormConfigurator;
+import com.fanproduction.gui.dto.response.ApiResponse;
+import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
+import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fanproduction.gui.service.FieldMetadataService;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -15,7 +16,9 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Контроллер для формы создания/редактирования карточки продукции.
@@ -31,13 +34,6 @@ public class CardFormController {
     private final Map<String, Control> fieldControls = new HashMap<>();
     private final Map<String, FieldMetadataDto> fieldMetadata = new HashMap<>();
     private final Map<String, TextField> referenceFields = new HashMap<>();
-
-    // Специальные поля для электродвигателя
-    private TextField ratedSpeedField;
-    private TextField fullMarkingField;
-    private String lastAutoMarking = "";
-
-    private final Map<String, Integer> fieldRows = new HashMap<>();
     private final Map<String, Label> fieldLabels = new HashMap<>();
     private final Map<String, Label> fieldHints = new HashMap<>();
 
@@ -111,8 +107,9 @@ public class CardFormController {
         fieldControls.put("name", nameField);
         row++;
 
-        // Динамические поля - добавляем ВСЕ поля (и видимые, и скрытые)
+        // Динамические поля
         for (FieldMetadataDto field : fields) {
+            // Добавляем даже невидимые поля (они будут скрыты)
             Label label = new Label(field.getLabel() + (field.isRequired() ? " *" : ":"));
             label.setStyle("-fx-font-weight: bold;");
 
@@ -124,7 +121,6 @@ public class CardFormController {
                 fieldControls.put(field.getName(), control);
                 fieldMetadata.put(field.getName(), field);
                 fieldLabels.put(field.getName(), label);
-                fieldRows.put(field.getName(), row);
 
                 // Устанавливаем видимость в соответствии с метаданными
                 boolean isVisible = field.isVisible();
@@ -155,10 +151,8 @@ public class CardFormController {
             }
         }
 
-        // Настройка специальных полей для электродвигателя
-        if ("MOTOR".equals(cardType)) {
-            setupMotorSpecificFields();
-        }
+        // Настройка специальных полей через фабрику конфигураторов
+        CardFormConfigurator.configure(cardType, fieldControls, existingCard != null);
 
         return grid;
     }
@@ -224,282 +218,6 @@ public class CardFormController {
                 TextField defaultField = new TextField();
                 if (existingValue != null) defaultField.setText(String.valueOf(existingValue));
                 return defaultField;
-        }
-    }
-
-    /**
-     * Настройка специальных полей для карточки электродвигателя
-     */
-    private void setupMotorSpecificFields() {
-        // Сохраняем ссылки на специальные поля
-        if (fieldControls.containsKey("ratedSpeedRpm")) {
-            ratedSpeedField = (TextField) fieldControls.get("ratedSpeedRpm");
-            ratedSpeedField.setEditable(true);
-        }
-
-        if (fieldControls.containsKey("fullMarking")) {
-            fullMarkingField = (TextField) fieldControls.get("fullMarking");
-            fullMarkingField.setEditable(true);
-        }
-
-        // Настройка условного отображения полей
-        setupConditionalVisibility();
-
-        // Добавляем слушатели для автоматического обновления номинальной скорости
-        Control polesControl = fieldControls.get("poles");
-        if (polesControl instanceof ComboBox) {
-            @SuppressWarnings("unchecked")
-            ComboBox<String> polesCombo = (ComboBox<String>) polesControl;
-            polesCombo.valueProperty().addListener((obs, old, val) -> {
-                updateRatedSpeed();
-                updateFullMarking();
-            });
-            updateRatedSpeed();
-        }
-
-        // Слушатели для обновления полной маркировки
-        TextField seriesField = (TextField) fieldControls.get("series");
-        if (seriesField != null) {
-            seriesField.textProperty().addListener((obs, old, val) -> updateFullMarking());
-        }
-
-        TextField motorTypeField = (TextField) fieldControls.get("motorType");
-        if (motorTypeField != null) {
-            motorTypeField.textProperty().addListener((obs, old, val) -> updateFullMarking());
-        }
-
-        Control climateControl = fieldControls.get("climateType");
-        if (climateControl instanceof ComboBox) {
-            @SuppressWarnings("unchecked")
-            ComboBox<String> climateCombo = (ComboBox<String>) climateControl;
-            climateCombo.valueProperty().addListener((obs, old, val) -> updateFullMarking());
-        } else if (climateControl instanceof TextField) {
-            ((TextField) climateControl).textProperty().addListener((obs, old, val) -> updateFullMarking());
-        }
-
-        updateFullMarking();
-    }
-
-    /**
-     * Настройка условного отображения полей (огнестойкий, взрывозащищённый)
-     */
-    private void setupConditionalVisibility() {
-        // Огнестойкий -> поле предельной температуры
-        CheckBox fireproofCheck = (CheckBox) fieldControls.get("fireproof");
-        Control tempField = fieldControls.get("maxTemperature");
-        Label tempLabel = fieldLabels.get("maxTemperature");
-        Label tempHint = fieldHints.get("maxTemperature");
-
-        if (fireproofCheck != null && tempField != null) {
-            // Устанавливаем начальную видимость
-            boolean isVisible = fireproofCheck.isSelected();
-            if (tempLabel != null) {
-                tempLabel.setVisible(isVisible);
-                tempLabel.setManaged(isVisible);
-            }
-            tempField.setVisible(isVisible);
-            tempField.setManaged(isVisible);
-            if (tempHint != null) {
-                tempHint.setVisible(isVisible);
-                tempHint.setManaged(isVisible);
-            }
-
-            // Слушатель изменения галочки
-            fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
-                if (tempLabel != null) {
-                    tempLabel.setVisible(val);
-                    tempLabel.setManaged(val);
-                }
-                tempField.setVisible(val);
-                tempField.setManaged(val);
-                if (tempHint != null) {
-                    tempHint.setVisible(val);
-                    tempHint.setManaged(val);
-                }
-            });
-        }
-
-        // Взрывозащищённый -> поле маркировки взрывозащиты
-        CheckBox explosionCheck = (CheckBox) fieldControls.get("explosionProof");
-        Control markingField = fieldControls.get("explosionMarking");
-        Label markingLabel = fieldLabels.get("explosionMarking");
-        Label markingHint = fieldHints.get("explosionMarking");
-
-        if (explosionCheck != null && markingField != null) {
-            // Устанавливаем начальную видимость
-            boolean isVisible = explosionCheck.isSelected();
-            if (markingLabel != null) {
-                markingLabel.setVisible(isVisible);
-                markingLabel.setManaged(isVisible);
-            }
-            markingField.setVisible(isVisible);
-            markingField.setManaged(isVisible);
-            if (markingHint != null) {
-                markingHint.setVisible(isVisible);
-                markingHint.setManaged(isVisible);
-            }
-
-            // Слушатель изменения галочки
-            explosionCheck.selectedProperty().addListener((obs, old, val) -> {
-                if (markingLabel != null) {
-                    markingLabel.setVisible(val);
-                    markingLabel.setManaged(val);
-                }
-                markingField.setVisible(val);
-                markingField.setManaged(val);
-                if (markingHint != null) {
-                    markingHint.setVisible(val);
-                    markingHint.setManaged(val);
-                }
-            });
-        }
-    }
-
-    /**
-     * Обновляет номинальную скорость на основе количества полюсов
-     */
-    private void updateRatedSpeed() {
-        if (ratedSpeedField == null) return;
-
-        Control polesControl = fieldControls.get("poles");
-        if (polesControl instanceof ComboBox) {
-            @SuppressWarnings("unchecked")
-            ComboBox<String> polesCombo = (ComboBox<String>) polesControl;
-            String value = polesCombo.getValue();
-            if (value != null) {
-                try {
-                    int poles = Integer.parseInt(value);
-                    int ratedSpeed = 6000 / poles;
-                    ratedSpeedField.setText(String.valueOf(ratedSpeed));
-                } catch (NumberFormatException e) {
-                    ratedSpeedField.setText("");
-                }
-            } else {
-                ratedSpeedField.setText("");
-            }
-        } else if (polesControl instanceof TextField) {
-            String text = ((TextField) polesControl).getText().trim();
-            if (!text.isEmpty()) {
-                try {
-                    int poles = Integer.parseInt(text);
-                    int ratedSpeed = 6000 / poles;
-                    ratedSpeedField.setText(String.valueOf(ratedSpeed));
-                } catch (NumberFormatException e) {
-                    ratedSpeedField.setText("");
-                }
-            } else {
-                ratedSpeedField.setText("");
-            }
-        }
-    }
-
-    /**
-     * Обновляет полную маркировку на основе заполненных полей
-     */
-    private void updateFullMarking() {
-        if (fullMarkingField == null) return;
-
-        String series = getFieldValue("series");
-        String motorType = getFieldValue("motorType");
-        String poles = getFieldValue("poles");
-        String climateType = getFieldValue("climateType");
-
-        StringBuilder marking = new StringBuilder();
-        if (series != null && !series.isEmpty()) {
-            marking.append(series).append(" ");
-        }
-        if (motorType != null && !motorType.isEmpty()) {
-            marking.append(motorType);
-        }
-        if (poles != null && !poles.isEmpty()) {
-            marking.append(poles);
-        }
-        if (climateType != null && !climateType.isEmpty()) {
-            marking.append(" ").append(climateType);
-        }
-
-        String newMarking = marking.toString().trim();
-        String currentMarking = fullMarkingField.getText();
-
-        if (currentMarking == null || currentMarking.isEmpty() ||
-                currentMarking.equals(lastAutoMarking)) {
-            fullMarkingField.setText(newMarking);
-            lastAutoMarking = newMarking;
-        }
-    }
-
-    /**
-     * Получает значение поля по имени
-     */
-    private String getFieldValue(String fieldName) {
-        Control control = fieldControls.get(fieldName);
-        if (control == null) return "";
-
-        if (control instanceof TextField) {
-            return ((TextField) control).getText().trim();
-        } else if (control instanceof ComboBox) {
-            Object value = ((ComboBox<?>) control).getValue();
-            return value != null ? value.toString() : "";
-        }
-        return "";
-    }
-
-    /**
-     * Настройка специальных полей для мотор-колеса
-     */
-    private void setupMotorWheelSpecificFields() {
-        // Автоматическое заполнение напряжения из кода напряжения
-        ComboBox<String> voltageCodeCombo = (ComboBox<String>) fieldControls.get("voltageCode");
-        TextField voltageField = (TextField) fieldControls.get("voltage");
-
-        if (voltageCodeCombo != null && voltageField != null) {
-            voltageCodeCombo.valueProperty().addListener((obs, old, val) -> {
-                if ("E".equals(val)) {
-                    voltageField.setText("220");
-                } else if ("D".equals(val)) {
-                    voltageField.setText("380");
-                } else {
-                    voltageField.setText("");
-                }
-            });
-
-            // Устанавливаем начальное значение
-            String initialCode = voltageCodeCombo.getValue();
-            if ("E".equals(initialCode)) {
-                voltageField.setText("220");
-            } else if ("D".equals(initialCode)) {
-                voltageField.setText("380");
-            }
-        }
-
-        // Автоматический расчёт номинальной скорости
-        ComboBox<String> polesCombo = (ComboBox<String>) fieldControls.get("poles");
-        TextField ratedSpeedField = (TextField) fieldControls.get("ratedSpeedRpm");
-
-        if (polesCombo != null && ratedSpeedField != null) {
-            polesCombo.valueProperty().addListener((obs, old, val) -> {
-                if (val != null) {
-                    try {
-                        int poles = Integer.parseInt(val);
-                        int ratedSpeed = 6000 / poles;
-                        ratedSpeedField.setText(String.valueOf(ratedSpeed));
-                    } catch (NumberFormatException e) {
-                        ratedSpeedField.setText("");
-                    }
-                }
-            });
-
-            // Устанавливаем начальное значение
-            String initialPoles = polesCombo.getValue();
-            if (initialPoles != null) {
-                try {
-                    int poles = Integer.parseInt(initialPoles);
-                    int ratedSpeed = 6000 / poles;
-                    ratedSpeedField.setText(String.valueOf(ratedSpeed));
-                } catch (NumberFormatException e) {
-                    ratedSpeedField.setText("");
-                }
-            }
         }
     }
 

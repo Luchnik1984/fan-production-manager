@@ -1,6 +1,6 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.gui.dto.ProductCardDto;
+import com.fanproduction.gui.dto.response.ProductCardDto;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;

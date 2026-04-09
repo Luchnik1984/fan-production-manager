@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS motor_wheel_card (
                                                 id BIGSERIAL PRIMARY KEY,
                                                 manufacturer VARCHAR(100),
-    blade_type VARCHAR(10),
+    blade_type VARCHAR(30),
     size INTEGER,
     poles INTEGER,
     voltage_code VARCHAR(10),

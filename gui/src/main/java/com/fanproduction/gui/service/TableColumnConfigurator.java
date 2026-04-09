@@ -1,6 +1,6 @@
 package com.fanproduction.gui.service;
 
-import com.fanproduction.gui.dto.ProductCardDto;
+import com.fanproduction.gui.dto.response.ProductCardDto;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;

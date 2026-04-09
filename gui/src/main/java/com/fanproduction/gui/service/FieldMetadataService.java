@@ -1,6 +1,6 @@
 package com.fanproduction.gui.service;
 
-import com.fanproduction.gui.dto.FieldMetadataDto;
+import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
 import org.springframework.stereotype.Service;
 
 import java.util.*;

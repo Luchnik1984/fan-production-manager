@@ -1,4 +1,4 @@
-package com.fanproduction.gui.dto;
+package com.fanproduction.gui.dto.metadata;
 
 import lombok.Data;
 

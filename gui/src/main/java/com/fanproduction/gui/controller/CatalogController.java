@@ -1,8 +1,8 @@
 package com.fanproduction.gui.controller;
 
 import com.fanproduction.gui.client.ProductCardClient;
-import com.fanproduction.gui.dto.ApiResponse;
-import com.fanproduction.gui.dto.ProductCardDto;
+import com.fanproduction.gui.dto.response.ApiResponse;
+import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fanproduction.gui.service.TableColumnConfigurator;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;

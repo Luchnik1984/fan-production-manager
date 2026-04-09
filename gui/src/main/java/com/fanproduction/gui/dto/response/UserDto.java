@@ -1,4 +1,4 @@
-package com.fanproduction.gui.dto;
+package com.fanproduction.gui.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;

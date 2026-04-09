@@ -1,7 +1,7 @@
 package com.fanproduction.gui.client;
 
-import com.fanproduction.gui.dto.ApiResponse;
-import com.fanproduction.gui.dto.ProductCardDto;
+import com.fanproduction.gui.dto.response.ApiResponse;
+import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.util.HashMap;
