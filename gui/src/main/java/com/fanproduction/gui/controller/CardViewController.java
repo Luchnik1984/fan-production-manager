@@ -67,8 +67,16 @@ public class CardViewController {
         FIELD_RUSSIAN_NAMES.put("bladeCount", "Количество лопаток");
         FIELD_RUSSIAN_NAMES.put("hubType", "Ступица");
         FIELD_RUSSIAN_NAMES.put("maxSpeedRpm", "Максимальная скорость (об/мин)");
-        FIELD_RUSSIAN_NAMES.put("generalPurpose", "Общего применения");      // ← добавить
-        FIELD_RUSSIAN_NAMES.put("fullMarking", "Полная маркировка");
+
+        // Поля осевого колеса
+        FIELD_RUSSIAN_NAMES.put("execution", "Исполнение");
+        FIELD_RUSSIAN_NAMES.put("trimCoefficient", "Коэф. подрезки (%)");
+        FIELD_RUSSIAN_NAMES.put("bladeSlots", "Посадочных мест");
+        FIELD_RUSSIAN_NAMES.put("bladeShape", "Форма лопатки");
+        FIELD_RUSSIAN_NAMES.put("bladeAngle", "Угол установки");
+        FIELD_RUSSIAN_NAMES.put("bladeMaterial", "Материал лопатки");
+        FIELD_RUSSIAN_NAMES.put("wheelDiameter", "Диаметр колеса (мм)");
+
 
 
     }
@@ -211,6 +219,27 @@ public class CardViewController {
             orderedFields.add("voltage");
             orderedFields.add("operationMode");
             orderedFields.add("weightKg");
+            orderedFields.add("generalPurpose");
+            orderedFields.add("fireproof");
+            orderedFields.add("maxTemperature");
+            orderedFields.add("explosionProof");
+            orderedFields.add("explosionMarking");
+            orderedFields.add("fullMarking");
+        } else if ("AXIAL_WHEEL".equals(cardType)) {
+            orderedFields.add("manufacturer");
+            orderedFields.add("marking");
+            orderedFields.add("bladeType");
+            orderedFields.add("size");
+            orderedFields.add("execution");
+            orderedFields.add("trimCoefficient");
+            orderedFields.add("hubType");
+            orderedFields.add("bladeCount");
+            orderedFields.add("bladeSlots");
+            orderedFields.add("bladeShape");
+            orderedFields.add("bladeAngle");
+            orderedFields.add("bladeMaterial");
+            orderedFields.add("wheelDiameter");
+            orderedFields.add("wheelFormula");
             orderedFields.add("generalPurpose");
             orderedFields.add("fireproof");
             orderedFields.add("maxTemperature");

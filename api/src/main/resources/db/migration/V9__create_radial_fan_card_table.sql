@@ -1,4 +1,4 @@
--- V8__create_radial_fan_card_table.sql
+-- V9__create_radial_fan_card_table.sql
 -- Создание таблицы для радиальных вентиляторов
 
 CREATE TABLE IF NOT EXISTS radial_fan_card (

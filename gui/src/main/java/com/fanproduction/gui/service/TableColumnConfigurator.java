@@ -111,6 +111,16 @@ public class TableColumnConfigurator {
                 columns.add(createStringColumn("Масса (кг)", "weightKg", 80));
                 break;
 
+            case "AXIAL_WHEEL":
+                columns.add(createStringColumn("Производитель", "manufacturer", 120));
+                columns.add(createStringColumn("Маркировка", "marking", 120));
+                columns.add(createStringColumn("Тип лопаток", "bladeType", 100));
+                columns.add(createStringColumn("Типоразмер", "size", 80));
+                columns.add(createStringColumn("Диаметр", "wheelDiameter", 80));
+                columns.add(createStringColumn("Лопатки", "bladeCount", 80));
+                columns.add(createStringColumn("Материал", "bladeMaterial", 80));
+                break;
+
             case "CUP":
                 columns.add(createStringColumn("Диаметр (мм)", "diameter", 100));
                 columns.add(createStringColumn("Высота (мм)", "height", 100));

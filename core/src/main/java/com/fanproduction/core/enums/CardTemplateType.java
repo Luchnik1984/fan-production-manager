@@ -10,6 +10,7 @@ public enum CardTemplateType {
     MOTOR("Электродвигатель", "motor"),
     MOTOR_WHEEL("Мотор-колесо", "motorWheel"),
     RADIAL_WHEEL("Радиальное колесо", "radialWheel"),
+    AXIAL_WHEEL("Осевое колесо", "axialWheel"),
     AXIAL_FAN("Осевой вентилятор", "axialFan"),
     RADIAL_FAN("Радиальный вентилятор", "radialFan"),
     DUCT_FAN("Канальный вентилятор", "ductFan"),
