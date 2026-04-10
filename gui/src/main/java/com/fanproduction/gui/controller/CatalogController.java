@@ -176,35 +176,44 @@ public class CatalogController {
         Map<String, Object> fields = dto.getFields();
         String name = dto.getName();
 
+        // Для электродвигателя
         if ("MOTOR".equals(cardType) && fields != null) {
-            String series = (String) fields.get("series");
-            String motorType = (String) fields.get("motorType");
-            Object polesObj = fields.get("poles");
-            String poles = polesObj != null ? polesObj.toString() : "";
-            String climateType = (String) fields.get("climateType");
-
-            StringBuilder marking = new StringBuilder();
-            if (series != null && !series.isEmpty()) {
-                marking.append(series).append(" ");
+            String fullMarking = (String) fields.get("fullMarking");
+            if (fullMarking != null && !fullMarking.isEmpty()) {
+                return "Электродвигатель " + fullMarking;
             }
-            if (motorType != null && !motorType.isEmpty()) {
-                marking.append(motorType);
-            }
-            if (!poles.isEmpty()) {
-                marking.append(poles);
-            }
-            if (climateType != null && !climateType.isEmpty()) {
-                marking.append(" ").append(climateType);
-            }
-
-            String builtMarking = marking.toString().trim();
-            if (!builtMarking.isEmpty()) {
-                return name + " " + builtMarking;
-            }
+            return "Электродвигатель";
         }
+
         // Для мотор-колеса: "Мотор-колесо" + наименование
         if ("MOTOR_WHEEL".equals(cardType)) {
-            return "Мотор-колесо " + name;
+            String nameMotorWheel = dto.getName();
+            if (nameMotorWheel != null && !nameMotorWheel.isEmpty()) {
+                return "Мотор-колесо " + nameMotorWheel;
+            }
+            return "Мотор-колесо";
+        }
+
+        // Для радиального колеса: "Радиальное колесо" + полная маркировка
+        if ("RADIAL_WHEEL".equals(cardType) && fields != null) {
+            String fullMarking = (String) fields.get("fullMarking");
+            if (fullMarking != null && !fullMarking.isEmpty()) {
+                return "Радиальное колесо " + fullMarking;
+            }
+            // Если полной маркировки нет, пробуем собрать из частей
+            String marking = (String) fields.get("marking");
+            String bladeMod = (String) fields.get("bladeMod");
+            String hubType = (String) fields.get("hubType");
+
+            StringBuilder sb = new StringBuilder();
+            if (marking != null && !marking.isEmpty()) sb.append(marking);
+            if (bladeMod != null && !bladeMod.isEmpty()) sb.append("-").append(bladeMod);
+            if (hubType != null && !hubType.isEmpty()) sb.append("-").append(hubType);
+
+            if (!sb.isEmpty()) {
+                return "Радиальное колесо " + sb.toString();
+            }
+            return "Радиальное колесо";
         }
 
         return name;

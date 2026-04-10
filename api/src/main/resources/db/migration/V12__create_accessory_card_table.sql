@@ -8,6 +8,13 @@ CREATE TABLE IF NOT EXISTS accessory_card (
     vendor_code VARCHAR(50),
     unit VARCHAR(20),
     price DOUBLE PRECISION,
+    -- Специальные поля (самостоятельная продукция)
+    general_purpose BOOLEAN DEFAULT TRUE,
+    fireproof BOOLEAN DEFAULT FALSE,
+    max_temperature INTEGER,
+    explosion_proof BOOLEAN DEFAULT FALSE,
+    explosion_marking VARCHAR(100),
+    full_marking VARCHAR(200),
     FOREIGN KEY (id) REFERENCES base_product_card(id) ON DELETE CASCADE
     );
 

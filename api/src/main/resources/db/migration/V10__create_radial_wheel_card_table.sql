@@ -16,6 +16,13 @@ CREATE TABLE IF NOT EXISTS radial_wheel_card (
     blade_count INTEGER,
     diameter INTEGER,
     width INTEGER,
+    -- Специальные исполнения
+    general_purpose BOOLEAN DEFAULT TRUE,
+    fireproof BOOLEAN DEFAULT FALSE,
+    max_temperature INTEGER,
+    explosion_proof BOOLEAN DEFAULT FALSE,
+    explosion_marking VARCHAR(100),
+    full_marking VARCHAR(200),
     FOREIGN KEY (id) REFERENCES base_product_card(id) ON DELETE CASCADE
     );
 

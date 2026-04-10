@@ -62,14 +62,14 @@ public class FieldMetadataService {
         // 13. Галочка "Общего применения"
         motorFields.add(createField("generalPurpose", "Общего применения", "boolean", false, "true", null, null));
 
-        // 14. Галочка "Огнестойкий"
-        motorFields.add(createField("fireproof", "Огнестойкий", "boolean", false, "false", null, null));
+        // 14. Галочка "Огнестойкость"
+        motorFields.add(createField("fireproof", "Огнестойкость", "boolean", false, "false", null, null));
 
         // 15. Предельная температура (появляется при огнестойком)
-        motorFields.add(createField("maxTemperature", "Предельная температура (°C)", "number", false, null, null, null, "появляется при выборе Огнестойкий", false));
+        motorFields.add(createField("maxTemperature", "Предельная температура (°C)", "number", false, null, null, null, "появляется при выборе Огнестойкость", false));
 
-        // 16. Галочка "Взрывозащищённый"
-        motorFields.add(createField("explosionProof", "Взрывозащищённый", "boolean", false, "false", null, null));
+        // 16. Галочка "Взрывозащита"
+        motorFields.add(createField("explosionProof", "Взрывозащита", "boolean", false, "false", null, null));
 
         // 17. Маркировка взрывозащиты (появляется при взрывозащищённом)
         motorFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, null, null, null, "1 Ex d IIB T4, 2Ex e II T3...", false));
@@ -118,17 +118,61 @@ public class FieldMetadataService {
         metadataMap.put("MOTOR_WHEEL", motorWheelFields);
 
         // ========== Радиальное колесо (RADIAL_WHEEL) ==========
-        metadataMap.put("RADIAL_WHEEL", Arrays.asList(
-                createField("manufacturer", "Производитель", "text", false, null, null, null),
-                createField("marking", "Маркировка", "text", true, null, null, null, "КЦ-220 C1"),
-                createField("bladeType", "Тип лопаток", "combobox", true, "назадзагнутые", new String[]{"впередзагнутые", "назадзагнутые"}, null),
-                createField("size", "Размер колеса", "double", true, null, null, null),
-                createField("hubType", "Ступица", "text", false, null, null, null, "SM 1610, BF 2012"),
-                createField("maxSpeedRpm", "Макс. скорость (об/мин)", "number", false, null, null, null),
-                createField("weightKg", "Масса (кг)", "double", false, null, null, null),
-                createField("wheelFormula", "Формула колеса", "text", false, null, null, null),
-                createField("bladeCount", "Количество лопаток", "number", false, null, null, null)
-        ));
+        List<FieldMetadataDto> radialWheelFields = new ArrayList<>();
+
+        // Производитель
+        radialWheelFields.add(createField("manufacturer", "Производитель", "text", false, null, null, null, "Например: Siemens, ABB"));
+
+        // Маркировка колеса
+        radialWheelFields.add(createField("marking", "Маркировка колеса", "text", true, null, null, null, "КЦ-220 C1"));
+
+        // Тип лопаток (выпадающий список)
+        radialWheelFields.add(createField("bladeType", "Тип лопаток", "combobox", true, "назадзагнутые",
+                new String[]{"впередзагнутые", "назадзагнутые"}, null, "впередзагнутые / назадзагнутые"));
+
+        // Модификация лопатки (новое поле)
+        radialWheelFields.add(createField("bladeMod", "Модификация лопатки", "text", false, null, null, null, "1.05, 14, 12U"));
+
+        // Размер колеса
+        radialWheelFields.add(createField("size", "Размер колеса", "double", true, null, null, null, "5,6"));
+
+        // Формула колеса
+        radialWheelFields.add(createField("wheelFormula", "Формула колеса", "text", false, null, null, null, "5,6_B14"));
+
+        // Количество лопаток
+        radialWheelFields.add(createField("bladeCount", "Количество лопаток", "number", false, null, null, null, "6, 7, 9"));
+
+        // Ступица
+        radialWheelFields.add(createField("hubType", "Ступица", "text", false, null, null, null, "SM 1610, BF 2012"));
+
+        // Максимальная скорость вращения
+        radialWheelFields.add(createField("maxSpeedRpm", "Макс. скорость (об/мин)", "number", false, null, null, null));
+
+        // Масса
+        radialWheelFields.add(createField("weightKg", "Масса (кг)", "double", false, null, null, null));
+
+        // Галочка "Общего применения"
+        radialWheelFields.add(createField("generalPurpose", "Общего применения", "boolean", false, "true", null, null));
+
+        // Галочка "Огнестойкость"
+        radialWheelFields.add(createField("fireproof", "Огнестойкость", "boolean", false, "false", null, null));
+
+        // Поле предельной температуры (скрыто по умолчанию)
+        FieldMetadataDto tempField = createField("maxTemperature", "Предельная температура (°C)", "number", false, null, null, null, "появляется при выборе Огнестойкость", false);
+        radialWheelFields.add(tempField);
+
+        // Галочка "Взрывозащита"
+        radialWheelFields.add(createField("explosionProof", "Взрывозащита", "boolean", false, "false", null, null));
+
+        // Поле маркировки взрывозащиты (скрыто по умолчанию)
+        FieldMetadataDto explosionField = createField("explosionMarking", "Маркировка взрывозащиты", "text", false, null, null, null, "IIb 4T, Ex d IIB T4", false);
+        radialWheelFields.add(explosionField);
+
+        // Полная маркировка (формируется автоматически)
+        radialWheelFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
+
+        metadataMap.put("RADIAL_WHEEL", radialWheelFields);
+
 
         // ========== Осевой вентилятор (AXIAL_FAN) ==========
         metadataMap.put("AXIAL_FAN", Arrays.asList(

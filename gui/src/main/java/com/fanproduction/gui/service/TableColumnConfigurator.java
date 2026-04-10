@@ -103,9 +103,12 @@ public class TableColumnConfigurator {
                 break;
 
             case "RADIAL_WHEEL":
+                columns.add(createStringColumn("Производитель", "manufacturer", 120));
                 columns.add(createStringColumn("Маркировка", "marking", 120));
-                columns.add(createStringColumn("Размер", "size", 80));
                 columns.add(createStringColumn("Тип лопаток", "bladeType", 120));
+                columns.add(createStringColumn("Размер", "size", 80));
+                columns.add(createStringColumn("Ступица", "hubType", 100));
+                columns.add(createStringColumn("Масса (кг)", "weightKg", 80));
                 break;
 
             case "CUP":

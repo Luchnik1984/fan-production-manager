@@ -38,7 +38,7 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
      * Настройка условного отображения полей
      */
     private void setupConditionalVisibility() {
-        // Огнестойкий -> поле предельной температуры
+        // Огнестойкость -> поле предельной температуры
         var fireproofCheck = CardFieldConfigurator.getCheckBox(fieldControls, "fireproof");
         var tempField = fieldControls.get("maxTemperature");
         var tempLabel = fieldControls.get("maxTemperature_label");
@@ -51,7 +51,7 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
             fireproofCheck.selectedProperty().addListener((obs, old, val) -> setVisibility(tempField, tempLabel, tempHint, val));
         }
 
-        // Взрывозащищённый -> поле маркировки взрывозащиты
+        // Взрывозащита -> поле маркировки взрывозащиты
         var explosionCheck = CardFieldConfigurator.getCheckBox(fieldControls, "explosionProof");
         var markingField = fieldControls.get("explosionMarking");
         var markingLabel = fieldControls.get("explosionMarking_label");

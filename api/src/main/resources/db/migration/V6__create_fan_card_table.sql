@@ -18,6 +18,13 @@ CREATE TABLE IF NOT EXISTS fan_card (
     fan_class VARCHAR(20),
     fan_type VARCHAR(30),
     fan_subtype VARCHAR(30),
+    -- Специальные поля
+    general_purpose BOOLEAN DEFAULT TRUE,
+    fireproof BOOLEAN DEFAULT FALSE,
+    max_temperature INTEGER,
+    explosion_proof BOOLEAN DEFAULT FALSE,
+    explosion_marking VARCHAR(100),
+    full_marking VARCHAR(200),
     FOREIGN KEY (id) REFERENCES base_product_card(id) ON DELETE CASCADE,
     FOREIGN KEY (motor_id) REFERENCES motor_card(id)
     );
