@@ -115,30 +115,28 @@ public class CardFormController {
 
             Control control = createControlForField(field);
 
-            if (control != null) {
-                grid.add(label, 0, row);
-                grid.add(control, 1, row);
-                fieldControls.put(field.getName(), control);
-                fieldMetadata.put(field.getName(), field);
-                fieldLabels.put(field.getName(), label);
+            grid.add(label, 0, row);
+            grid.add(control, 1, row);
+            fieldControls.put(field.getName(), control);
+            fieldMetadata.put(field.getName(), field);
+            fieldLabels.put(field.getName(), label);
 
-                // Устанавливаем видимость в соответствии с метаданными
-                boolean isVisible = field.isVisible();
-                label.setVisible(isVisible);
-                label.setManaged(isVisible);
-                control.setVisible(isVisible);
-                control.setManaged(isVisible);
+            // Устанавливаем видимость в соответствии с метаданными
+            boolean isVisible = field.isVisible();
+            label.setVisible(isVisible);
+            label.setManaged(isVisible);
+            control.setVisible(isVisible);
+            control.setManaged(isVisible);
 
-                // Подсказка
-                if (field.getHint() != null && !field.getHint().isEmpty()) {
-                    Label hintLabel = new Label(field.getHint());
-                    hintLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #888;");
-                    grid.add(hintLabel, 1, row + 1);
-                    fieldHints.put(field.getName(), hintLabel);
-                    hintLabel.setVisible(isVisible);
-                    hintLabel.setManaged(isVisible);
-                    row++;
-                }
+            // Подсказка
+            if (field.getHint() != null && !field.getHint().isEmpty()) {
+                Label hintLabel = new Label(field.getHint());
+                hintLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #888;");
+                grid.add(hintLabel, 1, row + 1);
+                fieldHints.put(field.getName(), hintLabel);
+                hintLabel.setVisible(isVisible);
+                hintLabel.setManaged(isVisible);
+                row++;
             }
             row++;
         }
@@ -343,6 +341,7 @@ public class CardFormController {
                 "MOTOR_WHEEL", "Мотор-колесо",
                 "RADIAL_WHEEL", "Радиальное колесо",
                 "AXIAL_FAN", "Осевой вентилятор",
+                "AXIAL_WHEEL", "Осевое колесо",
                 "RADIAL_FAN", "Радиальный вентилятор",
                 "DUCT_FAN", "Канальный вентилятор",
                 "CUP", "Стакан",

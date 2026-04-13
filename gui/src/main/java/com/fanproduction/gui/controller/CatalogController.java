@@ -60,6 +60,7 @@ public class CatalogController {
             "MOTOR", "Электродвигатель",
             "MOTOR_WHEEL", "Мотор-колесо",
             "RADIAL_WHEEL", "Радиальное колесо",
+            "AXIAL_WHEEL", "Осевое колесо",
             "AXIAL_FAN", "Осевой вентилятор",
             "RADIAL_FAN", "Радиальный вентилятор",
             "DUCT_FAN", "Канальный вентилятор",
@@ -313,6 +314,7 @@ public class CatalogController {
         typeMap.put("Электродвигатель", "MOTOR");
         typeMap.put("Мотор-колесо", "MOTOR_WHEEL");
         typeMap.put("Радиальное колесо", "RADIAL_WHEEL");
+        typeMap.put("Осевое колесо", "AXIAL_WHEEL");
         typeMap.put("Осевой вентилятор", "AXIAL_FAN");
         typeMap.put("Радиальный вентилятор", "RADIAL_FAN");
         typeMap.put("Канальный вентилятор", "DUCT_FAN");
