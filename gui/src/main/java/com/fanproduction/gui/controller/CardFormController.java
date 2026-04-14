@@ -339,11 +339,11 @@ public class CardFormController {
         Map<String, String> displayMap = Map.of(
                 "MOTOR", "Электродвигатель",
                 "MOTOR_WHEEL", "Мотор-колесо",
-                "RADIAL_WHEEL", "Радиальное колесо",
-                "AXIAL_FAN", "Осевой вентилятор",
-                "AXIAL_WHEEL", "Осевое колесо",
-                "RADIAL_FAN", "Радиальный вентилятор",
-                "DUCT_FAN", "Канальный вентилятор",
+                "RADIAL_WHEEL", "Колесо радиальное",
+                "AXIAL_WHEEL", "Колесо осевое",
+                "AXIAL_FAN", "Вентилятор осевой",
+                "RADIAL_FAN", "Вентилятор радиальный",
+                "DUCT_FAN", "Вентилятор канальный",
                 "CUP", "Стакан",
                 "ACCESSORY", "Комплектующее"
         );

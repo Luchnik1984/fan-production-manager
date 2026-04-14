@@ -59,11 +59,11 @@ public class CatalogController {
     private static final Map<String, String> TYPE_DISPLAY_MAP = Map.of(
             "MOTOR", "Электродвигатель",
             "MOTOR_WHEEL", "Мотор-колесо",
-            "RADIAL_WHEEL", "Радиальное колесо",
-            "AXIAL_WHEEL", "Осевое колесо",
-            "AXIAL_FAN", "Осевой вентилятор",
-            "RADIAL_FAN", "Радиальный вентилятор",
-            "DUCT_FAN", "Канальный вентилятор",
+            "RADIAL_WHEEL", "Колесо радиальное",
+            "AXIAL_WHEEL", "Колесо осевое",
+            "AXIAL_FAN", "Вентилятор осевой",
+            "RADIAL_FAN", "Вентилятор радиальный",
+            "DUCT_FAN", "Вентилятор канальный",
             "CUP", "Стакан",
             "ACCESSORY", "Комплектующее"
     );
@@ -126,7 +126,6 @@ public class CatalogController {
                             Map<String, Object> fields = (Map<String, Object>) item.get("fields");
                             dto.setFields(fields);
 
-                            // Формируем отображаемое наименование
                             String displayName = buildDisplayName(dto);
                             dto.setCardTypeDisplay(displayName);
 
@@ -139,7 +138,6 @@ public class CatalogController {
                         updatePaginationControls();
                         statusLabel.setText("Всего записей: " + totalElements);
 
-                        // Настраиваем колонки в зависимости от выбранного типа
                         TableColumnConfigurator.setupColumns(productsTable, currentTypeFilter);
                         productsTable.setItems(productList);
 
@@ -169,15 +167,10 @@ public class CatalogController {
         }).start();
     }
 
-    /**
-     * Формирует отображаемое наименование для карточки
-     */
     private String buildDisplayName(ProductCardDto dto) {
         String cardType = dto.getCardType();
         Map<String, Object> fields = dto.getFields();
-        String name = dto.getName();
 
-        // Для электродвигателя
         if ("MOTOR".equals(cardType) && fields != null) {
             String fullMarking = (String) fields.get("fullMarking");
             if (fullMarking != null && !fullMarking.isEmpty()) {
@@ -186,38 +179,45 @@ public class CatalogController {
             return "Электродвигатель";
         }
 
-        // Для мотор-колеса: "Мотор-колесо" + наименование
         if ("MOTOR_WHEEL".equals(cardType)) {
-            String nameMotorWheel = dto.getName();
-            if (nameMotorWheel != null && !nameMotorWheel.isEmpty()) {
-                return "Мотор-колесо " + nameMotorWheel;
+            String name = dto.getName();
+            if (name != null && !name.isEmpty()) {
+                return "Мотор-колесо " + name;
             }
             return "Мотор-колесо";
         }
 
-        // Для радиального колеса: "Радиальное колесо" + полная маркировка
         if ("RADIAL_WHEEL".equals(cardType) && fields != null) {
             String fullMarking = (String) fields.get("fullMarking");
             if (fullMarking != null && !fullMarking.isEmpty()) {
-                return "Радиальное колесо " + fullMarking;
-            }
-            // Если полной маркировки нет, пробуем собрать из частей
-            String marking = (String) fields.get("marking");
-            String bladeMod = (String) fields.get("bladeMod");
-            String hubType = (String) fields.get("hubType");
+//                return "Колесо радиальное " + fullMarking;
+//            }
+//            String marking = (String) fields.get("marking");
+//            String bladeMod = (String) fields.get("bladeMod");
+//            String hubType = (String) fields.get("hubType");
+//
+//            StringBuilder sb = new StringBuilder();
+//            if (marking != null && !marking.isEmpty()) sb.append(marking);
+//            if (bladeMod != null && !bladeMod.isEmpty()) sb.append("-").append(bladeMod);
+//            if (hubType != null && !hubType.isEmpty()) sb.append("-").append(hubType);
+//
+//            if (!sb.isEmpty()) {
+//                return "Колесо радиальное " + sb.toString();
 
-            StringBuilder sb = new StringBuilder();
-            if (marking != null && !marking.isEmpty()) sb.append(marking);
-            if (bladeMod != null && !bladeMod.isEmpty()) sb.append("-").append(bladeMod);
-            if (hubType != null && !hubType.isEmpty()) sb.append("-").append(hubType);
-
-            if (!sb.isEmpty()) {
-                return "Радиальное колесо " + sb.toString();
+                return fullMarking;
             }
-            return "Радиальное колесо";
+            return "Колесо радиальное";
         }
 
-        return name;
+        if ("AXIAL_WHEEL".equals(cardType) && fields != null) {
+            String fullMarking = (String) fields.get("fullMarking");
+            if (fullMarking != null && !fullMarking.isEmpty()) {
+                return fullMarking;
+            }
+            return "Колесо осевое";
+        }
+
+        return dto.getName();
     }
 
     private void updatePaginationControls() {
@@ -252,7 +252,6 @@ public class CatalogController {
                             prevButton.setDisable(true);
                             nextButton.setDisable(true);
                             pageLabel.setText("Результаты поиска");
-                            // Для поиска показываем все колонки (без фильтра по типу)
                             TableColumnConfigurator.setupColumns(productsTable, null);
                             productsTable.setItems(productList);
                         } else {
@@ -306,21 +305,28 @@ public class CatalogController {
         }
     }
 
+    /**
+     * Возвращает карту соответствия русских названий типов продукции и их кодов
+     */
+    private Map<String, String> getTypeMap() {
+        Map<String, String> typeMap = new LinkedHashMap<>();
+        typeMap.put("Электродвигатель", "MOTOR");
+        typeMap.put("Мотор-колесо", "MOTOR_WHEEL");
+        typeMap.put("Колесо радиальное", "RADIAL_WHEEL");
+        typeMap.put("Колесо осевое", "AXIAL_WHEEL");
+        typeMap.put("Вентилятор осевой", "AXIAL_FAN");
+        typeMap.put("Вентилятор радиальный", "RADIAL_FAN");
+        typeMap.put("Вентилятор канальный", "DUCT_FAN");
+        typeMap.put("Стакан", "CUP");
+        typeMap.put("Комплектующее", "ACCESSORY");
+        return typeMap;
+    }
+
     @FXML
     private void handleCreate() {
         Stage ownerStage = (Stage) productsTable.getScene().getWindow();
 
-        Map<String, String> typeMap = new LinkedHashMap<>();
-        typeMap.put("Электродвигатель", "MOTOR");
-        typeMap.put("Мотор-колесо", "MOTOR_WHEEL");
-        typeMap.put("Радиальное колесо", "RADIAL_WHEEL");
-        typeMap.put("Осевое колесо", "AXIAL_WHEEL");
-        typeMap.put("Осевой вентилятор", "AXIAL_FAN");
-        typeMap.put("Радиальный вентилятор", "RADIAL_FAN");
-        typeMap.put("Канальный вентилятор", "DUCT_FAN");
-        typeMap.put("Стакан", "CUP");
-        typeMap.put("Комплектующее", "ACCESSORY");
-
+        Map<String, String> typeMap = getTypeMap();
         ChoiceDialog<String> typeDialog = new ChoiceDialog<>("Электродвигатель", typeMap.keySet());
         typeDialog.setTitle("Создание карточки");
         typeDialog.setHeaderText("Выберите тип создаваемой карточки");

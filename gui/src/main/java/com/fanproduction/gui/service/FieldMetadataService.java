@@ -117,14 +117,14 @@ public class FieldMetadataService {
 
         metadataMap.put("MOTOR_WHEEL", motorWheelFields);
 
-        // ========== Радиальное колесо (RADIAL_WHEEL) ==========
+        // ========== Колесо радиальное (RADIAL_WHEEL) ==========
         List<FieldMetadataDto> radialWheelFields = new ArrayList<>();
 
         // Производитель
         radialWheelFields.add(createField("manufacturer", "Производитель", "text", false, null, null, null, "Например: Siemens, ABB"));
 
         // Маркировка колеса
-        radialWheelFields.add(createField("marking", "Маркировка колеса", "text", true, null, null, null, "КЦ-220 C1"));
+        radialWheelFields.add(createField("marking", "Маркировка колеса", "text", true, null, null, null, "КЦ-220-С"));
 
         // Тип лопаток (выпадающий список)
         radialWheelFields.add(createField("bladeType", "Тип лопаток", "combobox", true, "назадзагнутые",
@@ -143,7 +143,7 @@ public class FieldMetadataService {
         radialWheelFields.add(createField("bladeCount", "Количество лопаток", "number", false, null, null, null, "6, 7, 9"));
 
         // Ступица
-        radialWheelFields.add(createField("hubType", "Ступица", "text", false, null, null, null, "SM 1610, BF 2012"));
+        radialWheelFields.add(createField("hubType", "Ступица", "text", false, null, null, null, "SM1610, BF2012"));
 
         // Максимальная скорость вращения
         radialWheelFields.add(createField("maxSpeedRpm", "Макс. скорость (об/мин)", "number", false, null, null, null));
@@ -177,36 +177,35 @@ public class FieldMetadataService {
         List<FieldMetadataDto> axialWheelFields = new ArrayList<>();
 
         axialWheelFields.add(createField("manufacturer", "Производитель", "text", false, null, null, null));
-        axialWheelFields.add(createField("marking", "Маркировка колеса", "text", true, null, null, null, "624/3-9/4Z/43/PAG"));
+        axialWheelFields.add(createField("marking", "Маркировка колеса", "text", false, null, null, null, "Заполняется только для покупного колеса"));
 
         axialWheelFields.add(createField("bladeType", "Тип лопаток", "text", true, null, null, null, "4Z, 5Z, 109_50, 76_14"));
         axialWheelFields.add(createField("size", "Типоразмер", "double", true, null, null, null, "6,3"));
-        axialWheelFields.add(createField("execution", "Исполнение", "text", false, null, null, null, "C, Ex, F"));
         axialWheelFields.add(createField("trimCoefficient", "Коэффициент подрезки (%)", "double", false, "0", null, null, "1,00"));
 
-        axialWheelFields.add(createField("hubType", "Ступица", "text", false, null, null, null, "SM 1610, BF 2012"));
+        axialWheelFields.add(createField("hubType", "Ступица", "text", false, null, null, null, "SM1610, BF2012"));
 
         axialWheelFields.add(createField("bladeCount", "Количество лопаток", "number", true, null, null, null));
         axialWheelFields.add(createField("bladeSlots", "Посадочных мест", "number", true, null, null, null));
-        axialWheelFields.add(createField("bladeShape", "Форма лопатки", "text", true, null, null, null, "4Z, 5Z, 109_50, 76_14"));
         axialWheelFields.add(createField("bladeAngle", "Угол установки", "number", true, null, null, null, "27"));
         axialWheelFields.add(createField("bladeMaterial", "Материал лопатки", "combobox", true, "PAG", new String[]{"PAG", "ST"}, null));
 
         axialWheelFields.add(createField("wheelDiameter", "Диаметр колеса (мм)", "number", false, null, null, null, "рассчитывается автоматически"));
         axialWheelFields.add(createField("wheelFormula", "Формула колеса", "text", false, null, null, null, "формируется автоматически"));
 
-// Специальные поля
+        // Специальные поля
         axialWheelFields.add(createField("generalPurpose", "Общего применения", "boolean", false, "true", null, null));
         axialWheelFields.add(createField("fireproof", "Огнестойкость", "boolean", false, "false", null, null));
-        axialWheelFields.add(createField("maxTemperature", "Предельная температура (°C)", "number", false, null, null, null, "появляется при выборе Огнестойкость", false));
+        axialWheelFields.add(createField("fireproofMarking", "Маркировка огнестойкости", "text", false, "F400", null, null, "F400"));
         axialWheelFields.add(createField("explosionProof", "Взрывозащита", "boolean", false, "false", null, null));
-        axialWheelFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, null, null, null, "1Ex db IIC T4 Gb", false));
+        axialWheelFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex db IIC T4 Gb", null, null, "1Ex db IIC T4 Gb"));
+        axialWheelFields.add(createField("maxTemperature", "Предельная температура (°C)", "number", false, null, null, null, "появляется при выборе Огнестойкость", false));
         axialWheelFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
 
         metadataMap.put("AXIAL_WHEEL", axialWheelFields);
 
 
-        // ========== Осевой вентилятор (AXIAL_FAN) ==========
+        // ========== Вентилятор осевой (AXIAL_FAN) ==========
         metadataMap.put("AXIAL_FAN", Arrays.asList(
                 createField("size", "Типоразмер", "double", true, null, null, null, "5,6"),
                 createField("seriesName", "Наименование серии", "text", true, "VO-PatAIR", null, null),

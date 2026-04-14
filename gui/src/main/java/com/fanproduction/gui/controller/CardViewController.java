@@ -48,6 +48,7 @@ public class CardViewController {
         FIELD_RUSSIAN_NAMES.put("weightKg", "Масса (кг)");
         FIELD_RUSSIAN_NAMES.put("generalPurpose", "Общего применения");
         FIELD_RUSSIAN_NAMES.put("fireproof", "Огнестойкость");
+        FIELD_RUSSIAN_NAMES.put("fireproofMarking", "Маркировка огнестойкости");
         FIELD_RUSSIAN_NAMES.put("maxTemperature", "Предельная температура (°C)");
         FIELD_RUSSIAN_NAMES.put("explosionProof", "Взрывозащита");
         FIELD_RUSSIAN_NAMES.put("explosionMarking", "Маркировка взрывозащиты");
@@ -76,8 +77,6 @@ public class CardViewController {
         FIELD_RUSSIAN_NAMES.put("bladeAngle", "Угол установки");
         FIELD_RUSSIAN_NAMES.put("bladeMaterial", "Материал лопатки");
         FIELD_RUSSIAN_NAMES.put("wheelDiameter", "Диаметр колеса (мм)");
-
-
 
     }
 
@@ -269,10 +268,11 @@ public class CardViewController {
         Map<String, String> displayMap = Map.of(
                 "MOTOR", "Электродвигатель",
                 "MOTOR_WHEEL", "Мотор-колесо",
-                "RADIAL_WHEEL", "Радиальное колесо",
-                "AXIAL_FAN", "Осевой вентилятор",
-                "RADIAL_FAN", "Радиальный вентилятор",
-                "DUCT_FAN", "Канальный вентилятор",
+                "RADIAL_WHEEL", "Колесо радиальное",
+                "AXIAL_WHEEL", "Колесо осевое",
+                "AXIAL_FAN", "Вентилятор осевой",
+                "RADIAL_FAN", "Вентилятор радиальный",
+                "DUCT_FAN", "Вентилятор канальный",
                 "CUP", "Стакан",
                 "ACCESSORY", "Комплектующее"
         );

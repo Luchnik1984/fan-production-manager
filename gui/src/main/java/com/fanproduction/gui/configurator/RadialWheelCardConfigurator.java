@@ -25,7 +25,7 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         if (!existingCardExists) {
             TextField nameField = getTextField(fieldControls, "name");
             if (nameField != null && nameField.getText().isEmpty()) {
-                nameField.setText("Радиальное колесо");
+                nameField.setText("Колесо радиальное");
             }
         }
     }

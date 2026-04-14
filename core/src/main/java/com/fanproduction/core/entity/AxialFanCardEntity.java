@@ -31,7 +31,7 @@ public class AxialFanCardEntity extends FanCardEntity {
     private String position;
 
     /**
-     * Ссылка на компонент - осевое колесо
+     * Ссылка на компонент - Колесо осевое
      */
     @Column(name = "axial_wheel_id")
     private Long axialWheelId;

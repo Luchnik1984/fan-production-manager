@@ -29,6 +29,7 @@ public class ProductCardFactory {
         cardSuppliers.put(CardTemplateType.MOTOR, MotorCardEntity::new);
         cardSuppliers.put(CardTemplateType.MOTOR_WHEEL, MotorWheelCardEntity::new);
         cardSuppliers.put(CardTemplateType.RADIAL_WHEEL, RadialWheelCardEntity::new);
+        cardSuppliers.put(CardTemplateType.AXIAL_WHEEL, AxialWheelCardEntity::new);
         cardSuppliers.put(CardTemplateType.AXIAL_FAN, AxialFanCardEntity::new);
         cardSuppliers.put(CardTemplateType.RADIAL_FAN, RadialFanCardEntity::new);
         cardSuppliers.put(CardTemplateType.DUCT_FAN, DuctFanCardEntity::new);
