@@ -233,34 +233,34 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         String fireproofMarking = isFireproof ? getFieldValue("fireproofMarking") : "";
         String explosionMarking = isExplosionProof ? getFieldValue("explosionMarking") : "";
 
-        StringBuilder fullMarking = new StringBuilder("Колесо Осевое ");
+        StringBuilder fullMarking = new StringBuilder();
 
-        // Маркировка
-        if (marking != null && !marking.isEmpty()) {
+        // Маркировка (если есть)
+        if (!marking.isEmpty()) {
             fullMarking.append(marking).append(" ");
         }
 
         // Типоразмер
-        if (size != null && !size.isEmpty()) {
+        if (!size.isEmpty()) {
             fullMarking.append(size);
         }
 
-        // Исполнение (C - общее, F - огнестойкость, Ex - взрывозащита)
+        // Исполнение (C - общее, F400 - огнестойкость, Ex - взрывозащита)
         if (isGeneralPurpose) {
             fullMarking.append("-C");
-        } else if (isFireproof && fireproofMarking != null && !fireproofMarking.isEmpty()) {
+        } else if (isFireproof && !fireproofMarking.isEmpty()) {
             fullMarking.append("-").append(fireproofMarking);
-        } else if (isExplosionProof && explosionMarking != null && !explosionMarking.isEmpty()) {
+        } else if (isExplosionProof && !explosionMarking.isEmpty()) {
             fullMarking.append("-").append(explosionMarking);
         }
 
         // Формула колеса
-        if (wheelFormula != null && !wheelFormula.isEmpty()) {
+        if (!wheelFormula.isEmpty()) {
             fullMarking.append("-").append(wheelFormula);
         }
 
         // Материал лопаток
-        if (bladeMaterial != null && !bladeMaterial.isEmpty()) {
+        if (!bladeMaterial.isEmpty()) {
             fullMarking.append("/").append(bladeMaterial);
         }
 
@@ -272,6 +272,7 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
             lastAutoMarking = newMarking;
         }
     }
+
 
     private boolean isSelected(String fieldName) {
         CheckBox checkBox = getCheckBox(fieldControls, fieldName);

@@ -1,5 +1,6 @@
 package com.fanproduction.gui.controller;
 
+import com.fanproduction.core.enums.CardTypeDisplay;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -265,18 +266,19 @@ public class CardViewController {
     }
 
     private static String getCardTypeDisplay(String cardType) {
-        Map<String, String> displayMap = Map.of(
-                "MOTOR", "Электродвигатель",
-                "MOTOR_WHEEL", "Мотор-колесо",
-                "RADIAL_WHEEL", "Колесо радиальное",
-                "AXIAL_WHEEL", "Колесо осевое",
-                "AXIAL_FAN", "Вентилятор осевой",
-                "RADIAL_FAN", "Вентилятор радиальный",
-                "DUCT_FAN", "Вентилятор канальный",
-                "CUP", "Стакан",
-                "ACCESSORY", "Комплектующее"
-        );
-        return displayMap.getOrDefault(cardType, cardType);
+//        Map<String, String> displayMap = Map.of(
+//                "MOTOR", "Электродвигатель",
+//                "MOTOR_WHEEL", "Мотор-колесо",
+//                "RADIAL_WHEEL", "Колесо радиальное",
+//                "AXIAL_WHEEL", "Колесо осевое",
+//                "AXIAL_FAN", "Вентилятор осевой",
+//                "RADIAL_FAN", "Вентилятор радиальный",
+//                "DUCT_FAN", "Вентилятор канальный",
+//                "CUP", "Стакан",
+//                "ACCESSORY", "Комплектующее"
+//        );
+//        return displayMap.getOrDefault(cardType, cardType);
+        return CardTypeDisplay.getDisplayName(cardType);
     }
 
     private static String formatValue(Object value) {

@@ -9,26 +9,29 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Класс для настройки колонок таблицы карточек в зависимости от типа продукции.
- */
 public class TableColumnConfigurator {
 
-    /**
-     * Настраивает колонки таблицы в зависимости от типа карточки
-     */
     public static void setupColumns(TableView<ProductCardDto> table, String cardType) {
         table.getColumns().clear();
 
         List<TableColumn<ProductCardDto, ?>> allColumns = new ArrayList<>();
 
-        // Наименование (с полной маркировкой) - основная колонка
+        // Колонка "Наименование" (с полной маркировкой)
         TableColumn<ProductCardDto, String> nameCol = new TableColumn<>("Наименование");
         nameCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getCardTypeDisplay()));
         nameCol.setPrefWidth(300);
         allColumns.add(nameCol);
 
-        // Специфичные колонки для типа
+//        // Колонка "Тип" (отображает русское название типа продукции)
+//        TableColumn<ProductCardDto, String> typeCol = new TableColumn<>("Тип");
+//        typeCol.setCellValueFactory(cellData -> {
+//            String cardTypeCode = cellData.getValue().getCardType();
+//            return new SimpleStringProperty(CardTypeDisplay.getDisplayName(cardTypeCode));
+//        });
+//        typeCol.setPrefWidth(150);
+//        allColumns.add(typeCol);
+
+        // Специфичные колонки для выбранного типа
         if (cardType != null) {
             allColumns.addAll(getSpecificColumns(cardType));
         }
@@ -36,9 +39,6 @@ public class TableColumnConfigurator {
         table.getColumns().addAll(allColumns);
     }
 
-    /**
-     * Вспомогательный метод для получения значения поля
-     */
     private static String getFieldValue(ProductCardDto dto, String fieldName) {
         Map<String, Object> fields = dto.getFields();
         if (fields == null) return "";
@@ -46,9 +46,6 @@ public class TableColumnConfigurator {
         return value != null ? value.toString() : "";
     }
 
-    /**
-     * Создаёт колонку с фабрикой
-     */
     private static TableColumn<ProductCardDto, String> createStringColumn(String title, String fieldName, double width) {
         TableColumn<ProductCardDto, String> column = new TableColumn<>(title);
         column.setCellValueFactory(cellData -> new SimpleStringProperty(getFieldValue(cellData.getValue(), fieldName)));
@@ -56,9 +53,6 @@ public class TableColumnConfigurator {
         return column;
     }
 
-    /**
-     * Получить специфичные колонки для типа
-     */
     private static List<TableColumn<ProductCardDto, ?>> getSpecificColumns(String cardType) {
         List<TableColumn<ProductCardDto, ?>> columns = new ArrayList<>();
 
@@ -71,6 +65,35 @@ public class TableColumnConfigurator {
                 columns.add(createStringColumn("Монтаж", "mountingType", 100));
                 columns.add(createStringColumn("Климат", "climateType", 80));
                 columns.add(createStringColumn("Напряжение (В)", "voltage", 90));
+                columns.add(createStringColumn("Масса (кг)", "weightKg", 80));
+                break;
+
+            case "AXIAL_WHEEL":
+                columns.add(createStringColumn("Производитель", "manufacturer", 120));
+                columns.add(createStringColumn("Маркировка", "marking", 120));
+                columns.add(createStringColumn("Тип лопаток", "bladeType", 100));
+                columns.add(createStringColumn("Типоразмер", "size", 80));
+                columns.add(createStringColumn("Диаметр", "wheelDiameter", 80));
+                columns.add(createStringColumn("Лопатки", "bladeCount", 80));
+                columns.add(createStringColumn("Материал", "bladeMaterial", 80));
+                break;
+
+            case "RADIAL_WHEEL":
+                columns.add(createStringColumn("Производитель", "manufacturer", 120));
+                columns.add(createStringColumn("Маркировка", "marking", 120));
+                columns.add(createStringColumn("Тип лопаток", "bladeType", 120));
+                columns.add(createStringColumn("Размер", "size", 80));
+                columns.add(createStringColumn("Ступица", "hubType", 100));
+                columns.add(createStringColumn("Масса (кг)", "weightKg", 80));
+                break;
+
+            case "MOTOR_WHEEL":
+                columns.add(createStringColumn("Производитель", "manufacturer", 120));
+                columns.add(createStringColumn("Тип лопаток", "bladeType", 120));
+                columns.add(createStringColumn("Размер", "size", 80));
+                columns.add(createStringColumn("Полюсов", "poles", 80));
+                columns.add(createStringColumn("Напряжение (В)", "voltage", 90));
+                columns.add(createStringColumn("Мощность (КВт)", "powerKw", 100));
                 columns.add(createStringColumn("Масса (кг)", "weightKg", 80));
                 break;
 
@@ -90,35 +113,6 @@ public class TableColumnConfigurator {
                 columns.add(createStringColumn("Серия", "seriesName", 120));
                 columns.add(createStringColumn("Тип", "ductFanType", 100));
                 columns.add(createStringColumn("Размер", "wheelSize", 80));
-                break;
-
-            case "MOTOR_WHEEL":
-                columns.add(createStringColumn("Производитель", "manufacturer", 120));
-                columns.add(createStringColumn("Тип лопаток", "bladeType", 120));
-                columns.add(createStringColumn("Размер", "size", 80));
-                columns.add(createStringColumn("Полюсов", "poles", 80));
-                columns.add(createStringColumn("Напряжение (В)", "voltage", 90));
-                columns.add(createStringColumn("Мощность (КВт)", "powerKw", 100));
-                columns.add(createStringColumn("Масса (кг)", "weightKg", 80));
-                break;
-
-            case "RADIAL_WHEEL":
-                columns.add(createStringColumn("Производитель", "manufacturer", 120));
-                columns.add(createStringColumn("Маркировка", "marking", 120));
-                columns.add(createStringColumn("Тип лопаток", "bladeType", 120));
-                columns.add(createStringColumn("Размер", "size", 80));
-                columns.add(createStringColumn("Ступица", "hubType", 100));
-                columns.add(createStringColumn("Масса (кг)", "weightKg", 80));
-                break;
-
-            case "AXIAL_WHEEL":
-                columns.add(createStringColumn("Производитель", "manufacturer", 120));
-                columns.add(createStringColumn("Маркировка", "marking", 120));
-                columns.add(createStringColumn("Тип лопаток", "bladeType", 100));
-                columns.add(createStringColumn("Типоразмер", "size", 80));
-                columns.add(createStringColumn("Диаметр", "wheelDiameter", 80));
-                columns.add(createStringColumn("Лопатки", "bladeCount", 80));
-                columns.add(createStringColumn("Материал", "bladeMaterial", 80));
                 break;
 
             case "CUP":
