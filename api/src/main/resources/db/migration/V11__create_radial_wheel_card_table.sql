@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS radial_wheel_card (
     -- Специальные исполнения
     general_purpose BOOLEAN DEFAULT TRUE,
     fireproof BOOLEAN DEFAULT FALSE,
+    fireproof_marking VARCHAR(50),
     max_temperature INTEGER,
     explosion_proof BOOLEAN DEFAULT FALSE,
     explosion_marking VARCHAR(100),

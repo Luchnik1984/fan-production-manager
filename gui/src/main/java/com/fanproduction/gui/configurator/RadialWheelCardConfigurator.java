@@ -1,7 +1,6 @@
 package com.fanproduction.gui.configurator;
 
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Control;
 import javafx.scene.control.TextField;
 
@@ -19,9 +18,11 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
 
         fullMarkingField = getTextField(fieldControls, "fullMarking");
 
+        setupExclusiveSelection();
         setupConditionalVisibility();
         setupFullMarkingGeneration();
 
+        // Автоматическое заполнение наименования
         if (!existingCardExists) {
             TextField nameField = getTextField(fieldControls, "name");
             if (nameField != null && nameField.getText().isEmpty()) {
@@ -30,48 +31,90 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
-    private void setupConditionalVisibility() {
-        // Огнестойкость -> поле предельной температуры
+    /**
+     * Взаимоисключающие галочки
+     */
+    private void setupExclusiveSelection() {
+        CheckBox generalPurposeCheck = getCheckBox(fieldControls, "generalPurpose");
         CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
+        CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
+
+        if (generalPurposeCheck != null) {
+            generalPurposeCheck.selectedProperty().addListener((obs, old, val) -> {
+                if (val) {
+                    if (fireproofCheck != null) fireproofCheck.setSelected(false);
+                    if (explosionCheck != null) explosionCheck.setSelected(false);
+                }
+                updateFullMarking();
+            });
+        }
+
+        if (fireproofCheck != null) {
+            fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
+                if (val) {
+                    if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
+                    if (explosionCheck != null) explosionCheck.setSelected(false);
+                }
+                updateFullMarking();
+            });
+        }
+
+        if (explosionCheck != null) {
+            explosionCheck.selectedProperty().addListener((obs, old, val) -> {
+                if (val) {
+                    if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
+                    if (fireproofCheck != null) fireproofCheck.setSelected(false);
+                }
+                updateFullMarking();
+            });
+        }
+    }
+
+    private void setupConditionalVisibility() {
+        // Огнестойкость -> поле маркировки огнестойкости и предельной температуры
+        CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
+        Control fireproofMarkingField = fieldControls.get("fireproofMarking");
         Control tempField = fieldControls.get("maxTemperature");
-        Control tempLabel = fieldControls.get("maxTemperature_label");
-        Control tempHint = fieldControls.get("maxTemperature_hint");
 
-        if (fireproofCheck != null && tempField != null) {
-            boolean initialVisible = fireproofCheck.isSelected();
-            setVisibility(tempField, tempLabel, tempHint, initialVisible);
+        if (fireproofCheck != null) {
+            boolean isVisible = fireproofCheck.isSelected();
 
-            fireproofCheck.selectedProperty().addListener((obs, old, val) ->
-                    setVisibility(tempField, tempLabel, tempHint, val));
+            if (fireproofMarkingField != null) {
+                fireproofMarkingField.setVisible(isVisible);
+                fireproofMarkingField.setManaged(isVisible);
+            }
+            if (tempField != null) {
+                tempField.setVisible(isVisible);
+                tempField.setManaged(isVisible);
+            }
+
+            fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
+                if (fireproofMarkingField != null) {
+                    fireproofMarkingField.setVisible(val);
+                    fireproofMarkingField.setManaged(val);
+                }
+                if (tempField != null) {
+                    tempField.setVisible(val);
+                    tempField.setManaged(val);
+                }
+                updateFullMarking();
+            });
         }
 
         // Взрывозащита -> поле маркировки взрывозащиты
         CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
-        Control markingField = fieldControls.get("explosionMarking");
-        Control markingLabel = fieldControls.get("explosionMarking_label");
-        Control markingHint = fieldControls.get("explosionMarking_hint");
+        Control explosionMarkingField = fieldControls.get("explosionMarking");
 
-        if (explosionCheck != null && markingField != null) {
-            boolean initialVisible = explosionCheck.isSelected();
-            setVisibility(markingField, markingLabel, markingHint, initialVisible);
+        if (explosionCheck != null && explosionMarkingField != null) {
+            boolean isVisible = explosionCheck.isSelected();
+            explosionMarkingField.setVisible(isVisible);
+            explosionMarkingField.setManaged(isVisible);
 
-            explosionCheck.selectedProperty().addListener((obs, old, val) ->
-                    setVisibility(markingField, markingLabel, markingHint, val));
-        }
-    }
-
-    private void setVisibility(Control field, Control label, Control hint, boolean visible) {
-        if (field != null) {
-            field.setVisible(visible);
-            field.setManaged(visible);
-        }
-        if (label != null) {
-            label.setVisible(visible);
-            label.setManaged(visible);
-        }
-        if (hint != null) {
-            hint.setVisible(visible);
-            hint.setManaged(visible);
+            explosionCheck.selectedProperty().addListener((obs, old, val) -> {
+                explosionMarkingField.setVisible(val);
+                explosionMarkingField.setManaged(val);
+                updateFullMarking();
+            });
         }
     }
 
@@ -81,6 +124,12 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         addTextFieldListener("marking", this::updateFullMarking);
         addTextFieldListener("bladeMod", this::updateFullMarking);
         addTextFieldListener("hubType", this::updateFullMarking);
+        addTextFieldListener("fireproofMarking", this::updateFullMarking);
+        addTextFieldListener("explosionMarking", this::updateFullMarking);
+
+        addCheckBoxListener("generalPurpose", this::updateFullMarking);
+        addCheckBoxListener("fireproof", this::updateFullMarking);
+        addCheckBoxListener("explosionProof", this::updateFullMarking);
 
         updateFullMarking();
     }
@@ -92,6 +141,13 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
+    private void addCheckBoxListener(String fieldName, Runnable callback) {
+        CheckBox checkBox = getCheckBox(fieldControls, fieldName);
+        if (checkBox != null) {
+            checkBox.selectedProperty().addListener((obs, old, val) -> callback.run());
+        }
+    }
+
     private void updateFullMarking() {
         if (fullMarkingField == null) return;
 
@@ -99,10 +155,38 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         String bladeMod = getFieldValue("bladeMod");
         String hubType = getFieldValue("hubType");
 
+        boolean isGeneralPurpose = isSelected("generalPurpose");
+        boolean isFireproof = isSelected("fireproof");
+        boolean isExplosionProof = isSelected("explosionProof");
+
+        String fireproofMarking = isFireproof ? getFieldValue("fireproofMarking") : "";
+        String explosionMarking = isExplosionProof ? getFieldValue("explosionMarking") : "";
+
         StringBuilder fullMarking = new StringBuilder();
-        if (marking != null && !marking.isEmpty()) fullMarking.append(marking);
-        if (bladeMod != null && !bladeMod.isEmpty()) fullMarking.append("-").append(bladeMod);
-        if (hubType != null && !hubType.isEmpty()) fullMarking.append("-").append(hubType);
+
+        // Маркировка
+        if (!marking.isEmpty()) {
+            fullMarking.append(marking);
+        }
+
+        // Исполнение
+        if (isGeneralPurpose) {
+            fullMarking.append("-C");
+        } else if (isFireproof) {
+            fullMarking.append("-").append(fireproofMarking);
+        } else if (isExplosionProof && !explosionMarking.isEmpty()) {
+            fullMarking.append("-").append(explosionMarking);
+        }
+
+        // Модификация лопатки
+        if (!bladeMod.isEmpty()) {
+            fullMarking.append("-").append(bladeMod);
+        }
+
+        // Ступица
+        if (!hubType.isEmpty()) {
+            fullMarking.append("-").append(hubType);
+        }
 
         String newMarking = fullMarking.toString();
         String currentMarking = fullMarkingField.getText();
@@ -113,24 +197,25 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
+    private boolean isSelected(String fieldName) {
+        CheckBox checkBox = getCheckBox(fieldControls, fieldName);
+        return checkBox != null && checkBox.isSelected();
+    }
+
     private String getFieldValue(String fieldName) {
         Control control = fieldControls.get(fieldName);
         if (control == null) return "";
         if (control instanceof TextField) return ((TextField) control).getText().trim();
-        if (control instanceof ComboBox) {
-            Object value = ((ComboBox<?>) control).getValue();
-            return value != null ? value.toString() : "";
-        }
         return "";
-    }
-
-    private CheckBox getCheckBox(Map<String, Control> controls, String name) {
-        Control c = controls.get(name);
-        return c instanceof CheckBox ? (CheckBox) c : null;
     }
 
     private TextField getTextField(Map<String, Control> controls, String name) {
         Control c = controls.get(name);
         return c instanceof TextField ? (TextField) c : null;
+    }
+
+    private CheckBox getCheckBox(Map<String, Control> controls, String name) {
+        Control c = controls.get(name);
+        return c instanceof CheckBox ? (CheckBox) c : null;
     }
 }

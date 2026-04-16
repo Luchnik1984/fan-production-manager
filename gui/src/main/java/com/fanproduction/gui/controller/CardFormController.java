@@ -111,6 +111,7 @@ public class CardFormController {
         // Динамические поля
         for (FieldMetadataDto field : fields) {
             // Добавляем даже невидимые поля (они будут скрыты)
+            System.out.println("Creating field: " + field.getName() + ", type: " + field.getType());
             Label label = new Label(field.getLabel() + (field.isRequired() ? " *" : ":"));
             label.setStyle("-fx-font-weight: bold;");
 
@@ -337,18 +338,6 @@ public class CardFormController {
     }
 
     private String getTypeDisplayName(String cardType) {
-//        Map<String, String> displayMap = Map.of(
-//                "MOTOR", "Электродвигатель",
-//                "MOTOR_WHEEL", "Мотор-колесо",
-//                "RADIAL_WHEEL", "Колесо радиальное",
-//                "AXIAL_WHEEL", "Колесо осевое",
-//                "AXIAL_FAN", "Вентилятор осевой",
-//                "RADIAL_FAN", "Вентилятор радиальный",
-//                "DUCT_FAN", "Вентилятор канальный",
-//                "CUP", "Стакан",
-//                "ACCESSORY", "Комплектующее"
-//        );
-//        return displayMap.getOrDefault(cardType, cardType);
         return CardTypeDisplay.getDisplayName(cardType);
     }
 

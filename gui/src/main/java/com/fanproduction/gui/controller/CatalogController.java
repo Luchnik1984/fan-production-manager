@@ -194,13 +194,14 @@ public class CatalogController {
             return TYPE_DISPLAY_MAP.get(cardType);
         }
 
-        // Радиальное колесо
+        // Для радиального колеса: Тип продукции + полная маркировка
         if ("RADIAL_WHEEL".equals(cardType) && fields != null) {
             String fullMarking = (String) fields.get("fullMarking");
+            System.out.println("DEBUG: RADIAL_WHEEL fullMarking = [" + fullMarking + "]");
             if (fullMarking != null && !fullMarking.isEmpty()) {
-                return TYPE_DISPLAY_MAP.get(cardType) + " " + fullMarking;
+                return CardTypeDisplay.getDisplayName(cardType) + " " + fullMarking;
             }
-            return TYPE_DISPLAY_MAP.get(cardType);
+            return CardTypeDisplay.getDisplayName(cardType);
         }
 
         return dto.getName();

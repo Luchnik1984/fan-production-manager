@@ -153,15 +153,37 @@ public class CardViewController {
             grid.add(separatorLabel, 0, row, 2, 1);
             row++;
 
-            // Определяем порядок полей для радиального колеса
             List<String> orderedFields = getOrderedFields(card.getCardType());
-            System.out.println("All fields in card: " + fields.keySet());
 
             for (String fieldName : orderedFields) {
                 Object value = fields.get(fieldName);
-
-                // Пропускаем null
                 if (value == null) continue;
+
+                // ========== СПЕЦИАЛЬНАЯ ЛОГИКА ДЛЯ ОГНЕСТОЙКОСТИ И ВЗРЫВОЗАЩИТЫ ==========
+                // Пропускаем fireproofMarking, если fireproof = false
+                if ("fireproofMarking".equals(fieldName)) {
+                    Boolean fireproof = (Boolean) fields.get("fireproof");
+                    if (fireproof == null || !fireproof) {
+                        continue; // не показываем
+                    }
+                }
+
+                // Пропускаем explosionMarking, если explosionProof = false
+                if ("explosionMarking".equals(fieldName)) {
+                    Boolean explosionProof = (Boolean) fields.get("explosionProof");
+                    if (explosionProof == null || !explosionProof) {
+                        continue; // не показываем
+                    }
+                }
+
+                // Пропускаем maxTemperature, если fireproof = false
+                if ("maxTemperature".equals(fieldName)) {
+                    Boolean fireproof = (Boolean) fields.get("fireproof");
+                    if (fireproof == null || !fireproof) {
+                        continue;
+                    }
+                }
+                // =====================================================================
 
                 // Для булевых полей показываем всегда (даже если false)
                 if (value instanceof Boolean) {
@@ -202,6 +224,7 @@ public class CardViewController {
             orderedFields.add("weightKg");
             orderedFields.add("generalPurpose");
             orderedFields.add("fireproof");
+            orderedFields.add("fireproofMarking");
             orderedFields.add("maxTemperature");
             orderedFields.add("explosionProof");
             orderedFields.add("explosionMarking");
@@ -266,18 +289,6 @@ public class CardViewController {
     }
 
     private static String getCardTypeDisplay(String cardType) {
-//        Map<String, String> displayMap = Map.of(
-//                "MOTOR", "Электродвигатель",
-//                "MOTOR_WHEEL", "Мотор-колесо",
-//                "RADIAL_WHEEL", "Колесо радиальное",
-//                "AXIAL_WHEEL", "Колесо осевое",
-//                "AXIAL_FAN", "Вентилятор осевой",
-//                "RADIAL_FAN", "Вентилятор радиальный",
-//                "DUCT_FAN", "Вентилятор канальный",
-//                "CUP", "Стакан",
-//                "ACCESSORY", "Комплектующее"
-//        );
-//        return displayMap.getOrDefault(cardType, cardType);
         return CardTypeDisplay.getDisplayName(cardType);
     }
 

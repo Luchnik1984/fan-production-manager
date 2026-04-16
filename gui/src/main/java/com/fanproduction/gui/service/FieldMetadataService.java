@@ -21,60 +21,62 @@ public class FieldMetadataService {
         // ========== Электродвигатель (MOTOR) ==========
         List<FieldMetadataDto> motorFields = new ArrayList<>();
 
-        // 1. Серия (АИР, 5АИ, ВАО и т.д.)
+        // Серия (АИР, 5АИ, ВАО и т.д.)
         motorFields.add(createField("series", "Серия", "text", true, null, null, null, "АИР, 5АИ, ВАО..."));
 
-        // 2. Тип двигателя (100L, 112M и т.д.)
+        // Тип двигателя (100L, 112M и т.д.)
         motorFields.add(createField("motorType", "Тип двигателя", "text", true, null, null, null, "100L, 112M, 132S..."));
 
-        // 3. Количество полюсов (выпадающий список)
+        // Количество полюсов (выпадающий список)
         motorFields.add(createField("poles", "Количество полюсов", "combobox", true, "4",
                 new String[]{"2", "4", "6", "8", "10", "12"}, null, "2, 4, 6, 8, 10, 12"));
 
-        // 4. Мощность (КВт)
+        // Мощность (КВт)
         motorFields.add(createField("powerKw", "Мощность (КВт)", "double", true, null, null, null, "5,5"));
 
-        // 5. Номинальная скорость (рассчитывается автоматически, но можно редактировать)
+        // Номинальная скорость (рассчитывается автоматически, но можно редактировать)
         motorFields.add(createField("ratedSpeedRpm", "Номинальная скорость (об/мин)", "number", false, null, null, null, "6000 / полюсов"));
 
-        // 6. Фактическая скорость
+        // Фактическая скорость
         motorFields.add(createField("actualSpeedRpm", "Фактическая скорость (об/мин)", "number", false, null, null, null));
 
-        // 7. Размер вала
+        // Размер вала
         motorFields.add(createField("shaftSize", "Размер вала (мм)", "number", true, null, null, null, "28, 38, 48..."));
 
-        // 8. Исполнение по монтажу
+        // Исполнение по монтажу
         motorFields.add(createField("mountingType", "Исполнение по монтажу", "text", true, null, null, null, "IM1081, IM3081, IM B14..."));
 
-        // 9. Климатическое исполнение (просто поле ввода)
+        // Климатическое исполнение (просто поле ввода)
         motorFields.add(createField("climateType", "Климатическое исполнение и категория размещения", "text", true, "У1", null, null, "У1, У2, УХЛ1, Т2, О2, М1..."));
 
-        // 10. Напряжение (выпадающий список)
+        // Напряжение (выпадающий список)
         motorFields.add(createField("voltage", "Напряжение (В)", "combobox", true, "380", new String[]{"220", "380", "660"}, null, "220, 380, 660"));
 
-        // 11. Режим работы (выпадающий список S1-S9)
+        // Режим работы (выпадающий список S1-S9)
         motorFields.add(createField("operationMode", "Режим работы", "combobox", false, "S1",
                 new String[]{"S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9"}, null, "S1-S9"));
 
-        // 12. Масса
+        // Масса
         motorFields.add(createField("weightKg", "Масса (кг)", "double", false, null, null, null));
 
-        // 13. Галочка "Общего применения"
+        // Галочка "Общего применения"
         motorFields.add(createField("generalPurpose", "Общего применения", "boolean", false, "true", null, null));
 
-        // 14. Галочка "Огнестойкость"
+        // Галочка "Огнестойкость"
         motorFields.add(createField("fireproof", "Огнестойкость", "boolean", false, "false", null, null));
 
-        // 15. Предельная температура (появляется при огнестойком)
-        motorFields.add(createField("maxTemperature", "Предельная температура (°C)", "number", false, null, null, null, "появляется при выборе Огнестойкость", false));
+        // Предельная температура (появляется при огнестойком)
+//        motorFields.add(createField("maxTemperature", "Предельная температура (°C)", "number", false, null, null, null, "появляется при выборе Огнестойкость", false));
 
-        // 16. Галочка "Взрывозащита"
+        motorFields.add(createField("fireproofMarking", "Маркировка огнестойкости", "text", false, "FR400", null, null, "FR400", false));
+
+        // Галочка "Взрывозащита"
         motorFields.add(createField("explosionProof", "Взрывозащита", "boolean", false, "false", null, null));
 
-        // 17. Маркировка взрывозащиты (появляется при взрывозащищённом)
-        motorFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, null, null, null, "1 Ex d IIB T4, 2Ex e II T3...", false));
+        // Маркировка взрывозащиты (появляется при взрывозащищённом)
+        motorFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex db IIC T4 Gb", null, null, "1Ex db IIC T4 Gb", false));
 
-        // 18. Полная маркировка (редактируемое поле, формируется автоматически)
+        // Полная маркировка (редактируемое поле, формируется автоматически)
         motorFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
 
         metadataMap.put("MOTOR", motorFields);
@@ -124,7 +126,7 @@ public class FieldMetadataService {
         radialWheelFields.add(createField("manufacturer", "Производитель", "text", false, null, null, null, "Например: Siemens, ABB"));
 
         // Маркировка колеса
-        radialWheelFields.add(createField("marking", "Маркировка колеса", "text", true, null, null, null, "КЦ-220-С"));
+        radialWheelFields.add(createField("marking", "Маркировка колеса", "text", true, null, null, null, "КЦ-220"));
 
         // Тип лопаток (выпадающий список)
         radialWheelFields.add(createField("bladeType", "Тип лопаток", "combobox", true, "назадзагнутые",
@@ -157,16 +159,14 @@ public class FieldMetadataService {
         // Галочка "Огнестойкость"
         radialWheelFields.add(createField("fireproof", "Огнестойкость", "boolean", false, "false", null, null));
 
-        // Поле предельной температуры (скрыто по умолчанию)
-        FieldMetadataDto tempField = createField("maxTemperature", "Предельная температура (°C)", "number", false, null, null, null, "появляется при выборе Огнестойкость", false);
-        radialWheelFields.add(tempField);
+        // Маркировка огнестойкости (скрыто по умолчанию)
+        radialWheelFields.add(createField("fireproofMarking", "Маркировка огнестойкости", "text", false, "F400", null, null, "F400"));
 
         // Галочка "Взрывозащита"
         radialWheelFields.add(createField("explosionProof", "Взрывозащита", "boolean", false, "false", null, null));
 
         // Поле маркировки взрывозащиты (скрыто по умолчанию)
-        FieldMetadataDto explosionField = createField("explosionMarking", "Маркировка взрывозащиты", "text", false, null, null, null, "IIb 4T, Ex d IIB T4", false);
-        radialWheelFields.add(explosionField);
+        radialWheelFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex db IIC T4 Gb", null, null, "1Ex db IIC T4 Gb"));
 
         // Полная маркировка (формируется автоматически)
         radialWheelFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
@@ -199,7 +199,7 @@ public class FieldMetadataService {
         axialWheelFields.add(createField("fireproofMarking", "Маркировка огнестойкости", "text", false, "F400", null, null, "F400"));
         axialWheelFields.add(createField("explosionProof", "Взрывозащита", "boolean", false, "false", null, null));
         axialWheelFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex db IIC T4 Gb", null, null, "1Ex db IIC T4 Gb"));
-        axialWheelFields.add(createField("maxTemperature", "Предельная температура (°C)", "number", false, null, null, null, "появляется при выборе Огнестойкость", false));
+//        axialWheelFields.add(createField("maxTemperature", "Предельная температура (°C)", "number", false, null, null, null, "появляется при выборе Огнестойкость", false));
         axialWheelFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
 
         metadataMap.put("AXIAL_WHEEL", axialWheelFields);

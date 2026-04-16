@@ -66,6 +66,9 @@ public class AxialWheelCardEntity extends BaseProductCard {
     @Column(name = "fireproof")
     private Boolean fireproof = false;
 
+    @Column(name = "fireproof_marking", length = 50)
+    private String fireproofMarking;
+
     @Column(name = "max_temperature")
     private Integer maxTemperature;
 

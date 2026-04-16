@@ -22,15 +22,6 @@ public class TableColumnConfigurator {
         nameCol.setPrefWidth(300);
         allColumns.add(nameCol);
 
-//        // Колонка "Тип" (отображает русское название типа продукции)
-//        TableColumn<ProductCardDto, String> typeCol = new TableColumn<>("Тип");
-//        typeCol.setCellValueFactory(cellData -> {
-//            String cardTypeCode = cellData.getValue().getCardType();
-//            return new SimpleStringProperty(CardTypeDisplay.getDisplayName(cardTypeCode));
-//        });
-//        typeCol.setPrefWidth(150);
-//        allColumns.add(typeCol);
-
         // Специфичные колонки для выбранного типа
         if (cardType != null) {
             allColumns.addAll(getSpecificColumns(cardType));
