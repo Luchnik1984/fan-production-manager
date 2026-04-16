@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS motor_wheel_card (
     actual_speed_rpm INTEGER,
     voltage INTEGER,
     weight_kg DOUBLE PRECISION,
+    full_marking VARCHAR(500),
+    motor_code VARCHAR(50),
     FOREIGN KEY (id) REFERENCES base_product_card(id) ON DELETE CASCADE
     );
 

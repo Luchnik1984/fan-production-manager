@@ -92,7 +92,7 @@ public class FieldMetadataService {
                 new String[]{"впередзагнутые", "назадзагнутые"}, null, "впередзагнутые / назадзагнутые"));
 
         // Размер
-        motorWheelFields.add(createField("size", "Размер", "number", true, null, null, null, "310, 400, 500..."));
+        motorWheelFields.add(createField("size", "Размер", "number", true, null, null, null, "Размер в мм: 310, 400..."));
 
         // Количество полюсов
         motorWheelFields.add(createField("poles", "Количество полюсов", "combobox", true, "4",
@@ -117,7 +117,14 @@ public class FieldMetadataService {
         // Масса
         motorWheelFields.add(createField("weightKg", "Масса (кг)", "double", false, null, null, null));
 
+        // Код двигателя
+        motorWheelFields.add(createField("motorCode", "Код двигателя", "text", false, null, null, null, "AC0E, QW1a"));
+
+        // Полная маркировка (формируется автоматически)
+        motorWheelFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
+
         metadataMap.put("MOTOR_WHEEL", motorWheelFields);
+
 
         // ========== Колесо радиальное (RADIAL_WHEEL) ==========
         List<FieldMetadataDto> radialWheelFields = new ArrayList<>();

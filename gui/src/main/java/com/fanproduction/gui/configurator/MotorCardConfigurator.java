@@ -33,6 +33,8 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
 
         // Настройка автоматического формирования полной маркировки
         setupFullMarkingGeneration();
+        // Выбор одной галочки
+        setupExclusiveSelection();
 
         // Автоматическое заполнение наименования
         if (!existingCardExists) {
@@ -250,5 +252,45 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
             return value != null ? value.toString() : "";
         }
         return "";
+    }
+
+    private void setupExclusiveSelection() {
+        CheckBox generalPurposeCheck = getCheckBox(fieldControls, "generalPurpose");
+        CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
+        CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
+
+        if (generalPurposeCheck != null) {
+            generalPurposeCheck.selectedProperty().addListener((obs, old, val) -> {
+                if (val) {
+                    if (fireproofCheck != null) fireproofCheck.setSelected(false);
+                    if (explosionCheck != null) explosionCheck.setSelected(false);
+                }
+                updateFullMarking();
+            });
+        }
+
+        if (fireproofCheck != null) {
+            fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
+                if (val) {
+                    if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
+                    if (explosionCheck != null) explosionCheck.setSelected(false);
+                }
+                updateFullMarking();
+            });
+        }
+
+        if (explosionCheck != null) {
+            explosionCheck.selectedProperty().addListener((obs, old, val) -> {
+                if (val) {
+                    if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
+                    if (fireproofCheck != null) fireproofCheck.setSelected(false);
+                }
+                updateFullMarking();
+            });
+        }
+    }
+
+    private CheckBox getCheckBox(Map<String, Control> controls, String name) {
+        return CardFieldConfigurator.getCheckBox(controls, name);
     }
 }

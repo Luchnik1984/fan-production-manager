@@ -60,6 +60,7 @@ public class CardViewController {
         FIELD_RUSSIAN_NAMES.put("bladeType", "Тип лопаток");
         FIELD_RUSSIAN_NAMES.put("size", "Размер");
         FIELD_RUSSIAN_NAMES.put("voltageCode", "Код напряжения");
+        FIELD_RUSSIAN_NAMES.put("motorCode", "Код двигателя");
 
         // Поля радиального колеса
 
@@ -268,6 +269,19 @@ public class CardViewController {
             orderedFields.add("maxTemperature");
             orderedFields.add("explosionProof");
             orderedFields.add("explosionMarking");
+            orderedFields.add("fullMarking");
+        } else if ("MOTOR_WHEEL".equals(cardType)) {
+            orderedFields.add("manufacturer");
+            orderedFields.add("bladeType");
+            orderedFields.add("size");           // ← ДОБАВИТЬ
+            orderedFields.add("poles");
+            orderedFields.add("voltageCode");
+            orderedFields.add("voltage");
+            orderedFields.add("powerKw");
+            orderedFields.add("ratedSpeedRpm");
+            orderedFields.add("actualSpeedRpm");
+            orderedFields.add("weightKg");
+            orderedFields.add("motorCode");
             orderedFields.add("fullMarking");
         } else {
             // Для остальных типов - просто все поля

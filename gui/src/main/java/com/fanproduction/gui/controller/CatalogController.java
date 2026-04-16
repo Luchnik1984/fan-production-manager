@@ -177,12 +177,12 @@ public class CatalogController {
         }
 
         // Мотор-колесо
-        if ("MOTOR_WHEEL".equals(cardType)) {
-            String name = dto.getName();
-            if (name != null && !name.isEmpty()) {
-                return name;
+        if ("MOTOR_WHEEL".equals(cardType) && fields != null) {
+            String fullMarking = (String) fields.get("fullMarking");
+            if (fullMarking != null && !fullMarking.isEmpty()) {
+                return CardTypeDisplay.getDisplayName(cardType) + " " + fullMarking;
             }
-            return TYPE_DISPLAY_MAP.get(cardType);
+            return CardTypeDisplay.getDisplayName(cardType);
         }
 
         // Осевое колесо

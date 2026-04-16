@@ -89,4 +89,14 @@ public class MotorWheelCardEntity extends BaseProductCard {
      */
     @Column(name = "weight_kg")
     private Double weightKg;
+
+    /**
+     * Код двигателя
+     */
+    @Column(name = "motor_code", length = 50)
+    private String motorCode;
+
+      @Column(name = "full_marking", length = 500)
+    private String fullMarking;
+
 }
