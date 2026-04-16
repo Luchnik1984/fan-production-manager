@@ -9,10 +9,11 @@ import lombok.Getter;
 public enum CardTemplateType {
     MOTOR("Электродвигатель", "motor"),
     MOTOR_WHEEL("Мотор-колесо", "motorWheel"),
-    RADIAL_WHEEL("Радиальное колесо", "radialWheel"),
-    AXIAL_FAN("Осевой вентилятор", "axialFan"),
-    RADIAL_FAN("Радиальный вентилятор", "radialFan"),
-    DUCT_FAN("Канальный вентилятор", "ductFan"),
+    RADIAL_WHEEL("Колесо радиальное", "radialWheel"),
+    AXIAL_WHEEL("Колесо осевое", "axialWheel"),
+    AXIAL_FAN("Вентилятор осевой", "axialFan"),
+    RADIAL_FAN("Вентилятор радиальный", "radialFan"),
+    DUCT_FAN("Вентилятор канальный", "ductFan"),
     CUP("Стакан", "cup"),
     ACCESSORY("Комплектующее", "accessory");
 

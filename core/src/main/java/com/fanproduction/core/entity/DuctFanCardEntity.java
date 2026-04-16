@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
  * Типы:
  * - Тип A: с мотор-колесом (вперед-загнутые лопатки)
  *   Пример: VRK-PatAIR-P-40-20-4-220
- * - Тип B: с электродвигателем + радиальное колесо (назад-загнутые лопатки)
+ * - Тип B: с электродвигателем + колесо радиальное (назад-загнутые лопатки)
  *   Пример: VRK-PatAIR-PKV-60-30/25-2D
  */
 @Data
@@ -47,7 +47,7 @@ public class DuctFanCardEntity extends FanCardEntity {
     private Long motorWheelId;
 
     /**
-     * Ссылка на радиальное колесо (если тип RADIAL_WHEEL)
+     * Ссылка на колесо радиальное (если тип RADIAL_WHEEL)
      */
     @Column(name = "radial_wheel_id")
     private Long radialWheelId;

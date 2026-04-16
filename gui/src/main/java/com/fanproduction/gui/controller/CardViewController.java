@@ -1,5 +1,6 @@
 package com.fanproduction.gui.controller;
 
+import com.fanproduction.core.enums.CardTypeDisplay;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -48,6 +49,7 @@ public class CardViewController {
         FIELD_RUSSIAN_NAMES.put("weightKg", "Масса (кг)");
         FIELD_RUSSIAN_NAMES.put("generalPurpose", "Общего применения");
         FIELD_RUSSIAN_NAMES.put("fireproof", "Огнестойкость");
+        FIELD_RUSSIAN_NAMES.put("fireproofMarking", "Маркировка огнестойкости");
         FIELD_RUSSIAN_NAMES.put("maxTemperature", "Предельная температура (°C)");
         FIELD_RUSSIAN_NAMES.put("explosionProof", "Взрывозащита");
         FIELD_RUSSIAN_NAMES.put("explosionMarking", "Маркировка взрывозащиты");
@@ -58,6 +60,7 @@ public class CardViewController {
         FIELD_RUSSIAN_NAMES.put("bladeType", "Тип лопаток");
         FIELD_RUSSIAN_NAMES.put("size", "Размер");
         FIELD_RUSSIAN_NAMES.put("voltageCode", "Код напряжения");
+        FIELD_RUSSIAN_NAMES.put("motorCode", "Код двигателя");
 
         // Поля радиального колеса
 
@@ -67,9 +70,15 @@ public class CardViewController {
         FIELD_RUSSIAN_NAMES.put("bladeCount", "Количество лопаток");
         FIELD_RUSSIAN_NAMES.put("hubType", "Ступица");
         FIELD_RUSSIAN_NAMES.put("maxSpeedRpm", "Максимальная скорость (об/мин)");
-        FIELD_RUSSIAN_NAMES.put("generalPurpose", "Общего применения");      // ← добавить
-        FIELD_RUSSIAN_NAMES.put("fullMarking", "Полная маркировка");
 
+        // Поля осевого колеса
+        FIELD_RUSSIAN_NAMES.put("execution", "Исполнение");
+        FIELD_RUSSIAN_NAMES.put("trimCoefficient", "Коэф. подрезки (%)");
+        FIELD_RUSSIAN_NAMES.put("bladeSlots", "Посадочных мест");
+        FIELD_RUSSIAN_NAMES.put("bladeShape", "Форма лопатки");
+        FIELD_RUSSIAN_NAMES.put("bladeAngle", "Угол установки");
+        FIELD_RUSSIAN_NAMES.put("bladeMaterial", "Материал лопатки");
+        FIELD_RUSSIAN_NAMES.put("wheelDiameter", "Диаметр колеса (мм)");
 
     }
 
@@ -145,15 +154,37 @@ public class CardViewController {
             grid.add(separatorLabel, 0, row, 2, 1);
             row++;
 
-            // Определяем порядок полей для радиального колеса
             List<String> orderedFields = getOrderedFields(card.getCardType());
-            System.out.println("All fields in card: " + fields.keySet());
 
             for (String fieldName : orderedFields) {
                 Object value = fields.get(fieldName);
-
-                // Пропускаем null
                 if (value == null) continue;
+
+                // ========== СПЕЦИАЛЬНАЯ ЛОГИКА ДЛЯ ОГНЕСТОЙКОСТИ И ВЗРЫВОЗАЩИТЫ ==========
+                // Пропускаем fireproofMarking, если fireproof = false
+                if ("fireproofMarking".equals(fieldName)) {
+                    Boolean fireproof = (Boolean) fields.get("fireproof");
+                    if (fireproof == null || !fireproof) {
+                        continue; // не показываем
+                    }
+                }
+
+                // Пропускаем explosionMarking, если explosionProof = false
+                if ("explosionMarking".equals(fieldName)) {
+                    Boolean explosionProof = (Boolean) fields.get("explosionProof");
+                    if (explosionProof == null || !explosionProof) {
+                        continue; // не показываем
+                    }
+                }
+
+                // Пропускаем maxTemperature, если fireproof = false
+                if ("maxTemperature".equals(fieldName)) {
+                    Boolean fireproof = (Boolean) fields.get("fireproof");
+                    if (fireproof == null || !fireproof) {
+                        continue;
+                    }
+                }
+                // =====================================================================
 
                 // Для булевых полей показываем всегда (даже если false)
                 if (value instanceof Boolean) {
@@ -194,6 +225,7 @@ public class CardViewController {
             orderedFields.add("weightKg");
             orderedFields.add("generalPurpose");
             orderedFields.add("fireproof");
+            orderedFields.add("fireproofMarking");
             orderedFields.add("maxTemperature");
             orderedFields.add("explosionProof");
             orderedFields.add("explosionMarking");
@@ -217,6 +249,40 @@ public class CardViewController {
             orderedFields.add("explosionProof");
             orderedFields.add("explosionMarking");
             orderedFields.add("fullMarking");
+        } else if ("AXIAL_WHEEL".equals(cardType)) {
+            orderedFields.add("manufacturer");
+            orderedFields.add("marking");
+            orderedFields.add("bladeType");
+            orderedFields.add("size");
+            orderedFields.add("execution");
+            orderedFields.add("trimCoefficient");
+            orderedFields.add("hubType");
+            orderedFields.add("bladeCount");
+            orderedFields.add("bladeSlots");
+            orderedFields.add("bladeShape");
+            orderedFields.add("bladeAngle");
+            orderedFields.add("bladeMaterial");
+            orderedFields.add("wheelDiameter");
+            orderedFields.add("wheelFormula");
+            orderedFields.add("generalPurpose");
+            orderedFields.add("fireproof");
+            orderedFields.add("maxTemperature");
+            orderedFields.add("explosionProof");
+            orderedFields.add("explosionMarking");
+            orderedFields.add("fullMarking");
+        } else if ("MOTOR_WHEEL".equals(cardType)) {
+            orderedFields.add("manufacturer");
+            orderedFields.add("bladeType");
+            orderedFields.add("size");           // ← ДОБАВИТЬ
+            orderedFields.add("poles");
+            orderedFields.add("voltageCode");
+            orderedFields.add("voltage");
+            orderedFields.add("powerKw");
+            orderedFields.add("ratedSpeedRpm");
+            orderedFields.add("actualSpeedRpm");
+            orderedFields.add("weightKg");
+            orderedFields.add("motorCode");
+            orderedFields.add("fullMarking");
         } else {
             // Для остальных типов - просто все поля
             return new ArrayList<>(FIELD_RUSSIAN_NAMES.keySet());
@@ -237,17 +303,7 @@ public class CardViewController {
     }
 
     private static String getCardTypeDisplay(String cardType) {
-        Map<String, String> displayMap = Map.of(
-                "MOTOR", "Электродвигатель",
-                "MOTOR_WHEEL", "Мотор-колесо",
-                "RADIAL_WHEEL", "Радиальное колесо",
-                "AXIAL_FAN", "Осевой вентилятор",
-                "RADIAL_FAN", "Радиальный вентилятор",
-                "DUCT_FAN", "Канальный вентилятор",
-                "CUP", "Стакан",
-                "ACCESSORY", "Комплектующее"
-        );
-        return displayMap.getOrDefault(cardType, cardType);
+        return CardTypeDisplay.getDisplayName(cardType);
     }
 
     private static String formatValue(Object value) {

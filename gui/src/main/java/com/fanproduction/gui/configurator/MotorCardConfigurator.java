@@ -1,5 +1,6 @@
 package com.fanproduction.gui.configurator;
 
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Control;
 import javafx.scene.control.TextField;
@@ -32,54 +33,66 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
 
         // Настройка автоматического формирования полной маркировки
         setupFullMarkingGeneration();
+        // Выбор одной галочки
+        setupExclusiveSelection();
+
+        // Автоматическое заполнение наименования
+        if (!existingCardExists) {
+            TextField nameField = CardFieldConfigurator.getTextField(fieldControls, "name");
+            if (nameField != null && nameField.getText().isEmpty()) {
+                nameField.setText("Электродвигатель");
+            }
+        }
     }
 
     /**
      * Настройка условного отображения полей
      */
     private void setupConditionalVisibility() {
-        // Огнестойкость -> поле предельной температуры
-        var fireproofCheck = CardFieldConfigurator.getCheckBox(fieldControls, "fireproof");
-        var tempField = fieldControls.get("maxTemperature");
-        var tempLabel = fieldControls.get("maxTemperature_label");
-        var tempHint = fieldControls.get("maxTemperature_hint");
+        // Огнестойкость -> поле маркировки огнестойкости и предельной температуры
+        CheckBox fireproofCheck = CardFieldConfigurator.getCheckBox(fieldControls, "fireproof");
+        Control fireproofMarkingField = fieldControls.get("fireproofMarking");
+        Control tempField = fieldControls.get("maxTemperature");
 
-        if (fireproofCheck != null && tempField != null) {
-            boolean initialVisible = fireproofCheck.isSelected();
-            setVisibility(tempField, tempLabel, tempHint, initialVisible);
+        if (fireproofCheck != null) {
+            boolean isVisible = fireproofCheck.isSelected();
 
-            fireproofCheck.selectedProperty().addListener((obs, old, val) -> setVisibility(tempField, tempLabel, tempHint, val));
+            if (fireproofMarkingField != null) {
+                fireproofMarkingField.setVisible(isVisible);
+                fireproofMarkingField.setManaged(isVisible);
+            }
+            if (tempField != null) {
+                tempField.setVisible(isVisible);
+                tempField.setManaged(isVisible);
+            }
+
+            fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
+                if (fireproofMarkingField != null) {
+                    fireproofMarkingField.setVisible(val);
+                    fireproofMarkingField.setManaged(val);
+                }
+                if (tempField != null) {
+                    tempField.setVisible(val);
+                    tempField.setManaged(val);
+                }
+                updateFullMarking();
+            });
         }
 
         // Взрывозащита -> поле маркировки взрывозащиты
-        var explosionCheck = CardFieldConfigurator.getCheckBox(fieldControls, "explosionProof");
-        var markingField = fieldControls.get("explosionMarking");
-        var markingLabel = fieldControls.get("explosionMarking_label");
-        var markingHint = fieldControls.get("explosionMarking_hint");
+        CheckBox explosionCheck = CardFieldConfigurator.getCheckBox(fieldControls, "explosionProof");
+        Control explosionMarkingField = fieldControls.get("explosionMarking");
 
-        if (explosionCheck != null && markingField != null) {
-            boolean initialVisible = explosionCheck.isSelected();
-            setVisibility(markingField, markingLabel, markingHint, initialVisible);
+        if (explosionCheck != null && explosionMarkingField != null) {
+            boolean isVisible = explosionCheck.isSelected();
+            explosionMarkingField.setVisible(isVisible);
+            explosionMarkingField.setManaged(isVisible);
 
-            explosionCheck.selectedProperty().addListener((obs, old, val) -> setVisibility(markingField, markingLabel, markingHint, val));
-        }
-    }
-
-    /**
-     * Устанавливает видимость поля, его лейбла и подсказки
-     */
-    private void setVisibility(Control field, Control label, Control hint, boolean visible) {
-        if (field != null) {
-            field.setVisible(visible);
-            field.setManaged(visible);
-        }
-        if (label != null) {
-            label.setVisible(visible);
-            label.setManaged(visible);
-        }
-        if (hint != null) {
-            hint.setVisible(visible);
-            hint.setManaged(visible);
+            explosionCheck.selectedProperty().addListener((obs, old, val) -> {
+                explosionMarkingField.setVisible(val);
+                explosionMarkingField.setManaged(val);
+                updateFullMarking();
+            });
         }
     }
 
@@ -126,28 +139,20 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         // Добавляем слушатели на поля, влияющие на маркировку
         addTextFieldListener("series", this::updateFullMarking);
         addTextFieldListener("motorType", this::updateFullMarking);
+        addTextFieldListener("climateType", this::updateFullMarking);
+        addTextFieldListener("fireproofMarking", this::updateFullMarking);
+        addTextFieldListener("explosionMarking", this::updateFullMarking);
+
+        addCheckBoxListener("generalPurpose", this::updateFullMarking);
+        addCheckBoxListener("fireproof", this::updateFullMarking);
+        addCheckBoxListener("explosionProof", this::updateFullMarking);
 
         ComboBox<String> polesCombo = CardFieldConfigurator.getComboBox(fieldControls, "poles");
         if (polesCombo != null) {
             polesCombo.valueProperty().addListener((obs, old, val) -> updateFullMarking());
         }
 
-        ComboBox<String> climateCombo = CardFieldConfigurator.getComboBox(fieldControls, "climateType");
-        if (climateCombo != null) {
-            climateCombo.valueProperty().addListener((obs, old, val) -> updateFullMarking());
-        }
-
         updateFullMarking();
-    }
-
-    /**
-     * Добавляет слушатель на текстовое поле
-     */
-    private void addTextFieldListener(String fieldName, Runnable callback) {
-        TextField textField = CardFieldConfigurator.getTextField(fieldControls, fieldName);
-        if (textField != null) {
-            textField.textProperty().addListener((obs, old, val) -> callback.run());
-        }
     }
 
     /**
@@ -161,29 +166,78 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         String poles = getFieldValue("poles");
         String climateType = getFieldValue("climateType");
 
-        StringBuilder marking = new StringBuilder();
+        boolean isGeneralPurpose = isSelected("generalPurpose");
+        boolean isFireproof = isSelected("fireproof");
+        boolean isExplosionProof = isSelected("explosionProof");
+
+        String fireproofMarking = isFireproof ? getFieldValue("fireproofMarking") : "";
+        String explosionMarking = isExplosionProof ? getFieldValue("explosionMarking") : "";
+
+        StringBuilder fullMarking = new StringBuilder();
+
+        // Серия
         if (series != null && !series.isEmpty()) {
-            marking.append(series).append(" ");
-        }
-        if (motorType != null && !motorType.isEmpty()) {
-            marking.append(motorType);
-        }
-        if (poles != null && !poles.isEmpty()) {
-            marking.append(poles);
-        }
-        if (climateType != null && !climateType.isEmpty()) {
-            marking.append(" ").append(climateType);
+            fullMarking.append(series).append(" ");
         }
 
-        String newMarking = marking.toString().trim();
+        // Маркировка огнестойкости или взрывозащиты (вставляется после серии)
+        if (isFireproof && fireproofMarking != null && !fireproofMarking.isEmpty()) {
+            fullMarking.append(fireproofMarking).append(" ");
+        } else if (isExplosionProof && explosionMarking != null && !explosionMarking.isEmpty()) {
+            fullMarking.append(explosionMarking).append(" ");
+        }
+
+        // Тип двигателя
+        if (motorType != null && !motorType.isEmpty()) {
+            fullMarking.append(motorType);
+        }
+
+        // Количество полюсов
+        if (poles != null && !poles.isEmpty()) {
+            fullMarking.append(poles);
+        }
+
+        // Климатическое исполнение
+        if (climateType != null && !climateType.isEmpty()) {
+            fullMarking.append("-").append(climateType);
+        }
+
+        String newMarking = fullMarking.toString().trim();
         String currentMarking = fullMarkingField.getText();
 
         // Обновляем только если пользователь не редактировал поле вручную
-        if (currentMarking == null || currentMarking.isEmpty() ||
-                currentMarking.equals(lastAutoMarking)) {
+        if (currentMarking == null || currentMarking.isEmpty() || currentMarking.equals(lastAutoMarking)) {
             fullMarkingField.setText(newMarking);
             lastAutoMarking = newMarking;
         }
+    }
+
+    /**
+     * Добавляет слушатель на текстовое поле
+     */
+    private void addTextFieldListener(String fieldName, Runnable callback) {
+        TextField textField = CardFieldConfigurator.getTextField(fieldControls, fieldName);
+        if (textField != null) {
+            textField.textProperty().addListener((obs, old, val) -> callback.run());
+        }
+    }
+
+    /**
+     * Добавляет слушатель на CheckBox
+     */
+    private void addCheckBoxListener(String fieldName, Runnable callback) {
+        CheckBox checkBox = CardFieldConfigurator.getCheckBox(fieldControls, fieldName);
+        if (checkBox != null) {
+            checkBox.selectedProperty().addListener((obs, old, val) -> callback.run());
+        }
+    }
+
+    /**
+     * Проверяет, выбрана ли галочка
+     */
+    private boolean isSelected(String fieldName) {
+        CheckBox checkBox = CardFieldConfigurator.getCheckBox(fieldControls, fieldName);
+        return checkBox != null && checkBox.isSelected();
     }
 
     /**
@@ -192,13 +246,51 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
     private String getFieldValue(String fieldName) {
         Control control = fieldControls.get(fieldName);
         if (control == null) return "";
-
-        if (control instanceof TextField) {
-            return ((TextField) control).getText().trim();
-        } else if (control instanceof ComboBox) {
+        if (control instanceof TextField) return ((TextField) control).getText().trim();
+        if (control instanceof ComboBox) {
             Object value = ((ComboBox<?>) control).getValue();
             return value != null ? value.toString() : "";
         }
         return "";
+    }
+
+    private void setupExclusiveSelection() {
+        CheckBox generalPurposeCheck = getCheckBox(fieldControls, "generalPurpose");
+        CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
+        CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
+
+        if (generalPurposeCheck != null) {
+            generalPurposeCheck.selectedProperty().addListener((obs, old, val) -> {
+                if (val) {
+                    if (fireproofCheck != null) fireproofCheck.setSelected(false);
+                    if (explosionCheck != null) explosionCheck.setSelected(false);
+                }
+                updateFullMarking();
+            });
+        }
+
+        if (fireproofCheck != null) {
+            fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
+                if (val) {
+                    if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
+                    if (explosionCheck != null) explosionCheck.setSelected(false);
+                }
+                updateFullMarking();
+            });
+        }
+
+        if (explosionCheck != null) {
+            explosionCheck.selectedProperty().addListener((obs, old, val) -> {
+                if (val) {
+                    if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
+                    if (fireproofCheck != null) fireproofCheck.setSelected(false);
+                }
+                updateFullMarking();
+            });
+        }
+    }
+
+    private CheckBox getCheckBox(Map<String, Control> controls, String name) {
+        return CardFieldConfigurator.getCheckBox(controls, name);
     }
 }

@@ -1,5 +1,6 @@
 package com.fanproduction.gui.controller;
 
+import com.fanproduction.core.enums.CardTypeDisplay;
 import com.fanproduction.gui.client.ProductCardClient;
 import com.fanproduction.gui.configurator.CardFormConfigurator;
 import com.fanproduction.gui.dto.response.ApiResponse;
@@ -110,35 +111,34 @@ public class CardFormController {
         // Динамические поля
         for (FieldMetadataDto field : fields) {
             // Добавляем даже невидимые поля (они будут скрыты)
+            System.out.println("Creating field: " + field.getName() + ", type: " + field.getType());
             Label label = new Label(field.getLabel() + (field.isRequired() ? " *" : ":"));
             label.setStyle("-fx-font-weight: bold;");
 
             Control control = createControlForField(field);
 
-            if (control != null) {
-                grid.add(label, 0, row);
-                grid.add(control, 1, row);
-                fieldControls.put(field.getName(), control);
-                fieldMetadata.put(field.getName(), field);
-                fieldLabels.put(field.getName(), label);
+            grid.add(label, 0, row);
+            grid.add(control, 1, row);
+            fieldControls.put(field.getName(), control);
+            fieldMetadata.put(field.getName(), field);
+            fieldLabels.put(field.getName(), label);
 
-                // Устанавливаем видимость в соответствии с метаданными
-                boolean isVisible = field.isVisible();
-                label.setVisible(isVisible);
-                label.setManaged(isVisible);
-                control.setVisible(isVisible);
-                control.setManaged(isVisible);
+            // Устанавливаем видимость в соответствии с метаданными
+            boolean isVisible = field.isVisible();
+            label.setVisible(isVisible);
+            label.setManaged(isVisible);
+            control.setVisible(isVisible);
+            control.setManaged(isVisible);
 
-                // Подсказка
-                if (field.getHint() != null && !field.getHint().isEmpty()) {
-                    Label hintLabel = new Label(field.getHint());
-                    hintLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #888;");
-                    grid.add(hintLabel, 1, row + 1);
-                    fieldHints.put(field.getName(), hintLabel);
-                    hintLabel.setVisible(isVisible);
-                    hintLabel.setManaged(isVisible);
-                    row++;
-                }
+            // Подсказка
+            if (field.getHint() != null && !field.getHint().isEmpty()) {
+                Label hintLabel = new Label(field.getHint());
+                hintLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #888;");
+                grid.add(hintLabel, 1, row + 1);
+                fieldHints.put(field.getName(), hintLabel);
+                hintLabel.setVisible(isVisible);
+                hintLabel.setManaged(isVisible);
+                row++;
             }
             row++;
         }
@@ -338,17 +338,7 @@ public class CardFormController {
     }
 
     private String getTypeDisplayName(String cardType) {
-        Map<String, String> displayMap = Map.of(
-                "MOTOR", "Электродвигатель",
-                "MOTOR_WHEEL", "Мотор-колесо",
-                "RADIAL_WHEEL", "Радиальное колесо",
-                "AXIAL_FAN", "Осевой вентилятор",
-                "RADIAL_FAN", "Радиальный вентилятор",
-                "DUCT_FAN", "Канальный вентилятор",
-                "CUP", "Стакан",
-                "ACCESSORY", "Комплектующее"
-        );
-        return displayMap.getOrDefault(cardType, cardType);
+        return CardTypeDisplay.getDisplayName(cardType);
     }
 
     private void showAlert(String title, String message, Alert.AlertType type) {

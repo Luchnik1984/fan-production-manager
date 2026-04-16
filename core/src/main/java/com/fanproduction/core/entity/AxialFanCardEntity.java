@@ -31,26 +31,14 @@ public class AxialFanCardEntity extends FanCardEntity {
     private String position;
 
     /**
-     * Количество устанавливаемых лопаток (например: 9)
+     * Ссылка на компонент - Колесо осевое
      */
-    @Column(name = "blade_count")
-    private Integer bladeCount;
+    @Column(name = "axial_wheel_id")
+    private Long axialWheelId;
 
     /**
-     * Размер колеса по количеству посадочных мест под лопатки (например: 9)
+     * Ссылка на компонент - электродвигатель
      */
-    @Column(name = "blade_slots")
-    private Integer bladeSlots;
-
-    /**
-     * Форма лопатки (4Z, 5Z, 109_50, 76_14)
-     */
-    @Column(name = "blade_shape", length = 50)
-    private String bladeShape;
-
-    /**
-     * Угол установки лопаток (градусы, например: 27)
-     */
-    @Column(name = "blade_angle")
-    private Integer bladeAngle;
+    @Column(name = "motor_id")
+    private Long motorId;
 }
