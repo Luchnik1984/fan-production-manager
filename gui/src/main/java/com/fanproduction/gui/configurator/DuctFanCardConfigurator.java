@@ -1,5 +1,6 @@
 package com.fanproduction.gui.configurator;
 
+import com.fanproduction.gui.service.ReferenceDataService;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Control;
 import javafx.scene.control.Label;
@@ -32,6 +33,25 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
         this.fieldLabels = fieldLabels;  // ← добавлено
 
         fullMarkingField = getTextField(fieldControls, "fullMarking");
+
+        // Загружаем данные в ComboBox
+        ComboBox<String> motorWheelCombo = getComboBox(fieldControls, "motorWheelId");
+        if (motorWheelCombo != null) {
+            motorWheelCombo.setPromptText("Выберите мотор-колесо");
+            ReferenceDataService.loadMotorWheels(motorWheelCombo);
+        }
+
+        ComboBox<String> radialWheelCombo = getComboBox(fieldControls, "radialWheelId");
+        if (radialWheelCombo != null) {
+            radialWheelCombo.setPromptText("Выберите радиальное колесо");
+            ReferenceDataService.loadRadialWheels(radialWheelCombo);
+        }
+
+        ComboBox<String> motorCombo = getComboBox(fieldControls, "motorId");
+        if (motorCombo != null) {
+            motorCombo.setPromptText("Выберите электродвигатель");
+            ReferenceDataService.loadMotors(motorCombo);
+        }
 
         setupTypeSelection();
         setupFullMarkingGeneration();
@@ -243,4 +263,5 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
         }
         return "";
     }
+
 }

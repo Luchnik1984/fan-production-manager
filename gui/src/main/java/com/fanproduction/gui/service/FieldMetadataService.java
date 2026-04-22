@@ -221,20 +221,28 @@ public class FieldMetadataService {
         ductFanFields.add(createField("ductFanType", "Тип колеса", "combobox", true, "MOTOR_WHEEL",
                 new String[]{"MOTOR_WHEEL", "RADIAL_WHEEL"}, null, "Мотор-колесо / Радиальное колесо"));
 
-        // Для типа MOTOR_WHEEL
-        ductFanFields.add(createField("motorWheelId", "Мотор-колесо", "combobox", false, null, null, null, "Выберите мотор-колесо"));
+        // Для типа MOTOR_WHEEL (без подсказки)
+        ductFanFields.add(createField("motorWheelId", "Мотор-колесо", "combobox", false, null, null, null, null));
 
-        // Для типа RADIAL_WHEEL
-        ductFanFields.add(createField("radialWheelId", "Радиальное колесо", "combobox", false, null, null, null, "Выберите радиальное колесо"));
-        ductFanFields.add(createField("motorId", "Электродвигатель", "combobox", false, null, null, null, "Выберите электродвигатель"));
+        // Для типа RADIAL_WHEEL (без подсказок)
+        ductFanFields.add(createField("radialWheelId", "Радиальное колесо", "combobox", false, null, null, null, null));
+        ductFanFields.add(createField("motorId", "Электродвигатель", "combobox", false, null, null, null, null));
         ductFanFields.add(createField("wheelSize", "Размер колеса (мм)", "number", false, null, null, null, "25, 30"));
 
-        // Расчётные поля (только для чтения, заполняются автоматически)
+        // Расчётные поля
         ductFanFields.add(createField("poles", "Количество полюсов", "number", false, null, null, null, "заполняется автоматически"));
         ductFanFields.add(createField("voltage", "Напряжение (В)", "number", false, null, null, null, "заполняется автоматически"));
         ductFanFields.add(createField("voltageCode", "Код напряжения", "text", false, null, null, null, "заполняется автоматически"));
         ductFanFields.add(createField("ratedSpeedRpm", "Номинальная скорость (об/мин)", "number", false, null, null, null, "заполняется автоматически"));
         ductFanFields.add(createField("actualSpeedRpm", "Фактическая скорость (об/мин)", "number", false, null, null, null, "можно изменить"));
+
+        // Специальные поля
+        ductFanFields.add(createField("generalPurpose", "Общего применения", "boolean", false, "true", null, null));
+        ductFanFields.add(createField("fireproof", "Огнестойкость", "boolean", false, "false", null, null));
+        ductFanFields.add(createField("fireproofMarking", "Маркировка огнестойкости", "text", false, "F400", null, null, "F400", false));
+        ductFanFields.add(createField("explosionProof", "Взрывозащита", "boolean", false, "false", null, null));
+        ductFanFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex db IIC T4 Gb", null, null, "1Ex db IIC T4 Gb", false));
+        ductFanFields.add(createField("maxTemperature", "Предельная температура (°C)", "number", false, null, null, null, "появляется при выборе Огнестойкость", false));
 
         // Полная маркировка
         ductFanFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));

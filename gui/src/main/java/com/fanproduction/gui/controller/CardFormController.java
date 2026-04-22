@@ -192,7 +192,10 @@ public class CardFormController {
                 }
                 if (existingValue != null) comboBox.setValue(String.valueOf(existingValue));
                 if (field.getDefaultValue() != null && existingValue == null) comboBox.setValue(field.getDefaultValue());
-                comboBox.setPromptText(field.getHint());
+                // Устанавливаем подсказку прямо в ComboBox
+                if (field.getHint() != null && !field.getHint().isEmpty()) {
+                    comboBox.setPromptText(field.getHint());
+                }
                 return comboBox;
 
             case "boolean":

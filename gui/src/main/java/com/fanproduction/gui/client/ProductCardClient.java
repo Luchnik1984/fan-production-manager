@@ -4,6 +4,7 @@ import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fasterxml.jackson.core.type.TypeReference;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,5 +77,41 @@ public class ProductCardClient {
     public static ApiResponse<List<ProductCardDto>> searchCards(String query) throws Exception {
         TypeReference<ApiResponse<List<ProductCardDto>>> typeRef = new TypeReference<>() {};
         return ApiClient.get(BASE_PATH + "/search?query=" + query, typeRef);
+    }
+
+    /**
+     * Получить все карточки определённого типа для выбора в ComboBox
+     * @param cardType тип карточки (MOTOR_WHEEL, RADIAL_WHEEL, MOTOR)
+     * @return список карточек
+     */
+    public static List<ProductCardDto> getCardsByType(String cardType) throws Exception {
+        System.out.println("DEBUG: getCardsByType called with cardType = " + cardType);  // ← добавить отладку
+        TypeReference<ApiResponse<Map<String, Object>>> typeRef = new TypeReference<>() {};
+        ApiResponse<Map<String, Object>> response = ApiClient.get("/products?cardType=" + cardType + "&size=1000", typeRef);
+
+        List<ProductCardDto> result = new ArrayList<>();
+
+        if (response.isSuccess() && response.getData() != null) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> content = (List<Map<String, Object>>) response.getData().get("content");
+
+            System.out.println("DEBUG: Received " + content.size() + " items for type " + cardType);
+
+            for (Map<String, Object> item : content) {
+                ProductCardDto dto = new ProductCardDto();
+                dto.setId(((Number) item.get("id")).longValue());
+                dto.setName((String) item.get("name"));
+                dto.setCode((String) item.get("code"));
+                dto.setCardType((String) item.get("cardType"));
+
+                @SuppressWarnings("unchecked")
+                Map<String, Object> fields = (Map<String, Object>) item.get("fields");
+                dto.setFields(fields);
+
+                result.add(dto);
+            }
+        }
+
+        return result;
     }
 }
