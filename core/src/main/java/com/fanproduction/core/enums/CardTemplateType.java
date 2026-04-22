@@ -14,6 +14,8 @@ public enum CardTemplateType {
     AXIAL_FAN("Вентилятор осевой", "axialFan"),
     RADIAL_FAN("Вентилятор радиальный", "radialFan"),
     DUCT_FAN("Вентилятор канальный", "ductFan"),
+    ROOF_LOW_PROFILE_FAN("Вентилятор крышный низкопрофильный", "roofLowProfileFan"),
+    ROOF_RADIAL_FAN("Вентилятор крышный радиальный", "roofRadialFan"),
     CUP("Стакан", "cup"),
     ACCESSORY("Комплектующее", "accessory");
 

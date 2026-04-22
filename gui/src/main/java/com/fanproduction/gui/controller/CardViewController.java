@@ -273,7 +273,7 @@ public class CardViewController {
         } else if ("MOTOR_WHEEL".equals(cardType)) {
             orderedFields.add("manufacturer");
             orderedFields.add("bladeType");
-            orderedFields.add("size");           // ← ДОБАВИТЬ
+            orderedFields.add("size");
             orderedFields.add("poles");
             orderedFields.add("voltageCode");
             orderedFields.add("voltage");
@@ -282,6 +282,21 @@ public class CardViewController {
             orderedFields.add("actualSpeedRpm");
             orderedFields.add("weightKg");
             orderedFields.add("motorCode");
+            orderedFields.add("fullMarking");
+        } else if ("DUCT_FAN".equals(cardType)) {
+            orderedFields.add("seriesName");
+            orderedFields.add("ductSize");
+            orderedFields.add("ductFanType");
+            orderedFields.add("executionType");
+            orderedFields.add("motorWheelId");
+            orderedFields.add("radialWheelId");
+            orderedFields.add("motorId");
+            orderedFields.add("wheelSize");
+            orderedFields.add("poles");
+            orderedFields.add("voltage");
+            orderedFields.add("voltageCode");
+            orderedFields.add("ratedSpeedRpm");
+            orderedFields.add("actualSpeedRpm");
             orderedFields.add("fullMarking");
         } else {
             // Для остальных типов - просто все поля

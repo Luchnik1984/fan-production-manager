@@ -22,63 +22,45 @@ import lombok.NoArgsConstructor;
 @Table(name = "duct_fan_card")
 public class DuctFanCardEntity extends FanCardEntity {
 
-    /**
-     * Наименование серии
-     */
     @Column(name = "series_name", length = 100)
     private String seriesName;
 
-    /**
-     * Исполнение (P, PS, PKV, PRV, KpM, KpMS)
-     */
-    @Column(name = "execution_type", length = 20)
-    private String executionType;
+    @Column(name = "duct_size", length = 50)           // ← переименовали с size на duct_size
+    private String ductSize;                           // типоразмер (40-20, 50-30)
 
-    /**
-     * Тип вентилятора (MOTOR_WHEEL - с мотор-колесом, RADIAL_WHEEL - с радиальным колесом)
-     */
     @Column(name = "duct_fan_type", length = 20)
     private String ductFanType;
 
-    /**
-     * Ссылка на мотор-колесо (если тип MOTOR_WHEEL)
-     */
+    @Column(name = "execution_type", length = 20)
+    private String executionType;
+
     @Column(name = "motor_wheel_id")
     private Long motorWheelId;
 
-    /**
-     * Ссылка на колесо радиальное (если тип RADIAL_WHEEL)
-     */
     @Column(name = "radial_wheel_id")
     private Long radialWheelId;
 
-    /**
-     * Размер установленного колеса (для типа B)
-     */
+    @Column(name = "motor_id")
+    private Long motorId;
+
+    @Column(name = "poles")
+    private Integer poles;
+
+    @Column(name = "voltage")
+    private Integer voltage;
+
+    @Column(name = "voltage_code", length = 10)
+    private String voltageCode;
+
+    @Column(name = "rated_speed_rpm")
+    private Integer ratedSpeedRpm;
+
+    @Column(name = "actual_speed_rpm")
+    private Integer actualSpeedRpm;
+
     @Column(name = "wheel_size")
-    private Double wheelSize;
+    private Integer wheelSize;
 
-    /**
-     * Полюсность электродвигателя (2D, 4D и т.д.)
-     */
-    @Column(name = "motor_poles_code", length = 10)
-    private String motorPolesCode;
-
-    /**
-     * Тип корпуса (круглый, квадратный)
-     */
-    @Column(name = "housing_type", length = 20)
-    private String housingType;
-
-    /**
-     * Уровень шума (dB)
-     */
-    @Column(name = "noise_level")
-    private Integer noiseLevel;
-
-    /**
-     * Ссылка на стакан (для крышных исполнений)
-     */
-    @Column(name = "cup_id")
-    private Long cupId;
+    @Column(name = "full_marking", length = 200)
+    private String fullMarking;
 }

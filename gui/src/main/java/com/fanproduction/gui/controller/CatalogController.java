@@ -204,6 +204,15 @@ public class CatalogController {
             return CardTypeDisplay.getDisplayName(cardType);
         }
 
+        // Для канального вентилятора: Тип продукции + полная маркировка
+        if ("DUCT_FAN".equals(cardType) && fields != null) {
+            String fullMarking = (String) fields.get("fullMarking");
+            if (fullMarking != null && !fullMarking.isEmpty()) {
+                return CardTypeDisplay.getDisplayName(cardType) + " " + fullMarking;
+            }
+            return CardTypeDisplay.getDisplayName(cardType);
+        }
+
         return dto.getName();
     }
 

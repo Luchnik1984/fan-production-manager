@@ -1,4 +1,4 @@
--- V17__insert_sample_materials.sql
+-- V19__insert_sample_materials.sql
 -- Добавление тестовых категорий и материалов
 
 -- Категории

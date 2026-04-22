@@ -206,10 +206,75 @@ public class FieldMetadataService {
         axialWheelFields.add(createField("fireproofMarking", "Маркировка огнестойкости", "text", false, "F400", null, null, "F400"));
         axialWheelFields.add(createField("explosionProof", "Взрывозащита", "boolean", false, "false", null, null));
         axialWheelFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex db IIC T4 Gb", null, null, "1Ex db IIC T4 Gb"));
-//        axialWheelFields.add(createField("maxTemperature", "Предельная температура (°C)", "number", false, null, null, null, "появляется при выборе Огнестойкость", false));
         axialWheelFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
 
         metadataMap.put("AXIAL_WHEEL", axialWheelFields);
+
+        // ========== Вентилятор канальный (DUCT_FAN) ==========
+        List<FieldMetadataDto> ductFanFields = new ArrayList<>();
+
+        // Основная информация
+        ductFanFields.add(createField("seriesName", "Наименование серии", "text", true, "VRK-PatAIR", null, null, "VRK-PatAIR"));
+        ductFanFields.add(createField("ductSize", "Типоразмер", "text", true, null, null, null, "40-20, 60-30"));
+        ductFanFields.add(createField("executionType", "Исполнение", "combobox", true, "P",
+                new String[]{"P", "PS", "PKV", "PRV"}, null, "P, PS, PKV, PRV"));
+        ductFanFields.add(createField("ductFanType", "Тип колеса", "combobox", true, "MOTOR_WHEEL",
+                new String[]{"MOTOR_WHEEL", "RADIAL_WHEEL"}, null, "Мотор-колесо / Радиальное колесо"));
+
+        // Для типа MOTOR_WHEEL
+        ductFanFields.add(createField("motorWheelId", "Мотор-колесо", "combobox", false, null, null, null, "Выберите мотор-колесо"));
+
+        // Для типа RADIAL_WHEEL
+        ductFanFields.add(createField("radialWheelId", "Радиальное колесо", "combobox", false, null, null, null, "Выберите радиальное колесо"));
+        ductFanFields.add(createField("motorId", "Электродвигатель", "combobox", false, null, null, null, "Выберите электродвигатель"));
+        ductFanFields.add(createField("wheelSize", "Размер колеса (мм)", "number", false, null, null, null, "25, 30"));
+
+        // Расчётные поля (только для чтения, заполняются автоматически)
+        ductFanFields.add(createField("poles", "Количество полюсов", "number", false, null, null, null, "заполняется автоматически"));
+        ductFanFields.add(createField("voltage", "Напряжение (В)", "number", false, null, null, null, "заполняется автоматически"));
+        ductFanFields.add(createField("voltageCode", "Код напряжения", "text", false, null, null, null, "заполняется автоматически"));
+        ductFanFields.add(createField("ratedSpeedRpm", "Номинальная скорость (об/мин)", "number", false, null, null, null, "заполняется автоматически"));
+        ductFanFields.add(createField("actualSpeedRpm", "Фактическая скорость (об/мин)", "number", false, null, null, null, "можно изменить"));
+
+        // Полная маркировка
+        ductFanFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
+
+        metadataMap.put("DUCT_FAN", ductFanFields);
+
+        // ========== Вентилятор крышный низкопрофильный (ROOF_LOW_PROFILE_FAN) ==========
+        List<FieldMetadataDto> roofLowProfileFields = new ArrayList<>();
+
+        roofLowProfileFields.add(createField("seriesName", "Наименование серии", "text", true, "VR-PatAIR", null, null, "VR-PatAIR"));
+        roofLowProfileFields.add(createField("executionType", "Исполнение", "combobox", true, "KpM",
+                new String[]{"KpM", "KpMS"}, null, "KpM, KpMS"));
+        roofLowProfileFields.add(createField("roofSize", "Типоразмер", "text", true, null, null, null, "40/31"));
+        roofLowProfileFields.add(createField("climateType", "Климатическое исполнение", "text", true, "У1", null, null, "У1, У2, УХЛ1"));
+        roofLowProfileFields.add(createField("motorWheelId", "Мотор-колесо", "reference", true, null, null, "MOTOR_WHEEL", "Выберите мотор-колесо"));
+        roofLowProfileFields.add(createField("poles", "Количество полюсов", "number", false, null, null, null, "заполняется автоматически"));
+        roofLowProfileFields.add(createField("voltage", "Напряжение (В)", "number", false, null, null, null, "заполняется автоматически"));
+        roofLowProfileFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически"));
+
+        metadataMap.put("ROOF_LOW_PROFILE_FAN", roofLowProfileFields);
+
+        // ========== Вентилятор крышный радиальный (ROOF_RADIAL_FAN) ==========
+        List<FieldMetadataDto> roofRadialFields = new ArrayList<>();
+
+        roofRadialFields.add(createField("seriesName", "Наименование серии", "text", true, "VR-PatAIR", null, null, "VR-PatAIR"));
+        roofRadialFields.add(createField("executionType", "Исполнение", "combobox", true, "KpR",
+                new String[]{"KpR", "KpRS"}, null, "KpR, KpRS"));
+        roofRadialFields.add(createField("roofSize", "Типоразмер", "text", true, null, null, null, "40, 50"));
+        roofRadialFields.add(createField("climateType", "Климатическое исполнение", "text", true, "У1", null, null, "У1, У2, УХЛ1"));
+        roofRadialFields.add(createField("radialWheelId", "Радиальное колесо", "reference", true, null, null, "RADIAL_WHEEL", "Выберите радиальное колесо"));
+        roofRadialFields.add(createField("motorId", "Электродвигатель", "reference", true, null, null, "MOTOR", "Выберите электродвигатель"));
+        roofRadialFields.add(createField("poles", "Количество полюсов", "number", false, null, null, null, "заполняется автоматически"));
+        roofRadialFields.add(createField("voltage", "Напряжение (В)", "number", false, null, null, null, "заполняется автоматически"));
+        roofRadialFields.add(createField("voltageCode", "Код напряжения", "text", false, null, null, null, "заполняется автоматически"));
+        roofRadialFields.add(createField("ratedSpeedRpm", "Номинальная скорость (об/мин)", "number", false, null, null, null, "заполняется автоматически"));
+        roofRadialFields.add(createField("actualSpeedRpm", "Фактическая скорость (об/мин)", "number", false, null, null, null, "можно изменить"));
+        roofRadialFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически"));
+
+        metadataMap.put("ROOF_RADIAL_FAN", roofRadialFields);
+
 
 
         // ========== Вентилятор осевой (AXIAL_FAN) ==========

@@ -1,23 +1,27 @@
 package com.fanproduction.gui.configurator;
 
+
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Control;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 
 import java.util.Map;
 
-/**
- * Интерфейс для настройки специальных полей карточки.
- */
 public interface CardFieldConfigurator {
 
     /**
      * Настраивает специальные поля для карточки
      * @param fieldControls карта контролов
+     * @param fieldLabels карта лейблов
+     * @param fieldHints карта подсказок
      * @param existingCardExists есть ли уже существующая карточка (редактирование)
      */
-    void setupFields(Map<String, Control> fieldControls, boolean existingCardExists);
+    void setupFields(Map<String, Control> fieldControls,
+                     Map<String, Label> fieldLabels,
+                     Map<String, Label> fieldHints,
+                     boolean existingCardExists);
 
     /**
      * Безопасное получение ComboBox из карты контролов
@@ -52,4 +56,17 @@ public interface CardFieldConfigurator {
         }
         return null;
     }
+
+    /**
+     * Автоматическое заполнение поля "Наименование" значением по умолчанию
+     */
+    default void autoFillName(Map<String, Control> fieldControls, String defaultName, boolean existingCardExists) {
+        if (!existingCardExists) {
+            TextField nameField = getTextField(fieldControls, "name");
+            if (nameField != null && nameField.getText().isEmpty()) {
+                nameField.setText(defaultName);
+            }
+        }
+    }
 }
+

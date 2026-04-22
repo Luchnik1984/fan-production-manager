@@ -152,7 +152,7 @@ public class CardFormController {
         }
 
         // Настройка специальных полей через фабрику конфигураторов
-        CardFormConfigurator.configure(cardType, fieldControls, existingCard != null);
+        CardFormConfigurator.configure(cardType, fieldControls, fieldLabels, fieldHints, existingCard != null);
 
         return grid;
     }
