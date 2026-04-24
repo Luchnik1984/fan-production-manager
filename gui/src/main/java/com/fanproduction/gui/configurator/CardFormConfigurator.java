@@ -21,6 +21,7 @@ public class CardFormConfigurator {
         configurators.put("DUCT_FAN", new DuctFanCardConfigurator());
         configurators.put("ROOF_LOW_PROFILE_FAN", new RoofLowProfileFanCardConfigurator());
         configurators.put("ROOF_RADIAL_FAN", new RoofRadialFanCardConfigurator());
+        configurators.put("ROOF_AXIAL_FAN", new RoofAxialFanCardConfigurator());
         // TODO: добавить другие типы карточек
     }
 
@@ -30,8 +31,11 @@ public class CardFormConfigurator {
      * @param fieldControls карта контролов
      * @param existingCardExists есть ли уже существующая карточка
      */
-    public static void configure(String cardType, Map<String, Control> fieldControls, Map<String, Label> fieldLabels,
-                                 Map<String, Label> fieldHints, boolean existingCardExists) {
+    public static void configure(String cardType,
+                                 Map<String, Control> fieldControls,
+                                 Map<String, Label> fieldLabels,
+                                 Map<String, Label> fieldHints,
+                                 boolean existingCardExists) {
         CardFieldConfigurator configurator = configurators.get(cardType);
         if (configurator != null) {
             configurator.setupFields(fieldControls, fieldLabels, fieldHints, existingCardExists);

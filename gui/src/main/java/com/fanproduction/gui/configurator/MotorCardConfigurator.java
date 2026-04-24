@@ -140,6 +140,7 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         addTextFieldListener("climateType", this::updateFullMarking);
         addTextFieldListener("fireproofMarking", this::updateFullMarking);
         addTextFieldListener("explosionMarking", this::updateFullMarking);
+        addTextFieldListener("mountingType", this::updateFullMarking);
 
         addCheckBoxListener("generalPurpose", this::updateFullMarking);
         addCheckBoxListener("fireproof", this::updateFullMarking);
@@ -163,6 +164,7 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         String motorType = getFieldValue("motorType");
         String poles = getFieldValue("poles");
         String climateType = getFieldValue("climateType");
+        String mountingType = getFieldValue("mountingType");
 
         boolean isGeneralPurpose = isSelected("generalPurpose");
         boolean isFireproof = isSelected("fireproof");
@@ -199,6 +201,9 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         if (climateType != null && !climateType.isEmpty()) {
             fullMarking.append("-").append(climateType);
         }
+
+        if (mountingType != null && !mountingType.isEmpty())
+            fullMarking.append(" ").append(mountingType);
 
         String newMarking = fullMarking.toString().trim();
         String currentMarking = fullMarkingField.getText();

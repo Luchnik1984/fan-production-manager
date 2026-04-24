@@ -1,10 +1,10 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.core.enums.CardTypeDisplay;
 import com.fanproduction.gui.client.ProductCardClient;
 import com.fanproduction.gui.configurator.CardFormConfigurator;
-import com.fanproduction.gui.dto.response.ApiResponse;
+import com.fanproduction.gui.dto.SelectableItem;
 import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
+import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fanproduction.gui.service.FieldMetadataService;
 import javafx.application.Platform;
@@ -17,13 +17,8 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-/**
- * Контроллер для формы создания/редактирования карточки продукции.
- */
 public class CardFormController {
 
     private final Stage stage;
@@ -95,7 +90,7 @@ public class CardFormController {
 
         int row = 0;
 
-        // Поле "Наименование" (есть у всех карточек)
+        // Поле "Наименование"
         Label nameLabel = new Label("Наименование:");
         nameLabel.setStyle("-fx-font-weight: bold;");
         TextField nameField = new TextField();
@@ -108,10 +103,7 @@ public class CardFormController {
         fieldControls.put("name", nameField);
         row++;
 
-        // Динамические поля
         for (FieldMetadataDto field : fields) {
-            // Добавляем даже невидимые поля (они будут скрыты)
-            System.out.println("Creating field: " + field.getName() + ", type: " + field.getType());
             Label label = new Label(field.getLabel() + (field.isRequired() ? " *" : ":"));
             label.setStyle("-fx-font-weight: bold;");
 
@@ -123,14 +115,12 @@ public class CardFormController {
             fieldMetadata.put(field.getName(), field);
             fieldLabels.put(field.getName(), label);
 
-            // Устанавливаем видимость в соответствии с метаданными
             boolean isVisible = field.isVisible();
             label.setVisible(isVisible);
             label.setManaged(isVisible);
             control.setVisible(isVisible);
             control.setManaged(isVisible);
 
-            // Подсказка
             if (field.getHint() != null && !field.getHint().isEmpty()) {
                 Label hintLabel = new Label(field.getHint());
                 hintLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #888;");
@@ -143,15 +133,6 @@ public class CardFormController {
             row++;
         }
 
-        // Автоматическое заполнение наименования для электродвигателя
-        if ("MOTOR".equals(cardType) && existingCard == null) {
-            TextField nameFieldCtrl = (TextField) fieldControls.get("name");
-            if (nameFieldCtrl != null && nameFieldCtrl.getText().isEmpty()) {
-                nameFieldCtrl.setText("Электродвигатель");
-            }
-        }
-
-        // Настройка специальных полей через фабрику конфигураторов
         CardFormConfigurator.configure(cardType, fieldControls, fieldLabels, fieldHints, existingCard != null);
 
         return grid;
@@ -163,65 +144,261 @@ public class CardFormController {
             existingValue = existingCard.getFields().get(field.getName());
         }
 
-        switch (field.getType()) {
-            case "text":
-                TextField textField = new TextField();
-                if (existingValue != null) textField.setText(String.valueOf(existingValue));
-                if (field.getDefaultValue() != null && existingValue == null) textField.setText(field.getDefaultValue());
-                textField.setPromptText(field.getHint());
-                return textField;
-
-            case "number":
-                TextField numberField = new TextField();
-                if (existingValue != null) numberField.setText(String.valueOf(existingValue));
-                if (field.getDefaultValue() != null && existingValue == null) numberField.setText(field.getDefaultValue());
-                numberField.setPromptText("Введите число");
-                return numberField;
-
-            case "double":
-                TextField doubleField = new TextField();
-                if (existingValue != null) doubleField.setText(String.valueOf(existingValue));
-                if (field.getDefaultValue() != null && existingValue == null) doubleField.setText(field.getDefaultValue());
-                doubleField.setPromptText("Введите число (например: 5,5)");
-                return doubleField;
-
-            case "combobox":
-                ComboBox<String> comboBox = new ComboBox<>();
-                if (field.getOptions() != null) {
-                    comboBox.getItems().addAll(field.getOptions());
-                }
-                if (existingValue != null) comboBox.setValue(String.valueOf(existingValue));
-                if (field.getDefaultValue() != null && existingValue == null) comboBox.setValue(field.getDefaultValue());
-                // Устанавливаем подсказку прямо в ComboBox
-                if (field.getHint() != null && !field.getHint().isEmpty()) {
-                    comboBox.setPromptText(field.getHint());
-                }
-                return comboBox;
-
-            case "boolean":
-                CheckBox checkBox = new CheckBox();
-                if (existingValue instanceof Boolean) checkBox.setSelected((Boolean) existingValue);
-                if (field.getDefaultValue() != null && existingValue == null) {
-                    checkBox.setSelected(Boolean.parseBoolean(field.getDefaultValue()));
-                }
-                return checkBox;
-
-            case "reference":
-                TextField refField = new TextField();
-                refField.setEditable(false);
-                refField.setPromptText("Не выбран");
+        return switch (field.getType()) {
+            case "text" -> createTextField(field, existingValue);
+            case "number" -> createNumberField(field, existingValue);
+            case "double" -> createDoubleField(field, existingValue);
+            case "combobox" -> createComboBox(field, existingValue);
+            case "boolean" -> createCheckBox(field, existingValue);
+            case "selectable" -> createSelectableComboBox(field, existingValue);
+            case "hidden" -> {
+                TextField hiddenField = new TextField();
+                hiddenField.setVisible(false);
+                hiddenField.setManaged(false);
                 if (existingValue != null) {
-                    refField.setText("ID: " + existingValue);
-                    refField.setUserData(existingValue);
+                    hiddenField.setText(String.valueOf(existingValue));
                 }
-                referenceFields.put(field.getName(), refField);
-                return refField;
+                yield hiddenField;
+            }
+            default -> createDefaultField(field, existingValue);
+        };
+    }
 
-            default:
-                TextField defaultField = new TextField();
-                if (existingValue != null) defaultField.setText(String.valueOf(existingValue));
-                return defaultField;
+    private Control createSelectableComboBox(FieldMetadataDto field, Object existingValue) {
+        String refType = field.getReferenceType();
+
+        System.out.println("=== createSelectableComboBox ===");
+        System.out.println("field: " + field.getName());
+        System.out.println("refType: " + refType);
+
+        ComboBox<SelectableItem> comboBox = new ComboBox<>();
+        comboBox.setPromptText(field.getHint() != null ? field.getHint() : "Выберите");
+
+        Long existingId = null;
+        if (existingValue instanceof Number) {
+            existingId = ((Number) existingValue).longValue();
+        } else if (existingValue instanceof String) {
+            try {
+                existingId = Long.parseLong((String) existingValue);
+            } catch (NumberFormatException ignored) {}
         }
+
+        loadReferenceData(comboBox, refType, existingId);
+
+        comboBox.valueProperty().addListener((obs, old, newVal) -> {
+            if (newVal != null && newVal.getId() != null) {
+                autoFillFromSelection(refType, newVal.getId());
+            }
+        });
+
+        return comboBox;
+    }
+
+    private TextField createTextField(FieldMetadataDto field, Object existingValue) {
+        TextField textField = new TextField();
+        if (existingValue != null) textField.setText(String.valueOf(existingValue));
+        if (field.getDefaultValue() != null && existingValue == null) textField.setText(field.getDefaultValue());
+        textField.setPromptText(field.getHint());
+        return textField;
+    }
+
+    private TextField createNumberField(FieldMetadataDto field, Object existingValue) {
+        TextField numberField = new TextField();
+        if (existingValue != null) numberField.setText(String.valueOf(existingValue));
+        if (field.getDefaultValue() != null && existingValue == null) numberField.setText(field.getDefaultValue());
+        numberField.setPromptText("Введите число");
+        return numberField;
+    }
+
+    private TextField createDoubleField(FieldMetadataDto field, Object existingValue) {
+        TextField doubleField = new TextField();
+        if (existingValue != null) doubleField.setText(String.valueOf(existingValue));
+        if (field.getDefaultValue() != null && existingValue == null) doubleField.setText(field.getDefaultValue());
+        doubleField.setPromptText("Введите число (например: 5,5)");
+        return doubleField;
+    }
+
+    private Control createComboBox(FieldMetadataDto field, Object existingValue) {
+        String refType = field.getReferenceType();
+        boolean isReference = refType != null && !refType.isEmpty();
+
+        if (isReference) {
+            System.out.println("=== Creating REFERENCE ComboBox for " + field.getName());
+            System.out.println("refType: " + refType);
+            System.out.println("existingValue: " + existingValue);
+            ComboBox<SelectableItem> refComboBox = new ComboBox<>();
+            refComboBox.setPromptText(field.getHint() != null ? field.getHint() : "Выберите");
+
+            Long existingId = null;
+            if (existingValue instanceof Number) {
+                existingId = ((Number) existingValue).longValue();
+            } else if (existingValue instanceof String) {
+                try {
+                    existingId = Long.parseLong((String) existingValue);
+                } catch (NumberFormatException e) {
+                    // Игнорируем
+                }
+            }
+
+            loadReferenceData(refComboBox, refType, existingId);
+
+            refComboBox.valueProperty().addListener((obs, old, newVal) -> {
+                if (newVal != null && newVal.getId() != null) {
+                    autoFillFromSelection(refType, newVal.getId());
+                }
+            });
+
+            return refComboBox;
+        } else {
+            ComboBox<String> comboBox = new ComboBox<>();
+            if (field.getOptions() != null) {
+                comboBox.getItems().addAll(field.getOptions());
+            }
+            if (existingValue != null) {
+                comboBox.setValue(String.valueOf(existingValue));
+            }
+            if (field.getDefaultValue() != null && existingValue == null) {
+                comboBox.setValue(field.getDefaultValue());
+            }
+            if (field.getHint() != null && !field.getHint().isEmpty()) {
+                comboBox.setPromptText(field.getHint());
+            }
+            return comboBox;
+        }
+    }
+
+    private CheckBox createCheckBox(FieldMetadataDto field, Object existingValue) {
+        CheckBox checkBox = new CheckBox();
+        if (existingValue instanceof Boolean) checkBox.setSelected((Boolean) existingValue);
+        if (field.getDefaultValue() != null && existingValue == null) {
+            checkBox.setSelected(Boolean.parseBoolean(field.getDefaultValue()));
+        }
+        return checkBox;
+    }
+
+    private TextField createDefaultField(FieldMetadataDto field, Object existingValue) {
+        TextField defaultField = new TextField();
+        if (existingValue != null) defaultField.setText(String.valueOf(existingValue));
+        return defaultField;
+    }
+
+    private void loadReferenceData(ComboBox<SelectableItem> comboBox, String referenceType, Long existingId) {
+        System.out.println("=== loadReferenceData ===");
+        System.out.println("referenceType: " + referenceType);
+        System.out.println("existingId: " + existingId);
+
+        comboBox.getItems().clear();
+        comboBox.getItems().add(new SelectableItem(null, "Загрузка..."));
+
+        new Thread(() -> {
+            try {
+                List<ProductCardDto> items = switch (referenceType) {
+                    case "MOTOR_WHEEL" -> ProductCardClient.getCardsByType("MOTOR_WHEEL");
+                    case "RADIAL_WHEEL" -> ProductCardClient.getCardsByType("RADIAL_WHEEL");
+                    case "MOTOR" -> ProductCardClient.getCardsByType("MOTOR");
+                    case "AXIAL_WHEEL" -> ProductCardClient.getCardsByType("AXIAL_WHEEL");
+                    default -> new ArrayList<>();
+                };
+
+                Platform.runLater(() -> {
+                    comboBox.getItems().clear();
+                    if (!items.isEmpty()) {
+                        SelectableItem selectedItem = null;
+                        for (ProductCardDto dto : items) {
+                            // Используем полную маркировку для отображения
+                            String fullMarking = (String) dto.getFields().get("fullMarking");
+                            String displayName;
+                            if (fullMarking != null && !fullMarking.isEmpty()) {
+                                displayName = fullMarking;
+                            } else {
+                                displayName = dto.getName() + " (" + dto.getCode() + ")";
+                            }
+                            SelectableItem item = new SelectableItem(dto.getId(), displayName);
+                            comboBox.getItems().add(item);
+                            if (existingId != null && existingId.equals(dto.getId())) {
+                                selectedItem = item;
+                            }
+                        }
+                        if (selectedItem != null) {
+                            comboBox.setValue(selectedItem);
+                        }
+                    } else {
+                        comboBox.getItems().add(new SelectableItem(null, "Нет данных"));
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    comboBox.getItems().clear();
+                    comboBox.getItems().add(new SelectableItem(null, "Ошибка загрузки"));
+                });
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    private void autoFillFromSelection(String referenceType, Long selectedId) {
+        new Thread(() -> {
+            try {
+                ApiResponse<ProductCardDto> response = ProductCardClient.getCardById(selectedId);
+                Platform.runLater(() -> {
+                    if (response.isSuccess() && response.getData() != null) {
+                        ProductCardDto dto = response.getData();
+                        Map<String, Object> fields = dto.getFields();
+
+                        // Полная маркировка выбранного компонента
+                        String fullMarking = (String) fields.get("fullMarking");
+                        if (fullMarking == null) {
+                            fullMarking = dto.getName();
+                        }
+
+                        switch (referenceType) {
+                            case "MOTOR_WHEEL":
+                                setFieldValue("poles", fields.get("poles"));
+                                setFieldValue("voltage", fields.get("voltage"));
+                                setFieldValue("voltageCode", fields.get("voltageCode"));
+                                setFieldValue("powerKw", fields.get("powerKw"));
+                                setFieldValue("ratedSpeedRpm", fields.get("ratedSpeedRpm"));
+                                setFieldValue("actualSpeedRpm", fields.get("actualSpeedRpm"));
+                                // Сохраняем полную маркировку мотор-колеса
+                                setFieldValue("motorWheelFullMarking", fullMarking);
+                                break;
+                            case "RADIAL_WHEEL":
+                                setFieldValue("wheelSize", fields.get("size"));
+                                // Сохраняем полную маркировку радиального колеса
+                                setFieldValue("radialWheelFullMarking", fullMarking);
+                                break;
+                            case "AXIAL_WHEEL":
+                                // Пока нет полей для автозаполнения
+                                break;
+                            case "MOTOR":
+                                setFieldValue("poles", fields.get("poles"));
+                                setFieldValue("voltage", fields.get("voltage"));
+                                // Используем отдельный метод для кода напряжения
+                                setFieldValue("voltageCode", getVoltageCode(fields.get("voltage")));
+                                setFieldValue("powerKw", fields.get("powerKw"));
+                                setFieldValue("ratedSpeedRpm", fields.get("ratedSpeedRpm"));
+                                setFieldValue("actualSpeedRpm", fields.get("actualSpeedRpm"));
+                                setFieldValue("motorFullMarking", fullMarking);
+                                break;
+                        }
+                        updateFullMarking();
+                    }
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    private void setFieldValue(String fieldName, Object value) {
+        Control control = fieldControls.get(fieldName);
+        if (control instanceof TextField && value != null) {
+            ((TextField) control).setText(value.toString());
+        }
+    }
+
+    private void updateFullMarking() {
+        // Полная маркировка обновится через слушатели в конфигураторе
     }
 
     private Object getControlValue(Control control, String fieldName, FieldMetadataDto metadata) {
@@ -245,8 +422,12 @@ public class CardFormController {
                 }
             }
             return text;
-        } else if (control instanceof ComboBox) {
-            return ((ComboBox<?>) control).getValue();
+        } else if (control instanceof ComboBox<?> combo) {
+            Object value = combo.getValue();
+            if (value instanceof SelectableItem) {
+                return ((SelectableItem) value).getId();
+            }
+            return value;
         } else if (control instanceof CheckBox) {
             return ((CheckBox) control).isSelected();
         }
@@ -268,7 +449,6 @@ public class CardFormController {
             }
         }
 
-        // Добавляем значения из reference полей
         for (Map.Entry<String, TextField> entry : referenceFields.entrySet()) {
             String fieldName = entry.getKey();
             TextField refField = entry.getValue();
@@ -283,6 +463,21 @@ public class CardFormController {
         if (nameControl instanceof TextField) {
             name = ((TextField) nameControl).getText().trim();
         }
+
+        // ========== ОТЛАДКА ==========
+        System.out.println("=== BEFORE SAVE ===");
+        System.out.println("Card type: " + cardType);
+        System.out.println("fullMarking in fields: " + fields.get("fullMarking"));
+        System.out.println("All fields keys: " + fields.keySet());
+        // Проверяем значение directly из контрола
+        Control fullMarkingCtrl = fieldControls.get("fullMarking");
+        if (fullMarkingCtrl instanceof TextField) {
+            System.out.println("fullMarking control value: " + ((TextField) fullMarkingCtrl).getText());
+        } else {
+            System.out.println("fullMarking control is NULL or not TextField");
+        }
+        System.out.println("===================");
+        // ===========================
 
         final String finalName = name;
         final Map<String, Object> finalFields = fields;
@@ -341,7 +536,18 @@ public class CardFormController {
     }
 
     private String getTypeDisplayName(String cardType) {
-        return CardTypeDisplay.getDisplayName(cardType);
+        Map<String, String> displayMap = Map.of(
+                "MOTOR", "Электродвигатель",
+                "MOTOR_WHEEL", "Мотор-колесо",
+                "RADIAL_WHEEL", "Колесо радиальное",
+                "AXIAL_WHEEL", "Колесо осевое",
+                "AXIAL_FAN", "Вентилятор осевой",
+                "RADIAL_FAN", "Вентилятор радиальный",
+                "DUCT_FAN", "Вентилятор канальный",
+                "CUP", "Стакан",
+                "ACCESSORY", "Комплектующее"
+        );
+        return displayMap.getOrDefault(cardType, cardType);
     }
 
     private void showAlert(String title, String message, Alert.AlertType type) {
@@ -354,5 +560,18 @@ public class CardFormController {
 
     public void show() {
         stage.showAndWait();
+    }
+
+    /**
+     * Преобразует напряжение в код напряжения
+     * @param voltage напряжение (220, 380, null)
+     * @return код напряжения (E, D, или пустая строка)
+     */
+    private String getVoltageCode(Object voltage) {
+        if (voltage == null) return "";
+        String voltageStr = voltage.toString();
+        if (voltageStr.equals("220")) return "E";
+        if (voltageStr.equals("380")) return "D";
+        return "";
     }
 }

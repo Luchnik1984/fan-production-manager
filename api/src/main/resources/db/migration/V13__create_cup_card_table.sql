@@ -1,4 +1,4 @@
--- V12__create_cup_card_table.sql
+-- V13__create_cup_card_table.sql
 -- Создание таблицы для стаканов
 
 CREATE TABLE IF NOT EXISTS cup_card (

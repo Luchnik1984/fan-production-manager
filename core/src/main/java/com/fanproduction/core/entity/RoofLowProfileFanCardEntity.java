@@ -21,18 +21,7 @@ public class RoofLowProfileFanCardEntity extends FanCardEntity {
     @Column(name = "roof_size", length = 50)
     private String roofSize;
 
-    @Column(name = "climate_type", length = 10)
-    private String climateType = "У1";
-
     @Column(name = "motor_wheel_id")
     private Long motorWheelId;
-
-    @Column(name = "poles")
-    private Integer poles;
-
-    @Column(name = "voltage")
-    private Integer voltage;
-
-    @Column(name = "full_marking", length = 200)
-    private String fullMarking;
 }
+

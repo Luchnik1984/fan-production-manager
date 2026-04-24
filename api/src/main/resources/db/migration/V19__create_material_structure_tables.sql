@@ -1,4 +1,4 @@
--- V18__create_material_structure_tables.sql
+-- V19__create_material_structure_tables.sql
 -- Создание иерархической структуры материалов
 
 -- 1. Категории материалов

@@ -1,6 +1,7 @@
 package com.fanproduction.gui.service;
 
 import com.fanproduction.gui.client.ProductCardClient;
+import com.fanproduction.gui.dto.SelectableItem;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import javafx.application.Platform;
 import javafx.scene.control.ComboBox;
@@ -9,9 +10,9 @@ import java.util.List;
 
 public class ReferenceDataService {
 
-    public static void loadMotorWheels(ComboBox<String> comboBox) {
+    public static void loadMotorWheels(ComboBox<SelectableItem> comboBox) {
         comboBox.getItems().clear();
-        comboBox.getItems().add("Загрузка...");
+        comboBox.getItems().add(new SelectableItem(null, "Загрузка..."));
 
         new Thread(() -> {
             try {
@@ -22,25 +23,25 @@ public class ReferenceDataService {
                     if (items != null && !items.isEmpty()) {
                         for (ProductCardDto dto : items) {
                             String displayName = dto.getName() + " (" + dto.getCode() + ")";
-                            comboBox.getItems().add(displayName);
+                            comboBox.getItems().add(new SelectableItem(dto.getId(), displayName));
                         }
                     } else {
-                        comboBox.getItems().add("Нет данных");
+                        comboBox.getItems().add(new SelectableItem(null, "Нет данных"));
                     }
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     comboBox.getItems().clear();
-                    comboBox.getItems().add("Ошибка загрузки");
+                    comboBox.getItems().add(new SelectableItem(null, "Ошибка загрузки"));
                 });
                 e.printStackTrace();
             }
         }).start();
     }
 
-    public static void loadRadialWheels(ComboBox<String> comboBox) {
+    public static void loadRadialWheels(ComboBox<SelectableItem> comboBox) {
         comboBox.getItems().clear();
-        comboBox.getItems().add("Загрузка...");
+        comboBox.getItems().add(new SelectableItem(null, "Загрузка..."));
 
         new Thread(() -> {
             try {
@@ -51,25 +52,25 @@ public class ReferenceDataService {
                     if (items != null && !items.isEmpty()) {
                         for (ProductCardDto dto : items) {
                             String displayName = dto.getName() + " (" + dto.getCode() + ")";
-                            comboBox.getItems().add(displayName);
+                            comboBox.getItems().add(new SelectableItem(dto.getId(), displayName));
                         }
                     } else {
-                        comboBox.getItems().add("Нет данных");
+                        comboBox.getItems().add(new SelectableItem(null, "Нет данных"));
                     }
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     comboBox.getItems().clear();
-                    comboBox.getItems().add("Ошибка загрузки");
+                    comboBox.getItems().add(new SelectableItem(null, "Ошибка загрузки"));
                 });
                 e.printStackTrace();
             }
         }).start();
     }
 
-    public static void loadMotors(ComboBox<String> comboBox) {
+    public static void loadMotors(ComboBox<SelectableItem> comboBox) {
         comboBox.getItems().clear();
-        comboBox.getItems().add("Загрузка...");
+        comboBox.getItems().add(new SelectableItem(null, "Загрузка..."));
 
         new Thread(() -> {
             try {
@@ -80,25 +81,25 @@ public class ReferenceDataService {
                     if (items != null && !items.isEmpty()) {
                         for (ProductCardDto dto : items) {
                             String displayName = dto.getName() + " (" + dto.getCode() + ")";
-                            comboBox.getItems().add(displayName);
+                            comboBox.getItems().add(new SelectableItem(dto.getId(), displayName));
                         }
                     } else {
-                        comboBox.getItems().add("Нет данных");
+                        comboBox.getItems().add(new SelectableItem(null, "Нет данных"));
                     }
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     comboBox.getItems().clear();
-                    comboBox.getItems().add("Ошибка загрузки");
+                    comboBox.getItems().add(new SelectableItem(null, "Ошибка загрузки"));
                 });
                 e.printStackTrace();
             }
         }).start();
     }
 
-    public static void loadAxialWheels(ComboBox<String> comboBox) {
+    public static void loadAxialWheels(ComboBox<SelectableItem> comboBox) {
         comboBox.getItems().clear();
-        comboBox.getItems().add("Загрузка...");
+        comboBox.getItems().add(new SelectableItem(null, "Загрузка..."));
 
         new Thread(() -> {
             try {
@@ -109,16 +110,16 @@ public class ReferenceDataService {
                     if (items != null && !items.isEmpty()) {
                         for (ProductCardDto dto : items) {
                             String displayName = dto.getName() + " (" + dto.getCode() + ")";
-                            comboBox.getItems().add(displayName);
+                            comboBox.getItems().add(new SelectableItem(dto.getId(), displayName));
                         }
                     } else {
-                        comboBox.getItems().add("Нет данных");
+                        comboBox.getItems().add(new SelectableItem(null, "Нет данных"));
                     }
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     comboBox.getItems().clear();
-                    comboBox.getItems().add("Ошибка загрузки");
+                    comboBox.getItems().add(new SelectableItem(null, "Ошибка загрузки"));
                 });
                 e.printStackTrace();
             }
