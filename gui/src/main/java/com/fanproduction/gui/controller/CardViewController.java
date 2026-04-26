@@ -168,11 +168,13 @@ public class CardViewController {
             grid.add(separatorLabel, 0, row, 2, 1);
             row++;
 
-            // Для канального вентилятора определяем тип и показываем компоненты
+            // ========== ОТОБРАЖЕНИЕ КОМПОНЕНТОВ ДЛЯ КАНАЛЬНОГО ВЕНТИЛЯТОРА ==========
             if ("DUCT_FAN".equals(card.getCardType())) {
                 String ductFanType = (String) fields.get("ductFanType");
 
-                if ("MOTOR_WHEEL".equals(ductFanType)) {
+                // Сравниваем с русскими названиями
+                if ("Мотор-колесо".equals(ductFanType)) {
+                    // Мотор-колесо
                     String motorWheelMarking = (String) fields.get("motorWheelFullMarking");
                     if (motorWheelMarking != null && !motorWheelMarking.isEmpty()) {
                         addInfoRow(grid, row++, "Мотор-колесо:", motorWheelMarking);
@@ -181,11 +183,13 @@ public class CardViewController {
                     if (powerKw != null) {
                         addInfoRow(grid, row++, "Мощность (КВт):", powerKw.toString());
                     }
-                } else if ("RADIAL_WHEEL".equals(ductFanType)) {
+                } else if ("Радиальное колесо".equals(ductFanType)) {
+                    // Радиальное колесо
                     String radialWheelMarking = (String) fields.get("radialWheelFullMarking");
                     if (radialWheelMarking != null && !radialWheelMarking.isEmpty()) {
                         addInfoRow(grid, row++, "Радиальное колесо:", radialWheelMarking);
                     }
+                    // Электродвигатель
                     String motorMarking = (String) fields.get("motorFullMarking");
                     if (motorMarking != null && !motorMarking.isEmpty()) {
                         addInfoRow(grid, row++, "Электродвигатель:", motorMarking);
@@ -196,6 +200,7 @@ public class CardViewController {
                     }
                 }
             }
+            // =======================================================================
 
             List<String> orderedFields = getOrderedFields(card.getCardType());
 
@@ -205,6 +210,9 @@ public class CardViewController {
 
                 // Пропускаем поля компонентов, которые уже показаны выше
                 if ("DUCT_FAN".equals(card.getCardType())) {
+                    if ("powerKw".equals(fieldName)) {
+                        continue;
+                    }
                     if ("motorWheelFullMarking".equals(fieldName) ||
                             "radialWheelFullMarking".equals(fieldName) ||
                             "motorFullMarking".equals(fieldName)) {
@@ -231,7 +239,6 @@ public class CardViewController {
                         continue;
                     }
                 }
-                // ======================================================================
 
                 // Для булевых полей показываем всегда
                 if (value instanceof Boolean) {
