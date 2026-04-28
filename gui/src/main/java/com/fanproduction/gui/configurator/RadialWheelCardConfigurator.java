@@ -2,6 +2,7 @@ package com.fanproduction.gui.configurator;
 
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Control;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 
 import java.util.Map;
@@ -13,7 +14,8 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
     private Map<String, Control> fieldControls;
 
     @Override
-    public void setupFields(Map<String, Control> fieldControls, boolean existingCardExists) {
+    public void setupFields(Map<String, Control> fieldControls, Map<String, Label> fieldLabels,
+                            Map<String, Label> fieldHints, boolean existingCardExists) {
         this.fieldControls = fieldControls;
 
         fullMarkingField = getTextField(fieldControls, "fullMarking");

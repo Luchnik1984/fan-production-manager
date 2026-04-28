@@ -1,4 +1,4 @@
--- V15__create_aerodynamic_data_table.sql
+-- V18__create_aerodynamic_data_table.sql
 -- Создание таблицы для аэродинамических характеристик
 
 CREATE TABLE IF NOT EXISTS aerodynamic_data (

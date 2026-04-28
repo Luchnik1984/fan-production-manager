@@ -38,9 +38,4 @@ public interface FanCardRepository extends JpaRepository<FanCardEntity, Long> {
     List<FanCardEntity> findBySizeRange(@Param("minSize") Double minSize,
                                         @Param("maxSize") Double maxSize);
 
-    /**
-     * Поиск вентиляторов с возможностью крышного монтажа (имеющих стакан)
-     */
-    @Query("SELECT f FROM DuctFanCardEntity f WHERE f.cupId IS NOT NULL")
-    List<FanCardEntity> findRoofMountedFans();
 }

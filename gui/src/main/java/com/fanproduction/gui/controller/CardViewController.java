@@ -80,6 +80,25 @@ public class CardViewController {
         FIELD_RUSSIAN_NAMES.put("bladeMaterial", "Материал лопатки");
         FIELD_RUSSIAN_NAMES.put("wheelDiameter", "Диаметр колеса (мм)");
 
+        // Поля канального вентилятора
+        FIELD_RUSSIAN_NAMES.put("seriesName", "Наименование серии");
+        FIELD_RUSSIAN_NAMES.put("ductSize", "Типоразмер");
+        FIELD_RUSSIAN_NAMES.put("executionType", "Исполнение");
+        FIELD_RUSSIAN_NAMES.put("ductFanType", "Тип колеса");
+        FIELD_RUSSIAN_NAMES.put("motorWheelId", "Мотор-колесо");
+        FIELD_RUSSIAN_NAMES.put("radialWheelId", "Радиальное колесо");
+        FIELD_RUSSIAN_NAMES.put("motorId", "Электродвигатель");
+        FIELD_RUSSIAN_NAMES.put("wheelSize", "Размер колеса (мм)");
+
+        // Поля для хранения полной маркировки компонентов
+        FIELD_RUSSIAN_NAMES.put("motorWheelFullMarking", "Мотор-колесо");
+        FIELD_RUSSIAN_NAMES.put("radialWheelFullMarking", "Радиальное колесо");
+        FIELD_RUSSIAN_NAMES.put("axialWheelFullMarking", "Осевое колесо");
+        FIELD_RUSSIAN_NAMES.put("motorFullMarking", "Электродвигатель");
+
+
+
+
     }
 
     public static void show(Stage owner, ProductCardDto card) {
@@ -131,28 +150,57 @@ public class CardViewController {
         addInfoRow(grid, row++, "Наименование:", card.getName());
         addInfoRow(grid, row++, "Код:", card.getCode() != null ? card.getCode() : "—");
 
-        // Тип карточки
         String cardTypeDisplay = getCardTypeDisplay(card.getCardType());
         addInfoRow(grid, row++, "Тип карточки:", cardTypeDisplay);
 
-        // Дата создания
         if (card.getCreatedAt() != null) {
             addInfoRow(grid, row++, "Дата создания:", card.getCreatedAt().format(DATE_FORMATTER));
         }
 
-        // Создал
         if (card.getCreatedBy() != null && !card.getCreatedBy().isEmpty()) {
             addInfoRow(grid, row++, "Создал:", card.getCreatedBy());
         }
 
-        // Специфичные поля
         Map<String, Object> fields = card.getFields();
         if (fields != null && !fields.isEmpty()) {
-            // Разделитель
             Label separatorLabel = new Label("Технические характеристики:");
             separatorLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
             grid.add(separatorLabel, 0, row, 2, 1);
             row++;
+
+            // ========== ОТОБРАЖЕНИЕ КОМПОНЕНТОВ ДЛЯ КАНАЛЬНОГО ВЕНТИЛЯТОРА ==========
+            if ("DUCT_FAN".equals(card.getCardType())) {
+                String ductFanType = (String) fields.get("ductFanType");
+
+                // Сравниваем с русскими названиями
+                if ("Мотор-колесо".equals(ductFanType)) {
+                    // Мотор-колесо
+                    String motorWheelMarking = (String) fields.get("motorWheelFullMarking");
+                    if (motorWheelMarking != null && !motorWheelMarking.isEmpty()) {
+                        addInfoRow(grid, row++, "Мотор-колесо:", motorWheelMarking);
+                    }
+                    Object powerKw = fields.get("powerKw");
+                    if (powerKw != null) {
+                        addInfoRow(grid, row++, "Мощность (КВт):", powerKw.toString());
+                    }
+                } else if ("Радиальное колесо".equals(ductFanType)) {
+                    // Радиальное колесо
+                    String radialWheelMarking = (String) fields.get("radialWheelFullMarking");
+                    if (radialWheelMarking != null && !radialWheelMarking.isEmpty()) {
+                        addInfoRow(grid, row++, "Радиальное колесо:", radialWheelMarking);
+                    }
+                    // Электродвигатель
+                    String motorMarking = (String) fields.get("motorFullMarking");
+                    if (motorMarking != null && !motorMarking.isEmpty()) {
+                        addInfoRow(grid, row++, "Электродвигатель:", motorMarking);
+                    }
+                    Object powerKw = fields.get("powerKw");
+                    if (powerKw != null) {
+                        addInfoRow(grid, row++, "Мощность (КВт):", powerKw.toString());
+                    }
+                }
+            }
+            // =======================================================================
 
             List<String> orderedFields = getOrderedFields(card.getCardType());
 
@@ -160,33 +208,39 @@ public class CardViewController {
                 Object value = fields.get(fieldName);
                 if (value == null) continue;
 
+                // Пропускаем поля компонентов, которые уже показаны выше
+                if ("DUCT_FAN".equals(card.getCardType())) {
+                    if ("powerKw".equals(fieldName)) {
+                        continue;
+                    }
+                    if ("motorWheelFullMarking".equals(fieldName) ||
+                            "radialWheelFullMarking".equals(fieldName) ||
+                            "motorFullMarking".equals(fieldName)) {
+                        continue;
+                    }
+                }
+
                 // ========== СПЕЦИАЛЬНАЯ ЛОГИКА ДЛЯ ОГНЕСТОЙКОСТИ И ВЗРЫВОЗАЩИТЫ ==========
-                // Пропускаем fireproofMarking, если fireproof = false
                 if ("fireproofMarking".equals(fieldName)) {
                     Boolean fireproof = (Boolean) fields.get("fireproof");
                     if (fireproof == null || !fireproof) {
-                        continue; // не показываем
+                        continue;
                     }
                 }
-
-                // Пропускаем explosionMarking, если explosionProof = false
                 if ("explosionMarking".equals(fieldName)) {
                     Boolean explosionProof = (Boolean) fields.get("explosionProof");
                     if (explosionProof == null || !explosionProof) {
-                        continue; // не показываем
+                        continue;
                     }
                 }
-
-                // Пропускаем maxTemperature, если fireproof = false
                 if ("maxTemperature".equals(fieldName)) {
                     Boolean fireproof = (Boolean) fields.get("fireproof");
                     if (fireproof == null || !fireproof) {
                         continue;
                     }
                 }
-                // =====================================================================
 
-                // Для булевых полей показываем всегда (даже если false)
+                // Для булевых полей показываем всегда
                 if (value instanceof Boolean) {
                     String russianName = FIELD_RUSSIAN_NAMES.getOrDefault(fieldName, fieldName);
                     String stringValue = formatValue(value);
@@ -273,7 +327,7 @@ public class CardViewController {
         } else if ("MOTOR_WHEEL".equals(cardType)) {
             orderedFields.add("manufacturer");
             orderedFields.add("bladeType");
-            orderedFields.add("size");           // ← ДОБАВИТЬ
+            orderedFields.add("size");
             orderedFields.add("poles");
             orderedFields.add("voltageCode");
             orderedFields.add("voltage");
@@ -283,6 +337,31 @@ public class CardViewController {
             orderedFields.add("weightKg");
             orderedFields.add("motorCode");
             orderedFields.add("fullMarking");
+        } else if ("DUCT_FAN".equals(cardType)) {
+            orderedFields.add("seriesName");
+            orderedFields.add("ductSize");
+            orderedFields.add("executionType");
+            orderedFields.add("ductFanType");
+            orderedFields.add("poles");
+            orderedFields.add("voltage");
+            orderedFields.add("voltageCode");
+            orderedFields.add("ratedSpeedRpm");
+            orderedFields.add("actualSpeedRpm");
+            orderedFields.add("powerKw");
+            orderedFields.add("fullMarking");
+
+            // Поля для компонентов
+            orderedFields.add("motorWheelFullMarking");
+            orderedFields.add("radialWheelFullMarking");
+            orderedFields.add("motorFullMarking");
+
+            // Исполнение по назначению
+            orderedFields.add("generalPurpose");
+            orderedFields.add("fireproof");
+            orderedFields.add("fireproofMarking");
+            orderedFields.add("maxTemperature");
+            orderedFields.add("explosionProof");
+            orderedFields.add("explosionMarking");
         } else {
             // Для остальных типов - просто все поля
             return new ArrayList<>(FIELD_RUSSIAN_NAMES.keySet());

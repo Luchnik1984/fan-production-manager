@@ -74,7 +74,7 @@ public class FieldMetadataService {
         motorFields.add(createField("explosionProof", "Взрывозащита", "boolean", false, "false", null, null));
 
         // Маркировка взрывозащиты (появляется при взрывозащищённом)
-        motorFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex db IIC T4 Gb", null, null, "1Ex db IIC T4 Gb", false));
+        motorFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex d IIC T4 Gb", null, null, "1Ex d IIC T4 Gb", false));
 
         // Полная маркировка (редактируемое поле, формируется автоматически)
         motorFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
@@ -167,13 +167,13 @@ public class FieldMetadataService {
         radialWheelFields.add(createField("fireproof", "Огнестойкость", "boolean", false, "false", null, null));
 
         // Маркировка огнестойкости (скрыто по умолчанию)
-        radialWheelFields.add(createField("fireproofMarking", "Маркировка огнестойкости", "text", false, "F400", null, null, "F400"));
+        radialWheelFields.add(createField("fireproofMarking", "Маркировка огнестойкости", "text", false, "F400", null, null, "F400",false));
 
         // Галочка "Взрывозащита"
         radialWheelFields.add(createField("explosionProof", "Взрывозащита", "boolean", false, "false", null, null));
 
         // Поле маркировки взрывозащиты (скрыто по умолчанию)
-        radialWheelFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex db IIC T4 Gb", null, null, "1Ex db IIC T4 Gb"));
+        radialWheelFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex d IIC T4 Gb", null, null, "1Ex d IIC T4 Gb",false));
 
         // Полная маркировка (формируется автоматически)
         radialWheelFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
@@ -205,11 +205,75 @@ public class FieldMetadataService {
         axialWheelFields.add(createField("fireproof", "Огнестойкость", "boolean", false, "false", null, null));
         axialWheelFields.add(createField("fireproofMarking", "Маркировка огнестойкости", "text", false, "F400", null, null, "F400"));
         axialWheelFields.add(createField("explosionProof", "Взрывозащита", "boolean", false, "false", null, null));
-        axialWheelFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex db IIC T4 Gb", null, null, "1Ex db IIC T4 Gb"));
-//        axialWheelFields.add(createField("maxTemperature", "Предельная температура (°C)", "number", false, null, null, null, "появляется при выборе Огнестойкость", false));
+        axialWheelFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex d IIC T4 Gb", null, null, "1Ex d IIC T4 Gb"));
         axialWheelFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
 
         metadataMap.put("AXIAL_WHEEL", axialWheelFields);
+
+        // ========== Вентилятор канальный (DUCT_FAN) ==========
+        List<FieldMetadataDto> ductFanFields = new ArrayList<>();
+
+        ductFanFields.add(createField("seriesName", "Наименование серии", "text", true, "VRK-PatAIR", null, null, "VRK-PatAIR"));
+        ductFanFields.add(createField("ductSize", "Типоразмер", "text", true, null, null, null, "40-20, 60-30"));
+        ductFanFields.add(createField("executionType", "Исполнение", "combobox", true, "P",
+                new String[]{"P", "PS", "PKV", "PRV"}, null, "P, PS, PKV, PRV"));
+        ductFanFields.add(createField("ductFanType", "Тип колеса", "combobox", true, "MOTOR_WHEEL",
+                new String[]{"MOTOR_WHEEL", "RADIAL_WHEEL"}, null, "Мотор-колесо / Радиальное колесо"));
+        ductFanFields.add(createField("ductFanType_value", "", "hidden", false, null, null, null, null, false));
+
+        // Поля для выбора компонентов (скрыты по умолчанию)
+        ductFanFields.add(createField("motorWheelId", "Мотор-колесо", "selectable", false, null, null, "MOTOR_WHEEL", "Выберите мотор-колесо", false));
+        ductFanFields.add(createField("radialWheelId", "Радиальное колесо", "selectable", false, null, null, "RADIAL_WHEEL", "Выберите радиальное колесо", false));
+
+        ductFanFields.add(createField("motorId", "Электродвигатель", "selectable", false, null, null, "MOTOR", "Выберите электродвигатель", false));
+
+        ductFanFields.add(createField("wheelSize", "Размер колеса", "number", false, null, null, null, "заполняется автоматически. 2.5, 3.0...",false));
+
+        ductFanFields.add(createField("poles", "Количество полюсов", "number", false, null, null, null, "заполняется автоматически"));
+        ductFanFields.add(createField("voltage", "Напряжение (В)", "number", false, null, null, null, "заполняется автоматически"));
+        ductFanFields.add(createField("voltageCode", "Код напряжения", "text", false, null, null, null, "заполняется автоматически"));
+        ductFanFields.add(createField("ratedSpeedRpm", "Номинальная скорость (об/мин)", "number", false, null, null, null, "заполняется автоматически"));
+        ductFanFields.add(createField("actualSpeedRpm", "Фактическая скорость (об/мин)", "number", false, null, null, null, "можно изменить"));
+
+//        ductFanFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
+
+        ductFanFields.addAll(getFanSpecialFields());
+        metadataMap.put("DUCT_FAN", ductFanFields);
+
+        // ========== Вентилятор крышный низкопрофильный (ROOF_LOW_PROFILE_FAN) ==========
+        List<FieldMetadataDto> roofLowProfileFields = new ArrayList<>();
+
+        roofLowProfileFields.add(createField("seriesName", "Наименование серии", "text", true, "VR-PatAIR", null, null, "VR-PatAIR"));
+        roofLowProfileFields.add(createField("executionType", "Исполнение", "combobox", true, "KpM",
+                new String[]{"KpM", "KpMS"}, null, "KpM, KpMS"));
+        roofLowProfileFields.add(createField("roofSize", "Типоразмер", "text", true, null, null, null, "40/31"));
+        roofLowProfileFields.add(createField("climateType", "Климатическое исполнение", "text", true, "У1", null, null, "У1, У2, УХЛ1"));
+        roofLowProfileFields.add(createField("motorWheelId", "Мотор-колесо", "reference", true, null, null, "MOTOR_WHEEL", "Выберите мотор-колесо"));
+        roofLowProfileFields.add(createField("poles", "Количество полюсов", "number", false, null, null, null, "заполняется автоматически"));
+        roofLowProfileFields.add(createField("voltage", "Напряжение (В)", "number", false, null, null, null, "заполняется автоматически"));
+        roofLowProfileFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически"));
+
+        metadataMap.put("ROOF_LOW_PROFILE_FAN", roofLowProfileFields);
+
+        // ========== Вентилятор крышный радиальный (ROOF_RADIAL_FAN) ==========
+        List<FieldMetadataDto> roofRadialFields = new ArrayList<>();
+
+        roofRadialFields.add(createField("seriesName", "Наименование серии", "text", true, "VR-PatAIR", null, null, "VR-PatAIR"));
+        roofRadialFields.add(createField("executionType", "Исполнение", "combobox", true, "KpR",
+                new String[]{"KpR", "KpRS"}, null, "KpR, KpRS"));
+        roofRadialFields.add(createField("roofSize", "Типоразмер", "text", true, null, null, null, "40, 50"));
+        roofRadialFields.add(createField("climateType", "Климатическое исполнение", "text", true, "У1", null, null, "У1, У2, УХЛ1"));
+        roofRadialFields.add(createField("radialWheelId", "Радиальное колесо", "reference", true, null, null, "RADIAL_WHEEL", "Выберите радиальное колесо"));
+        roofRadialFields.add(createField("motorId", "Электродвигатель", "reference", true, null, null, "MOTOR", "Выберите электродвигатель"));
+        roofRadialFields.add(createField("poles", "Количество полюсов", "number", false, null, null, null, "заполняется автоматически"));
+        roofRadialFields.add(createField("voltage", "Напряжение (В)", "number", false, null, null, null, "заполняется автоматически"));
+        roofRadialFields.add(createField("voltageCode", "Код напряжения", "text", false, null, null, null, "заполняется автоматически"));
+        roofRadialFields.add(createField("ratedSpeedRpm", "Номинальная скорость (об/мин)", "number", false, null, null, null, "заполняется автоматически"));
+        roofRadialFields.add(createField("actualSpeedRpm", "Фактическая скорость (об/мин)", "number", false, null, null, null, "можно изменить"));
+        roofRadialFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически"));
+
+        metadataMap.put("ROOF_RADIAL_FAN", roofRadialFields);
+
 
 
         // ========== Вентилятор осевой (AXIAL_FAN) ==========
@@ -228,6 +292,39 @@ public class FieldMetadataService {
                 createField("cableSpec", "Кабель подключения", "text", false, null, null, null),
                 createField("fanClass", "Класс", "combobox", true, "ОБЩЕОБМЕННЫЙ", new String[]{"ОБЩЕОБМЕННЫЙ", "ДЫМОУДАЛЕНИЕ"}, null)
         ));
+    }
+
+    /**
+     * Возвращает список специальных полей для вентиляторов
+     * (огнестойкость, взрывозащита, полная маркировка)
+     */
+    private List<FieldMetadataDto> getFanSpecialFields() {
+        List<FieldMetadataDto> specialFields = new ArrayList<>();
+
+        specialFields.add(createField("powerKw", "Мощность (КВт)", "double", false, null, null, null, "заполняется автоматически"));
+
+        // Общее применение
+        specialFields.add(createField("generalPurpose", "Общего применения", "boolean", false, "true", null, null));
+
+        // Огнестойкость
+        specialFields.add(createField("fireproof", "Огнестойкость", "boolean", false, "false", null, null));
+        specialFields.add(createField("fireproofMarking", "Маркировка огнестойкости", "text", false, "F-2/400", null, null, "F-2/400", false));
+        specialFields.add(createField("maxTemperature", "Предельная температура (°C)", "number", false, null, null, null, "появляется при выборе Огнестойкость", false));
+
+        // Взрывозащита
+        specialFields.add(createField("explosionProof", "Взрывозащита", "boolean", false, "false", null, null));
+        specialFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex d IIC T4 Gb", null, null, "1Ex d IIC T4 Gb", false));
+
+        // Полная маркировка
+        specialFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
+
+        // Скрытые поля для хранения маркировки компонентов
+        specialFields.add(createField("motorWheelFullMarking", "", "hidden", false, null, null, null, null, false));
+        specialFields.add(createField("radialWheelFullMarking", "", "hidden", false, null, null, null, null, false));
+        specialFields.add(createField("axialWheelFullMarking", "", "hidden", false, null, null, null, null, false));
+        specialFields.add(createField("motorFullMarking", "", "hidden", false, null, null, null, null, false));
+
+        return specialFields;
     }
 
     private FieldMetadataDto createField(String name, String label, String type, boolean required,

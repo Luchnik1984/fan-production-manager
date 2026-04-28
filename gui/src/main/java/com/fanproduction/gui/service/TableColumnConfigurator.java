@@ -102,8 +102,11 @@ public class TableColumnConfigurator {
 
             case "DUCT_FAN":
                 columns.add(createStringColumn("Серия", "seriesName", 120));
+                columns.add(createStringColumn("Типоразмер", "ductSize", 80));
+                columns.add(createStringColumn("Исполнение", "executionType", 80));
                 columns.add(createStringColumn("Тип", "ductFanType", 100));
-                columns.add(createStringColumn("Размер", "wheelSize", 80));
+                columns.add(createStringColumn("Размер колеса", "wheelSize", 80));
+                columns.add(createStringColumn("Напряжение", "voltage", 80));
                 break;
 
             case "CUP":

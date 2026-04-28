@@ -1,9 +1,6 @@
 package com.fanproduction.gui.configurator;
 
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Control;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 
 import java.util.Map;
 
@@ -18,7 +15,8 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
     private Map<String, Control> fieldControls;
 
     @Override
-    public void setupFields(Map<String, Control> fieldControls, boolean existingCardExists) {
+    public void setupFields(Map<String, Control> fieldControls, Map<String, Label> fieldLabels,
+                            Map<String, Label> fieldHints, boolean existingCardExists) {
         this.fieldControls = fieldControls;
 
         // Сохраняем ссылки на специальные поля
@@ -142,6 +140,7 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         addTextFieldListener("climateType", this::updateFullMarking);
         addTextFieldListener("fireproofMarking", this::updateFullMarking);
         addTextFieldListener("explosionMarking", this::updateFullMarking);
+        addTextFieldListener("mountingType", this::updateFullMarking);
 
         addCheckBoxListener("generalPurpose", this::updateFullMarking);
         addCheckBoxListener("fireproof", this::updateFullMarking);
@@ -165,6 +164,7 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         String motorType = getFieldValue("motorType");
         String poles = getFieldValue("poles");
         String climateType = getFieldValue("climateType");
+        String mountingType = getFieldValue("mountingType");
 
         boolean isGeneralPurpose = isSelected("generalPurpose");
         boolean isFireproof = isSelected("fireproof");
@@ -201,6 +201,9 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         if (climateType != null && !climateType.isEmpty()) {
             fullMarking.append("-").append(climateType);
         }
+
+        if (mountingType != null && !mountingType.isEmpty())
+            fullMarking.append(" ").append(mountingType);
 
         String newMarking = fullMarking.toString().trim();
         String currentMarking = fullMarkingField.getText();

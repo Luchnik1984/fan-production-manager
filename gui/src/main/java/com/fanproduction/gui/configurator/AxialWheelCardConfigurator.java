@@ -1,9 +1,6 @@
 package com.fanproduction.gui.configurator;
 
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Control;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 
 import java.util.Map;
 
@@ -27,23 +24,23 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         return CardFieldConfigurator.getCheckBox(controls, name);
     }
 
-    public void setupFields(Map<String, Control> fieldControls, boolean existingCardExists) {
+    public void setupFields(Map<String, Control> fieldControls, Map<String, Label> fieldLabels, Map<String, Label> fieldHints, boolean existingCardExists) {
         this.fieldControls = fieldControls;
 
-        // Отладка: выводим все ключи fieldControls
-        System.out.println("=== AxialWheelCardConfigurator: fieldControls keys ===");
-        for (String key : fieldControls.keySet()) {
-            System.out.println("  " + key);
-        }
+//        // Отладка: выводим все ключи fieldControls
+//        System.out.println("=== AxialWheelCardConfigurator: fieldControls keys ===");
+//        for (String key : fieldControls.keySet()) {
+//            System.out.println("  " + key);
+//        }
 
         wheelDiameterField = getTextField(fieldControls, "wheelDiameter");
         wheelFormulaField = getTextField(fieldControls, "wheelFormula");
         fullMarkingField = getTextField(fieldControls, "fullMarking");
 
-        // Проверка конкретного поля
-        Control bladeMaterialControl = fieldControls.get("bladeMaterial");
-        System.out.println("bladeMaterial control: " + bladeMaterialControl);
-        System.out.println("bladeMaterial is ComboBox? " + (bladeMaterialControl instanceof ComboBox));
+//        // Проверка конкретного поля
+//        Control bladeMaterialControl = fieldControls.get("bladeMaterial");
+//        System.out.println("bladeMaterial control: " + bladeMaterialControl);
+//        System.out.println("bladeMaterial is ComboBox? " + (bladeMaterialControl instanceof ComboBox));
 
         setupCalculations();
         setupExclusiveSelection();
