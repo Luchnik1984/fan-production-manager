@@ -4,6 +4,7 @@ import com.fanproduction.core.entity.*;
 import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.core.enums.AuditAction;
 import com.fanproduction.core.event.AuditEvent;
+import com.fanproduction.core.security.CurrentUserProvider;
 import com.fanproduction.repositories.ProductCardRepository;
 import com.fanproduction.repositories.MotorCardRepository;
 import com.fanproduction.repositories.MotorWheelCardRepository;
@@ -17,10 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +30,7 @@ public class ProductCardServiceImpl implements ProductCardService {
     private final RadialWheelCardRepository radialWheelCardRepository;
     private final ProductCardFactory cardFactory;
     private final ApplicationEventPublisher eventPublisher;
+    private final CurrentUserProvider currentUserProvider;
 
     @Override
     @Transactional
@@ -158,11 +157,32 @@ public class ProductCardServiceImpl implements ProductCardService {
     }
 
     /**
-     * Получение текущего пользователя (временное решение)
-     * TODO: заменить на CurrentUserProvider
+     * Получение текущего пользователя (временное решение).
      */
     private String getCurrentUser() {
-        // Временная реализация
-        return "system";
+        String email = currentUserProvider.getCurrentUserEmail();
+        return email != null ? email : "system";
+    }
+
+
+    @Override
+    public List<BaseProductCard> searchByFields(String query) {
+        String likePattern = "%" + query.toLowerCase() + "%";
+
+        // Поиск по электродвигателям
+        List<MotorCardEntity> motors = motorCardRepository.searchByFields(likePattern);
+        List<BaseProductCard> results = new ArrayList<>(motors);
+
+        // Поиск по мотор-колёсам
+        List<MotorWheelCardEntity> motorWheels = motorWheelCardRepository.searchByFields(likePattern);
+        results.addAll(motorWheels);
+
+        // Поиск по радиальным колёсам
+        List<RadialWheelCardEntity> radialWheels = radialWheelCardRepository.searchByFields(likePattern);
+        results.addAll(radialWheels);
+
+        // TODO: добавить поиск по другим типам карточек
+
+        return results;
     }
 }

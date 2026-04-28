@@ -2,6 +2,8 @@ package com.fanproduction.gui.controller;
 
 import com.fanproduction.core.util.UserPreferences;
 import com.fanproduction.gui.client.ApiClient;
+import com.fanproduction.gui.dto.response.ApiResponse;
+import com.fanproduction.gui.dto.response.UserDto;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -126,10 +128,6 @@ public class MainWindowController {
         // Вкладка "Журнал" — доступна всем
         Tab journalTab = createPlaceholderTab("Журнал", "Производственный журнал");
         tabPane.getTabs().add(journalTab);
-
-        // Вкладка "Карточки" — доступна всем
-        Tab cardsTab = createPlaceholderTab("Карточки", "Каталог продукции");
-        tabPane.getTabs().add(cardsTab);
 
         // Вкладка "Документы" — доступна всем
         Tab documentsTab = createPlaceholderTab("Документы", "Генерация ТЗ, паспортов, табличек");
@@ -306,7 +304,7 @@ public class MainWindowController {
     private void checkApiConnection() {
         new Thread(() -> {
             try {
-                com.fasterxml.jackson.core.type.TypeReference<com.fanproduction.gui.dto.ApiResponse<Object>> typeRef =
+                com.fasterxml.jackson.core.type.TypeReference<ApiResponse<Object>> typeRef =
                         new com.fasterxml.jackson.core.type.TypeReference<>() {};
 
                 ApiClient.get("/test/ping", typeRef);
@@ -348,15 +346,15 @@ public class MainWindowController {
     private void loadCurrentUserInfo() {
         new Thread(() -> {
             try {
-                com.fasterxml.jackson.core.type.TypeReference<com.fanproduction.gui.dto.ApiResponse<com.fanproduction.gui.dto.UserDto>> typeRef =
+                com.fasterxml.jackson.core.type.TypeReference<ApiResponse<UserDto>> typeRef =
                         new com.fasterxml.jackson.core.type.TypeReference<>() {};
 
-                com.fanproduction.gui.dto.ApiResponse<com.fanproduction.gui.dto.UserDto> response =
+                ApiResponse<UserDto> response =
                         ApiClient.get("/users/me", typeRef);
 
                 Platform.runLater(() -> {
                     if (response.isSuccess() && response.getData() != null) {
-                        com.fanproduction.gui.dto.UserDto user = response.getData();
+                        UserDto user = response.getData();
                         currentUserEmail = user.getEmail();
                         currentUserRole = user.getRole();
 

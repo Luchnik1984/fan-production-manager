@@ -2,9 +2,9 @@ package com.fanproduction.gui.controller;
 
 import com.fanproduction.core.util.UserPreferences;
 import com.fanproduction.gui.client.ApiClient;
-import com.fanproduction.gui.dto.AuthResponse;
-import com.fanproduction.gui.dto.LoginRequest;
-import com.fanproduction.gui.dto.RefreshTokenRequest;
+import com.fanproduction.gui.dto.response.AuthResponse;
+import com.fanproduction.gui.dto.request.LoginRequest;
+import com.fanproduction.gui.dto.request.RefreshTokenRequest;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;

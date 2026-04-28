@@ -90,4 +90,6 @@ public interface ProductCardService {
      * Получение радиального колеса по ID
      */
     Optional<RadialWheelCardEntity> getRadialWheelById(Long id);
+
+    List<BaseProductCard> searchByFields(String query);
 }

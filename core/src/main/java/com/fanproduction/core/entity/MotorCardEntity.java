@@ -19,70 +19,62 @@ import lombok.NoArgsConstructor;
 @Table(name = "motor_card")
 public class MotorCardEntity extends BaseProductCard {
 
-    /**
-     * Тип электродвигателя (например: 100L)
-     */
+    @Column(name = "series", length = 50)
+    private String series;
+
     @Column(name = "motor_type", length = 20)
     private String motorType;
 
-    /**
-     * Количество полюсов (2, 4, 6, 8)
-     */
     @Column(name = "poles")
     private Integer poles;
 
-    /**
-     * Мощность (КВт)
-     */
     @Column(name = "power_kw")
     private Double powerKw;
 
-    /**
-     * Скорость вращения для маркировки (об/мин)
-     * Рассчитывается: 6000 / poles
-     */
     @Column(name = "rated_speed_rpm")
     private Integer ratedSpeedRpm;
 
-    /**
-     * Фактическая скорость вращения (об/мин)
-     */
     @Column(name = "actual_speed_rpm")
     private Integer actualSpeedRpm;
 
-    /**
-     * Размер вала (мм)
-     */
     @Column(name = "shaft_size")
     private Integer shaftSize;
 
-    /**
-     * Исполнение по способу монтажа (IM 1081, IM 3081, IM B14)
-     */
-    @Column(name = "mounting_type", length = 20)
+    @Column(name = "mounting_type", length = 50)
     private String mountingType;
 
-    /**
-     * Климатическое исполнение (У1, УХЛ, У2)
-     */
     @Column(name = "climate_type", length = 10)
     private String climateType;
 
-    /**
-     * Рабочее напряжение (220, 380)
-     */
     @Column(name = "voltage")
     private Integer voltage;
 
-    /**
-     * Режим работы (S1, S4)
-     */
     @Column(name = "operation_mode", length = 10)
     private String operationMode;
 
-    /**
-     * Масса (кг)
-     */
     @Column(name = "weight_kg")
     private Double weightKg;
+
+
+    @Column(name = "general_purpose")
+    private Boolean generalPurpose = true;
+
+    @Column(name = "fireproof")
+    private Boolean fireproof = false;
+
+    @Column(name = "fireproof_marking", length = 50)
+    private String fireproofMarking;
+
+    @Column(name = "max_temperature")
+    private Integer maxTemperature;
+
+    @Column(name = "explosion_proof")
+    private Boolean explosionProof = false;
+
+    @Column(name = "explosion_marking", length = 100)
+    private String explosionMarking;
+
+    @Column(name = "full_marking", length = 200)
+    private String fullMarking;
 }
+

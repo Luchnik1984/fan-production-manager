@@ -2,8 +2,8 @@ package com.fanproduction.gui.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fanproduction.gui.client.ApiClient;
-import com.fanproduction.gui.dto.ApiResponse;
-import com.fanproduction.gui.dto.AuditLogDto;
+import com.fanproduction.gui.dto.response.ApiResponse;
+import com.fanproduction.gui.dto.response.AuditLogDto;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
