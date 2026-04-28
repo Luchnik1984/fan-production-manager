@@ -34,21 +34,17 @@ public class SelectableComponentBox {
 
     private final ComboBox<SelectableItem> comboBox;
     private final Button createButton;
-    /**
-     * -- GETTER --
-     *  Получает контейнер для добавления в форму
-     */
+
     @Getter
     private final HBox container;
-    private final String referenceType;
+
+    private final String referenceType;      // MOTOR_WHEEL, RADIAL_WHEEL, MOTOR, AXIAL_WHEEL
     private final Stage ownerStage;
     private final Runnable onSelectionChanged;
-    /**
-     * -- SETTER --
-     *  Устанавливает колбэк для автозаполнения полей при выборе.
-     */
+
     @Setter
     private Consumer<Long> onAutoFill;
+
     private Long currentSelectedId;
 
     /**
@@ -107,6 +103,9 @@ public class SelectableComponentBox {
         };
     }
 
+    /**
+     * Возвращает тип карточки для создания
+     */
     private String getCardTypeByReference() {
         return switch (referenceType) {
             case "MOTOR_WHEEL" -> "MOTOR_WHEEL";
@@ -117,6 +116,48 @@ public class SelectableComponentBox {
         };
     }
 
+    /**
+     * Возвращает отображаемое название для создаваемого компонента
+     */
+    private String getCreateDialogTitle() {
+        return switch (referenceType) {
+            case "MOTOR_WHEEL" -> "Мотор-колесо";
+            case "RADIAL_WHEEL" -> "Радиальное колесо";
+            case "MOTOR" -> "Электродвигатель";
+            case "AXIAL_WHEEL" -> "Осевое колесо";
+            default -> "Компонент";
+        };
+    }
+
+    /**
+     * Открывает диалог создания нового компонента
+     */
+    private void openCreateDialog() {
+        String cardType = getCardTypeByReference();
+        if (cardType == null) {
+            System.err.println("Unknown reference type: " + referenceType);
+            return;
+        }
+
+        String title = getCreateDialogTitle();
+
+        // Создаём форму для новой карточки
+        CardFormController form = new CardFormController(
+                ownerStage,
+                cardType,
+                null,  // existingCard = null (новая карточка)
+                () -> {
+                    // Callback после сохранения — обновляем список
+                    System.out.println("Component created, refreshing list for type: " + referenceType);
+                    refreshData();
+                }
+        );
+        form.show();
+    }
+
+    /**
+     * Возвращает отображаемое имя для элемента в ComboBox
+     */
     private String getDisplayName(ProductCardDto dto) {
         // Пытаемся получить полную маркировку
         if (dto.getFields() != null) {
@@ -126,20 +167,6 @@ public class SelectableComponentBox {
             }
         }
         return dto.getName() + " (" + dto.getCode() + ")";
-    }
-
-    private void openCreateDialog() {
-        String cardType = getCardTypeByReference();
-        if (cardType == null) return;
-
-        // После создания обновляем список
-        CardFormController form = new CardFormController(
-                ownerStage,
-                cardType,
-                null,
-                this::refreshData
-        );
-        form.show();
     }
 
     /**
