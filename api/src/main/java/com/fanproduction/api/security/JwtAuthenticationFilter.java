@@ -1,8 +1,6 @@
 package com.fanproduction.api.security;
 
-import com.fanproduction.core.context.SessionContext;
-import com.fanproduction.core.entity.UserEntity;
-import com.fanproduction.services.UserService;
+//import com.fanproduction.services.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,7 +22,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
-    private final UserService userService;
+//    private final UserService userService;
 
     @Override
     protected void doFilterInternal(
@@ -51,10 +49,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
 
-                UserEntity user = userService.getUserByEmail(email);
-                if (user != null) {
-                    SessionContext.setCurrentUser(user);
-                }
+//                UserEntity user = userService.getUserByEmail(email);
+//                if (user != null) {
+//                    SessionContext.setCurrentUser(user);
+//                }
             }
         }
 

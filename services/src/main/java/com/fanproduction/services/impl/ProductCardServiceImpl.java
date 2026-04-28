@@ -4,6 +4,7 @@ import com.fanproduction.core.entity.*;
 import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.core.enums.AuditAction;
 import com.fanproduction.core.event.AuditEvent;
+import com.fanproduction.core.security.CurrentUserProvider;
 import com.fanproduction.repositories.ProductCardRepository;
 import com.fanproduction.repositories.MotorCardRepository;
 import com.fanproduction.repositories.MotorWheelCardRepository;
@@ -29,6 +30,7 @@ public class ProductCardServiceImpl implements ProductCardService {
     private final RadialWheelCardRepository radialWheelCardRepository;
     private final ProductCardFactory cardFactory;
     private final ApplicationEventPublisher eventPublisher;
+    private final CurrentUserProvider currentUserProvider;
 
     @Override
     @Transactional
@@ -155,22 +157,21 @@ public class ProductCardServiceImpl implements ProductCardService {
     }
 
     /**
-     * Получение текущего пользователя (временное решение)
-     * TODO: заменить на CurrentUserProvider
+     * Получение текущего пользователя (временное решение).
      */
     private String getCurrentUser() {
-        // Временная реализация
-        return "system";
+        String email = currentUserProvider.getCurrentUserEmail();
+        return email != null ? email : "system";
     }
+
 
     @Override
     public List<BaseProductCard> searchByFields(String query) {
-        List<BaseProductCard> results = new ArrayList<>();
         String likePattern = "%" + query.toLowerCase() + "%";
 
         // Поиск по электродвигателям
         List<MotorCardEntity> motors = motorCardRepository.searchByFields(likePattern);
-        results.addAll(motors);
+        List<BaseProductCard> results = new ArrayList<>(motors);
 
         // Поиск по мотор-колёсам
         List<MotorWheelCardEntity> motorWheels = motorWheelCardRepository.searchByFields(likePattern);
