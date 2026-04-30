@@ -153,6 +153,12 @@ public class MainWindowController {
              tabPane.getTabs().add(auditTab);
          }
 
+        // Вкладка "Компоненты" — доступна ADMIN и ENGINEER
+        if ("ADMIN".equals(currentUserRole) || "ENGINEER".equals(currentUserRole)) {
+            Tab componentsTab = createComponentsCatalogTab();
+            tabPane.getTabs().add(componentsTab);
+        }
+
 
         return tabPane;
     }
@@ -512,5 +518,31 @@ public class MainWindowController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    /**
+     * Создаёт вкладку компонентов.
+     */
+    private Tab createComponentsCatalogTab() {
+        Tab tab = new Tab("Компоненты");
+        tab.setClosable(false);
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/ComponentsCatalogView.fxml"));
+            Parent content = loader.load();
+
+            ComponentsCatalogController controller = loader.getController();
+            controller.setStage(stage);
+
+            tab.setContent(content);
+        } catch (IOException e) {
+            e.printStackTrace();
+            VBox errorBox = new VBox(10);
+            errorBox.setStyle("-fx-padding: 20px;");
+            errorBox.getChildren().add(new Label("Ошибка загрузки справочника компонентов: " + e.getMessage()));
+            tab.setContent(errorBox);
+        }
+
+        return tab;
     }
 }
