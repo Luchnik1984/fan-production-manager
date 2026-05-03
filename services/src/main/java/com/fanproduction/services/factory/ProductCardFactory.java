@@ -1,6 +1,6 @@
 package com.fanproduction.services.factory;
 
-import com.fanproduction.core.entity.*;
+import com.fanproduction.core.entity.product.*;
 import com.fanproduction.core.enums.CardTemplateType;
 import org.springframework.stereotype.Component;
 

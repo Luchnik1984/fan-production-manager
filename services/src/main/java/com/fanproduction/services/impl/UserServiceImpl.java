@@ -2,12 +2,12 @@ package com.fanproduction.services.impl;
 
 import com.fanproduction.core.dto.ProfileDto;
 import com.fanproduction.core.dto.UserDto;
-import com.fanproduction.core.entity.UserEntity;
+import com.fanproduction.core.entity.user.UserEntity;
 import com.fanproduction.core.enums.AuditAction;
 import com.fanproduction.core.enums.UserStatus;
 import com.fanproduction.core.event.AuditEvent;
 import com.fanproduction.core.exception.ValidationException;
-import com.fanproduction.repositories.UserRepository;
+import com.fanproduction.repositories.user.UserRepository;
 import com.fanproduction.services.UserService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;

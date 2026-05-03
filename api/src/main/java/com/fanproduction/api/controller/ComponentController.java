@@ -1,14 +1,11 @@
 package com.fanproduction.api.controller;
 
-import com.fanproduction.api.dto.ApiResponse;
-import com.fanproduction.api.dto.ComponentClassDto;
-import com.fanproduction.api.dto.ComponentDto;
-import com.fanproduction.api.dto.ProductComponentDto;
-import com.fanproduction.api.dto.UnitOfMeasureDto;
-import com.fanproduction.core.entity.ComponentClassEntity;
-import com.fanproduction.core.entity.ComponentEntity;
-import com.fanproduction.core.entity.ProductComponentEntity;
-import com.fanproduction.core.entity.UnitOfMeasureEntity;
+import com.fanproduction.api.dto.*;
+import com.fanproduction.core.entity.component.ComponentCategoryEntity;
+import com.fanproduction.core.entity.component.ComponentClassEntity;
+import com.fanproduction.core.entity.component.ComponentEntity;
+import com.fanproduction.core.entity.component.ProductComponentEntity;
+import com.fanproduction.core.entity.dictionary.UnitOfMeasureEntity;
 import com.fanproduction.services.ComponentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,6 +29,63 @@ public class ComponentController {
         return auth != null ? auth.getName() : "system";
     }
 
+    // ========== Categories ==========
+
+    @GetMapping("/categories")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<List<ComponentCategoryDto>> getAllCategories() {
+        List<ComponentCategoryDto> categories = componentService.getAllCategories().stream()
+                .map(this::toCategoryDto)
+                .collect(Collectors.toList());
+        return ApiResponse.success(categories);
+    }
+
+    @PostMapping("/categories")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
+    public ApiResponse<ComponentCategoryDto> createCategory(@RequestBody Map<String, Object> request) {
+        String name = (String) request.get("name");
+        Long parentId = request.get("parentId") != null ? ((Number) request.get("parentId")).longValue() : null;
+        String description = (String) request.get("description");
+
+        if (name == null || name.trim().isEmpty()) {
+            return ApiResponse.error("Название категории обязательно");
+        }
+
+        try {
+            ComponentCategoryEntity entity = componentService.createCategory(name.trim(), parentId, description, getCurrentUser());
+            return ApiResponse.success(toCategoryDto(entity));
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    @PutMapping("/categories/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
+    public ApiResponse<ComponentCategoryDto> updateCategory(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> request) {
+        String name = (String) request.get("name");
+        Integer sortOrder = request.get("sortOrder") != null ? ((Number) request.get("sortOrder")).intValue() : null;
+
+        try {
+            ComponentCategoryEntity entity = componentService.updateCategory(id, name, sortOrder);
+            return ApiResponse.success(toCategoryDto(entity));
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/categories/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
+    public ApiResponse<Void> deleteCategory(@PathVariable Long id) {
+        try {
+            componentService.deleteCategory(id);
+            return ApiResponse.success("Категория удалена", null);
+        } catch (Exception e) {
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
     // ========== Unit of Measure ==========
 
     @GetMapping("/units")
@@ -47,11 +101,19 @@ public class ComponentController {
 
     @GetMapping("/classes")
     @PreAuthorize("isAuthenticated()")
-    public ApiResponse<List<ComponentClassDto>> getAllClasses() {
-        List<ComponentClassDto> classes = componentService.getAllComponentClasses().stream()
-                .map(this::toDto)
+    public ApiResponse<List<ComponentClassDto>> getAllClasses(
+            @RequestParam(required = false) Long categoryId) {
+        List<ComponentClassEntity> classes;
+        if (categoryId != null) {
+            classes = componentService.getClassesByCategory(categoryId);
+        } else {
+            classes = componentService.getAllComponentClasses();
+        }
+
+        List<ComponentClassDto> dtos = classes.stream()
+                .map(this::toClassDto)
                 .collect(Collectors.toList());
-        return ApiResponse.success(classes);
+        return ApiResponse.success(dtos);
     }
 
     @PostMapping("/classes")
@@ -121,8 +183,10 @@ public class ComponentController {
             entity.setName(dto.getName());
             entity.setVendorCode(dto.getVendorCode());
             entity.setUnitId(dto.getUnitId());
-            entity.setQuantityPerUnit(dto.getQuantityPerUnit() != null ? dto.getQuantityPerUnit() : 1.0);
             entity.setDescription(dto.getDescription());
+            entity.setTechnicalSpecs(dto.getTechnicalSpecs());
+            entity.setWeightKg(dto.getWeightKg());
+            entity.setMaterial(dto.getMaterial());
             entity.setCreatedBy(getCurrentUser());
 
             ComponentEntity saved = componentService.createComponent(entity);
@@ -140,8 +204,10 @@ public class ComponentController {
             entity.setName(dto.getName());
             entity.setVendorCode(dto.getVendorCode());
             entity.setUnitId(dto.getUnitId());
-            entity.setQuantityPerUnit(dto.getQuantityPerUnit());
             entity.setDescription(dto.getDescription());
+            entity.setTechnicalSpecs(dto.getTechnicalSpecs());
+            entity.setWeightKg(dto.getWeightKg());
+            entity.setMaterial(dto.getMaterial());
 
             ComponentEntity updated = componentService.updateComponent(id, entity);
             return ApiResponse.success(toDto(updated));
@@ -189,17 +255,18 @@ public class ComponentController {
         try {
             Long componentId = ((Number) request.get("componentId")).longValue();
             Double quantity = request.get("quantity") != null ? ((Number) request.get("quantity")).doubleValue() : 1.0;
+            String position = (String) request.get("position");
             String note = (String) request.get("note");
 
             ProductComponentEntity entity = componentService.addComponentToProduct(
-                    productCardId, componentId, quantity, note);
+                    productCardId, componentId, quantity, position, note);
             return ApiResponse.success(toProductDto(entity));
         } catch (IllegalArgumentException e) {
             return ApiResponse.error(e.getMessage());
         }
     }
 
-    @PutMapping("/product/{productCardId}/{componentId}")
+    @PutMapping("/product/{productCardId}/{componentId}/quantity")
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<Void> updateComponentQuantity(
             @PathVariable Long productCardId,
@@ -209,6 +276,21 @@ public class ComponentController {
             Double quantity = request.get("quantity");
             componentService.updateComponentQuantity(productCardId, componentId, quantity);
             return ApiResponse.success("Количество обновлено", null);
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    @PutMapping("/product/{productCardId}/{componentId}/position")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
+    public ApiResponse<Void> updateComponentPosition(
+            @PathVariable Long productCardId,
+            @PathVariable Long componentId,
+            @RequestBody Map<String, String> request) {
+        try {
+            String position = request.get("position");
+            componentService.updateComponentPosition(productCardId, componentId, position);
+            return ApiResponse.success("Позиция обновлена", null);
         } catch (IllegalArgumentException e) {
             return ApiResponse.error(e.getMessage());
         }
@@ -235,6 +317,7 @@ public class ComponentController {
                 .code(entity.getCode())
                 .name(entity.getName())
                 .symbol(entity.getSymbol())
+                .category(entity.getCategory())
                 .isDefault(entity.getIsDefault())
                 .createdAt(entity.getCreatedAt())
                 .createdBy(entity.getCreatedBy())
@@ -258,12 +341,13 @@ public class ComponentController {
                 .name(entity.getName())
                 .vendorCode(entity.getVendorCode())
                 .unitId(entity.getUnitId())
-                .quantityPerUnit(entity.getQuantityPerUnit())
                 .description(entity.getDescription())
+                .technicalSpecs(entity.getTechnicalSpecs())
+                .weightKg(entity.getWeightKg())
+                .material(entity.getMaterial())
                 .createdAt(entity.getCreatedAt())
                 .createdBy(entity.getCreatedBy());
 
-        // Денормализованные поля (можно загрузить отдельным запросом)
         componentService.getComponentClassById(entity.getClassId())
                 .ifPresent(cls -> builder.className(cls.getName()));
         componentService.getUnitById(entity.getUnitId())
@@ -281,6 +365,7 @@ public class ComponentController {
                 .productCardId(entity.getProductCardId())
                 .componentId(entity.getComponentId())
                 .quantity(entity.getQuantity())
+                .position(entity.getPosition())
                 .note(entity.getNote());
 
         componentService.getComponentById(entity.getComponentId()).ifPresent(comp -> {
@@ -290,6 +375,45 @@ public class ComponentController {
             componentService.getUnitById(comp.getUnitId())
                     .ifPresent(unit -> builder.unitCode(unit.getCode()));
         });
+
+        return builder.build();
+    }
+
+    private ComponentCategoryDto toCategoryDto(ComponentCategoryEntity entity) {
+        return ComponentCategoryDto.builder()
+                .id(entity.getId())
+                .parentId(entity.getParentId())
+                .name(entity.getName())
+                .level(entity.getLevel())
+                .path(entity.getPath())
+                .sortOrder(entity.getSortOrder())
+                .description(entity.getDescription())
+                .createdAt(entity.getCreatedAt())
+                .createdBy(entity.getCreatedBy())
+                .build();
+    }
+
+    private ComponentClassDto toClassDto(ComponentClassEntity entity) {
+        ComponentClassDto.ComponentClassDtoBuilder builder = ComponentClassDto.builder()
+                .id(entity.getId())
+                .categoryId(entity.getCategoryId())
+                .name(entity.getName())
+                .description(entity.getDescription())
+                .unitId(entity.getUnitId())
+                .createdAt(entity.getCreatedAt())
+                .createdBy(entity.getCreatedBy());
+
+        if (entity.getCategoryId() != null) {
+            componentService.getCategoryById(entity.getCategoryId())
+                    .ifPresent(cat -> builder.categoryName(cat.getName()));
+        }
+        if (entity.getUnitId() != null) {
+            componentService.getUnitById(entity.getUnitId())
+                    .ifPresent(unit -> {
+                        builder.unitCode(unit.getCode());
+                        builder.unitName(unit.getName());
+                    });
+        }
 
         return builder.build();
     }

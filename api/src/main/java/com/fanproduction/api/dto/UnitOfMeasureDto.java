@@ -7,9 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-/**
- * DTO для единицы измерения.
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -19,6 +16,7 @@ public class UnitOfMeasureDto {
     private String code;
     private String name;
     private String symbol;
+    private String category;
     private Boolean isDefault;
     private LocalDateTime createdAt;
     private String createdBy;

@@ -10,10 +10,8 @@
         <Insets bottom="10" left="10" right="10" top="10" />
     </padding>
 
-    <!-- Верхняя панель: выбор класса и поиск -->
+    <!-- Верхняя панель: поиск -->
     <HBox spacing="10" alignment="CENTER_LEFT">
-        <Label text="Класс компонентов:" />
-        <ComboBox fx:id="classFilterComboBox" prefWidth="200" />
         <Label text="Поиск:" />
         <TextField fx:id="searchField" promptText="Название или артикул..." prefWidth="200" />
         <Button fx:id="searchButton" text="Найти" onAction="#handleSearch" />
@@ -22,24 +20,36 @@
         <Label fx:id="statusLabel" text="Всего: 0" />
     </HBox>
 
-    <!-- Таблица компонентов -->
-    <TableView fx:id="componentsTable" VBox.vgrow="ALWAYS">
-        <columns>
-            <TableColumn fx:id="nameColumn" text="Наименование" prefWidth="200" />
-            <TableColumn fx:id="classNameColumn" text="Класс" prefWidth="150" />
-            <TableColumn fx:id="vendorCodeColumn" text="Артикул" prefWidth="120" />
-            <TableColumn fx:id="unitColumn" text="Ед. изм." prefWidth="80" />
-            <TableColumn fx:id="quantityPerUnitColumn" text="Кол-во на ед." prefWidth="100" />
-            <TableColumn fx:id="descriptionColumn" text="Описание" prefWidth="250" />
-        </columns>
-        <columnResizePolicy>
-            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
-        </columnResizePolicy>
-    </TableView>
+    <!-- SplitPane: дерево категорий + таблица -->
+    <SplitPane dividerPositions="0.25" VBox.vgrow="ALWAYS">
+        <TreeView fx:id="categoryTreeView" />
+
+        <VBox spacing="10">
+            <!-- Фильтр по классам и таблица -->
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Класс:" />
+                <ComboBox fx:id="classFilterComboBox" prefWidth="200" />
+            </HBox>
+
+            <TableView fx:id="componentsTable" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn fx:id="nameColumn" text="Наименование" prefWidth="200" />
+                    <TableColumn fx:id="classNameColumn" text="Класс" prefWidth="150" />
+                    <TableColumn fx:id="vendorCodeColumn" text="Артикул" prefWidth="120" />
+                    <TableColumn fx:id="unitColumn" text="Ед. изм." prefWidth="80" />
+                    <TableColumn fx:id="descriptionColumn" text="Описание" prefWidth="250" />
+                </columns>
+                <columnResizePolicy>
+                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+                </columnResizePolicy>
+            </TableView>
+        </VBox>
+    </SplitPane>
 
     <!-- Нижняя панель: действия -->
     <HBox spacing="10" alignment="CENTER_RIGHT">
-        <Button fx:id="createClassButton" text="📁 Создать класс" onAction="#handleCreateClass" />
+        <Button fx:id="createCategoryButton" text="📁 Создать категорию" onAction="#handleCreateCategory" />
+        <Button fx:id="createClassButton" text="📂 Создать класс" onAction="#handleCreateClass" />
         <Button fx:id="createButton" text="➕ Создать компонент" onAction="#handleCreate" />
         <Button fx:id="editButton" text="✏️ Редактировать" onAction="#handleEdit" />
         <Button fx:id="deleteButton" text="🗑️ Удалить" onAction="#handleDelete" />

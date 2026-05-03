@@ -1,6 +1,6 @@
 package com.fanproduction.core.exception;
 
-import com.fanproduction.core.entity.UserEntity;
+import com.fanproduction.core.entity.user.UserEntity;
 import jakarta.validation.ConstraintViolation;
 import java.util.Set;
 

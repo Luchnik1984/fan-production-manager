@@ -1,13 +1,15 @@
 package com.fanproduction.services.impl;
 
-import com.fanproduction.core.entity.ComponentClassEntity;
-import com.fanproduction.core.entity.ComponentEntity;
-import com.fanproduction.core.entity.ProductComponentEntity;
-import com.fanproduction.core.entity.UnitOfMeasureEntity;
-import com.fanproduction.repositories.ComponentClassRepository;
-import com.fanproduction.repositories.ComponentRepository;
-import com.fanproduction.repositories.ProductComponentRepository;
-import com.fanproduction.repositories.UnitOfMeasureRepository;
+import com.fanproduction.core.entity.component.ComponentCategoryEntity;
+import com.fanproduction.core.entity.component.ComponentClassEntity;
+import com.fanproduction.core.entity.component.ComponentEntity;
+import com.fanproduction.core.entity.component.ProductComponentEntity;
+import com.fanproduction.core.entity.dictionary.UnitOfMeasureEntity;
+import com.fanproduction.repositories.component.ComponentCategoryRepository;
+import com.fanproduction.repositories.component.ComponentClassRepository;
+import com.fanproduction.repositories.component.ComponentRepository;
+import com.fanproduction.repositories.component.ProductComponentRepository;
+import com.fanproduction.repositories.dictionary.UnitOfMeasureRepository;
 import com.fanproduction.services.ComponentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,12 +28,98 @@ public class ComponentServiceImpl implements ComponentService {
     private final ComponentRepository componentRepository;
     private final ProductComponentRepository productComponentRepository;
     private final UnitOfMeasureRepository unitOfMeasureRepository;
+    private final ComponentCategoryRepository componentCategoryRepository;
+
+    // ========== Component Category ==========
+
+    @Override
+    public List<ComponentCategoryEntity> getAllCategories() {
+        return componentCategoryRepository.findAllByOrderByPathAsc();
+    }
+
+    @Override
+    @Transactional
+    public ComponentCategoryEntity createCategory(String name, Long parentId, String description, String createdBy) {
+        // Определяем уровень и путь
+        int level = 1;
+        String path = "/" + name + "/";
+        Integer sortOrder = 0;
+
+        if (parentId != null) {
+            ComponentCategoryEntity parent = componentCategoryRepository.findById(parentId)
+                    .orElseThrow(() -> new IllegalArgumentException("Родительская категория не найдена"));
+            level = parent.getLevel() + 1;
+            path = parent.getPath() + name + "/";
+            sortOrder = componentCategoryRepository.findByParentIdOrderBySortOrderAsc(parentId).size();
+        }
+
+        ComponentCategoryEntity entity = new ComponentCategoryEntity();
+        entity.setName(name);
+        entity.setParentId(parentId);
+        entity.setLevel(level);
+        entity.setPath(path);
+        entity.setSortOrder(sortOrder);
+        entity.setDescription(description);
+        entity.setCreatedBy(createdBy);
+
+        return componentCategoryRepository.save(entity);
+    }
+
+    @Override
+    @Transactional
+    public ComponentCategoryEntity updateCategory(Long id, String name, Integer sortOrder) {
+        ComponentCategoryEntity entity = componentCategoryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Категория не найдена"));
+
+        if (name != null && !name.equals(entity.getName())) {
+            // Обновляем путь
+            String oldPath = entity.getPath();
+            String newPath = oldPath.substring(0, oldPath.lastIndexOf(entity.getName() + "/")) + name + "/";
+            entity.setPath(newPath);
+            entity.setName(name);
+        }
+        if (sortOrder != null) {
+            entity.setSortOrder(sortOrder);
+        }
+
+        return componentCategoryRepository.save(entity);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCategory(Long id) {
+        // Проверяем, есть ли дочерние категории
+        List<ComponentCategoryEntity> children = componentCategoryRepository.findByParentIdOrderBySortOrderAsc(id);
+        if (!children.isEmpty()) {
+            throw new IllegalStateException("Невозможно удалить категорию, так как есть дочерние категории");
+        }
+        // Проверяем, есть ли классы в этой категории
+        if (isCategoryInUse(id)) {
+            throw new IllegalStateException("Невозможно удалить категорию, так как есть классы в этой категории");
+        }
+        componentCategoryRepository.deleteById(id);
+    }
+
+    @Override
+    public boolean isCategoryInUse(Long id) {
+        return componentClassRepository.countByCategoryId(id) > 0;
+    }
+
+    @Override
+    public Optional<ComponentCategoryEntity> getCategoryById(Long id) {
+        return componentCategoryRepository.findById(id);
+    }
 
     // ========== Component Class ==========
 
     @Override
     public List<ComponentClassEntity> getAllComponentClasses() {
         return componentClassRepository.findAllByOrderByNameAsc();
+    }
+
+    @Override
+    public List<ComponentClassEntity> getClassesByCategory(Long categoryId) {
+        return componentClassRepository.findByCategoryId(categoryId);
     }
 
     @Override
@@ -149,11 +237,17 @@ public class ComponentServiceImpl implements ComponentService {
                     .orElseThrow(() -> new IllegalArgumentException("Единица измерения не найдена"));
             existing.setUnitId(updated.getUnitId());
         }
-        if (updated.getQuantityPerUnit() != null) {
-            existing.setQuantityPerUnit(updated.getQuantityPerUnit());
-        }
         if (updated.getDescription() != null) {
             existing.setDescription(updated.getDescription());
+        }
+        if (updated.getTechnicalSpecs() != null) {
+            existing.setTechnicalSpecs(updated.getTechnicalSpecs());
+        }
+        if (updated.getWeightKg() != null) {
+            existing.setWeightKg(updated.getWeightKg());
+        }
+        if (updated.getMaterial() != null) {
+            existing.setMaterial(updated.getMaterial());
         }
 
         return componentRepository.save(existing);
@@ -212,7 +306,7 @@ public class ComponentServiceImpl implements ComponentService {
 
     @Override
     @Transactional
-    public ProductComponentEntity addComponentToProduct(Long productCardId, Long componentId, Double quantity, String note) {
+    public ProductComponentEntity addComponentToProduct(Long productCardId, Long componentId, Double quantity, String position, String note) {
         // Проверяем, не существует ли уже связь
         Optional<ProductComponentEntity> existing = productComponentRepository
                 .findByProductCardIdAndComponentId(productCardId, componentId);
@@ -224,6 +318,7 @@ public class ComponentServiceImpl implements ComponentService {
         entity.setProductCardId(productCardId);
         entity.setComponentId(componentId);
         entity.setQuantity(quantity != null ? quantity : 1.0);
+        entity.setPosition(position);
         entity.setNote(note);
         return productComponentRepository.save(entity);
     }
@@ -235,6 +330,16 @@ public class ComponentServiceImpl implements ComponentService {
                 .findByProductCardIdAndComponentId(productCardId, componentId)
                 .orElseThrow(() -> new IllegalArgumentException("Связь не найдена"));
         entity.setQuantity(quantity);
+        productComponentRepository.save(entity);
+    }
+
+    @Override
+    @Transactional
+    public void updateComponentPosition(Long productCardId, Long componentId, String position) {
+        ProductComponentEntity entity = productComponentRepository
+                .findByProductCardIdAndComponentId(productCardId, componentId)
+                .orElseThrow(() -> new IllegalArgumentException("Связь не найдена"));
+        entity.setPosition(position);
         productComponentRepository.save(entity);
     }
 

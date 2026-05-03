@@ -1,18 +1,15 @@
--- V23__create_component_table.sql
-CREATE TABLE IF NOT EXISTS component (
-                                         id BIGSERIAL PRIMARY KEY,
-                                         class_id BIGINT NOT NULL REFERENCES component_class(id) ON DELETE CASCADE,
-    name VARCHAR(200) NOT NULL,
-    vendor_code VARCHAR(100),
-    unit_id BIGINT NOT NULL REFERENCES unit_of_measure(id),
-    quantity_per_unit DOUBLE PRECISION DEFAULT 1.0,
-    description VARCHAR(500),
+-- V23__create_product_component_table.sql
+CREATE TABLE IF NOT EXISTS product_component (
+                                                 id BIGSERIAL PRIMARY KEY,
+                                                 product_card_id BIGINT NOT NULL REFERENCES base_product_card(id) ON DELETE CASCADE,
+    component_id BIGINT NOT NULL REFERENCES component(id) ON DELETE CASCADE,
+    quantity DOUBLE PRECISION NOT NULL DEFAULT 1.0,
+    position VARCHAR(50),
+    note VARCHAR(500),
     created_at TIMESTAMP NOT NULL,
-    created_by VARCHAR(100)
+    created_by VARCHAR(100),
+    UNIQUE(product_card_id, component_id)
     );
 
--- Индексы для component
-CREATE INDEX IF NOT EXISTS idx_component_class_id ON component(class_id);
-CREATE INDEX IF NOT EXISTS idx_component_name ON component(name);
-CREATE INDEX IF NOT EXISTS idx_component_unit_id ON component(unit_id);
-CREATE INDEX IF NOT EXISTS idx_component_class_name ON component(class_id, name);
+CREATE INDEX IF NOT EXISTS idx_product_component_product_card ON product_component(product_card_id);
+CREATE INDEX IF NOT EXISTS idx_product_component_component ON product_component(component_id);

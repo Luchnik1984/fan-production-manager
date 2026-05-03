@@ -1,9 +1,9 @@
 package com.fanproduction.services;
 
-import com.fanproduction.core.entity.BaseProductCard;
-import com.fanproduction.core.entity.MotorCardEntity;
-import com.fanproduction.core.entity.MotorWheelCardEntity;
-import com.fanproduction.core.entity.RadialWheelCardEntity;
+import com.fanproduction.core.entity.product.BaseProductCard;
+import com.fanproduction.core.entity.product.MotorCardEntity;
+import com.fanproduction.core.entity.product.MotorWheelCardEntity;
+import com.fanproduction.core.entity.product.RadialWheelCardEntity;
 import com.fanproduction.core.enums.CardTemplateType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

@@ -1,7 +1,11 @@
 package com.fanproduction.gui.controller;
 
+import com.fanproduction.gui.client.ComponentCategoryClient;
+import com.fanproduction.gui.client.ComponentClassClient;
 import com.fanproduction.gui.client.ComponentClient;
+import com.fanproduction.gui.component.GroupedComboBox;
 import com.fanproduction.gui.dto.request.CreateComponentRequest;
+import com.fanproduction.gui.dto.response.ComponentCategoryDto;
 import com.fanproduction.gui.dto.response.ComponentClassDto;
 import com.fanproduction.gui.dto.response.ComponentDto;
 import com.fanproduction.gui.dto.response.UnitOfMeasureDto;
@@ -10,14 +14,17 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Контроллер для справочника компонентов.
@@ -34,6 +41,9 @@ public class ComponentsCatalogController {
     private TableView<ComponentDto> componentsTable;
 
     @FXML
+    private TreeView<ComponentCategoryDto> categoryTreeView;
+
+    @FXML
     private TableColumn<ComponentDto, String> nameColumn;
     @FXML
     private TableColumn<ComponentDto, String> classNameColumn;
@@ -41,8 +51,7 @@ public class ComponentsCatalogController {
     private TableColumn<ComponentDto, String> vendorCodeColumn;
     @FXML
     private TableColumn<ComponentDto, String> unitColumn;
-    @FXML
-    private TableColumn<ComponentDto, String> quantityPerUnitColumn;
+
     @FXML
     private TableColumn<ComponentDto, String> descriptionColumn;
 
@@ -50,8 +59,15 @@ public class ComponentsCatalogController {
     private Label statusLabel;
 
     @FXML
+    @SuppressWarnings("unused")
     private Button createClassButton;
+
     @FXML
+    @SuppressWarnings("unused")
+    private Button createCategoryButton;
+
+    @FXML
+    @SuppressWarnings("unused")
     private Button createButton;
     @FXML
     private Button editButton;
@@ -64,6 +80,7 @@ public class ComponentsCatalogController {
     private final ObservableList<ComponentDto> componentList = FXCollections.observableArrayList();
     private final Map<Long, String> classNames = new HashMap<>();
     private final Map<Long, String> unitNames = new HashMap<>();
+    private List<ComponentCategoryDto> allCategories = new ArrayList<>();
     private List<ComponentClassDto> allClasses;
     private List<UnitOfMeasureDto> allUnits;
 
@@ -88,9 +105,6 @@ public class ComponentsCatalogController {
         unitColumn.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getUnitCode() != null ?
                         cellData.getValue().getUnitCode() : ""));
-        quantityPerUnitColumn.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getQuantityPerUnit() != null ?
-                        String.valueOf(cellData.getValue().getQuantityPerUnit()) : "1"));
         descriptionColumn.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getDescription() != null ?
                         cellData.getValue().getDescription() : ""));
@@ -116,12 +130,17 @@ public class ComponentsCatalogController {
 
         new Thread(() -> {
             try {
-                // Загружаем классы
-                allClasses = ComponentClient.getAllClasses();
                 // Загружаем единицы измерения
                 allUnits = ComponentClient.getAllUnits();
+
+                // Загружаем категории
+                allCategories = ComponentCategoryClient.getAllCategories();
+
+                // Загружаем классы
+                allClasses = ComponentClient.getAllClasses();
+
                 // Загружаем компоненты
-                loadComponents();
+                loadAllComponents();
 
                 Platform.runLater(() -> {
                     // Заполняем фильтр классов
@@ -138,6 +157,7 @@ public class ComponentsCatalogController {
                     for (UnitOfMeasureDto unit : allUnits) {
                         unitNames.put(unit.getId(), unit.getCode());
                     }
+                    buildCategoryTree();
                 });
 
             } catch (Exception e) {
@@ -151,13 +171,42 @@ public class ComponentsCatalogController {
         }).start();
     }
 
-    private void loadComponents() throws Exception {
-        List<ComponentDto> components = ComponentClient.getAllComponents();
-        Platform.runLater(() -> {
-            componentList.clear();
-            componentList.addAll(components);
-            statusLabel.setText("Всего компонентов: " + componentList.size());
-        });
+    private void loadClasses() {
+        new Thread(() -> {
+            try {
+                allClasses = ComponentClassClient.getAllClasses();
+                Platform.runLater(() -> {
+                    // Обновляем выпадающий список классов
+                    classFilterComboBox.getItems().clear();
+                    classFilterComboBox.getItems().add("Все классы");
+                    for (ComponentClassDto cls : allClasses) {
+                        classFilterComboBox.getItems().add(cls.getName());
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", "Не удалось загрузить классы: " + e.getMessage(),
+                        Alert.AlertType.ERROR));
+            }
+        }).start();
+    }
+
+    private void loadAllComponents() {
+        new Thread(() -> {
+            try {
+                List<ComponentDto> components = ComponentClient.getAllComponents();
+                Platform.runLater(() -> {
+                    componentList.clear();
+                    componentList.addAll(components);
+                    statusLabel.setText("Всего компонентов: " + componentList.size());
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    statusLabel.setText("Ошибка загрузки: " + e.getMessage());
+                    showAlert("Ошибка", "Не удалось загрузить компоненты: " + e.getMessage(),
+                            Alert.AlertType.ERROR);
+                });
+            }
+        }).start();
     }
 
     private void filterComponents() {
@@ -224,6 +273,11 @@ public class ComponentsCatalogController {
     }
 
     @FXML
+    private void handleCreateCategory() {
+        showCreateCategoryDialog();
+    }
+
+    @FXML
     private void handleCreate() {
         showComponentDialog(null);
     }
@@ -277,18 +331,124 @@ public class ComponentsCatalogController {
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
-        grid.setPadding(new javafx.geometry.Insets(20));
+        grid.setPadding(new Insets(20));
+
+        // Выбор категории
+        ComboBox<String> categoryCombo = new ComboBox<>();
+        for (ComponentCategoryDto cat : allCategories) {
+            if (cat.getParentId() == null) {
+                categoryCombo.getItems().add(cat.getName());
+            }
+        }
+        categoryCombo.setPromptText("Выберите категорию");
 
         TextField nameField = new TextField();
-        nameField.setPromptText("Например: Кабельные вводы");
+        nameField.setPromptText("Например: Ступицы с цилиндрической посадкой");
+
         TextArea descriptionField = new TextArea();
         descriptionField.setPromptText("Описание (необязательно)");
         descriptionField.setPrefRowCount(3);
 
-        grid.add(new Label("Название класса:*"), 0, 0);
-        grid.add(nameField, 1, 0);
-        grid.add(new Label("Описание:"), 0, 1);
-        grid.add(descriptionField, 1, 1);
+        // Группированный список единиц измерения
+        GroupedComboBox<UnitOfMeasureDto> unitCombo = new GroupedComboBox<>();
+        Map<String, List<UnitOfMeasureDto>> groupedUnits = allUnits.stream()
+                .collect(Collectors.groupingBy(UnitOfMeasureDto::getCategory));
+        unitCombo.setGroupedItems(groupedUnits);
+        unitCombo.setPromptText("Единица измерения по умолчанию (необязательно)");
+
+        grid.add(new Label("Категория:*"), 0, 0);
+        grid.add(categoryCombo, 1, 0);
+        grid.add(new Label("Название класса:*"), 0, 1);
+        grid.add(nameField, 1, 1);
+        grid.add(new Label("Описание:"), 0, 2);
+        grid.add(descriptionField, 1, 2);
+        grid.add(new Label("Ед. изм. по умолчанию:"), 0, 3);
+        grid.add(unitCombo, 1, 3);
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.showAndWait().ifPresent(buttonType -> {
+            if (buttonType == ButtonType.OK) {
+                String selectedCategory = categoryCombo.getValue();
+                String name = nameField.getText().trim();
+                String description = descriptionField.getText().trim();
+                UnitOfMeasureDto selectedUnit = unitCombo.getValue();
+
+                if (selectedCategory == null || selectedCategory.isEmpty()) {
+                    showAlert("Ошибка", "Выберите категорию", Alert.AlertType.ERROR);
+                    return;
+                }
+                if (name.isEmpty()) {
+                    showAlert("Ошибка", "Введите название класса", Alert.AlertType.ERROR);
+                    return;
+                }
+
+                // Находим ID категории
+                Long categoryId = null;
+                for (ComponentCategoryDto cat : allCategories) {
+                    if (cat.getName().equals(selectedCategory)) {
+                        categoryId = cat.getId();
+                        break;
+                    }
+                }
+
+                Long unitId = selectedUnit != null ? selectedUnit.getId() : null;
+
+                final Long finalCategoryId = categoryId;
+                final Long finalUnitId = unitId;
+
+                new Thread(() -> {
+                    try {
+                        ComponentClassClient.createClass(finalCategoryId, name, description, finalUnitId);
+                        Platform.runLater(() -> {
+                            showAlert("Успешно", "Класс создан", Alert.AlertType.INFORMATION);
+                            loadData();
+                        });
+                    } catch (Exception e) {
+                        Platform.runLater(() -> showAlert("Ошибка", "Не удалось создать класс: " + e.getMessage(),
+                                Alert.AlertType.ERROR));
+                    }
+                }).start();
+            }
+        });
+    }
+
+    private void showCreateCategoryDialog() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Создание категории компонентов");
+        dialog.setHeaderText("Создание новой категории");
+        dialog.initOwner(stage);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new javafx.geometry.Insets(20));
+
+        // Выбор родительской категории (опционально)
+        ComboBox<String> parentCombo = new ComboBox<>();
+        parentCombo.getItems().add("— Корневая категория —");
+        // Загружаем существующие категории
+        for (ComponentCategoryDto cat : allCategories) {
+            parentCombo.getItems().add(cat.getName());
+        }
+        parentCombo.setValue("— Корневая категория —");
+
+        // Название категории
+        TextField nameField = new TextField();
+        nameField.setPromptText("Например: Кронштейны");
+
+        // Описание (необязательно)
+        TextArea descriptionField = new TextArea();
+        descriptionField.setPromptText("Описание (необязательно)");
+        descriptionField.setPrefRowCount(3);
+
+        grid.add(new Label("Родительская категория:"), 0, 0);
+        grid.add(parentCombo, 1, 0);
+        grid.add(new Label("Название категории:*"), 0, 1);
+        grid.add(nameField, 1, 1);
+        grid.add(new Label("Описание:"), 0, 2);
+        grid.add(descriptionField, 1, 2);
 
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -297,19 +457,32 @@ public class ComponentsCatalogController {
             if (buttonType == ButtonType.OK) {
                 String name = nameField.getText().trim();
                 if (name.isEmpty()) {
-                    showAlert("Ошибка", "Название класса не может быть пустым", Alert.AlertType.ERROR);
+                    showAlert("Ошибка", "Введите название категории", Alert.AlertType.ERROR);
                     return;
                 }
 
+                String parentName = parentCombo.getValue();
+                Long parentId = null;
+                if (!"— Корневая категория —".equals(parentName) && parentName != null) {
+                    // Находим ID родительской категории
+                    for (ComponentCategoryDto cat : allCategories) {
+                        if (cat.getName().equals(parentName)) {
+                            parentId = cat.getId();
+                            break;
+                        }
+                    }
+                }
+
+                final Long finalParentId = parentId;
                 new Thread(() -> {
                     try {
-                        ComponentClient.createClass(name, descriptionField.getText());
+                        ComponentCategoryClient.createCategory(name, finalParentId, descriptionField.getText());
                         Platform.runLater(() -> {
-                            showAlert("Успешно", "Класс создан", Alert.AlertType.INFORMATION);
-                            loadData();
+                            showAlert("Успешно", "Категория создана", Alert.AlertType.INFORMATION);
+                            loadData(); // перезагружаем категории
                         });
                     } catch (Exception e) {
-                        Platform.runLater(() -> showAlert("Ошибка", "Не удалось создать класс: " + e.getMessage(),
+                        Platform.runLater(() -> showAlert("Ошибка", "Не удалось создать категорию: " + e.getMessage(),
                                 Alert.AlertType.ERROR));
                     }
                 }).start();
@@ -340,17 +513,14 @@ public class ComponentsCatalogController {
         TextField vendorCodeField = new TextField();
         vendorCodeField.setPromptText("Артикул производителя");
 
-        // Единица измерения
-        ComboBox<String> unitCombo = new ComboBox<>();
-        for (UnitOfMeasureDto unit : allUnits) {
-            unitCombo.getItems().add(unit.getCode() + " - " + unit.getName());
-        }
+        // ==========================================
+        // ГРУППИРОВАННЫЙ СПИСОК ЕДИНИЦ ИЗМЕРЕНИЯ
+        // ==========================================
+        GroupedComboBox<UnitOfMeasureDto> unitCombo = new GroupedComboBox<>();
+        Map<String, List<UnitOfMeasureDto>> groupedUnits = allUnits.stream()
+                .collect(Collectors.groupingBy(UnitOfMeasureDto::getCategory));
+        unitCombo.setGroupedItems(groupedUnits);
         unitCombo.setPromptText("Выберите единицу измерения");
-
-        // Количество на единицу
-        TextField quantityField = new TextField();
-        quantityField.setPromptText("Количество на единицу (по умолчанию 1)");
-        quantityField.setText("1");
 
         // Описание
         TextArea descriptionField = new TextArea();
@@ -361,7 +531,6 @@ public class ComponentsCatalogController {
         if (existing != null) {
             nameField.setText(existing.getName());
             if (existing.getVendorCode() != null) vendorCodeField.setText(existing.getVendorCode());
-            if (existing.getQuantityPerUnit() != null) quantityField.setText(String.valueOf(existing.getQuantityPerUnit()));
             if (existing.getDescription() != null) descriptionField.setText(existing.getDescription());
 
             // Устанавливаем класс
@@ -370,9 +539,15 @@ public class ComponentsCatalogController {
                 classCombo.setValue(className);
             }
 
-            // Устанавливаем единицу измерения
-            String unitDisplay = existing.getUnitCode() + " - " + existing.getUnitName();
-            unitCombo.setValue(unitDisplay);
+            // Устанавливаем единицу измерения (ищем объект по ID)
+            if (existing.getUnitId() != null) {
+                for (UnitOfMeasureDto unit : allUnits) {
+                    if (unit.getId().equals(existing.getUnitId())) {
+                        unitCombo.setValue(unit);
+                        break;
+                    }
+                }
+            }
         }
 
         grid.add(new Label("Класс:*"), 0, 0);
@@ -383,10 +558,8 @@ public class ComponentsCatalogController {
         grid.add(vendorCodeField, 1, 2);
         grid.add(new Label("Единица измерения:*"), 0, 3);
         grid.add(unitCombo, 1, 3);
-        grid.add(new Label("Кол-во на ед.:"), 0, 4);
-        grid.add(quantityField, 1, 4);
-        grid.add(new Label("Описание:"), 0, 5);
-        grid.add(descriptionField, 1, 5);
+        grid.add(new Label("Описание:"), 0, 4);
+        grid.add(descriptionField, 1, 4);
 
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -396,13 +569,7 @@ public class ComponentsCatalogController {
                 String selectedClass = classCombo.getValue();
                 String name = nameField.getText().trim();
                 String vendorCode = vendorCodeField.getText().trim();
-                String selectedUnit = unitCombo.getValue();
-                Double quantity;
-                try {
-                    quantity = Double.parseDouble(quantityField.getText().trim());
-                } catch (NumberFormatException e) {
-                    quantity = 1.0;
-                }
+                UnitOfMeasureDto selectedUnit = unitCombo.getValue();
                 String description = descriptionField.getText().trim();
 
                 if (selectedClass == null || selectedClass.isEmpty()) {
@@ -413,7 +580,7 @@ public class ComponentsCatalogController {
                     showAlert("Ошибка", "Введите наименование компонента", Alert.AlertType.ERROR);
                     return;
                 }
-                if (selectedUnit == null || selectedUnit.isEmpty()) {
+                if (selectedUnit == null) {
                     showAlert("Ошибка", "Выберите единицу измерения", Alert.AlertType.ERROR);
                     return;
                 }
@@ -427,27 +594,15 @@ public class ComponentsCatalogController {
                     }
                 }
 
-                // Находим ID единицы измерения
-                Long unitId = null;
-                for (UnitOfMeasureDto unit : allUnits) {
-                    String unitDisplay = unit.getCode() + " - " + unit.getName();
-                    if (unitDisplay.equals(selectedUnit)) {
-                        unitId = unit.getId();
-                        break;
-                    }
-                }
-
                 if (classId == null) {
                     showAlert("Ошибка", "Класс не найден", Alert.AlertType.ERROR);
                     return;
                 }
-                if (unitId == null) {
-                    showAlert("Ошибка", "Единица измерения не найдена", Alert.AlertType.ERROR);
-                    return;
-                }
+
+                Long unitId = selectedUnit.getId();
 
                 CreateComponentRequest request = new CreateComponentRequest(
-                        classId, name, vendorCode, unitId, quantity, description);
+                        classId, name, vendorCode, unitId, description);
 
                 new Thread(() -> {
                     try {
@@ -476,5 +631,169 @@ public class ComponentsCatalogController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private void buildCategoryTree() {
+        // Находим корневые категории (parentId == null)
+        List<ComponentCategoryDto> rootCategories = allCategories.stream()
+                .filter(c -> c.getParentId() == null)
+                .toList();
+
+        // Создаём корневой элемент
+        TreeItem<ComponentCategoryDto> rootItem = new TreeItem<>();
+        rootItem.setValue(null);
+        rootItem.setExpanded(true);
+
+        // Добавляем элемент "Все категории"
+        TreeItem<ComponentCategoryDto> allItem = new TreeItem<>();
+        ComponentCategoryDto allCategory = new ComponentCategoryDto();
+        allCategory.setId(null);
+        allCategory.setName("Все категории");
+        allItem.setValue(allCategory);
+        allItem.setExpanded(true);
+        rootItem.getChildren().add(allItem);
+
+        // Рекурсивно добавляем категории
+        for (ComponentCategoryDto category : rootCategories) {
+            TreeItem<ComponentCategoryDto> categoryItem = createCategoryTreeItem(category);
+            allItem.getChildren().add(categoryItem);
+        }
+
+        categoryTreeView.setRoot(rootItem);
+        categoryTreeView.setShowRoot(false);
+
+        // Обработчик выбора категории
+        categoryTreeView.getSelectionModel().selectedItemProperty().addListener(
+                (obs, old, newVal) -> {
+                    if (newVal != null && newVal.getValue() != null) {
+                        Long selectedCategoryId = newVal.getValue().getId();
+                        if (selectedCategoryId == null) {
+                            // Выбрано "Все категории"
+                            loadAllComponents();
+                        } else {
+                            filterByCategory(selectedCategoryId);
+                        }
+                    }
+                });
+
+        categoryTreeView.setRoot(rootItem);
+        categoryTreeView.setShowRoot(false);
+
+        // ==========================================
+        // НАСТРОЙКА ОТОБРАЖЕНИЯ ТОЛЬКО НАЗВАНИЯ КАТЕГОРИИ
+        // ==========================================
+        categoryTreeView.setCellFactory(tv -> new TreeCell<ComponentCategoryDto>() {
+            @Override
+            protected void updateItem(ComponentCategoryDto item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item.getName());  // ← показываем только название
+                }
+            }
+        });
+
+        // Обработчик выбора категории
+        categoryTreeView.getSelectionModel().selectedItemProperty().addListener(
+                (obs, old, newVal) -> {
+                    if (newVal != null && newVal.getValue() != null) {
+                        Long selectedCategoryId = newVal.getValue().getId();
+                        if (selectedCategoryId == null) {
+                            loadAllComponents();
+                        } else {
+                            filterByCategory(selectedCategoryId);
+                        }
+                    }
+                });
+
+    }
+
+    private TreeItem<ComponentCategoryDto> createCategoryTreeItem(ComponentCategoryDto category) {
+        TreeItem<ComponentCategoryDto> item = new TreeItem<>(category);
+        item.setExpanded(true);
+
+        // Находим дочерние категории
+        List<ComponentCategoryDto> children = allCategories.stream()
+                .filter(c -> c.getParentId() != null && c.getParentId().equals(category.getId()))
+                .toList();
+
+        for (ComponentCategoryDto child : children) {
+            item.getChildren().add(createCategoryTreeItem(child));
+        }
+
+        return item;
+    }
+
+    private void filterByCategory(Long categoryId) {
+        if (categoryId == null) {
+            loadAllComponents();
+            return;
+        }
+
+        // Находим все ID категорий (включая подкатегории)
+        List<Long> categoryIds = getAllCategoryIds(categoryId);
+        System.out.println("Selected category ID: " + categoryId);
+        System.out.println("All category IDs: " + categoryIds);
+
+        // Находим классы, принадлежащие этим категориям
+        List<Long> classIds = allClasses.stream()
+                .filter(cls -> cls.getCategoryId() != null && categoryIds.contains(cls.getCategoryId()))
+                .map(ComponentClassDto::getId)
+                .collect(Collectors.toList());
+        System.out.println("Found class IDs: " + classIds);
+
+        if (classIds.isEmpty()) {
+            // Нет классов в этой категории — показываем пустой список
+            Platform.runLater(() -> {
+                componentList.clear();
+                statusLabel.setText("Нет компонентов в выбранной категории");
+            });
+            return;
+        }
+
+        // Фильтруем компоненты по классам
+        new Thread(() -> {
+            try {
+                List<ComponentDto> allComponents = ComponentClient.getAllComponents();
+                List<ComponentDto> filtered = allComponents.stream()
+                        .filter(c -> classIds.contains(c.getClassId()))
+                        .collect(Collectors.toList());
+                System.out.println("Filtered components count: " + filtered.size());
+                Platform.runLater(() -> {
+                    componentList.clear();
+                    componentList.addAll(filtered);
+                    statusLabel.setText("Всего компонентов: " + componentList.size());
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    statusLabel.setText("Ошибка фильтрации: " + e.getMessage());
+                    showAlert("Ошибка", "Ошибка фильтрации: " + e.getMessage(),
+                            Alert.AlertType.ERROR);
+                });
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    private List<Long> getAllCategoryIds(Long categoryId) {
+        List<Long> ids = new ArrayList<>();
+        ids.add(categoryId);
+
+        // Находим все подкатегории
+        List<ComponentCategoryDto> children = allCategories.stream()
+                .filter(c -> c.getParentId() != null && c.getParentId().equals(categoryId))
+                .collect(Collectors.toList());
+
+        for (ComponentCategoryDto child : children) {
+            ids.addAll(getAllCategoryIds(child.getId()));
+        }
+
+        return ids;
+    }
+
+    private Map<String, List<UnitOfMeasureDto>> getGroupedUnits() {
+        return allUnits.stream()
+                .collect(Collectors.groupingBy(UnitOfMeasureDto::getCategory));
     }
 }

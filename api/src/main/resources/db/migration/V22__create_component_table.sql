@@ -1,26 +1,19 @@
--- V22__create_unit_of_measure_table.sql
--- Создание справочника единиц измерения
-
-CREATE TABLE IF NOT EXISTS unit_of_measure (
-                                               id BIGSERIAL PRIMARY KEY,
-                                               code VARCHAR(20) NOT NULL UNIQUE,
-    name VARCHAR(50) NOT NULL,
-    symbol VARCHAR(10),
-    is_default BOOLEAN DEFAULT FALSE,
+-- V22__create_component_table.sql
+CREATE TABLE IF NOT EXISTS component (
+                                         id BIGSERIAL PRIMARY KEY,
+                                         class_id BIGINT NOT NULL REFERENCES component_class(id) ON DELETE CASCADE,
+    name VARCHAR(200) NOT NULL,
+    vendor_code VARCHAR(100),
+    unit_id BIGINT NOT NULL REFERENCES unit_of_measure(id),
+    description VARCHAR(500),
+    technical_specs JSONB,
+    weight_kg DOUBLE PRECISION,
+    material VARCHAR(100),
     created_at TIMESTAMP NOT NULL,
     created_by VARCHAR(100)
     );
 
-CREATE INDEX IF NOT EXISTS idx_unit_of_measure_code ON unit_of_measure(code);
-
--- Базовые единицы измерения
-INSERT INTO unit_of_measure (code, name, symbol, is_default, created_at, created_by) VALUES
-                                                                                         ('шт', 'штука', 'шт', TRUE, NOW(), 'system'),
-                                                                                         ('м', 'метр', 'м', FALSE, NOW(), 'system'),
-                                                                                         ('кг', 'килограмм', 'кг', FALSE, NOW(), 'system'),
-                                                                                         ('г', 'грамм', 'г', FALSE, NOW(), 'system'),
-                                                                                         ('л', 'литр', 'л', FALSE, NOW(), 'system'),
-                                                                                         ('компл', 'комплект', 'компл', FALSE, NOW(), 'system'),
-                                                                                         ('упак', 'упаковка', 'упак', FALSE, NOW(), 'system'),
-                                                                                         ('пог.м', 'погонный метр', 'пог.м', FALSE, NOW(), 'system'),
-                                                                                         ('м²', 'квадратный метр', 'м²', FALSE, NOW(), 'system');
+CREATE INDEX IF NOT EXISTS idx_component_class_id ON component(class_id);
+CREATE INDEX IF NOT EXISTS idx_component_name ON component(name);
+CREATE INDEX IF NOT EXISTS idx_component_vendor_code ON component(vendor_code);
+CREATE INDEX IF NOT EXISTS idx_component_unit_id ON component(unit_id);

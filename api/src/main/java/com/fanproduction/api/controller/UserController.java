@@ -6,7 +6,7 @@ import com.fanproduction.api.dto.ChangePasswordRequest;
 import com.fanproduction.api.dto.RejectRequest;
 import com.fanproduction.api.dto.UpdateProfileRequest;
 import com.fanproduction.core.dto.UserDto;
-import com.fanproduction.core.entity.UserEntity;
+import com.fanproduction.core.entity.user.UserEntity;
 import com.fanproduction.core.enums.UserStatus;
 import com.fanproduction.services.UserService;
 import lombok.RequiredArgsConstructor;

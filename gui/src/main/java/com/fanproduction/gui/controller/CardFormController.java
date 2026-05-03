@@ -8,7 +8,9 @@ import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fanproduction.gui.service.FieldMetadataService;
 import javafx.application.Platform;
+import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
@@ -17,6 +19,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
+import java.io.IOException;
 import java.util.*;
 
 public class CardFormController {
@@ -26,6 +29,7 @@ public class CardFormController {
     private final ProductCardDto existingCard;
     private final Runnable onSaveCallback;
     private final FieldMetadataService metadataService = new FieldMetadataService();
+    private ProductComponentsController componentsTabController;
 
     private final Map<String, Control> fieldControls = new HashMap<>();
     private final Map<String, FieldMetadataDto> fieldMetadata = new HashMap<>();
@@ -55,28 +59,49 @@ public class CardFormController {
         Label titleLabel = new Label(title);
         titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
+        // ==========================================
+        // СОЗДАЁМ TabPane ДЛЯ ВКЛАДОК
+        // ==========================================
+        TabPane tabPane = new TabPane();
+        tabPane.setPrefHeight(500);
+
+        // --- Вкладка 1: Основные поля (форма) ---
+        Tab mainTab = new Tab("Основные поля");
+        mainTab.setClosable(false);
+
+        // Создаём форму (существующий метод)
         GridPane formGrid = createFormGrid();
 
+        // Оборачиваем форму в ScrollPane для прокрутки
         ScrollPane scrollPane = new ScrollPane(formGrid);
         scrollPane.setFitToWidth(true);
         scrollPane.setPrefHeight(450);
 
+        mainTab.setContent(scrollPane);
+        tabPane.getTabs().add(mainTab);
+
+        // --- Вкладка 2: Комплектующие (НОВАЯ) ---
+        Tab componentsTab = createComponentsTab();
+        tabPane.getTabs().add(componentsTab);
+
+        // ==========================================
+        // БЛОК С КНОПКАМИ
+        // ==========================================
         Button saveButton = new Button("Сохранить");
         Button cancelButton = new Button("Отмена");
 
         saveButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
 
-        final Button finalSaveButton = saveButton;
-
-        saveButton.setOnAction(e -> saveCard(finalSaveButton));
+        saveButton.setOnAction(e -> saveCard(saveButton));
         cancelButton.setOnAction(e -> stage.close());
 
         HBox buttonBox = new HBox(10);
         buttonBox.getChildren().addAll(saveButton, cancelButton);
 
-        mainLayout.getChildren().addAll(titleLabel, scrollPane, buttonBox);
+        // Добавляем всё в главный layout
+        mainLayout.getChildren().addAll(titleLabel, tabPane, buttonBox);
 
-        Scene scene = new Scene(mainLayout, 700, 600);
+        Scene scene = new Scene(mainLayout, 800, 700);
         stage.setScene(scene);
     }
 
@@ -464,21 +489,6 @@ public class CardFormController {
             name = ((TextField) nameControl).getText().trim();
         }
 
-        // ========== ОТЛАДКА ==========
-        System.out.println("=== BEFORE SAVE ===");
-        System.out.println("Card type: " + cardType);
-        System.out.println("fullMarking in fields: " + fields.get("fullMarking"));
-        System.out.println("All fields keys: " + fields.keySet());
-        // Проверяем значение directly из контрола
-        Control fullMarkingCtrl = fieldControls.get("fullMarking");
-        if (fullMarkingCtrl instanceof TextField) {
-            System.out.println("fullMarking control value: " + ((TextField) fullMarkingCtrl).getText());
-        } else {
-            System.out.println("fullMarking control is NULL or not TextField");
-        }
-        System.out.println("===================");
-        // ===========================
-
         final String finalName = name;
         final Map<String, Object> finalFields = fields;
         final Long finalId = existingCard != null ? existingCard.getId() : null;
@@ -513,7 +523,16 @@ public class CardFormController {
 
                 Platform.runLater(() -> {
                     if (response.isSuccess()) {
-                        showAlert("Успешно", "Карточка " + (existingCard == null ? "создана" : "обновлена"), Alert.AlertType.INFORMATION);
+                        Long savedId = response.getData() != null ? response.getData().getId() : null;
+
+                        // ==========================================
+                        // ОБНОВЛЯЕМ ВКЛАДКУ КОМПЛЕКТУЮЩИХ ПОСЛЕ СОХРАНЕНИЯ
+                        // ==========================================
+                        if (componentsTabController != null && savedId != null) {
+                            componentsTabController.refresh(savedId);
+                        }
+                        showAlert("Успешно", "Карточка " + (existingCard == null ? "создана" : "обновлена"),
+                                Alert.AlertType.INFORMATION);
                         if (onSaveCallback != null) {
                             onSaveCallback.run();
                         }
@@ -574,4 +593,38 @@ public class CardFormController {
         if (voltageStr.equals("380")) return "D";
         return "";
     }
+
+    private Tab createComponentsTab() {
+        Tab tab = new Tab("Комплектующие");
+        tab.setClosable(false);
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/ProductComponentsView.fxml"));
+            Parent content = loader.load();
+
+            ProductComponentsController controller = loader.getController();
+
+            // Сохраняем ссылку на контроллер (теперь поле используется)
+            this.componentsTabController = controller;
+
+            // Если редактируем существующую карточку — передаём ID для загрузки компонентов
+            if (existingCard != null && existingCard.getId() != null) {
+                controller.setProductCardId(existingCard.getId());
+            } else {
+                // Для новой карточки показываем сообщение, что нужно сначала сохранить
+                controller.showNotSavedMessage();
+            }
+
+            tab.setContent(content);
+        } catch (IOException e) {
+            e.printStackTrace();
+            VBox errorBox = new VBox(10);
+            errorBox.setStyle("-fx-padding: 20px;");
+            errorBox.getChildren().add(new Label("Ошибка загрузки комплектующих: " + e.getMessage()));
+            tab.setContent(errorBox);
+        }
+
+        return tab;
+    }
+
 }

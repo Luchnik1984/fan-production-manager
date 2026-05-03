@@ -12,6 +12,5 @@ public class CreateComponentRequest {
     private String name;
     private String vendorCode;
     private Long unitId;
-    private Double quantityPerUnit;
     private String description;
 }

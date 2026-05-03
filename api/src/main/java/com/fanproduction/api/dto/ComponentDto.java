@@ -6,10 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
-/**
- * DTO для компонента.
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,14 +15,16 @@ import java.time.LocalDateTime;
 public class ComponentDto {
     private Long id;
     private Long classId;
-    private String className;      // для отображения (denormalized)
+    private String className;
     private String name;
     private String vendorCode;
     private Long unitId;
-    private String unitCode;       // для отображения (денормализованное)
-    private String unitName;       // для отображения
-    private Double quantityPerUnit;
+    private String unitCode;
+    private String unitName;
     private String description;
+    private Map<String, Object> technicalSpecs;
+    private Double weightKg;
+    private String material;
     private LocalDateTime createdAt;
     private String createdBy;
 }

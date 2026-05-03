@@ -16,9 +16,10 @@ public class ProductComponentDto {
     private Long id;
     private Long productCardId;
     private Long componentId;
-    private String componentName;   // для отображения
-    private String componentClass;   // для отображения
-    private String unitCode;         // для отображения
+    private String componentName;
+    private String componentClass;
+    private String unitCode;
     private Double quantity;
+    private String position;
     private String note;
 }

@@ -4,7 +4,7 @@ import com.fanproduction.api.dto.ApiResponse;
 import com.fanproduction.api.dto.ProductCardRequest;
 import com.fanproduction.api.dto.ProductCardResponse;
 import com.fanproduction.api.mapper.ProductCardMapper;
-import com.fanproduction.core.entity.BaseProductCard;
+import com.fanproduction.core.entity.product.BaseProductCard;
 import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.services.ProductCardService;
 import jakarta.validation.Valid;
