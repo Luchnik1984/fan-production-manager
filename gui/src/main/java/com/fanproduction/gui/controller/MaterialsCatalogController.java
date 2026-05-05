@@ -4,7 +4,7 @@ import com.fanproduction.gui.base.BaseCatalogController;
 import com.fanproduction.gui.base.CategoryTreeItem;
 import com.fanproduction.gui.client.*;
 import com.fanproduction.gui.component.GroupedComboBox;
-import com.fanproduction.gui.dto.request.CreateComponentRequest;
+import com.fanproduction.gui.dto.request.CreateMaterialRequest;
 import com.fanproduction.gui.dto.response.*;
 import com.fanproduction.gui.util.TooltipUtil;
 import javafx.application.Platform;
@@ -17,15 +17,18 @@ import javafx.scene.layout.GridPane;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class ComponentsCatalogController extends BaseCatalogController<ComponentDto, ComponentCategoryDto, ComponentClassDto> {
+public class MaterialsCatalogController extends BaseCatalogController<MaterialDto, MaterialCategoryDto, MaterialClassDto> {
 
     @FXML private TextField searchField;
-    @FXML private TableView<ComponentDto> componentsTable;
-    @FXML private TableColumn<ComponentDto, String> nameColumn;
-    @FXML private TableColumn<ComponentDto, String> classNameColumn;
-    @FXML private TableColumn<ComponentDto, String> vendorCodeColumn;
-    @FXML private TableColumn<ComponentDto, String> unitColumn;
-    @FXML private TableColumn<ComponentDto, String> descriptionColumn;
+    @FXML private TableView<MaterialDto> materialsTable;
+    @FXML private TableColumn<MaterialDto, String> nameColumn;
+    @FXML private TableColumn<MaterialDto, String> classNameColumn;
+    @FXML private TableColumn<MaterialDto, String> unitColumn;
+    @FXML private TableColumn<MaterialDto, String> standardColumn;
+    @FXML private TableColumn<MaterialDto, String> specificationColumn;
+    @FXML private TableColumn<MaterialDto, String> materialTypeColumn;
+    @FXML private TableColumn<MaterialDto, String> vendorCodeColumn;
+    @FXML private TableColumn<MaterialDto, String> descriptionColumn;
     @FXML private Label statusLabel;
     @FXML private Button createCategoryButton;
     @FXML private Button createClassButton;
@@ -50,12 +53,24 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         classNameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getClassName()));
         classNameColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
 
+        unitColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
+                cellData.getValue().getUnitCode() != null ? cellData.getValue().getUnitCode() : ""));
+
+        standardColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
+                cellData.getValue().getStandard() != null ? cellData.getValue().getStandard() : ""));
+        standardColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
+
+        specificationColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
+                cellData.getValue().getSpecification() != null ? cellData.getValue().getSpecification() : ""));
+        specificationColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
+
+        materialTypeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
+                cellData.getValue().getMaterialType() != null ? cellData.getValue().getMaterialType() : ""));
+        materialTypeColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
+
         vendorCodeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
                 cellData.getValue().getVendorCode() != null ? cellData.getValue().getVendorCode() : ""));
         vendorCodeColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
-
-        unitColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
-                cellData.getValue().getUnitCode() != null ? cellData.getValue().getUnitCode() : ""));
 
         descriptionColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
                 cellData.getValue().getDescription() != null ? cellData.getValue().getDescription() : ""));
@@ -64,38 +79,42 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         getTableView().setItems(itemList);
         getTableView().setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
-                ComponentDto selected = getTableView().getSelectionModel().getSelectedItem();
+                MaterialDto selected = getTableView().getSelectionModel().getSelectedItem();
                 if (selected != null) showItemDialog(selected);
             }
         });
     }
 
-    private void updateButtonsState(ComponentDto selected) {
+    private void updateButtonsState(MaterialDto selected) {
         boolean hasSelection = selected != null;
         editButton.setDisable(!hasSelection);
         deleteButton.setDisable(!hasSelection);
     }
 
+    // ==========================================
+    // РЕАЛИЗАЦИЯ АБСТРАКТНЫХ МЕТОДОВ
+    // ==========================================
+
     @Override
     protected void loadAllItems() {
         new Thread(() -> {
             try {
-                List<ComponentDto> components = ComponentClient.getAllComponents();
-                updateItemList(components);
+                List<MaterialDto> materials = MaterialClient.getAllMaterials();
+                updateItemList(materials);
             } catch (Exception e) {
-                Platform.runLater(() -> showAlert("Ошибка", "Не удалось загрузить компоненты: " + e.getMessage(),
+                Platform.runLater(() -> showAlert("Ошибка", "Не удалось загрузить материалы: " + e.getMessage(),
                         Alert.AlertType.ERROR));
             }
         }).start();
     }
 
     @Override
-    protected List<ComponentDto> fetchAllItems() throws Exception {
-        return ComponentClient.getAllComponents();
+    protected List<MaterialDto> fetchAllItems() throws Exception {
+        return MaterialClient.getAllMaterials();
     }
 
     @Override
-    protected Long getItemClassId(ComponentDto item) {
+    protected Long getItemClassId(MaterialDto item) {
         return item.getClassId();
     }
 
@@ -107,9 +126,9 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         }
         new Thread(() -> {
             try {
-                List<ComponentDto> allComponents = ComponentClient.getAllComponents();
-                List<ComponentDto> filtered = allComponents.stream()
-                        .filter(c -> c.getClassId().equals(classId))
+                List<MaterialDto> allMaterials = MaterialClient.getAllMaterials();
+                List<MaterialDto> filtered = allMaterials.stream()
+                        .filter(m -> m.getClassId().equals(classId))
                         .collect(Collectors.toList());
                 updateItemList(filtered);
             } catch (Exception e) {
@@ -126,9 +145,8 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
 
     @Override
     protected void showCreateCategoryDialog() {
-        // Реализация создания категории (специфичная для компонентов)
         Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Создание категории компонентов");
+        dialog.setTitle("Создание категории материалов");
         dialog.setHeaderText("Создание новой категории");
         dialog.initOwner(stage);
 
@@ -139,14 +157,14 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
 
         ComboBox<String> parentCombo = new ComboBox<>();
         parentCombo.getItems().add("— Корневая категория —");
-        for (ComponentCategoryDto rootCat : allCategories.stream().filter(c -> c.getParentId() == null).toList()) {
+        for (MaterialCategoryDto rootCat : allCategories.stream().filter(c -> c.getParentId() == null).toList()) {
             parentCombo.getItems().add(rootCat.getName());
             addChildCategoriesToParentComboSimple(parentCombo, rootCat, 1);
         }
         parentCombo.setValue("— Корневая категория —");
 
         TextField nameField = new TextField();
-        nameField.setPromptText("Например: Кронштейны");
+        nameField.setPromptText("Например: Крепёж");
         TextArea descriptionField = new TextArea();
         descriptionField.setPromptText("Описание (необязательно)");
         descriptionField.setPrefRowCount(3);
@@ -172,7 +190,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 Long parentId = null;
                 if (!"— Корневая категория —".equals(parentName) && parentName != null) {
                     String cleanName = parentName.replaceAll("^\\s+", "");
-                    for (ComponentCategoryDto cat : allCategories) {
+                    for (MaterialCategoryDto cat : allCategories) {
                         if (cat.getName().equals(cleanName)) {
                             parentId = cat.getId();
                             break;
@@ -182,7 +200,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 final Long finalParentId = parentId;
                 new Thread(() -> {
                     try {
-                        ComponentCategoryClient.createCategory(name, finalParentId, descriptionField.getText());
+                        MaterialCategoryClient.createCategory(name, finalParentId, descriptionField.getText());
                         Platform.runLater(() -> {
                             showAlert("Успешно", "Категория создана", Alert.AlertType.INFORMATION);
                             loadData();
@@ -203,19 +221,18 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
 
     @Override
     protected void createClass(Long categoryId, String name, String description, Long unitId) throws Exception {
-        ComponentClassClient.createClass(categoryId, name, description, unitId);
+        MaterialClassClient.createClass(categoryId, name, description, unitId);
     }
 
     @Override
     protected String getExampleClassName() {
-        return "Ступицы с цилиндрической посадкой";
+        return "Болты с шестигранной головкой";
     }
 
     @Override
-    protected void showItemDialog(ComponentDto existing) {
-        // Реализация диалога создания/редактирования компонента
+    protected void showItemDialog(MaterialDto existing) {
         Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle(existing == null ? "Создание компонента" : "Редактирование компонента");
+        dialog.setTitle(existing == null ? "Создание материала" : "Редактирование материала");
         dialog.initOwner(stage);
 
         GridPane grid = new GridPane();
@@ -223,30 +240,48 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         grid.setVgap(10);
         grid.setPadding(new Insets(20));
 
+        // Категории
         ComboBox<String> categoryCombo = new ComboBox<>();
         categoryCombo.getItems().add("— Все категории —");
         Map<String, Long> categoryIdMap = new HashMap<>();
-        for (ComponentCategoryDto rootCat : allCategories.stream().filter(c -> c.getParentId() == null).toList()) {
+        for (MaterialCategoryDto rootCat : allCategories.stream().filter(c -> c.getParentId() == null).toList()) {
             categoryCombo.getItems().add(rootCat.getName());
             categoryIdMap.put(rootCat.getName(), rootCat.getId());
             addChildCategoriesToParentComboWithMap(categoryCombo, rootCat, 1, categoryIdMap);
         }
         categoryCombo.setValue("— Все категории —");
 
+        // Классы
         ComboBox<String> classCombo = new ComboBox<>();
         classCombo.setPromptText("Выберите класс");
         classCombo.setDisable(true);
-        Map<String, ComponentClassDto> classMap = new HashMap<>();
+        Map<String, MaterialClassDto> classMap = new HashMap<>();
 
+        // Предупреждение
         Label warningLabel = new Label();
         warningLabel.setStyle("-fx-text-fill: red; -fx-font-size: 11px;");
         warningLabel.setVisible(false);
 
+        // Поля ввода
         TextField nameField = new TextField();
-        nameField.setPromptText("Наименование компонента");
-        TextField vendorCodeField = new TextField();
-        vendorCodeField.setPromptText("Артикул производителя");
+        nameField.setPromptText("Наименование материала");
 
+        TextField standardField = new TextField();
+        standardField.setPromptText("ГОСТ/ТУ (необязательно)");
+
+        TextField specificationField = new TextField();
+        specificationField.setPromptText("Тех. параметры (необязательно)");
+
+        TextField materialTypeField = new TextField();
+        materialTypeField.setPromptText("Тип материала (крепёж, металл...)");
+
+        TextField vendorCodeField = new TextField();
+        vendorCodeField.setPromptText("Артикул (необязательно)");
+
+        TextField densityField = new TextField();
+        densityField.setPromptText("Плотность (кг/м³) (необязательно)");
+
+        // Единица измерения
         GroupedComboBox<UnitOfMeasureDto> unitCombo = new GroupedComboBox<>();
         Map<String, List<UnitOfMeasureDto>> groupedUnits = allUnits.stream()
                 .collect(Collectors.groupingBy(UnitOfMeasureDto::getCategory));
@@ -267,18 +302,18 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 Long selectedCategoryId = categoryIdMap.get(newVal);
                 if (selectedCategoryId != null) {
                     classMap.clear();
-                    List<ComponentClassDto> filteredClasses = allClasses.stream()
+                    List<MaterialClassDto> filteredClasses = allClasses.stream()
                             .filter(cls -> cls.getCategoryId() != null && cls.getCategoryId().equals(selectedCategoryId))
                             .toList();
                     classCombo.getItems().clear();
-                    for (ComponentClassDto cls : filteredClasses) {
+                    for (MaterialClassDto cls : filteredClasses) {
                         classCombo.getItems().add(cls.getName());
                         classMap.put(cls.getName(), cls);
                     }
                     if (filteredClasses.isEmpty()) {
                         classCombo.setDisable(true);
                         classCombo.setPromptText("Нет классов");
-                        warningLabel.setText("⚠ Сначала создайте классы в этой категории");
+                        warningLabel.setText("⚠️ Сначала создайте классы в этой категории");
                         warningLabel.setVisible(true);
                     } else {
                         classCombo.setDisable(false);
@@ -291,14 +326,18 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         // Заполнение при редактировании
         if (existing != null) {
             nameField.setText(existing.getName());
+            if (existing.getStandard() != null) standardField.setText(existing.getStandard());
+            if (existing.getSpecification() != null) specificationField.setText(existing.getSpecification());
+            if (existing.getMaterialType() != null) materialTypeField.setText(existing.getMaterialType());
             if (existing.getVendorCode() != null) vendorCodeField.setText(existing.getVendorCode());
+            if (existing.getDensity() != null) densityField.setText(String.valueOf(existing.getDensity()));
             if (existing.getDescription() != null) descriptionField.setText(existing.getDescription());
 
             if (existing.getClassId() != null) {
-                for (ComponentClassDto cls : allClasses) {
+                for (MaterialClassDto cls : allClasses) {
                     if (cls.getId().equals(existing.getClassId())) {
                         classCombo.setValue(cls.getName());
-                        for (ComponentCategoryDto cat : allCategories) {
+                        for (MaterialCategoryDto cat : allCategories) {
                             if (cat.getId().equals(cls.getCategoryId())) {
                                 categoryCombo.setValue(cat.getName());
                                 break;
@@ -318,6 +357,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
             }
         }
 
+        // Сборка сетки
         int row = 0;
         grid.add(new Label("Категория:*"), 0, row);
         grid.add(categoryCombo, 1, row++);
@@ -326,12 +366,20 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         grid.add(warningLabel, 1, row++);
         grid.add(new Label("Наименование:*"), 0, row);
         grid.add(nameField, 1, row++);
+        grid.add(new Label("ГОСТ/ТУ:"), 0, row);
+        grid.add(standardField, 1, row++);
+        grid.add(new Label("Тех. параметры:"), 0, row);
+        grid.add(specificationField, 1, row++);
+        grid.add(new Label("Тип материала:"), 0, row);
+        grid.add(materialTypeField, 1, row++);
         grid.add(new Label("Артикул:"), 0, row);
         grid.add(vendorCodeField, 1, row++);
         grid.add(new Label("Единица измерения:*"), 0, row);
         grid.add(unitCombo, 1, row++);
+        grid.add(new Label("Плотность (кг/м³):"), 0, row);
+        grid.add(densityField, 1, row++);
         grid.add(new Label("Описание:"), 0, row);
-        grid.add(descriptionField, 1, row++);
+        grid.add(descriptionField, 1, row);
 
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -340,7 +388,16 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
             if (buttonType == ButtonType.OK) {
                 String selectedClass = classCombo.getValue();
                 String name = nameField.getText().trim();
+                String standard = standardField.getText().trim();
+                String specification = specificationField.getText().trim();
+                String materialType = materialTypeField.getText().trim();
                 String vendorCode = vendorCodeField.getText().trim();
+                Double density = null;
+                try {
+                    if (!densityField.getText().trim().isEmpty()) {
+                        density = Double.parseDouble(densityField.getText().trim());
+                    }
+                } catch (NumberFormatException ignored) {}
                 UnitOfMeasureDto selectedUnit = unitCombo.getValue();
                 String description = descriptionField.getText().trim();
 
@@ -357,24 +414,25 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                     return;
                 }
 
-                ComponentClassDto selectedClassDto = classMap.get(selectedClass);
+                MaterialClassDto selectedClassDto = classMap.get(selectedClass);
                 if (selectedClassDto == null) {
                     showAlert("Ошибка", "Класс не найден", Alert.AlertType.ERROR);
                     return;
                 }
 
-                CreateComponentRequest request = new CreateComponentRequest(
-                        selectedClassDto.getId(), name, vendorCode, selectedUnit.getId(), description);
+                CreateMaterialRequest request = new CreateMaterialRequest(
+                        selectedClassDto.getId(), name, standard, specification, materialType,
+                        selectedUnit.getId(), density, vendorCode, null, description);
 
                 new Thread(() -> {
                     try {
                         if (existing == null) {
-                            ComponentClient.createComponent(request);
+                            MaterialClient.createMaterial(request);
                         } else {
-                            ComponentClient.updateComponent(existing.getId(), request);
+                            MaterialClient.updateMaterial(existing.getId(), request);
                         }
                         Platform.runLater(() -> {
-                            showAlert("Успешно", "Компонент " + (existing == null ? "создан" : "обновлён"),
+                            showAlert("Успешно", "Материал " + (existing == null ? "создан" : "обновлён"),
                                     Alert.AlertType.INFORMATION);
                             loadData();
                         });
@@ -388,51 +446,51 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     }
 
     // ==========================================
-    // РЕАЛИЗАЦИЯ АБСТРАКТНЫХ МЕТОДОВ
+    // РЕАЛИЗАЦИЯ АБСТРАКТНЫХ МЕТОДОВ БАЗОВОГО КЛАССА
     // ==========================================
 
     @Override
-    protected List<ComponentCategoryDto> fetchCategories() throws Exception {
-        return ComponentCategoryClient.getAllCategories();
+    protected List<MaterialCategoryDto> fetchCategories() throws Exception {
+        return MaterialCategoryClient.getAllCategories();
     }
 
     @Override
-    protected List<ComponentClassDto> fetchClasses() throws Exception {
-        return ComponentClassClient.getAllClasses();
+    protected List<MaterialClassDto> fetchClasses() throws Exception {
+        return MaterialClassClient.getAllClasses();
     }
 
     @Override
     protected String getItemTypeName() {
-        return "компоненты";
+        return "материалы";
     }
 
     @Override
-    protected Long getCategoryId(ComponentCategoryDto category) {
+    protected Long getCategoryId(MaterialCategoryDto category) {
         return category.getId();
     }
 
     @Override
-    protected String getCategoryName(ComponentCategoryDto category) {
+    protected String getCategoryName(MaterialCategoryDto category) {
         return category.getName();
     }
 
     @Override
-    protected Long getCategoryParentId(ComponentCategoryDto category) {
+    protected Long getCategoryParentId(MaterialCategoryDto category) {
         return category.getParentId();
     }
 
     @Override
-    protected Long getClassId(ComponentClassDto cls) {
+    protected Long getClassId(MaterialClassDto cls) {
         return cls.getId();
     }
 
     @Override
-    protected String getClassName(ComponentClassDto cls) {
+    protected String getClassName(MaterialClassDto cls) {
         return cls.getName();
     }
 
     @Override
-    protected Long getClassCategoryId(ComponentClassDto cls) {
+    protected Long getClassCategoryId(MaterialClassDto cls) {
         return cls.getCategoryId();
     }
 
@@ -447,8 +505,8 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     }
 
     @Override
-    protected TableView<ComponentDto> getTableView() {
-        return componentsTable;
+    protected TableView<MaterialDto> getTableView() {
+        return materialsTable;
     }
 
     // ==========================================
@@ -468,10 +526,11 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     private void performSearch(String searchText) {
         new Thread(() -> {
             try {
-                List<ComponentDto> allComponents = ComponentClient.getAllComponents();
-                List<ComponentDto> filtered = allComponents.stream()
-                        .filter(c -> c.getName().toLowerCase().contains(searchText) ||
-                                (c.getVendorCode() != null && c.getVendorCode().toLowerCase().contains(searchText)))
+                List<MaterialDto> allMaterials = MaterialClient.getAllMaterials();
+                List<MaterialDto> filtered = allMaterials.stream()
+                        .filter(m -> m.getName().toLowerCase().contains(searchText) ||
+                                (m.getStandard() != null && m.getStandard().toLowerCase().contains(searchText)) ||
+                                (m.getVendorCode() != null && m.getVendorCode().toLowerCase().contains(searchText)))
                         .collect(Collectors.toList());
                 updateItemList(filtered);
                 Platform.runLater(() -> getStatusLabel().setText("Найдено: " + filtered.size()));
@@ -499,28 +558,28 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
 
     @FXML
     private void handleEdit() {
-        ComponentDto selected = getTableView().getSelectionModel().getSelectedItem();
+        MaterialDto selected = getTableView().getSelectionModel().getSelectedItem();
         if (selected != null) showItemDialog(selected);
-        else showAlert("Внимание", "Выберите компонент для редактирования", Alert.AlertType.WARNING);
+        else showAlert("Внимание", "Выберите материал для редактирования", Alert.AlertType.WARNING);
     }
 
     @FXML
     private void handleDelete() {
-        ComponentDto selected = getTableView().getSelectionModel().getSelectedItem();
+        MaterialDto selected = getTableView().getSelectionModel().getSelectedItem();
         if (selected == null) {
-            showAlert("Внимание", "Выберите компонент для удаления", Alert.AlertType.WARNING);
+            showAlert("Внимание", "Выберите материал для удаления", Alert.AlertType.WARNING);
             return;
         }
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Подтверждение удаления");
-        confirm.setContentText("Удалить компонент \"" + selected.getName() + "\"?");
+        confirm.setContentText("Удалить материал \"" + selected.getName() + "\"?");
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 new Thread(() -> {
                     try {
-                        ComponentClient.deleteComponent(selected.getId());
+                        MaterialClient.deleteMaterial(selected.getId());
                         Platform.runLater(() -> {
-                            showAlert("Успешно", "Компонент удалён", Alert.AlertType.INFORMATION);
+                            showAlert("Успешно", "Материал удалён", Alert.AlertType.INFORMATION);
                             loadData();
                         });
                     } catch (Exception e) {
