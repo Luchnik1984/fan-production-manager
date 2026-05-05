@@ -18,8 +18,10 @@ public class ProductComponentDto {
     private Long componentId;
     private String componentName;
     private String componentClass;
+    private String vendorCode;
     private String unitCode;
     private Double quantity;
+    private String description;
     private String position;
     private String note;
 }

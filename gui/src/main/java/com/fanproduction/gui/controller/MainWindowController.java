@@ -129,36 +129,29 @@ public class MainWindowController {
         Tab journalTab = createPlaceholderTab("Журнал", "Производственный журнал");
         tabPane.getTabs().add(journalTab);
 
-        // Вкладка "Документы" — доступна всем
-        Tab documentsTab = createPlaceholderTab("Документы", "Генерация ТЗ, паспортов, табличек");
-        tabPane.getTabs().add(documentsTab);
-
-        // Вкладка "Справочники" — доступна всем
-        Tab referencesTab = createPlaceholderTab("Справочники", "Электродвигатели, материалы, сертификаты");
-        tabPane.getTabs().add(referencesTab);
-
         // Вкладка "Карточки" — доступна всем
         Tab catalogTab = createCatalogTab();
         tabPane.getTabs().add(catalogTab);
-
-        // Вкладка "Модерация" — ТОЛЬКО ДЛЯ ADMIN
-        if ("ADMIN".equals(currentUserRole)) {
-            Tab moderationTab = createModerationTab();
-            tabPane.getTabs().add(moderationTab);
-        }
-
-        // Вкладка "Журнал аудита" — ТОЛЬКО ДЛЯ ADMIN
-        if ("ADMIN".equals(currentUserRole)) {
-             Tab auditTab = createAuditTab();
-             tabPane.getTabs().add(auditTab);
-         }
 
         // Вкладка "Компоненты" — доступна ADMIN и ENGINEER
         if ("ADMIN".equals(currentUserRole) || "ENGINEER".equals(currentUserRole)) {
             Tab componentsTab = createComponentsCatalogTab();
             tabPane.getTabs().add(componentsTab);
         }
+        // Вкладка "Документы" — доступна всем
+        Tab documentsTab = createPlaceholderTab("Документы", "Генерация ТЗ, паспортов, табличек");
+        tabPane.getTabs().add(documentsTab);
 
+        // Вкладка "Справочники" — доступна всем
+        Tab referencesTab = createPlaceholderTab("Справочники", "Декларации, сертификаты");
+        tabPane.getTabs().add(referencesTab);
+
+
+        // Административные вкладки "Модерация" и "Журнал аудита" (в конце, только для ADMIN)
+        if ("ADMIN".equals(currentUserRole)) {
+            tabPane.getTabs().add(createModerationTab());
+            tabPane.getTabs().add(createAuditTab());
+        }
 
         return tabPane;
     }

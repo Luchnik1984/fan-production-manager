@@ -25,18 +25,12 @@
         <TreeView fx:id="categoryTreeView" />
 
         <VBox spacing="10">
-            <!-- Фильтр по классам и таблица -->
-            <HBox spacing="10" alignment="CENTER_LEFT">
-                <Label text="Класс:" />
-                <ComboBox fx:id="classFilterComboBox" prefWidth="200" />
-            </HBox>
-
             <TableView fx:id="componentsTable" VBox.vgrow="ALWAYS">
                 <columns>
                     <TableColumn fx:id="nameColumn" text="Наименование" prefWidth="200" />
                     <TableColumn fx:id="classNameColumn" text="Класс" prefWidth="150" />
-                    <TableColumn fx:id="vendorCodeColumn" text="Артикул" prefWidth="120" />
-                    <TableColumn fx:id="unitColumn" text="Ед. изм." prefWidth="80" />
+                    <TableColumn fx:id="vendorCodeColumn" text="Артикул" prefWidth="100" />
+                    <TableColumn fx:id="unitColumn" text="Ед. изм." prefWidth="55" minWidth="55" maxWidth="55" resizable="false" />
                     <TableColumn fx:id="descriptionColumn" text="Описание" prefWidth="250" />
                 </columns>
                 <columnResizePolicy>
@@ -51,7 +45,7 @@
         <Button fx:id="createCategoryButton" text="📁 Создать категорию" onAction="#handleCreateCategory" />
         <Button fx:id="createClassButton" text="📂 Создать класс" onAction="#handleCreateClass" />
         <Button fx:id="createButton" text="➕ Создать компонент" onAction="#handleCreate" />
-        <Button fx:id="editButton" text="✏️ Редактировать" onAction="#handleEdit" />
-        <Button fx:id="deleteButton" text="🗑️ Удалить" onAction="#handleDelete" />
+        <Button fx:id="editButton" text="✏ Редактировать" onAction="#handleEdit" />
+        <Button fx:id="deleteButton" text="🗑 Удалить" onAction="#handleDelete" />
     </HBox>
 </VBox>

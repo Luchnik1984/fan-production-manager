@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="10" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.fanproduction.gui.controller.ComponentSelectorController">
+    <padding>
+        <Insets bottom="10" left="10" right="10" top="10" />
+    </padding>
+
+    <Label text="Выберите компонент" style="-fx-font-size: 14px; -fx-font-weight: bold;" />
+
+    <TreeView fx:id="categoryTreeView" VBox.vgrow="ALWAYS" prefHeight="400" />
+
+    <Label fx:id="selectedComponentLabel" text="Выбран: " wrapText="true" />
+
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button fx:id="selectButton" text="Выбрать" onAction="#handleSelect" defaultButton="true" />
+        <Button fx:id="cancelButton" text="Отмена" onAction="#handleCancel" cancelButton="true" />
+    </HBox>
+</VBox>

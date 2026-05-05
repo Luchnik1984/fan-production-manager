@@ -309,6 +309,21 @@ public class ComponentController {
         }
     }
 
+    @PutMapping("/product/{productCardId}/{componentId}/note")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
+    public ApiResponse<Void> updateComponentNote(
+            @PathVariable Long productCardId,
+            @PathVariable Long componentId,
+            @RequestBody Map<String, String> request) {
+        try {
+            String note = request.get("note");
+            componentService.updateComponentNote(productCardId, componentId, note);
+            return ApiResponse.success("Примечание обновлено", null);
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
     // ========== Mappers ==========
 
     private UnitOfMeasureDto toDto(UnitOfMeasureEntity entity) {
@@ -370,6 +385,8 @@ public class ComponentController {
 
         componentService.getComponentById(entity.getComponentId()).ifPresent(comp -> {
             builder.componentName(comp.getName());
+            builder.vendorCode(comp.getVendorCode());
+            builder.description(comp.getDescription());
             componentService.getComponentClassById(comp.getClassId())
                     .ifPresent(cls -> builder.componentClass(cls.getName()));
             componentService.getUnitById(comp.getUnitId())

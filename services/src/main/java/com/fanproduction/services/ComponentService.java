@@ -57,4 +57,5 @@ public interface ComponentService {
     void updateComponentPosition(Long productCardId, Long componentId, String position);
     void removeComponentFromProduct(Long productCardId, Long componentId);
     void removeAllComponentsFromProduct(Long productCardId);
+    void updateComponentNote(Long productCardId, Long componentId, String note);
 }

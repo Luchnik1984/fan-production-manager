@@ -101,7 +101,7 @@ public class CardFormController {
         // Добавляем всё в главный layout
         mainLayout.getChildren().addAll(titleLabel, tabPane, buttonBox);
 
-        Scene scene = new Scene(mainLayout, 800, 700);
+        Scene scene = new Scene(mainLayout, 1000, 600);
         stage.setScene(scene);
     }
 
@@ -609,7 +609,7 @@ public class CardFormController {
 
             // Если редактируем существующую карточку — передаём ID для загрузки компонентов
             if (existingCard != null && existingCard.getId() != null) {
-                controller.setProductCardId(existingCard.getId());
+                controller.refresh(existingCard.getId());
             } else {
                 // Для новой карточки показываем сообщение, что нужно сначала сохранить
                 controller.showNotSavedMessage();

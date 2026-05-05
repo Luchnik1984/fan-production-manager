@@ -345,6 +345,16 @@ public class ComponentServiceImpl implements ComponentService {
 
     @Override
     @Transactional
+    public void updateComponentNote(Long productCardId, Long componentId, String note) {
+        ProductComponentEntity entity = productComponentRepository
+                .findByProductCardIdAndComponentId(productCardId, componentId)
+                .orElseThrow(() -> new IllegalArgumentException("Связь не найдена"));
+        entity.setNote(note);
+        productComponentRepository.save(entity);
+    }
+
+    @Override
+    @Transactional
     public void removeComponentFromProduct(Long productCardId, Long componentId) {
         productComponentRepository.deleteByProductCardIdAndComponentId(productCardId, componentId);
     }

@@ -41,8 +41,8 @@
     <HBox spacing="10" alignment="CENTER">
         <HBox spacing="10">
             <Button fx:id="createButton" text="➕ Создать" onAction="#handleCreate" />
-            <Button fx:id="editButton" text="✏️ Редактировать" onAction="#handleEdit" />
-            <Button fx:id="deleteButton" text="🗑️ Удалить" onAction="#handleDelete" />
+            <Button fx:id="editButton" text="✏ Редактировать" onAction="#handleEdit" />
+            <Button fx:id="deleteButton" text="🗑 Удалить" onAction="#handleDelete" />
         </HBox>
         <Region HBox.hgrow="ALWAYS" />
         <HBox spacing="10" alignment="CENTER_RIGHT">
