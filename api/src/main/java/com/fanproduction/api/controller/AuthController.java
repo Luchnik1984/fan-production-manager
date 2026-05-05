@@ -4,7 +4,7 @@ import com.fanproduction.api.dto.AuthRequest;
 import com.fanproduction.api.dto.AuthResponse;
 import com.fanproduction.api.dto.RegisterRequest;
 import com.fanproduction.api.security.JwtService;
-import com.fanproduction.core.entity.UserEntity;
+import com.fanproduction.core.entity.user.UserEntity;
 import com.fanproduction.core.enums.Role;
 import com.fanproduction.core.enums.UserStatus;
 import com.fanproduction.core.security.AdminSecretKeyValidator;

@@ -1,6 +1,6 @@
 package com.fanproduction.api.security;
 
-import com.fanproduction.core.entity.UserEntity;
+import com.fanproduction.core.entity.user.UserEntity;
 import com.fanproduction.core.enums.UserStatus;
 import com.fanproduction.services.UserService;
 import lombok.RequiredArgsConstructor;

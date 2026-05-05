@@ -1,7 +1,7 @@
 package com.fanproduction.api.mapper;
 
 import com.fanproduction.api.dto.ProductCardResponse;
-import com.fanproduction.core.entity.*;
+import com.fanproduction.core.entity.product.BaseProductCard;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;

@@ -117,7 +117,7 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
                 nameField.setText("Вентилятор канальный");
             }
         }
-        debugFullMarking();
+    //        debugFullMarking();
     }
 
     // ==================== НАСТРОЙКА ТИПА КОЛЕСА ====================
@@ -265,10 +265,6 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
 
         String newMarking = fullMarking.toString();
         String currentMarking = fullMarkingField.getText();
-
-        System.out.println("=== DuctFanCardConfigurator.updateFullMarking() ===");
-        System.out.println("  ductFanType (converted): " + ductFanType);
-        System.out.println("  newMarking: [" + newMarking + "]");
 
         if (currentMarking == null || currentMarking.isEmpty() || currentMarking.equals(lastAutoMarking)) {
             fullMarkingField.setText(newMarking);

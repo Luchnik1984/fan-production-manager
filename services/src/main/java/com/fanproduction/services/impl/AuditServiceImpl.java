@@ -1,10 +1,10 @@
 package com.fanproduction.services.impl;
 
 import com.fanproduction.core.dto.AuditLogDto;
-import com.fanproduction.core.entity.AuditLog;
+import com.fanproduction.core.entity.user.AuditLog;
 import com.fanproduction.core.enums.AuditAction;
 import com.fanproduction.core.security.CurrentUserProvider;
-import com.fanproduction.repositories.AuditLogRepository;
+import com.fanproduction.repositories.user.AuditLogRepository;
 import com.fanproduction.services.AuditService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;

@@ -1,6 +1,6 @@
 package com.fanproduction.services.factory;
 
-import com.fanproduction.core.entity.BaseProductCard;
+import com.fanproduction.core.entity.product.BaseProductCard;
 
 @FunctionalInterface
 public interface CardSupplier {

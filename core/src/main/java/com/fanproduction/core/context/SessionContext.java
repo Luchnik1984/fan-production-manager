@@ -1,6 +1,6 @@
 package com.fanproduction.core.context;
 
-import com.fanproduction.core.entity.UserEntity;
+import com.fanproduction.core.entity.user.UserEntity;
 import com.fanproduction.core.enums.Role;
 
 public class SessionContext {
