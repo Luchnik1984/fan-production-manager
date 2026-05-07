@@ -56,4 +56,6 @@ public interface MaterialService {
     void updateMaterialQuantity(Long productCardId, Long materialId, Double quantityPerUnit);
     void removeMaterialFromProduct(Long productCardId, Long materialId);
     void removeAllMaterialsFromProduct(Long productCardId);
+    void updateMaterialNote(Long productCardId, Long materialId, String note);
+
 }

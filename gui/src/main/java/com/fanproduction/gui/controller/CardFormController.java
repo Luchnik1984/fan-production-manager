@@ -30,6 +30,7 @@ public class CardFormController {
     private final Runnable onSaveCallback;
     private final FieldMetadataService metadataService = new FieldMetadataService();
     private ProductComponentsController componentsTabController;
+    private ProductMaterialsController materialsTabController;
 
     private final Map<String, Control> fieldControls = new HashMap<>();
     private final Map<String, FieldMetadataDto> fieldMetadata = new HashMap<>();
@@ -80,9 +81,13 @@ public class CardFormController {
         mainTab.setContent(scrollPane);
         tabPane.getTabs().add(mainTab);
 
-        // --- Вкладка 2: Комплектующие (НОВАЯ) ---
+        // --- Вкладка 2: Комплектующие ---
         Tab componentsTab = createComponentsTab();
         tabPane.getTabs().add(componentsTab);
+
+        // --- Вкладка 3: материалы ---
+        Tab materialsTab = createMaterialsTab();
+        tabPane.getTabs().add(materialsTab);
 
         // ==========================================
         // БЛОК С КНОПКАМИ
@@ -525,12 +530,17 @@ public class CardFormController {
                     if (response.isSuccess()) {
                         Long savedId = response.getData() != null ? response.getData().getId() : null;
 
-                        // ==========================================
+
                         // ОБНОВЛЯЕМ ВКЛАДКУ КОМПЛЕКТУЮЩИХ ПОСЛЕ СОХРАНЕНИЯ
-                        // ==========================================
                         if (componentsTabController != null && savedId != null) {
                             componentsTabController.refresh(savedId);
                         }
+
+                        // ОБНОВЛЯЕМ ВКЛАДКУ МАТЕРИАЛОВ ПОСЛЕ СОХРАНЕНИЯ
+                        if (materialsTabController != null && savedId != null) {
+                            materialsTabController.refresh(savedId);
+                        }
+
                         showAlert("Успешно", "Карточка " + (existingCard == null ? "создана" : "обновлена"),
                                 Alert.AlertType.INFORMATION);
                         if (onSaveCallback != null) {
@@ -621,6 +631,35 @@ public class CardFormController {
             VBox errorBox = new VBox(10);
             errorBox.setStyle("-fx-padding: 20px;");
             errorBox.getChildren().add(new Label("Ошибка загрузки комплектующих: " + e.getMessage()));
+            tab.setContent(errorBox);
+        }
+
+        return tab;
+    }
+
+    private Tab createMaterialsTab() {
+        Tab tab = new Tab("Материалы");
+        tab.setClosable(false);
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/ProductMaterialsView.fxml"));
+            Parent content = loader.load();
+
+            ProductMaterialsController controller = loader.getController();
+            this.materialsTabController = controller;
+
+            if (existingCard != null && existingCard.getId() != null) {
+                controller.refresh(existingCard.getId());
+            } else {
+                controller.showNotSavedMessage();
+            }
+
+            tab.setContent(content);
+        } catch (IOException e) {
+            e.printStackTrace();
+            VBox errorBox = new VBox(10);
+            errorBox.setStyle("-fx-padding: 20px;");
+            errorBox.getChildren().add(new Label("Ошибка загрузки материалов: " + e.getMessage()));
             tab.setContent(errorBox);
         }
 

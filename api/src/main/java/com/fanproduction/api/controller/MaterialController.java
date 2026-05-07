@@ -263,7 +263,7 @@ public class MaterialController {
             @RequestBody Map<String, Object> request) {
         try {
             Long materialId = ((Number) request.get("materialId")).longValue();
-            Double quantity = request.get("quantity") != null ? ((Number) request.get("quantity")).doubleValue() : 1.0;
+            Double quantity = request.get("quantityPerUnit") != null ? ((Number) request.get("quantityPerUnit")).doubleValue() : 1.0;
             String note = (String) request.get("note");
 
             ProductMaterialRequirementEntity entity = materialService.addMaterialToProduct(
@@ -281,9 +281,27 @@ public class MaterialController {
             @PathVariable Long materialId,
             @RequestBody Map<String, Double> request) {
         try {
-            Double quantity = request.get("quantity");
+            Double quantity = request.get("quantityPerUnit");
+            if (quantity == null) {
+                return ApiResponse.error("Количество не указано");
+            }
             materialService.updateMaterialQuantity(productCardId, materialId, quantity);
             return ApiResponse.success("Количество обновлено", null);
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    @PutMapping("/product/{productCardId}/{materialId}/note")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
+    public ApiResponse<Void> updateMaterialNote(
+            @PathVariable Long productCardId,
+            @PathVariable Long materialId,
+            @RequestBody Map<String, String> request) {
+        try {
+            String note = request.get("note");
+            materialService.updateMaterialNote(productCardId, materialId, note);
+            return ApiResponse.success("Примечание обновлено", null);
         } catch (IllegalArgumentException e) {
             return ApiResponse.error(e.getMessage());
         }
