@@ -1,8 +1,8 @@
 package com.fanproduction.api.controller;
 
-import com.fanproduction.api.dto.AuthRequest;
-import com.fanproduction.api.dto.AuthResponse;
-import com.fanproduction.api.dto.RegisterRequest;
+import com.fanproduction.api.dto.request.AuthRequest;
+import com.fanproduction.api.dto.response.AuthResponse;
+import com.fanproduction.api.dto.request.RegisterRequest;
 import com.fanproduction.api.security.JwtService;
 import com.fanproduction.core.entity.user.UserEntity;
 import com.fanproduction.core.enums.Role;
@@ -48,21 +48,13 @@ public class AuthController {
         // Проверяем статус ДО аутентификации
         if (user.getStatus() != UserStatus.ACTIVE) {
             log.warn("User not active: {}, status: {}", request.getEmail(), user.getStatus());
-            String message;
-            switch (user.getStatus()) {
-                case PENDING:
-                    message = "⏳ Ваша регистрация ожидает подтверждения администратором. После подтверждения вы сможете войти в систему.";
-                    break;
-                case REJECTED:
-                    message = "❌ Ваша регистрация отклонена администратором.";
-                    break;
-                case BLOCKED:
-                    message = "🔒 Ваш аккаунт заблокирован. Обратитесь к администратору.";
-                    break;
-                default:
-                    message = "Аккаунт не активирован. Статус: " + user.getStatus();
-                    break;
-            }
+            String message = switch (user.getStatus()) {
+                case PENDING ->
+                        "⏳ Ваша регистрация ожидает подтверждения администратором. После подтверждения вы сможете войти в систему.";
+                case REJECTED -> "❌ Ваша регистрация отклонена администратором.";
+                case BLOCKED -> "🔒 Ваш аккаунт заблокирован. Обратитесь к администратору.";
+                default -> "Аккаунт не активирован. Статус: " + user.getStatus();
+            };
             throw new BadCredentialsException(message);
         }
 

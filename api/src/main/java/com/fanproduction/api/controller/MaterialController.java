@@ -1,11 +1,11 @@
 package com.fanproduction.api.controller;
 
-import com.fanproduction.api.dto.ApiResponse;
-import com.fanproduction.api.dto.MaterialCategoryDto;
-import com.fanproduction.api.dto.MaterialClassDto;
-import com.fanproduction.api.dto.MaterialDto;
-import com.fanproduction.api.dto.ProductMaterialRequirementDto;
-import com.fanproduction.api.dto.UnitOfMeasureDto;
+import com.fanproduction.api.dto.response.ApiResponse;
+import com.fanproduction.api.dto.response.MaterialCategoryDto;
+import com.fanproduction.api.dto.response.MaterialClassDto;
+import com.fanproduction.api.dto.response.MaterialDto;
+import com.fanproduction.api.dto.response.ProductMaterialRequirementDto;
+import com.fanproduction.api.dto.response.UnitOfMeasureDto;
 import com.fanproduction.core.entity.material.MaterialCategoryEntity;
 import com.fanproduction.core.entity.material.MaterialClassEntity;
 import com.fanproduction.core.entity.material.MaterialEntity;

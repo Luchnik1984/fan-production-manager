@@ -1,10 +1,10 @@
 package com.fanproduction.api.controller;
 
-import com.fanproduction.api.dto.ApiResponse;
-import com.fanproduction.api.dto.BlockRequest;
-import com.fanproduction.api.dto.ChangePasswordRequest;
-import com.fanproduction.api.dto.RejectRequest;
-import com.fanproduction.api.dto.UpdateProfileRequest;
+import com.fanproduction.api.dto.response.ApiResponse;
+import com.fanproduction.api.dto.request.BlockRequest;
+import com.fanproduction.api.dto.request.ChangePasswordRequest;
+import com.fanproduction.api.dto.request.RejectRequest;
+import com.fanproduction.api.dto.request.UpdateProfileRequest;
 import com.fanproduction.core.dto.UserDto;
 import com.fanproduction.core.entity.user.UserEntity;
 import com.fanproduction.core.enums.UserStatus;

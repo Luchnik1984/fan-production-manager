@@ -1,6 +1,6 @@
 package com.fanproduction.api.exception;
 
-import com.fanproduction.api.dto.ApiResponse;
+import com.fanproduction.api.dto.response.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;

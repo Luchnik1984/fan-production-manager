@@ -1,4 +1,4 @@
-package com.fanproduction.api.dto;
+package com.fanproduction.api.dto.response;
 
 import lombok.Builder;
 import lombok.Data;
