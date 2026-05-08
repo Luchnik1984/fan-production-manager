@@ -372,10 +372,8 @@ public class ProductMaterialsController {
                             statusLabel.setText("Материал удалён");
                         });
                     } catch (Exception e) {
-                        Platform.runLater(() -> {
-                            showAlert("Ошибка", "Не удалось удалить: " + e.getMessage(),
-                                    Alert.AlertType.ERROR);
-                        });
+                        Platform.runLater(() -> showAlert("Ошибка", "Не удалось удалить: " + e.getMessage(),
+                                Alert.AlertType.ERROR));
                         e.printStackTrace();
                     }
                 }).start();
