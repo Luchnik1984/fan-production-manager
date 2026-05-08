@@ -51,6 +51,21 @@ public class ProductCardClient {
     }
 
     /**
+     * Создать временную карточку
+     */
+    public static ApiResponse<ProductCardDto> createTemporaryCard(String cardType, String createdBy) throws Exception {
+        Map<String, Object> request = new HashMap<>();
+        request.put("cardType", cardType);
+        request.put("name", "Временная карточка");
+        request.put("isTemporary", true);
+        request.put("fields", new HashMap<>());
+        request.put("createdBy", createdBy);
+
+        TypeReference<ApiResponse<ProductCardDto>> typeRef = new TypeReference<>() {};
+        return ApiClient.post(BASE_PATH, request, typeRef);
+    }
+
+    /**
      * Обновить карточку
      */
     public static ApiResponse<ProductCardDto> updateCard(Long id, String name, Map<String, Object> fields) throws Exception {

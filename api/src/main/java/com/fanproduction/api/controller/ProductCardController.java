@@ -51,6 +51,11 @@ public class ProductCardController {
             // Добавляем name в fields
             request.getFields().put("name", request.getName());
 
+            // Если это временная карточка, используем упрощённое создание
+            if (request.getIsTemporary() != null && request.getIsTemporary()) {
+                request.getFields().put("isTemporary", true);
+            }
+
             BaseProductCard card = productCardService.createCard(
                     cardType,
                     request.getFields(),

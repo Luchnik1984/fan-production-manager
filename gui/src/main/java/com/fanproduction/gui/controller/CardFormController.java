@@ -1,5 +1,6 @@
 package com.fanproduction.gui.controller;
 
+import com.fanproduction.gui.client.ApiClient;
 import com.fanproduction.gui.client.ProductCardClient;
 import com.fanproduction.gui.configurator.CardFormConfigurator;
 import com.fanproduction.gui.dto.SelectableItem;
@@ -31,6 +32,8 @@ public class CardFormController {
     private final FieldMetadataService metadataService = new FieldMetadataService();
     private ProductComponentsController componentsTabController;
     private ProductMaterialsController materialsTabController;
+    private Long temporaryCardId;
+    private boolean isTemporaryCard = false;
 
     private final Map<String, Control> fieldControls = new HashMap<>();
     private final Map<String, FieldMetadataDto> fieldMetadata = new HashMap<>();
@@ -52,6 +55,12 @@ public class CardFormController {
     private void initUI() {
         String title = existingCard == null ? "Создание карточки" : "Редактирование карточки";
         stage.setTitle(title + " - " + getTypeDisplayName(cardType));
+
+        // Для новых карточек сразу создаём временную запись в БД ↓↓↓
+        if (existingCard == null && temporaryCardId == null) {
+            isTemporaryCard = true;
+            createTemporaryCard();
+        }
 
         VBox mainLayout = new VBox(15);
         mainLayout.setPadding(new Insets(20));
@@ -108,6 +117,35 @@ public class CardFormController {
 
         Scene scene = new Scene(mainLayout, 1000, 600);
         stage.setScene(scene);
+    }
+
+    private void createTemporaryCard() {
+        new Thread(() -> {
+            try {
+                ApiResponse<ProductCardDto> response = ProductCardClient.createTemporaryCard(cardType, "system");
+                Platform.runLater(() -> {
+                    if (response.isSuccess() && response.getData() != null) {
+                        temporaryCardId = response.getData().getId();
+                        // Обновляем вкладки с реальным ID
+                        if (componentsTabController != null) {
+                            componentsTabController.refresh(temporaryCardId);
+                        }
+                        if (materialsTabController != null) {
+                            materialsTabController.refresh(temporaryCardId);
+                        }
+                    } else {
+                        showAlert("Ошибка", "Не удалось создать временную карточку: " + response.getMessage(),
+                                Alert.AlertType.ERROR);
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    showAlert("Ошибка", "Ошибка создания временной карточки: " + e.getMessage(),
+                            Alert.AlertType.ERROR);
+                });
+                e.printStackTrace();
+            }
+        }).start();
     }
 
     private GridPane createFormGrid() {
@@ -665,5 +703,16 @@ public class CardFormController {
 
         return tab;
     }
+
+    /**
+     * Возвращает ID текущей карточки (реальный или временный)
+     */
+    private Long getCurrentCardId() {
+        if (existingCard != null && existingCard.getId() != null) {
+            return existingCard.getId();
+        }
+        return temporaryCardId;
+    }
+
 
 }
