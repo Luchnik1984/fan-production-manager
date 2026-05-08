@@ -1,4 +1,4 @@
-package com.fanproduction.api.dto;
+package com.fanproduction.api.dto.request;
 
 import jakarta.validation.constraints.*;
 import lombok.Data;

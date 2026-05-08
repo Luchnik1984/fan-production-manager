@@ -356,6 +356,16 @@ public class MaterialServiceImpl implements MaterialService {
 
     @Override
     @Transactional
+    public void updateMaterialNote(Long productCardId, Long materialId, String note) {
+        ProductMaterialRequirementEntity entity = productMaterialRequirementRepository
+                .findByProductCardIdAndMaterialId(productCardId, materialId)
+                .orElseThrow(() -> new IllegalArgumentException("Связь не найдена"));
+        entity.setNote(note);
+        productMaterialRequirementRepository.save(entity);
+    }
+
+    @Override
+    @Transactional
     public void removeMaterialFromProduct(Long productCardId, Long materialId) {
         productMaterialRequirementRepository.deleteByProductCardIdAndMaterialId(productCardId, materialId);
     }

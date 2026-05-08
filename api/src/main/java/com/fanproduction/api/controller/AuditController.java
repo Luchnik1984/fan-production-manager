@@ -1,6 +1,6 @@
 package com.fanproduction.api.controller;
 
-import com.fanproduction.api.dto.ApiResponse;
+import com.fanproduction.api.dto.response.ApiResponse;
 import com.fanproduction.core.dto.AuditLogDto;
 import com.fanproduction.services.AuditService;
 import lombok.RequiredArgsConstructor;

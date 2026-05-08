@@ -1,18 +1,16 @@
-package com.fanproduction.api.dto;
+package com.fanproduction.gui.dto.response;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ComponentCategoryDto {
+public class MaterialCategoryDto {
     private Long id;
     private Long parentId;
     private String name;
@@ -20,7 +18,7 @@ public class ComponentCategoryDto {
     private String path;
     private Integer sortOrder;
     private String description;
-    private List<ComponentCategoryDto> children;
+    private List<MaterialCategoryDto> children;
     private LocalDateTime createdAt;
     private String createdBy;
 }

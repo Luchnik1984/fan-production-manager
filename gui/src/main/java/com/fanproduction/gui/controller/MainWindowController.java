@@ -138,6 +138,13 @@ public class MainWindowController {
             Tab componentsTab = createComponentsCatalogTab();
             tabPane.getTabs().add(componentsTab);
         }
+
+        // Вкладка "Материалы" — доступна
+        if ("ADMIN".equals(currentUserRole) || "ENGINEER".equals(currentUserRole)) {
+            Tab materialsTab = createMaterialsCatalogTab();
+            tabPane.getTabs().add(materialsTab);
+        }
+
         // Вкладка "Документы" — доступна всем
         Tab documentsTab = createPlaceholderTab("Документы", "Генерация ТЗ, паспортов, табличек");
         tabPane.getTabs().add(documentsTab);
@@ -533,6 +540,32 @@ public class MainWindowController {
             VBox errorBox = new VBox(10);
             errorBox.setStyle("-fx-padding: 20px;");
             errorBox.getChildren().add(new Label("Ошибка загрузки справочника компонентов: " + e.getMessage()));
+            tab.setContent(errorBox);
+        }
+
+        return tab;
+    }
+
+    /**
+     * Создаёт вкладку материалов.
+     */
+    private Tab createMaterialsCatalogTab() {
+        Tab tab = new Tab("Материалы");
+        tab.setClosable(false);
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/MaterialsCatalogView.fxml"));
+            Parent content = loader.load();
+
+            MaterialsCatalogController controller = loader.getController();
+            controller.setStage(stage);
+
+            tab.setContent(content);
+        } catch (IOException e) {
+            e.printStackTrace();
+            VBox errorBox = new VBox(10);
+            errorBox.setStyle("-fx-padding: 20px;");
+            errorBox.getChildren().add(new Label("Ошибка загрузки справочника материалов: " + e.getMessage()));
             tab.setContent(errorBox);
         }
 

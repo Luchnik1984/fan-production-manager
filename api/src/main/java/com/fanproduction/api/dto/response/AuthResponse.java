@@ -1,12 +1,11 @@
-package com.fanproduction.api.dto;
+package com.fanproduction.api.dto.response;
 
 import lombok.Data;
 
 @Data
-public class AuthRequest {
+public class AuthResponse {
     private String token;
     private String refreshToken;
     private String email;
-    private String password;
+    private String role;
 }
-

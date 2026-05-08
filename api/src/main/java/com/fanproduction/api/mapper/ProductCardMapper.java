@@ -1,6 +1,6 @@
 package com.fanproduction.api.mapper;
 
-import com.fanproduction.api.dto.ProductCardResponse;
+import com.fanproduction.api.dto.response.ProductCardResponse;
 import com.fanproduction.core.entity.product.BaseProductCard;
 import org.springframework.stereotype.Component;
 

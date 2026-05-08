@@ -1,4 +1,4 @@
-package com.fanproduction.api.dto;
+package com.fanproduction.api.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,13 +11,15 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UnitOfMeasureDto {
+public class MaterialClassDto {
     private Long id;
-    private String code;
+    private Long categoryId;
+    private String categoryName;
     private String name;
-    private String symbol;
-    private String category;
-    private Boolean isDefault;
+    private String description;
+    private Long unitId;
+    private String unitCode;
+    private String unitName;
     private LocalDateTime createdAt;
     private String createdBy;
 }

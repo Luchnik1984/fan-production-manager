@@ -1,6 +1,6 @@
 package com.fanproduction.api.controller;
 
-import com.fanproduction.api.dto.*;
+import com.fanproduction.api.dto.response.*;
 import com.fanproduction.core.entity.component.ComponentCategoryEntity;
 import com.fanproduction.core.entity.component.ComponentClassEntity;
 import com.fanproduction.core.entity.component.ComponentEntity;
