@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS base_product_card (
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP,
     created_by VARCHAR(100),
-    is_temporary BOOLEAN NOT NULL DEFAULT FALSE  -- ← ДОБАВИТЬ ЭТУ СТРОКУ
+    is_temporary BOOLEAN NOT NULL DEFAULT FALSE
     );
 
 -- Индексы для быстрого поиска

@@ -50,6 +50,6 @@ public class MaterialClassClient {
     }
 
     public static void deleteClass(Long id) throws Exception {
-        ApiClient.delete(BASE_PATH + "/" + id);
+        ApiClient.deleteWithCheck(BASE_PATH + "/" + id);
     }
 }

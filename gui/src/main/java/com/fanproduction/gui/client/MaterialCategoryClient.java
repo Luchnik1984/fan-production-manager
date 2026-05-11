@@ -58,6 +58,7 @@ public class MaterialCategoryClient {
     }
 
     public static void deleteCategory(Long id) throws Exception {
-        ApiClient.delete(BASE_PATH + "/" + id);
+        ApiClient.deleteWithCheck(BASE_PATH + "/" + id);
     }
+
 }

@@ -23,16 +23,19 @@ public interface ComponentService {
     ComponentCategoryEntity updateCategory(Long id, String name, Integer sortOrder);
     void deleteCategory(Long id);
     boolean isCategoryInUse(Long id);
+    ComponentCategoryEntity updateCategory(Long id, String name, Long parentId, String description);
 
     // ========== Component Class ==========
     List<ComponentClassEntity> getAllComponentClasses();
     List<ComponentClassEntity> getClassesByCategory(Long categoryId);
     Optional<ComponentClassEntity> getComponentClassById(Long id);
     Optional<ComponentClassEntity> getComponentClassByName(String name);
-    ComponentClassEntity createComponentClass(String name, String description, String createdBy);
+    ComponentClassEntity createComponentClass(Long categoryId, String name, String description, String createdBy, Long unitId);
     ComponentClassEntity updateComponentClass(Long id, String name, String description);
     void deleteComponentClass(Long id);
     boolean isComponentClassInUse(Long id);
+    ComponentClassEntity updateClass(Long id, String name, Long categoryId, String description);
+    void deleteClass(Long id);
 
     // ========== Component ==========
     List<ComponentEntity> getAllComponents();
@@ -58,4 +61,10 @@ public interface ComponentService {
     void removeComponentFromProduct(Long productCardId, Long componentId);
     void removeAllComponentsFromProduct(Long productCardId);
     void updateComponentNote(Long productCardId, Long componentId, String note);
+
+    boolean hasChildrenCategories(Long id);
+    boolean hasClassesInCategory(Long id);
+    boolean hasComponentsInClass(Long id);
+    boolean isClassUsedInProducts(Long id);
+    boolean isComponentUsedInProducts(Long id);
 }

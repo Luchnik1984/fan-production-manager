@@ -2,11 +2,13 @@ package com.fanproduction.gui.controller;
 
 import com.fanproduction.gui.base.BaseCatalogController;
 import com.fanproduction.gui.base.CategoryTreeItem;
+import com.fanproduction.gui.base.ExportRowDto;
 import com.fanproduction.gui.client.*;
 import com.fanproduction.gui.component.GroupedComboBox;
 import com.fanproduction.gui.dto.request.CreateComponentRequest;
 import com.fanproduction.gui.dto.response.*;
 import com.fanproduction.gui.util.TooltipUtil;
+import com.fasterxml.jackson.core.type.TypeReference;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
@@ -32,6 +34,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     @FXML private Button createButton;
     @FXML private Button editButton;
     @FXML private Button deleteButton;
+    @FXML private Button exportButton;
     @FXML private TreeView<CategoryTreeItem> categoryTreeView;
 
     @FXML
@@ -61,10 +64,11 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 cellData.getValue().getDescription() != null ? cellData.getValue().getDescription() : ""));
         descriptionColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
 
-        getTableView().setItems(itemList);
-        getTableView().setOnMouseClicked(event -> {
+        componentsTable.setItems(itemList);
+
+        componentsTable.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
-                ComponentDto selected = getTableView().getSelectionModel().getSelectedItem();
+                ComponentDto selected = componentsTable.getSelectionModel().getSelectedItem();
                 if (selected != null) showItemDialog(selected);
             }
         });
@@ -75,6 +79,22 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         editButton.setDisable(!hasSelection);
         deleteButton.setDisable(!hasSelection);
     }
+
+    private List<Long> getAllCategoryIds(Long categoryId) {
+        List<Long> ids = new ArrayList<>();
+        ids.add(categoryId);
+        List<ComponentCategoryDto> children = allCategories.stream()
+                .filter(c -> c.getParentId() != null && c.getParentId().equals(categoryId))
+                .toList();
+        for (ComponentCategoryDto child : children) {
+            ids.addAll(getAllCategoryIds(child.getId()));
+        }
+        return ids;
+    }
+
+    // ==========================================
+    // РЕАЛИЗАЦИЯ АБСТРАКТНЫХ МЕТОДОВ
+    // ==========================================
 
     @Override
     protected void loadAllItems() {
@@ -92,6 +112,16 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     @Override
     protected List<ComponentDto> fetchAllItems() throws Exception {
         return ComponentClient.getAllComponents();
+    }
+
+    @Override
+    protected Long getItemId(ComponentDto item) {
+        return item.getId();
+    }
+
+    @Override
+    protected String getItemName(ComponentDto item) {
+        return item.getName();
     }
 
     @Override
@@ -121,12 +151,37 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
 
     @Override
     protected void filterByCategoryId(Long categoryId) {
-        filterByCategoryIdCommon(categoryId);
+        if (categoryId == null) {
+            loadAllItems();
+            return;
+        }
+        List<Long> categoryIds = getAllCategoryIds(categoryId);
+        List<Long> classIds = allClasses.stream()
+                .filter(cls -> cls.getCategoryId() != null && categoryIds.contains(cls.getCategoryId()))
+                .map(ComponentClassDto::getId)
+                .toList();
+
+        if (classIds.isEmpty()) {
+            updateItemList(new ArrayList<>());
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                List<ComponentDto> allComponents = ComponentClient.getAllComponents();
+                List<ComponentDto> filtered = allComponents.stream()
+                        .filter(c -> classIds.contains(c.getClassId()))
+                        .collect(Collectors.toList());
+                updateItemList(filtered);
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", "Ошибка фильтрации: " + e.getMessage(),
+                        Alert.AlertType.ERROR));
+            }
+        }).start();
     }
 
     @Override
     protected void showCreateCategoryDialog() {
-        // Реализация создания категории (специфичная для компонентов)
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Создание категории компонентов");
         dialog.setHeaderText("Создание новой категории");
@@ -139,7 +194,8 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
 
         ComboBox<String> parentCombo = new ComboBox<>();
         parentCombo.getItems().add("— Корневая категория —");
-        for (ComponentCategoryDto rootCat : allCategories.stream().filter(c -> c.getParentId() == null).toList()) {
+        for (ComponentCategoryDto rootCat : allCategories.stream()
+                .filter(c -> c.getParentId() == null).toList()) {
             parentCombo.getItems().add(rootCat.getName());
             addChildCategoriesToParentComboSimple(parentCombo, rootCat, 1);
         }
@@ -207,13 +263,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     }
 
     @Override
-    protected String getExampleClassName() {
-        return "Ступицы с цилиндрической посадкой";
-    }
-
-    @Override
     protected void showItemDialog(ComponentDto existing) {
-        // Реализация диалога создания/редактирования компонента
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(existing == null ? "Создание компонента" : "Редактирование компонента");
         dialog.initOwner(stage);
@@ -226,7 +276,8 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         ComboBox<String> categoryCombo = new ComboBox<>();
         categoryCombo.getItems().add("— Все категории —");
         Map<String, Long> categoryIdMap = new HashMap<>();
-        for (ComponentCategoryDto rootCat : allCategories.stream().filter(c -> c.getParentId() == null).toList()) {
+        for (ComponentCategoryDto rootCat : allCategories.stream()
+                .filter(c -> c.getParentId() == null).toList()) {
             categoryCombo.getItems().add(rootCat.getName());
             categoryIdMap.put(rootCat.getName(), rootCat.getId());
             addChildCategoriesToParentComboWithMap(categoryCombo, rootCat, 1, categoryIdMap);
@@ -257,7 +308,6 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         descriptionField.setPromptText("Описание");
         descriptionField.setPrefRowCount(3);
 
-        // Зависимость категория → классы
         categoryCombo.valueProperty().addListener((obs, old, newVal) -> {
             if (newVal == null || "— Все категории —".equals(newVal)) {
                 classCombo.setDisable(true);
@@ -288,7 +338,6 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
             }
         });
 
-        // Заполнение при редактировании
         if (existing != null) {
             nameField.setText(existing.getName());
             if (existing.getVendorCode() != null) vendorCodeField.setText(existing.getVendorCode());
@@ -298,6 +347,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 for (ComponentClassDto cls : allClasses) {
                     if (cls.getId().equals(existing.getClassId())) {
                         classCombo.setValue(cls.getName());
+                        classMap.put(cls.getName(), cls);
                         for (ComponentCategoryDto cat : allCategories) {
                             if (cat.getId().equals(cls.getCategoryId())) {
                                 categoryCombo.setValue(cat.getName());
@@ -387,9 +437,31 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         });
     }
 
-    // ==========================================
-    // РЕАЛИЗАЦИЯ АБСТРАКТНЫХ МЕТОДОВ
-    // ==========================================
+
+    @Override
+    protected void deleteCategoryById(Long id) throws Exception {
+        ComponentCategoryClient.deleteCategory(id);
+    }
+
+    @Override
+    protected void deleteClassById(Long id) throws Exception {
+        ComponentClassClient.deleteClass(id);
+    }
+
+    @Override
+    protected void deleteItemById(Long id) throws Exception {
+        ComponentClient.deleteComponent(id);
+    }
+
+    @Override
+    protected String getCategoryUpdatePath() {
+        return "/components/categories/";
+    }
+
+    @Override
+    protected String getClassUpdatePath() {
+        return "/components/classes/";
+    }
 
     @Override
     protected List<ComponentCategoryDto> fetchCategories() throws Exception {
@@ -449,6 +521,75 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     @Override
     protected TableView<ComponentDto> getTableView() {
         return componentsTable;
+    }
+
+    @Override
+    protected List<ExportRowDto> getExportData() {
+        List<ExportRowDto> data = new ArrayList<>();
+        for (ComponentDto dto : itemList) {
+            List<String> values = Arrays.asList(
+                    dto.getName(),
+                    dto.getClassName() != null ? dto.getClassName() : "",
+                    dto.getVendorCode() != null ? dto.getVendorCode() : "",
+                    dto.getUnitCode() != null ? dto.getUnitCode() : "",
+                    dto.getDescription() != null ? dto.getDescription() : ""
+            );
+            data.add(new ExportRowDto(values));
+        }
+        return data;
+    }
+
+    @Override
+    protected String[] getExportHeaders() {
+        return new String[]{"Наименование", "Класс", "Артикул", "Ед. изм.", "Описание"};
+    }
+
+    @Override
+    protected String getClassDescription(ComponentClassDto cls) {
+        return cls.getDescription();
+    }
+
+    @Override
+    protected String getCategoryDescription(ComponentCategoryDto category) {
+        return category.getDescription();
+    }
+
+    @Override
+    protected void updateCategory(Long id, String newName, Long parentId, String description) {
+        new Thread(() -> {
+            try {
+                Map<String, Object> request = new HashMap<>();
+                request.put("name", newName);
+                if (parentId != null) {
+                    request.put("parentId", parentId);
+                }
+                if (description != null) {
+                    request.put("description", description);
+                }
+                ApiClient.put("/components/categories/" + id, request, new TypeReference<ApiResponse<Void>>() {});
+                Platform.runLater(this::loadData);
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", e.getMessage(), Alert.AlertType.ERROR));
+            }
+        }).start();
+    }
+
+    @Override
+    protected void updateClass(Long id, String newName, String description, Long categoryId) {
+        new Thread(() -> {
+            try {
+                Map<String, Object> request = new HashMap<>();
+                request.put("name", newName);
+                request.put("categoryId", categoryId);
+                if (description != null) {
+                    request.put("description", description);
+                }
+                ApiClient.put("/components/classes/" + id, request, new TypeReference<ApiResponse<Void>>() {});
+                Platform.runLater(this::loadData);
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", e.getMessage(), Alert.AlertType.ERROR));
+            }
+        }).start();
     }
 
     // ==========================================
@@ -511,24 +652,12 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
             showAlert("Внимание", "Выберите компонент для удаления", Alert.AlertType.WARNING);
             return;
         }
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Подтверждение удаления");
-        confirm.setContentText("Удалить компонент \"" + selected.getName() + "\"?");
-        confirm.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.OK) {
-                new Thread(() -> {
-                    try {
-                        ComponentClient.deleteComponent(selected.getId());
-                        Platform.runLater(() -> {
-                            showAlert("Успешно", "Компонент удалён", Alert.AlertType.INFORMATION);
-                            loadData();
-                        });
-                    } catch (Exception e) {
-                        Platform.runLater(() -> showAlert("Ошибка", "Не удалось удалить: " + e.getMessage(),
-                                Alert.AlertType.ERROR));
-                    }
-                }).start();
-            }
-        });
+        deleteItem(selected.getId(), selected.getName());
     }
+
+    @FXML
+    protected void handleExportToExcel() {
+        super.handleExportToExcel();
+    }
+
 }

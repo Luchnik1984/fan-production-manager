@@ -64,11 +64,12 @@ public class ComponentController {
     public ApiResponse<ComponentCategoryDto> updateCategory(
             @PathVariable Long id,
             @RequestBody Map<String, Object> request) {
-        String name = (String) request.get("name");
-        Integer sortOrder = request.get("sortOrder") != null ? ((Number) request.get("sortOrder")).intValue() : null;
-
         try {
-            ComponentCategoryEntity entity = componentService.updateCategory(id, name, sortOrder);
+            String name = (String) request.get("name");
+            Long parentId = request.get("parentId") != null ? ((Number) request.get("parentId")).longValue() : null;
+            String description = (String) request.get("description");
+
+            ComponentCategoryEntity entity = componentService.updateCategory(id, name, parentId, description);
             return ApiResponse.success(toCategoryDto(entity));
         } catch (IllegalArgumentException e) {
             return ApiResponse.error(e.getMessage());
@@ -80,11 +81,13 @@ public class ComponentController {
     public ApiResponse<Void> deleteCategory(@PathVariable Long id) {
         try {
             componentService.deleteCategory(id);
-            return ApiResponse.success("Категория удалена", null);
+            return ApiResponse.success(null);
         } catch (Exception e) {
             return ApiResponse.error(e.getMessage());
         }
     }
+
+
 
     // ========== Unit of Measure ==========
 
@@ -118,18 +121,43 @@ public class ComponentController {
 
     @PostMapping("/classes")
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
-    public ApiResponse<ComponentClassDto> createClass(@RequestBody Map<String, String> request) {
-        String name = request.get("name");
-        String description = request.get("description");
-
-        if (name == null || name.trim().isEmpty()) {
-            return ApiResponse.error("Название класса обязательно");
-        }
-
+    public ApiResponse<ComponentClassDto> createClass(@RequestBody Map<String, Object> request) {
         try {
+            // Извлекаем categoryId (обязательное поле)
+            Long categoryId = ((Number) request.get("categoryId")).longValue();
+            String name = (String) request.get("name");
+            String description = (String) request.get("description");
+            Long unitId = request.get("unitId") != null ? ((Number) request.get("unitId")).longValue() : null;
+
+            if (name == null || name.trim().isEmpty()) {
+                return ApiResponse.error("Название класса обязательно");
+            }
+            if (categoryId == null) {
+                return ApiResponse.error("Категория обязательна");
+            }
+
             ComponentClassEntity entity = componentService.createComponentClass(
-                    name.trim(), description, getCurrentUser());
+                    categoryId, name.trim(), description, getCurrentUser(), unitId);
             return ApiResponse.success(toDto(entity));
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        } catch (ClassCastException e) {
+            return ApiResponse.error("Неверный формат данных");
+        }
+    }
+
+    @PutMapping("/classes/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
+    public ApiResponse<ComponentClassDto> updateClass(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> request) {
+        try {
+            String name = (String) request.get("name");
+            Long categoryId = ((Number) request.get("categoryId")).longValue();
+            String description = (String) request.get("description");
+
+            ComponentClassEntity entity = componentService.updateClass(id, name, categoryId, description);
+            return ApiResponse.success(toClassDto(entity));
         } catch (IllegalArgumentException e) {
             return ApiResponse.error(e.getMessage());
         }
@@ -139,12 +167,13 @@ public class ComponentController {
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<Void> deleteClass(@PathVariable Long id) {
         try {
-            componentService.deleteComponentClass(id);
-            return ApiResponse.success("Класс удалён", null);
+            componentService.deleteClass(id);
+            return ApiResponse.success(null);
         } catch (Exception e) {
             return ApiResponse.error(e.getMessage());
         }
     }
+
 
     // ========== Components ==========
 
@@ -201,6 +230,7 @@ public class ComponentController {
     public ApiResponse<ComponentDto> updateComponent(@PathVariable Long id, @RequestBody ComponentDto dto) {
         try {
             ComponentEntity entity = new ComponentEntity();
+            entity.setClassId(dto.getClassId());
             entity.setName(dto.getName());
             entity.setVendorCode(dto.getVendorCode());
             entity.setUnitId(dto.getUnitId());

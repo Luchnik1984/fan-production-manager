@@ -8,6 +8,7 @@ import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
 import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fanproduction.gui.service.FieldMetadataService;
+import com.fasterxml.jackson.core.type.TypeReference;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
@@ -56,7 +57,7 @@ public class CardFormController {
         String title = existingCard == null ? "Создание карточки" : "Редактирование карточки";
         stage.setTitle(title + " - " + getTypeDisplayName(cardType));
 
-        // Для новых карточек сразу создаём временную запись в БД ↓↓↓
+        // Для новых карточек сразу создаём временную запись в БД
         if (existingCard == null && temporaryCardId == null) {
             isTemporaryCard = true;
             createTemporaryCard();
@@ -139,10 +140,8 @@ public class CardFormController {
                     }
                 });
             } catch (Exception e) {
-                Platform.runLater(() -> {
-                    showAlert("Ошибка", "Ошибка создания временной карточки: " + e.getMessage(),
-                            Alert.AlertType.ERROR);
-                });
+                Platform.runLater(() -> showAlert("Ошибка", "Ошибка создания временной карточки: " + e.getMessage(),
+                        Alert.AlertType.ERROR));
                 e.printStackTrace();
             }
         }).start();
@@ -552,13 +551,21 @@ public class CardFormController {
             }
         }
 
+        final boolean isNewCard = (existingCard == null);
+        final Long existingCardId = getCurrentCardId();
+
         saveButton.setDisable(true);
         saveButton.setText("Сохранение...");
 
         new Thread(() -> {
             try {
                 ApiResponse<ProductCardDto> response;
-                if (existingCard == null) {
+                if (isNewCard && existingCardId != null) {
+                    // Обновляем временную карточку
+                    response = ProductCardClient.updateCard(existingCardId, finalName, finalFields);
+                    // Снимаем флаг временной
+                    removeTemporaryFlag(existingCardId);
+                } else if (isNewCard) {
                     response = ProductCardClient.createCard(cardType, finalName, finalFields);
                 } else {
                     response = ProductCardClient.updateCard(finalId, finalName, finalFields);
@@ -566,20 +573,7 @@ public class CardFormController {
 
                 Platform.runLater(() -> {
                     if (response.isSuccess()) {
-                        Long savedId = response.getData() != null ? response.getData().getId() : null;
-
-
-                        // ОБНОВЛЯЕМ ВКЛАДКУ КОМПЛЕКТУЮЩИХ ПОСЛЕ СОХРАНЕНИЯ
-                        if (componentsTabController != null && savedId != null) {
-                            componentsTabController.refresh(savedId);
-                        }
-
-                        // ОБНОВЛЯЕМ ВКЛАДКУ МАТЕРИАЛОВ ПОСЛЕ СОХРАНЕНИЯ
-                        if (materialsTabController != null && savedId != null) {
-                            materialsTabController.refresh(savedId);
-                        }
-
-                        showAlert("Успешно", "Карточка " + (existingCard == null ? "создана" : "обновлена"),
+                        showAlert("Успешно", "Карточка " + (isNewCard ? "создана" : "обновлена"),
                                 Alert.AlertType.INFORMATION);
                         if (onSaveCallback != null) {
                             onSaveCallback.run();
@@ -712,6 +706,20 @@ public class CardFormController {
             return existingCard.getId();
         }
         return temporaryCardId;
+    }
+
+    private void removeTemporaryFlag(Long cardId) {
+        new Thread(() -> {
+            try {
+                Map<String, Boolean> request = new HashMap<>();
+                request.put("isTemporary", false);
+                ApiClient.put("/products/" + cardId + "/temporary", request,
+                        new TypeReference<ApiResponse<Void>>() {});
+                System.out.println("Temporary flag removed for card: " + cardId);
+            } catch (Exception e) {
+                System.err.println("Failed to remove temporary flag: " + e.getMessage());
+            }
+        }).start();
     }
 
 

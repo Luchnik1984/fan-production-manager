@@ -57,7 +57,7 @@ public class MaterialClient {
     }
 
     public static void deleteMaterial(Long id) throws Exception {
-        ApiClient.delete(BASE_PATH + "/" + id);
+        ApiClient.deleteWithCheck(BASE_PATH + "/" + id);
     }
 
     public static List<MaterialDto> searchMaterials(String query) throws Exception {

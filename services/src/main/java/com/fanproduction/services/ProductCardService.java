@@ -91,5 +91,11 @@ public interface ProductCardService {
      */
     Optional<RadialWheelCardEntity> getRadialWheelById(Long id);
 
+    /**
+     * Снять флаг временной карточки
+     */
+    void removeTemporaryFlag(Long id);
+
     List<BaseProductCard> searchByFields(String query);
+
 }

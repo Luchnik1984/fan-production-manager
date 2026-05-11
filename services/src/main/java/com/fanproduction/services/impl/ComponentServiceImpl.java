@@ -88,14 +88,14 @@ public class ComponentServiceImpl implements ComponentService {
     @Override
     @Transactional
     public void deleteCategory(Long id) {
-        // Проверяем, есть ли дочерние категории
-        List<ComponentCategoryEntity> children = componentCategoryRepository.findByParentIdOrderBySortOrderAsc(id);
-        if (!children.isEmpty()) {
-            throw new IllegalStateException("Невозможно удалить категорию, так как есть дочерние категории");
+        long childrenCount = componentCategoryRepository.countByParentId(id);
+        if (childrenCount > 0) {
+            System.out.println("Throwing: есть дочерние категории");
+            throw new IllegalStateException("У категории есть дочерние категории. Удалите их сначала.");
         }
-        // Проверяем, есть ли классы в этой категории
-        if (isCategoryInUse(id)) {
-            throw new IllegalStateException("Невозможно удалить категорию, так как есть классы в этой категории");
+        long classesCount = componentClassRepository.countByCategoryId(id);
+        if (classesCount > 0) {
+            throw new IllegalStateException("В категории есть классы. Удалите их сначала.");
         }
         componentCategoryRepository.deleteById(id);
     }
@@ -134,14 +134,20 @@ public class ComponentServiceImpl implements ComponentService {
 
     @Override
     @Transactional
-    public ComponentClassEntity createComponentClass(String name, String description, String createdBy) {
+    public ComponentClassEntity createComponentClass(Long categoryId, String name, String description, String createdBy, Long unitId) {
         if (componentClassRepository.existsByName(name)) {
             throw new IllegalArgumentException("Класс компонента с таким именем уже существует: " + name);
         }
 
+        // Проверяем существование категории
+        componentCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Категория не найдена: " + categoryId));
+
         ComponentClassEntity entity = new ComponentClassEntity();
+        entity.setCategoryId(categoryId);
         entity.setName(name);
         entity.setDescription(description);
+        entity.setUnitId(unitId);
         entity.setCreatedBy(createdBy);
         return componentClassRepository.save(entity);
     }
@@ -167,10 +173,19 @@ public class ComponentServiceImpl implements ComponentService {
     @Override
     @Transactional
     public void deleteComponentClass(Long id) {
-        if (isComponentClassInUse(id)) {
-            throw new IllegalStateException("Невозможно удалить класс, так как существуют компоненты этого класса");
+        // Проверяем наличие компонентов
+        long componentsCount = componentRepository.countByClassId(id);
+        if (componentsCount > 0) {
+            throw new IllegalStateException("В классе есть компоненты. Удалите их сначала.");
         }
         componentClassRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public void deleteClass(Long id) {
+        // Вызываем deleteComponentClass, чтобы не дублировать логику
+        deleteComponentClass(id);
     }
 
     @Override
@@ -221,8 +236,21 @@ public class ComponentServiceImpl implements ComponentService {
         ComponentEntity existing = componentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Компонент не найден: " + id));
 
+        //  Обновление ClassId
+        if (updated.getClassId() != null && !updated.getClassId().equals(existing.getClassId())) {
+            // Проверяем, существует ли новый класс
+            componentClassRepository.findById(updated.getClassId())
+                    .orElseThrow(() -> new IllegalArgumentException("Класс не найден: " + updated.getClassId()));
+            // Проверяем уникальность имени в новом классе
+            Optional<ComponentEntity> duplicate = componentRepository.findByClassIdAndName(updated.getClassId(), existing.getName());
+            if (duplicate.isPresent() && !duplicate.get().getId().equals(id)) {
+                throw new IllegalArgumentException("Компонент с таким именем уже существует в этом классе");
+            }
+            existing.setClassId(updated.getClassId());
+        }
+
         if (updated.getName() != null && !updated.getName().equals(existing.getName())) {
-            // Проверяем уникальность нового имени
+            // Проверяем уникальность нового имени в текущем классе
             Optional<ComponentEntity> duplicate = componentRepository.findByClassIdAndName(existing.getClassId(), updated.getName());
             if (duplicate.isPresent() && !duplicate.get().getId().equals(id)) {
                 throw new IllegalArgumentException("Компонент с таким именем уже существует в этом классе");
@@ -256,10 +284,9 @@ public class ComponentServiceImpl implements ComponentService {
     @Override
     @Transactional
     public void deleteComponent(Long id) {
-        // Проверяем, не используется ли компонент в продукции
-        List<ProductComponentEntity> usages = productComponentRepository.findByComponentId(id);
-        if (!usages.isEmpty()) {
-            throw new IllegalStateException("Невозможно удалить компонент, так как он используется в " + usages.size() + " карточках продукции");
+        // Проверяем, используется ли компонент в продукции
+        if (isComponentUsedInProducts(id)) {
+            throw new IllegalStateException("Невозможно удалить компонент: он используется в карточках продукции. Сначала удалите связи.");
         }
         componentRepository.deleteById(id);
     }
@@ -364,4 +391,83 @@ public class ComponentServiceImpl implements ComponentService {
     public void removeAllComponentsFromProduct(Long productCardId) {
         productComponentRepository.deleteByProductCardId(productCardId);
     }
+
+    @Override
+    @Transactional
+    public ComponentCategoryEntity updateCategory(Long id, String name, Long parentId, String description) {
+        ComponentCategoryEntity entity = componentCategoryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Категория не найдена"));
+
+        if (name != null && !name.isEmpty()) {
+            entity.setName(name);
+        }
+        // Обновляем родителя
+        if (parentId == null) {
+            // Перемещаем в корневую категорию
+            entity.setParentId(null);
+            entity.setLevel(1);
+            entity.setPath("/" + entity.getName() + "/");
+        } else {
+            ComponentCategoryEntity parent = componentCategoryRepository.findById(parentId)
+                    .orElseThrow(() -> new IllegalArgumentException("Родительская категория не найдена"));
+            entity.setParentId(parentId);
+            entity.setLevel(parent.getLevel() + 1);
+            entity.setPath(parent.getPath() + entity.getName() + "/");
+        }
+        if (description != null) {
+            entity.setDescription(description);
+        }
+        return componentCategoryRepository.save(entity);
+    }
+
+    @Override
+    @Transactional
+    public ComponentClassEntity updateClass(Long id, String name, Long categoryId, String description) {
+        ComponentClassEntity entity = componentClassRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Класс не найден"));
+
+        if (name != null && !name.isEmpty()) {
+            entity.setName(name);
+        }
+        if (categoryId != null) {
+            entity.setCategoryId(categoryId);
+        }
+        if (description != null) {
+            entity.setDescription(description);
+        }
+        return componentClassRepository.save(entity);
+    }
+
+    @Override
+    public boolean hasChildrenCategories(Long id) {
+        return componentCategoryRepository.countByParentId(id) > 0;
+    }
+
+    @Override
+    public boolean hasClassesInCategory(Long id) {
+        return componentClassRepository.countByCategoryId(id) > 0;
+    }
+
+    @Override
+    public boolean hasComponentsInClass(Long id) {
+        return componentRepository.countByClassId(id) > 0;
+    }
+
+    @Override
+    public boolean isClassUsedInProducts(Long id) {
+        // Находим все компоненты этого класса
+        List<ComponentEntity> components = componentRepository.findByClassId(id);
+        for (ComponentEntity component : components) {
+            if (isComponentUsedInProducts(component.getId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isComponentUsedInProducts(Long id) {
+        return !productComponentRepository.findByComponentId(id).isEmpty();
+    }
+
 }

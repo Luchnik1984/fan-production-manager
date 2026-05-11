@@ -1,11 +1,6 @@
 package com.fanproduction.api.controller;
 
-import com.fanproduction.api.dto.response.ApiResponse;
-import com.fanproduction.api.dto.response.MaterialCategoryDto;
-import com.fanproduction.api.dto.response.MaterialClassDto;
-import com.fanproduction.api.dto.response.MaterialDto;
-import com.fanproduction.api.dto.response.ProductMaterialRequirementDto;
-import com.fanproduction.api.dto.response.UnitOfMeasureDto;
+import com.fanproduction.api.dto.response.*;
 import com.fanproduction.core.entity.material.MaterialCategoryEntity;
 import com.fanproduction.core.entity.material.MaterialClassEntity;
 import com.fanproduction.core.entity.material.MaterialEntity;
@@ -97,8 +92,25 @@ public class MaterialController {
     public ApiResponse<Void> deleteCategory(@PathVariable Long id) {
         try {
             materialService.deleteCategory(id);
-            return ApiResponse.success("Категория удалена", null);
+            return ApiResponse.success(null);
         } catch (Exception e) {
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    @PutMapping("/categories/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
+    public ApiResponse<MaterialCategoryDto> updateCategory(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> request) {
+        try {
+            String name = (String) request.get("name");
+            Long parentId = request.get("parentId") != null ? ((Number) request.get("parentId")).longValue() : null;
+            String description = (String) request.get("description");
+
+            MaterialCategoryEntity entity = materialService.updateCategory(id, name, parentId, description);
+            return ApiResponse.success(toCategoryDto(entity));
+        } catch (IllegalArgumentException e) {
             return ApiResponse.error(e.getMessage());
         }
     }
@@ -126,15 +138,25 @@ public class MaterialController {
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<MaterialClassDto> createClass(@RequestBody Map<String, Object> request) {
         try {
+            // Извлекаем categoryId (обязательное поле)
             Long categoryId = ((Number) request.get("categoryId")).longValue();
             String name = (String) request.get("name");
             String description = (String) request.get("description");
             Long unitId = request.get("unitId") != null ? ((Number) request.get("unitId")).longValue() : null;
 
-            MaterialClassEntity entity = materialService.createClass(categoryId, name, description, unitId, getCurrentUser());
+            if (name == null || name.trim().isEmpty()) {
+                return ApiResponse.error("Название класса обязательно");
+            }
+            if (categoryId == null) {
+                return ApiResponse.error("Категория обязательна");
+            }
+
+            MaterialClassEntity entity = materialService.createClass(categoryId, name.trim(), description, getCurrentUser(), unitId);
             return ApiResponse.success(toClassDto(entity));
         } catch (IllegalArgumentException e) {
             return ApiResponse.error(e.getMessage());
+        } catch (ClassCastException e) {
+            return ApiResponse.error("Неверный формат данных");
         }
     }
 
@@ -143,8 +165,25 @@ public class MaterialController {
     public ApiResponse<Void> deleteClass(@PathVariable Long id) {
         try {
             materialService.deleteClass(id);
-            return ApiResponse.success("Класс удалён", null);
+            return ApiResponse.success(null);
         } catch (Exception e) {
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    @PutMapping("/classes/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
+    public ApiResponse<MaterialClassDto> updateClass(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> request) {
+        try {
+            String name = (String) request.get("name");
+            Long categoryId = ((Number) request.get("categoryId")).longValue();
+            String description = (String) request.get("description");
+
+            MaterialClassEntity entity = materialService.updateClass(id, name, categoryId, description);
+            return ApiResponse.success(toClassDto(entity));
+        } catch (IllegalArgumentException e) {
             return ApiResponse.error(e.getMessage());
         }
     }
@@ -207,6 +246,7 @@ public class MaterialController {
     public ApiResponse<MaterialDto> updateMaterial(@PathVariable Long id, @RequestBody MaterialDto dto) {
         try {
             MaterialEntity entity = new MaterialEntity();
+            entity.setClassId(dto.getClassId());
             entity.setName(dto.getName());
             entity.setStandard(dto.getStandard());
             entity.setSpecification(dto.getSpecification());

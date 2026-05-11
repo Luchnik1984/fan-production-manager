@@ -167,6 +167,17 @@ public class ProductCardServiceImpl implements ProductCardService {
         return email != null ? email : "system";
     }
 
+    @Override
+    @Transactional
+    public void removeTemporaryFlag(Long id) {
+        BaseProductCard card = productCardRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Карточка не найдена"));
+        if (card instanceof BaseProductCard) {
+            ((BaseProductCard) card).setTemporary(false);
+            productCardRepository.save(card);
+        }
+    }
+
 
     @Override
     public List<BaseProductCard> searchByFields(String query) {

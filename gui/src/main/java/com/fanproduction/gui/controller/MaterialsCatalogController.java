@@ -2,17 +2,20 @@ package com.fanproduction.gui.controller;
 
 import com.fanproduction.gui.base.BaseCatalogController;
 import com.fanproduction.gui.base.CategoryTreeItem;
+import com.fanproduction.gui.base.ExportRowDto;
 import com.fanproduction.gui.client.*;
 import com.fanproduction.gui.component.GroupedComboBox;
 import com.fanproduction.gui.dto.request.CreateMaterialRequest;
 import com.fanproduction.gui.dto.response.*;
 import com.fanproduction.gui.util.TooltipUtil;
+import com.fasterxml.jackson.core.type.TypeReference;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
+
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -35,6 +38,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
     @FXML private Button createButton;
     @FXML private Button editButton;
     @FXML private Button deleteButton;
+    @FXML private Button exportButton;
     @FXML private TreeView<CategoryTreeItem> categoryTreeView;
 
     @FXML
@@ -76,10 +80,11 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
                 cellData.getValue().getDescription() != null ? cellData.getValue().getDescription() : ""));
         descriptionColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
 
-        getTableView().setItems(itemList);
-        getTableView().setOnMouseClicked(event -> {
+        materialsTable.setItems(itemList);
+
+        materialsTable.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
-                MaterialDto selected = getTableView().getSelectionModel().getSelectedItem();
+                MaterialDto selected = materialsTable.getSelectionModel().getSelectedItem();
                 if (selected != null) showItemDialog(selected);
             }
         });
@@ -114,6 +119,16 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
     }
 
     @Override
+    protected Long getItemId(MaterialDto item) {
+        return item.getId();
+    }
+
+    @Override
+    protected String getItemName(MaterialDto item) {
+        return item.getName();
+    }
+
+    @Override
     protected Long getItemClassId(MaterialDto item) {
         return item.getClassId();
     }
@@ -140,7 +155,33 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
 
     @Override
     protected void filterByCategoryId(Long categoryId) {
-        filterByCategoryIdCommon(categoryId);
+        if (categoryId == null) {
+            loadAllItems();
+            return;
+        }
+        List<Long> categoryIds = getAllCategoryIds(categoryId);
+        List<Long> classIds = allClasses.stream()
+                .filter(cls -> cls.getCategoryId() != null && categoryIds.contains(cls.getCategoryId()))
+                .map(MaterialClassDto::getId)
+                .toList();
+
+        if (classIds.isEmpty()) {
+            updateItemList(new ArrayList<>());
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                List<MaterialDto> allMaterials = MaterialClient.getAllMaterials();
+                List<MaterialDto> filtered = allMaterials.stream()
+                        .filter(m -> classIds.contains(m.getClassId()))
+                        .collect(Collectors.toList());
+                updateItemList(filtered);
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", "Ошибка фильтрации: " + e.getMessage(),
+                        Alert.AlertType.ERROR));
+            }
+        }).start();
     }
 
     @Override
@@ -157,7 +198,8 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
 
         ComboBox<String> parentCombo = new ComboBox<>();
         parentCombo.getItems().add("— Корневая категория —");
-        for (MaterialCategoryDto rootCat : allCategories.stream().filter(c -> c.getParentId() == null).toList()) {
+        for (MaterialCategoryDto rootCat : allCategories.stream()
+                .filter(c -> c.getParentId() == null).toList()) {
             parentCombo.getItems().add(rootCat.getName());
             addChildCategoriesToParentComboSimple(parentCombo, rootCat, 1);
         }
@@ -225,11 +267,6 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
     }
 
     @Override
-    protected String getExampleClassName() {
-        return "Болты с шестигранной головкой";
-    }
-
-    @Override
     protected void showItemDialog(MaterialDto existing) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(existing == null ? "Создание материала" : "Редактирование материала");
@@ -240,48 +277,39 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         grid.setVgap(10);
         grid.setPadding(new Insets(20));
 
-        // Категории
         ComboBox<String> categoryCombo = new ComboBox<>();
         categoryCombo.getItems().add("— Все категории —");
         Map<String, Long> categoryIdMap = new HashMap<>();
-        for (MaterialCategoryDto rootCat : allCategories.stream().filter(c -> c.getParentId() == null).toList()) {
+        for (MaterialCategoryDto rootCat : allCategories.stream()
+                .filter(c -> c.getParentId() == null).toList()) {
             categoryCombo.getItems().add(rootCat.getName());
             categoryIdMap.put(rootCat.getName(), rootCat.getId());
             addChildCategoriesToParentComboWithMap(categoryCombo, rootCat, 1, categoryIdMap);
         }
         categoryCombo.setValue("— Все категории —");
 
-        // Классы
         ComboBox<String> classCombo = new ComboBox<>();
         classCombo.setPromptText("Выберите класс");
         classCombo.setDisable(true);
         Map<String, MaterialClassDto> classMap = new HashMap<>();
 
-        // Предупреждение
         Label warningLabel = new Label();
         warningLabel.setStyle("-fx-text-fill: red; -fx-font-size: 11px;");
         warningLabel.setVisible(false);
 
-        // Поля ввода
         TextField nameField = new TextField();
         nameField.setPromptText("Наименование материала");
-
         TextField standardField = new TextField();
         standardField.setPromptText("ГОСТ/ТУ (необязательно)");
-
         TextField specificationField = new TextField();
         specificationField.setPromptText("Тех. параметры (необязательно)");
-
         TextField materialTypeField = new TextField();
         materialTypeField.setPromptText("Тип материала (крепёж, металл...)");
-
         TextField vendorCodeField = new TextField();
         vendorCodeField.setPromptText("Артикул (необязательно)");
-
         TextField densityField = new TextField();
         densityField.setPromptText("Плотность (кг/м³) (необязательно)");
 
-        // Единица измерения
         GroupedComboBox<UnitOfMeasureDto> unitCombo = new GroupedComboBox<>();
         Map<String, List<UnitOfMeasureDto>> groupedUnits = allUnits.stream()
                 .collect(Collectors.groupingBy(UnitOfMeasureDto::getCategory));
@@ -292,7 +320,6 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         descriptionField.setPromptText("Описание");
         descriptionField.setPrefRowCount(3);
 
-        // Зависимость категория → классы
         categoryCombo.valueProperty().addListener((obs, old, newVal) -> {
             if (newVal == null || "— Все категории —".equals(newVal)) {
                 classCombo.setDisable(true);
@@ -313,7 +340,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
                     if (filteredClasses.isEmpty()) {
                         classCombo.setDisable(true);
                         classCombo.setPromptText("Нет классов");
-                        warningLabel.setText("⚠️ Сначала создайте классы в этой категории");
+                        warningLabel.setText("⚠ Сначала создайте классы в этой категории");
                         warningLabel.setVisible(true);
                     } else {
                         classCombo.setDisable(false);
@@ -323,7 +350,6 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
             }
         });
 
-        // Заполнение при редактировании
         if (existing != null) {
             nameField.setText(existing.getName());
             if (existing.getStandard() != null) standardField.setText(existing.getStandard());
@@ -337,6 +363,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
                 for (MaterialClassDto cls : allClasses) {
                     if (cls.getId().equals(existing.getClassId())) {
                         classCombo.setValue(cls.getName());
+                        classMap.put(cls.getName(), cls);
                         for (MaterialCategoryDto cat : allCategories) {
                             if (cat.getId().equals(cls.getCategoryId())) {
                                 categoryCombo.setValue(cat.getName());
@@ -357,7 +384,6 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
             }
         }
 
-        // Сборка сетки
         int row = 0;
         grid.add(new Label("Категория:*"), 0, row);
         grid.add(categoryCombo, 1, row++);
@@ -445,9 +471,68 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         });
     }
 
-    // ==========================================
-    // РЕАЛИЗАЦИЯ АБСТРАКТНЫХ МЕТОДОВ БАЗОВОГО КЛАССА
-    // ==========================================
+    @Override
+    protected void updateCategory(Long id, String newName, Long parentId, String description) {
+        new Thread(() -> {
+            try {
+                Map<String, Object> request = new HashMap<>();
+                request.put("name", newName);
+                if (parentId != null) {
+                    request.put("parentId", parentId);
+                }
+                if (description != null) {
+                    request.put("description", description);
+                }
+                ApiClient.put("/materials/categories/" + id, request, new TypeReference<ApiResponse<Void>>() {});
+                Platform.runLater(this::loadData);
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", e.getMessage(), Alert.AlertType.ERROR));
+            }
+        }).start();
+    }
+
+    @Override
+    protected void updateClass(Long id, String newName, String description, Long categoryId) {
+        new Thread(() -> {
+            try {
+                Map<String, Object> request = new HashMap<>();
+                request.put("name", newName);
+                request.put("categoryId", categoryId);
+                if (description != null) {
+                    request.put("description", description);
+                }
+                ApiClient.put("/materials/classes/" + id, request, new TypeReference<ApiResponse<Void>>() {});
+                Platform.runLater(this::loadData);
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", e.getMessage(), Alert.AlertType.ERROR));
+            }
+        }).start();
+    }
+
+    @Override
+    protected void deleteCategoryById(Long id) throws Exception {
+        MaterialCategoryClient.deleteCategory(id);
+    }
+
+    @Override
+    protected void deleteClassById(Long id) throws Exception {
+        MaterialClassClient.deleteClass(id);
+    }
+
+    @Override
+    protected void deleteItemById(Long id) throws Exception {
+        MaterialClient.deleteMaterial(id);
+    }
+
+    @Override
+    protected String getCategoryUpdatePath() {
+        return "/materials/categories/";
+    }
+
+    @Override
+    protected String getClassUpdatePath() {
+        return "/materials/classes/";
+    }
 
     @Override
     protected List<MaterialCategoryDto> fetchCategories() throws Exception {
@@ -490,6 +575,11 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
     }
 
     @Override
+    protected String getClassDescription(MaterialClassDto cls) {
+        return cls.getDescription();
+    }
+
+    @Override
     protected Long getClassCategoryId(MaterialClassDto cls) {
         return cls.getCategoryId();
     }
@@ -507,6 +597,46 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
     @Override
     protected TableView<MaterialDto> getTableView() {
         return materialsTable;
+    }
+
+    @Override
+    protected List<ExportRowDto> getExportData() {
+        List<ExportRowDto> data = new ArrayList<>();
+        for (MaterialDto dto : itemList) {
+            List<String> values = Arrays.asList(
+                    dto.getName(),
+                    dto.getClassName() != null ? dto.getClassName() : "",
+                    dto.getUnitCode() != null ? dto.getUnitCode() : "",
+                    dto.getStandard() != null ? dto.getStandard() : "",
+                    dto.getSpecification() != null ? dto.getSpecification() : "",
+                    dto.getMaterialType() != null ? dto.getMaterialType() : "",
+                    dto.getVendorCode() != null ? dto.getVendorCode() : "",
+                    dto.getDescription() != null ? dto.getDescription() : ""
+            );
+            data.add(new ExportRowDto(values));
+        }
+        return data;
+    }
+
+    @Override
+    protected String[] getExportHeaders() {
+        return new String[]{"Наименование", "Класс", "Ед. изм.", "ГОСТ/ТУ", "Тех. параметры", "Тип", "Артикул", "Описание"};
+    }
+
+    // ==========================================
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // ==========================================
+
+    private List<Long> getAllCategoryIds(Long categoryId) {
+        List<Long> ids = new ArrayList<>();
+        ids.add(categoryId);
+        List<MaterialCategoryDto> children = allCategories.stream()
+                .filter(c -> c.getParentId() != null && c.getParentId().equals(categoryId))
+                .toList();
+        for (MaterialCategoryDto child : children) {
+            ids.addAll(getAllCategoryIds(child.getId()));
+        }
+        return ids;
     }
 
     // ==========================================
@@ -570,24 +700,17 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
             showAlert("Внимание", "Выберите материал для удаления", Alert.AlertType.WARNING);
             return;
         }
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Подтверждение удаления");
-        confirm.setContentText("Удалить материал \"" + selected.getName() + "\"?");
-        confirm.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.OK) {
-                new Thread(() -> {
-                    try {
-                        MaterialClient.deleteMaterial(selected.getId());
-                        Platform.runLater(() -> {
-                            showAlert("Успешно", "Материал удалён", Alert.AlertType.INFORMATION);
-                            loadData();
-                        });
-                    } catch (Exception e) {
-                        Platform.runLater(() -> showAlert("Ошибка", "Не удалось удалить: " + e.getMessage(),
-                                Alert.AlertType.ERROR));
-                    }
-                }).start();
-            }
-        });
+        deleteItem(selected.getId(), selected.getName());
     }
+
+    @FXML
+    protected void handleExportToExcel() {
+        super.handleExportToExcel();
+    }
+
+    @Override
+    protected String getCategoryDescription(MaterialCategoryDto category) {
+        return category.getDescription();
+    }
+
 }

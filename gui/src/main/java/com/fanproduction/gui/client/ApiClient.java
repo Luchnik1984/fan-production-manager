@@ -1,5 +1,6 @@
 package com.fanproduction.gui.client;
 
+import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -202,6 +203,17 @@ public class ApiClient {
 
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             throw new RuntimeException("API error: " + response.statusCode() + " - " + response.body());
+        }
+    }
+
+    public static void deleteWithCheck(String path) throws Exception {
+        TypeReference<ApiResponse<Void>> typeRef = new TypeReference<>() {};
+        ApiResponse<Void> response = delete(path, typeRef);
+        if (response == null) {
+            throw new RuntimeException("Ответ сервера пуст");
+        }
+        if (!response.isSuccess()) {
+            throw new RuntimeException(response.getMessage());
         }
     }
 }
