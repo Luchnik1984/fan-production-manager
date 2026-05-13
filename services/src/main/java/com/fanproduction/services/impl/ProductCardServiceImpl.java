@@ -172,10 +172,8 @@ public class ProductCardServiceImpl implements ProductCardService {
     public void removeTemporaryFlag(Long id) {
         BaseProductCard card = productCardRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Карточка не найдена"));
-        if (card instanceof BaseProductCard) {
-            ((BaseProductCard) card).setTemporary(false);
+            card.setTemporary(false);
             productCardRepository.save(card);
-        }
     }
 
 

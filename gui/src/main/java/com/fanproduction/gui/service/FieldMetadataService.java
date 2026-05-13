@@ -4,7 +4,6 @@ import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Сервис для получения метаданных полей для разных типов карточек.
@@ -365,8 +364,6 @@ public class FieldMetadataService {
      * Получить все доступные типы карточек
      */
     public List<String> getAvailableCardTypes() {
-        return metadataMap.keySet().stream()
-                .filter(type -> !"ACCESSORY".equals(type))  // ← исключаем ACCESSORY
-                .collect(Collectors.toList());
+        return new ArrayList<>(metadataMap.keySet());
     }
 }

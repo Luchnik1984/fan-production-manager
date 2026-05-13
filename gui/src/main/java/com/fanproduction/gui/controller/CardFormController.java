@@ -34,7 +34,6 @@ public class CardFormController {
     private ProductComponentsController componentsTabController;
     private ProductMaterialsController materialsTabController;
     private Long temporaryCardId;
-    private boolean isTemporaryCard = false;
 
     private final Map<String, Control> fieldControls = new HashMap<>();
     private final Map<String, FieldMetadataDto> fieldMetadata = new HashMap<>();
@@ -57,12 +56,6 @@ public class CardFormController {
         String title = existingCard == null ? "Создание карточки" : "Редактирование карточки";
         stage.setTitle(title + " - " + getTypeDisplayName(cardType));
 
-        // Для новых карточек сразу создаём временную запись в БД
-        if (existingCard == null && temporaryCardId == null) {
-            isTemporaryCard = true;
-            createTemporaryCard();
-        }
-
         VBox mainLayout = new VBox(15);
         mainLayout.setPadding(new Insets(20));
         mainLayout.setStyle("-fx-background-color: #f5f5f5;");
@@ -70,69 +63,78 @@ public class CardFormController {
         Label titleLabel = new Label(title);
         titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
-        // ==========================================
-        // СОЗДАЁМ TabPane ДЛЯ ВКЛАДОК
-        // ==========================================
+        // 1. СОЗДАЁМ TabPane
         TabPane tabPane = new TabPane();
         tabPane.setPrefHeight(500);
 
-        // --- Вкладка 1: Основные поля (форма) ---
+        // --- Вкладка 1: Основные поля ---
         Tab mainTab = new Tab("Основные поля");
         mainTab.setClosable(false);
-
-        // Создаём форму (существующий метод)
         GridPane formGrid = createFormGrid();
-
-        // Оборачиваем форму в ScrollPane для прокрутки
         ScrollPane scrollPane = new ScrollPane(formGrid);
         scrollPane.setFitToWidth(true);
         scrollPane.setPrefHeight(450);
-
         mainTab.setContent(scrollPane);
         tabPane.getTabs().add(mainTab);
 
-        // --- Вкладка 2: Комплектующие ---
+        // --- Вкладка 2: Компоненты ---
         Tab componentsTab = createComponentsTab();
         tabPane.getTabs().add(componentsTab);
 
-        // --- Вкладка 3: материалы ---
+        // --- Вкладка 3: Материалы ---
         Tab materialsTab = createMaterialsTab();
         tabPane.getTabs().add(materialsTab);
 
-        // ==========================================
-        // БЛОК С КНОПКАМИ
-        // ==========================================
+        // 2. КНОПКИ
         Button saveButton = new Button("Сохранить");
         Button cancelButton = new Button("Отмена");
 
-        saveButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
+        // Удаление временной карточки при отмене
+        cancelButton.setOnAction(e -> {
+            deleteTemporaryCard();
+            stage.close();
+        });
 
+        // Удаление временной карточки при закрытии окна
+        stage.setOnCloseRequest(event -> deleteTemporaryCard());
+
+        saveButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
         saveButton.setOnAction(e -> saveCard(saveButton));
         cancelButton.setOnAction(e -> stage.close());
 
         HBox buttonBox = new HBox(10);
         buttonBox.getChildren().addAll(saveButton, cancelButton);
 
-        // Добавляем всё в главный layout
+        // 3. СБОРКА ГЛАВНОГО ЛЕЙАУТА
         mainLayout.getChildren().addAll(titleLabel, tabPane, buttonBox);
 
-        Scene scene = new Scene(mainLayout, 1000, 600);
+        Scene scene = new Scene(mainLayout, 900, 700);
         stage.setScene(scene);
+
+        // 4. СОЗДАЁМ ВРЕМЕННУЮ КАРТОЧКУ (ТОЛЬКО ДЛЯ НОВОЙ)
+        if (existingCard == null && temporaryCardId == null) {
+            createTemporaryCard();
+        }
     }
 
     private void createTemporaryCard() {
         new Thread(() -> {
             try {
+                // Передаём флаг isTemporary = true
                 ApiResponse<ProductCardDto> response = ProductCardClient.createTemporaryCard(cardType, "system");
                 Platform.runLater(() -> {
                     if (response.isSuccess() && response.getData() != null) {
                         temporaryCardId = response.getData().getId();
-                        // Обновляем вкладки с реальным ID
+                        System.out.println("Temporary card created with ID: " + temporaryCardId);
+
+                        // Обновляем вкладки с реальным ID (он уже есть в БД)
                         if (componentsTabController != null) {
                             componentsTabController.refresh(temporaryCardId);
+                            componentsTabController.enableControls();
                         }
                         if (materialsTabController != null) {
                             materialsTabController.refresh(temporaryCardId);
+                            materialsTabController.enableControls();
                         }
                     } else {
                         showAlert("Ошибка", "Не удалось создать временную карточку: " + response.getMessage(),
@@ -564,7 +566,9 @@ public class CardFormController {
                     // Обновляем временную карточку
                     response = ProductCardClient.updateCard(existingCardId, finalName, finalFields);
                     // Снимаем флаг временной
-                    removeTemporaryFlag(existingCardId);
+                    if (response.isSuccess()) {
+                        removeTemporaryFlag(existingCardId);
+                    }
                 } else if (isNewCard) {
                     response = ProductCardClient.createCard(cardType, finalName, finalFields);
                 } else {
@@ -637,53 +641,57 @@ public class CardFormController {
     }
 
     private Tab createComponentsTab() {
-        Tab tab = new Tab("Комплектующие");
-        tab.setClosable(false);
-
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/ProductComponentsView.fxml"));
-            Parent content = loader.load();
-
-            ProductComponentsController controller = loader.getController();
-
-            // Сохраняем ссылку на контроллер (теперь поле используется)
-            this.componentsTabController = controller;
-
-            // Если редактируем существующую карточку — передаём ID для загрузки компонентов
-            if (existingCard != null && existingCard.getId() != null) {
-                controller.refresh(existingCard.getId());
-            } else {
-                // Для новой карточки показываем сообщение, что нужно сначала сохранить
-                controller.showNotSavedMessage();
-            }
-
-            tab.setContent(content);
-        } catch (IOException e) {
-            e.printStackTrace();
-            VBox errorBox = new VBox(10);
-            errorBox.setStyle("-fx-padding: 20px;");
-            errorBox.getChildren().add(new Label("Ошибка загрузки комплектующих: " + e.getMessage()));
-            tab.setContent(errorBox);
-        }
-
-        return tab;
+        return createTab("/com/fanproduction/gui/view/ProductComponentsView.fxml",
+                "Компоненты",
+                ProductComponentsController.class);
     }
 
     private Tab createMaterialsTab() {
-        Tab tab = new Tab("Материалы");
+        return createTab("/com/fanproduction/gui/view/ProductMaterialsView.fxml",
+                "Материалы",
+                ProductMaterialsController.class);
+    }
+
+    /**
+     * Универсальный метод для создания вкладки компонентов или материалов
+     * @param fxmlPath путь к FXML файлу
+     * @param tabTitle название вкладки
+     * @param controllerClass класс контроллера
+     * @return настроенная вкладка
+     */
+    private <T> Tab createTab(String fxmlPath, String tabTitle, Class<T> controllerClass) {
+        Tab tab = new Tab(tabTitle);
         tab.setClosable(false);
 
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/ProductMaterialsView.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));
             Parent content = loader.load();
 
-            ProductMaterialsController controller = loader.getController();
-            this.materialsTabController = controller;
+            T controller = loader.getController();
 
-            if (existingCard != null && existingCard.getId() != null) {
-                controller.refresh(existingCard.getId());
+            // Сохраняем ссылку на контроллер в зависимости от типа
+            if (controller instanceof ProductComponentsController) {
+                this.componentsTabController = (ProductComponentsController) controller;
+            } else if (controller instanceof ProductMaterialsController) {
+                this.materialsTabController = (ProductMaterialsController) controller;
+            }
+
+            Long cardId = getCurrentCardId();
+
+            if (cardId != null) {
+                // Вызываем метод refresh в зависимости от типа
+                if (controller instanceof ProductComponentsController) {
+                    ((ProductComponentsController) controller).refresh(cardId);
+                } else if (controller instanceof ProductMaterialsController) {
+                    ((ProductMaterialsController) controller).refresh(cardId);
+                }
             } else {
-                controller.showNotSavedMessage();
+                // Показываем сообщение о загрузке
+                if (controller instanceof ProductComponentsController) {
+                    ((ProductComponentsController) controller).showLoadingMessage();
+                } else if (controller instanceof ProductMaterialsController) {
+                    ((ProductMaterialsController) controller).showLoadingMessage();
+                }
             }
 
             tab.setContent(content);
@@ -691,7 +699,7 @@ public class CardFormController {
             e.printStackTrace();
             VBox errorBox = new VBox(10);
             errorBox.setStyle("-fx-padding: 20px;");
-            errorBox.getChildren().add(new Label("Ошибка загрузки материалов: " + e.getMessage()));
+            errorBox.getChildren().add(new Label("Ошибка загрузки " + tabTitle + ": " + e.getMessage()));
             tab.setContent(errorBox);
         }
 
@@ -722,5 +730,20 @@ public class CardFormController {
         }).start();
     }
 
+    /**
+     * Удаляет временную карточку, если она существует
+     */
+    private void deleteTemporaryCard() {
+        if (temporaryCardId != null) {
+            new Thread(() -> {
+                try {
+                    ProductCardClient.deleteCardWithCheck(temporaryCardId);
+                    System.out.println("Temporary card deleted: " + temporaryCardId);
+                } catch (Exception e) {
+                    System.err.println("Failed to delete temporary card: " + e.getMessage());
+                }
+            }).start();
+        }
+    }
 
 }

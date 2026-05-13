@@ -42,13 +42,7 @@ public class CardTypeDisplay {
      * Возвращает карту всех соответствий (код -> название)
      */
     public static Map<String, String> getDisplayMap() {
-        Map<String, String> filtered = new HashMap<>();
-        for (Map.Entry<String, String> entry : DISPLAY_MAP.entrySet()) {
-            if (!"ACCESSORY".equals(entry.getKey())) {
-                filtered.put(entry.getKey(), entry.getValue());
-            }
-        }
-        return filtered;
+        return new HashMap<>(DISPLAY_MAP);
     }
 
     /**

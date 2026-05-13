@@ -87,6 +87,17 @@ public class ProductCardClient {
     }
 
     /**
+     * Удалить карточку с проверкой
+     */
+    public static void deleteCardWithCheck(Long id) throws Exception {
+        ApiResponse<Void> response = deleteCard(id);
+        if (response == null || !response.isSuccess()) {
+            String errorMsg = response != null ? response.getMessage() : "Неизвестная ошибка";
+            throw new RuntimeException(errorMsg);
+        }
+    }
+
+    /**
      * Поиск карточек по имени
      */
     public static ApiResponse<List<ProductCardDto>> searchCards(String query) throws Exception {
@@ -126,7 +137,7 @@ public class ProductCardClient {
                 result.add(dto);
             }
         }
-
         return result;
     }
+
 }
