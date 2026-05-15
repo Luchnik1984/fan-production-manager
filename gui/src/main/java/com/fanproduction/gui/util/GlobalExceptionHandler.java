@@ -6,6 +6,9 @@ import javafx.scene.control.Alert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
+
 public class GlobalExceptionHandler implements Thread.UncaughtExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
@@ -14,7 +17,6 @@ public class GlobalExceptionHandler implements Thread.UncaughtExceptionHandler {
     public void uncaughtException(Thread t, Throwable e) {
         log.error("Uncaught exception in thread: " + t.getName(), e);
 
-        // Определяем, является ли поток JavaFX
         boolean isJavaFXThread = t.getName().contains("JavaFX") ||
                 t.getName().contains("FX") ||
                 Thread.currentThread().getName().contains("JavaFX");
@@ -24,6 +26,7 @@ public class GlobalExceptionHandler implements Thread.UncaughtExceptionHandler {
 
     private void showErrorDialog(Throwable e, boolean isJavaFXThread) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
+        String message = getUserFriendlyMessage(e);
 
         if (isJavaFXThread) {
             alert.setTitle("Ошибка интерфейса");
@@ -33,23 +36,45 @@ public class GlobalExceptionHandler implements Thread.UncaughtExceptionHandler {
             alert.setHeaderText("Произошла непредвиденная ошибка");
         }
 
-        alert.setContentText(getUserFriendlyMessage(e));
+        alert.setContentText(message);
         alert.showAndWait();
     }
 
     private String getUserFriendlyMessage(Throwable e) {
+        String message = e.getMessage();
+
+        // Проверка на ошибки соединения
+        if (e.getCause() instanceof ConnectException ||
+                (message != null && message.contains("Connection refused"))) {
+            return "Нет соединения с сервером.\nПожалуйста, проверьте, запущен ли API.";
+        }
+
+        if (e.getCause() instanceof SocketTimeoutException ||
+                (message != null && message.contains("timeout"))) {
+            return "Сервер не отвечает.\nПревышено время ожидания ответа.";
+        }
+
+        if (message != null && message.contains("connection")) {
+            return "Потеряно соединение с сервером.\nПроверьте подключение и перезапустите приложение.";
+        }
+
+        // Проверка на ошибки API
+        if (message != null && (message.contains("API error") || message.contains("500"))) {
+            return "Ошибка сервера.\nПожалуйста, попробуйте позже.";
+        }
+
         if (e instanceof IllegalArgumentException) {
             return "Ошибка: " + e.getMessage();
         }
+
         if (e instanceof ValidationException) {
             return "Ошибка валидации: " + e.getMessage();
         }
-        if (e.getMessage() != null && e.getMessage().contains("SQL")) {
-            return "Ошибка работы с базой данных. Пожалуйста, обратитесь к администратору.";
+
+        if (message != null && message.contains("SQL")) {
+            return "Ошибка работы с базой данных.\nПожалуйста, обратитесь к администратору.";
         }
-        if (e.getMessage() != null && e.getMessage().contains("connection")) {
-            return "Потеряно соединение с базой данных. Проверьте подключение.";
-        }
+
         return """
                 Произошла непредвиденная ошибка. Пожалуйста, перезапустите приложение.
                 

@@ -49,4 +49,11 @@ public interface ComponentRepository extends JpaRepository<ComponentEntity, Long
      * Подсчёт компонентов в классе
      */
     long countByClassId(Long classId);
+
+    /**
+     * Поиск по артикулу
+     */
+    Optional<ComponentEntity> findByVendorCode(String vendorCode);
+
+
 }

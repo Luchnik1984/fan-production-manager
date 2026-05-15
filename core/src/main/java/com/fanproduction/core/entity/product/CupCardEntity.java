@@ -40,4 +40,10 @@ public class CupCardEntity extends BaseProductCard {
      */
     @Column(name = "thickness")
     private Double thickness;
+
+    /**
+     * Полная маркировка (уникальная)
+     */
+    @Column(name = "full_marking", length = 200, unique = true)
+    private String fullMarking;
 }

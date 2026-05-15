@@ -30,3 +30,4 @@ CREATE TABLE IF NOT EXISTS radial_wheel_card (
 CREATE INDEX IF NOT EXISTS idx_radial_wheel_size ON radial_wheel_card(size);
 CREATE INDEX IF NOT EXISTS idx_radial_wheel_marking ON radial_wheel_card(marking);
 CREATE INDEX IF NOT EXISTS idx_radial_wheel_blade_type ON radial_wheel_card(blade_type);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_radial_wheel_full_marking ON radial_wheel_card(full_marking);

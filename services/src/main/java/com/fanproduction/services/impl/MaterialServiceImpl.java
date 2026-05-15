@@ -11,6 +11,7 @@ import com.fanproduction.repositories.material.MaterialRepository;
 import com.fanproduction.repositories.material.ProductMaterialRequirementRepository;
 import com.fanproduction.repositories.dictionary.UnitOfMeasureRepository;
 import com.fanproduction.services.MaterialService;
+import com.fanproduction.services.base.BaseValidationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,11 +19,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class MaterialServiceImpl implements MaterialService {
+public class MaterialServiceImpl extends BaseValidationService implements MaterialService {
 
     private final MaterialCategoryRepository materialCategoryRepository;
     private final MaterialClassRepository materialClassRepository;
@@ -215,16 +217,18 @@ public class MaterialServiceImpl implements MaterialService {
     @Override
     @Transactional
     public MaterialEntity createMaterial(MaterialEntity material) {
+        // Проверка существования класса
         materialClassRepository.findById(material.getClassId())
                 .orElseThrow(() -> new IllegalArgumentException("Класс материала не найден"));
 
+        // Проверка единицы измерения
         unitOfMeasureRepository.findById(material.getUnitId())
                 .orElseThrow(() -> new IllegalArgumentException("Единица измерения не найдена"));
 
-        Optional<MaterialEntity> existing = materialRepository.findByClassIdAndName(material.getClassId(), material.getName());
-        if (existing.isPresent()) {
-            throw new IllegalArgumentException("Материал с таким именем уже существует в этом классе");
-        }
+        // Проверка уникальности
+        checkUnique(() -> materialRepository.findByClassIdAndNameAndStandardAndSpecification(
+                        material.getClassId(), material.getName(), material.getStandard(), material.getSpecification()),
+                "Материал с такими параметрами уже существует");
 
         return materialRepository.save(material);
     }
@@ -233,27 +237,31 @@ public class MaterialServiceImpl implements MaterialService {
     @Transactional
     public MaterialEntity updateMaterial(Long id, MaterialEntity updated) {
         MaterialEntity existing = materialRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Материал не найден: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Материал не найден"));
 
-        // Обновление ClassId
-        if (updated.getClassId() != null && !updated.getClassId().equals(existing.getClassId())) {
-            // Проверяем, существует ли новый класс
-            materialClassRepository.findById(updated.getClassId())
-                    .orElseThrow(() -> new IllegalArgumentException("Класс не найден: " + updated.getClassId()));
-            // Проверяем уникальность имени в новом классе
-            Optional<MaterialEntity> duplicate = materialRepository.findByClassIdAndName(updated.getClassId(), existing.getName());
-            if (duplicate.isPresent() && !duplicate.get().getId().equals(id)) {
-                throw new IllegalArgumentException("Материал с таким именем уже существует в этом классе");
-            }
-            existing.setClassId(updated.getClassId());
+        // Проверка уникальности при изменении ключевых полей
+        if (!existing.getClassId().equals(updated.getClassId()) ||
+                !existing.getName().equals(updated.getName()) ||
+                !Objects.equals(existing.getStandard(), updated.getStandard()) ||
+                !Objects.equals(existing.getSpecification(), updated.getSpecification())) {
+
+            checkUniqueOnUpdate(
+                    () -> materialRepository.findByClassIdAndNameAndStandardAndSpecification(
+                            updated.getClassId(),
+                            updated.getName(),
+                            updated.getStandard(),
+                            updated.getSpecification()
+                    ),
+                    id,
+                    "Материал с такими параметрами уже существует"
+            );
         }
 
-        if (updated.getName() != null && !updated.getName().equals(existing.getName())) {
-            // Проверяем уникальность нового имени в текущем классе
-            Optional<MaterialEntity> duplicate = materialRepository.findByClassIdAndName(existing.getClassId(), updated.getName());
-            if (duplicate.isPresent() && !duplicate.get().getId().equals(id)) {
-                throw new IllegalArgumentException("Материал с таким именем уже существует в этом классе");
-            }
+        // Обновление полей
+        if (updated.getClassId() != null) {
+            existing.setClassId(updated.getClassId());
+        }
+        if (updated.getName() != null) {
             existing.setName(updated.getName());
         }
         if (updated.getStandard() != null) {
@@ -266,8 +274,6 @@ public class MaterialServiceImpl implements MaterialService {
             existing.setMaterialType(updated.getMaterialType());
         }
         if (updated.getUnitId() != null) {
-            unitOfMeasureRepository.findById(updated.getUnitId())
-                    .orElseThrow(() -> new IllegalArgumentException("Единица измерения не найдена"));
             existing.setUnitId(updated.getUnitId());
         }
         if (updated.getDensity() != null) {

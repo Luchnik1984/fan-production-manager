@@ -13,11 +13,12 @@ CREATE TABLE IF NOT EXISTS motor_wheel_card (
     actual_speed_rpm INTEGER,
     voltage INTEGER,
     weight_kg DOUBLE PRECISION,
-    full_marking VARCHAR(500),
+    full_marking VARCHAR(200),
     motor_code VARCHAR(50),
     FOREIGN KEY (id) REFERENCES base_product_card(id) ON DELETE CASCADE
     );
 
 CREATE INDEX IF NOT EXISTS idx_motor_wheel_size ON motor_wheel_card(size);
 CREATE INDEX IF NOT EXISTS idx_motor_wheel_poles ON motor_wheel_card(poles);
-CREATE INDEX IF NOT EXISTS idx_motor_wheel_blade_type ON motor_wheel_card(blade_type)
+CREATE INDEX IF NOT EXISTS idx_motor_wheel_blade_type ON motor_wheel_card(blade_type);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_motor_wheel_full_marking ON motor_wheel_card(full_marking);

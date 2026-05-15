@@ -206,7 +206,7 @@ public class ComponentController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<ComponentDto> createComponent(@RequestBody ComponentDto dto) {
-        try {
+
             ComponentEntity entity = new ComponentEntity();
             entity.setClassId(dto.getClassId());
             entity.setName(dto.getName());
@@ -220,9 +220,6 @@ public class ComponentController {
 
             ComponentEntity saved = componentService.createComponent(entity);
             return ApiResponse.success(toDto(saved));
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        }
     }
 
     @PutMapping("/{id}")

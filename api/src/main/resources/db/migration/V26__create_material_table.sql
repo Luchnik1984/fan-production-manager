@@ -21,4 +21,6 @@ CREATE INDEX IF NOT EXISTS idx_material_name ON material(name);
 CREATE INDEX IF NOT EXISTS idx_material_standard ON material(standard);
 CREATE INDEX IF NOT EXISTS idx_material_unit_id ON material(unit_id);
 CREATE INDEX IF NOT EXISTS idx_material_type ON material(material_type);
-CREATE INDEX IF NOT EXISTS idx_material_vendor_code ON material(vendor_code);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_material_vendor_code_unique ON material(vendor_code);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_material_unique
+    ON material(class_id, name, standard, specification);

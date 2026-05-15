@@ -11,6 +11,7 @@ import com.fanproduction.repositories.component.ComponentRepository;
 import com.fanproduction.repositories.component.ProductComponentRepository;
 import com.fanproduction.repositories.dictionary.UnitOfMeasureRepository;
 import com.fanproduction.services.ComponentService;
+import com.fanproduction.services.base.BaseValidationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,7 +23,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class ComponentServiceImpl implements ComponentService {
+public class ComponentServiceImpl extends BaseValidationService implements ComponentService {
 
     private final ComponentClassRepository componentClassRepository;
     private final ComponentRepository componentRepository;
@@ -221,11 +222,16 @@ public class ComponentServiceImpl implements ComponentService {
         unitOfMeasureRepository.findById(component.getUnitId())
                 .orElseThrow(() -> new IllegalArgumentException("Единица измерения не найдена: " + component.getUnitId()));
 
-        // Проверяем уникальность имени в рамках класса
-        Optional<ComponentEntity> existing = componentRepository.findByClassIdAndName(component.getClassId(), component.getName());
-        if (existing.isPresent()) {
-            throw new IllegalArgumentException("Компонент с таким именем уже существует в этом классе");
+
+        // Проверяем уникальность артикула
+        if (component.getVendorCode() != null && !component.getVendorCode().isEmpty()) {
+            checkUnique(() -> componentRepository.findByVendorCode(component.getVendorCode()),
+                    "Компонент с артикулом '" + component.getVendorCode() + "' уже существует");
         }
+
+        // Проверка уникальности имени в классе
+        checkUnique(() -> componentRepository.findByClassIdAndName(component.getClassId(), component.getName()),
+                "Компонент с именем '" + component.getName() + "' уже существует в этом классе");
 
         return componentRepository.save(component);
     }
@@ -236,44 +242,51 @@ public class ComponentServiceImpl implements ComponentService {
         ComponentEntity existing = componentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Компонент не найден: " + id));
 
-        //  Обновление ClassId
-        if (updated.getClassId() != null && !updated.getClassId().equals(existing.getClassId())) {
-            // Проверяем, существует ли новый класс
-            componentClassRepository.findById(updated.getClassId())
-                    .orElseThrow(() -> new IllegalArgumentException("Класс не найден: " + updated.getClassId()));
-            // Проверяем уникальность имени в новом классе
-            Optional<ComponentEntity> duplicate = componentRepository.findByClassIdAndName(updated.getClassId(), existing.getName());
-            if (duplicate.isPresent() && !duplicate.get().getId().equals(id)) {
-                throw new IllegalArgumentException("Компонент с таким именем уже существует в этом классе");
-            }
-            existing.setClassId(updated.getClassId());
-        }
-
-        if (updated.getName() != null && !updated.getName().equals(existing.getName())) {
-            // Проверяем уникальность нового имени в текущем классе
-            Optional<ComponentEntity> duplicate = componentRepository.findByClassIdAndName(existing.getClassId(), updated.getName());
-            if (duplicate.isPresent() && !duplicate.get().getId().equals(id)) {
-                throw new IllegalArgumentException("Компонент с таким именем уже существует в этом классе");
-            }
-            existing.setName(updated.getName());
-        }
-        if (updated.getVendorCode() != null) {
+        // ==========================================
+        // ПРОВЕРКА УНИКАЛЬНОСТИ АРТИКУЛА ПРИ ИЗМЕНЕНИИ
+        // ==========================================
+        if (updated.getVendorCode() != null && !updated.getVendorCode().equals(existing.getVendorCode())) {
+            checkUniqueOnUpdate(
+                    () -> componentRepository.findByVendorCode(updated.getVendorCode()),
+                    id,
+                    "Компонент с артикулом '" + updated.getVendorCode() + "' уже существует"
+            );
             existing.setVendorCode(updated.getVendorCode());
         }
+
+        // ==========================================
+        // ПРОВЕРКА УНИКАЛЬНОСТИ ИМЕНИ В КЛАССЕ ПРИ ИЗМЕНЕНИИ
+        // ==========================================
+        if (updated.getName() != null && !updated.getName().equals(existing.getName())) {
+            checkUniqueOnUpdate(
+                    () -> componentRepository.findByClassIdAndName(existing.getClassId(), updated.getName()),
+                    id,
+                    "Компонент с именем '" + updated.getName() + "' уже существует в этом классе"
+            );
+            existing.setName(updated.getName());
+        }
+
+        // ==========================================
+        // ОБНОВЛЕНИЕ ПОЛЕЙ
+        // ==========================================
         if (updated.getUnitId() != null) {
             unitOfMeasureRepository.findById(updated.getUnitId())
                     .orElseThrow(() -> new IllegalArgumentException("Единица измерения не найдена"));
             existing.setUnitId(updated.getUnitId());
         }
+
         if (updated.getDescription() != null) {
             existing.setDescription(updated.getDescription());
         }
+
         if (updated.getTechnicalSpecs() != null) {
             existing.setTechnicalSpecs(updated.getTechnicalSpecs());
         }
+
         if (updated.getWeightKg() != null) {
             existing.setWeightKg(updated.getWeightKg());
         }
+
         if (updated.getMaterial() != null) {
             existing.setMaterial(updated.getMaterial());
         }

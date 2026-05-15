@@ -98,7 +98,7 @@ public abstract class FanCardEntity extends BaseProductCard {
     private String explosionMarking;
 
     // ========== ПОЛНАЯ МАРКИРОВКА ==========
-    @Column(name = "full_marking", length = 200)
+    @Column(name = "full_marking", length = 200, unique = true)
     private String fullMarking;
 
     // ========== МАРКИРОВКА КОМПОНЕНТОВ ==========

@@ -32,4 +32,7 @@ public interface MaterialRepository extends JpaRepository<MaterialEntity, Long> 
     List<MaterialEntity> searchByClassAndName(@Param("classId") Long classId, @Param("search") String search);
 
     long countByClassId(Long classId);
+
+    Optional<MaterialEntity> findByClassIdAndNameAndStandardAndSpecification(
+            Long classId, String name, String standard, String specification);
 }
