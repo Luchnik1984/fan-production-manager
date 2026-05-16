@@ -40,12 +40,8 @@ public class UserController {
     public ApiResponse<List<UserDto>> getAllUsers(@RequestParam(required = false) String status) {
         List<UserDto> users;
         if (status != null && !status.isEmpty()) {
-            try {
                 UserStatus userStatus = UserStatus.valueOf(status);
                 users = userService.getUsersByStatus(userStatus);
-            } catch (IllegalArgumentException e) {
-                return ApiResponse.error("Invalid status: " + status);
-            }
         } else {
             users = userService.getAllUsers();
         }

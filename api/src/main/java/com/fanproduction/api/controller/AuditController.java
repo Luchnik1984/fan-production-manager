@@ -2,6 +2,7 @@ package com.fanproduction.api.controller;
 
 import com.fanproduction.api.dto.response.ApiResponse;
 import com.fanproduction.core.dto.AuditLogDto;
+import com.fanproduction.core.enums.AuditAction;
 import com.fanproduction.services.AuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -32,13 +33,8 @@ public class AuditController {
         if (username != null && !username.isEmpty()) {
             result = auditService.getLogsByUser(username, pageable);
         } else if (action != null && !action.isEmpty()) {
-            try {
-                com.fanproduction.core.enums.AuditAction auditAction =
-                        com.fanproduction.core.enums.AuditAction.valueOf(action);
+            AuditAction auditAction = AuditAction.valueOf(action);
                 result = auditService.getLogsByAction(auditAction, pageable);
-            } catch (IllegalArgumentException e) {
-                return ApiResponse.error("Invalid action: " + action);
-            }
         } else {
             result = auditService.getLogs(pageable);
         }

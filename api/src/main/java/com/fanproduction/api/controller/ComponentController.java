@@ -47,16 +47,8 @@ public class ComponentController {
         Long parentId = request.get("parentId") != null ? ((Number) request.get("parentId")).longValue() : null;
         String description = (String) request.get("description");
 
-        if (name == null || name.trim().isEmpty()) {
-            return ApiResponse.error("Название категории обязательно");
-        }
-
-        try {
-            ComponentCategoryEntity entity = componentService.createCategory(name.trim(), parentId, description, getCurrentUser());
-            return ApiResponse.success(toCategoryDto(entity));
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        }
+        ComponentCategoryEntity entity = componentService.createCategory(name, parentId, description, getCurrentUser());
+        return ApiResponse.success(toCategoryDto(entity));
     }
 
     @PutMapping("/categories/{id}")
@@ -64,27 +56,19 @@ public class ComponentController {
     public ApiResponse<ComponentCategoryDto> updateCategory(
             @PathVariable Long id,
             @RequestBody Map<String, Object> request) {
-        try {
-            String name = (String) request.get("name");
-            Long parentId = request.get("parentId") != null ? ((Number) request.get("parentId")).longValue() : null;
-            String description = (String) request.get("description");
+        String name = (String) request.get("name");
+        Long parentId = request.get("parentId") != null ? ((Number) request.get("parentId")).longValue() : null;
+        String description = (String) request.get("description");
 
-            ComponentCategoryEntity entity = componentService.updateCategory(id, name, parentId, description);
-            return ApiResponse.success(toCategoryDto(entity));
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        }
+        ComponentCategoryEntity entity = componentService.updateCategory(id, name, parentId, description);
+        return ApiResponse.success(toCategoryDto(entity));
     }
 
     @DeleteMapping("/categories/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<Void> deleteCategory(@PathVariable Long id) {
-        try {
             componentService.deleteCategory(id);
             return ApiResponse.success(null);
-        } catch (Exception e) {
-            return ApiResponse.error(e.getMessage());
-        }
     }
 
 
@@ -122,28 +106,13 @@ public class ComponentController {
     @PostMapping("/classes")
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<ComponentClassDto> createClass(@RequestBody Map<String, Object> request) {
-        try {
-            // Извлекаем categoryId (обязательное поле)
-            Long categoryId = ((Number) request.get("categoryId")).longValue();
-            String name = (String) request.get("name");
-            String description = (String) request.get("description");
-            Long unitId = request.get("unitId") != null ? ((Number) request.get("unitId")).longValue() : null;
+        Long categoryId = ((Number) request.get("categoryId")).longValue();
+        String name = (String) request.get("name");
+        String description = (String) request.get("description");
+        Long unitId = request.get("unitId") != null ? ((Number) request.get("unitId")).longValue() : null;
 
-            if (name == null || name.trim().isEmpty()) {
-                return ApiResponse.error("Название класса обязательно");
-            }
-            if (categoryId == null) {
-                return ApiResponse.error("Категория обязательна");
-            }
-
-            ComponentClassEntity entity = componentService.createComponentClass(
-                    categoryId, name.trim(), description, getCurrentUser(), unitId);
-            return ApiResponse.success(toDto(entity));
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        } catch (ClassCastException e) {
-            return ApiResponse.error("Неверный формат данных");
-        }
+        ComponentClassEntity entity = componentService.createComponentClass(categoryId, name, description, getCurrentUser(), unitId);
+        return ApiResponse.success(toClassDto(entity));
     }
 
     @PutMapping("/classes/{id}")
@@ -151,27 +120,21 @@ public class ComponentController {
     public ApiResponse<ComponentClassDto> updateClass(
             @PathVariable Long id,
             @RequestBody Map<String, Object> request) {
-        try {
+
             String name = (String) request.get("name");
-            Long categoryId = ((Number) request.get("categoryId")).longValue();
+            Long categoryId = request.get("categoryId") != null ? ((Number) request.get("categoryId")).longValue() : null;
             String description = (String) request.get("description");
 
             ComponentClassEntity entity = componentService.updateClass(id, name, categoryId, description);
             return ApiResponse.success(toClassDto(entity));
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        }
+
     }
 
     @DeleteMapping("/classes/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<Void> deleteClass(@PathVariable Long id) {
-        try {
             componentService.deleteClass(id);
             return ApiResponse.success(null);
-        } catch (Exception e) {
-            return ApiResponse.error(e.getMessage());
-        }
     }
 
 
@@ -225,7 +188,6 @@ public class ComponentController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<ComponentDto> updateComponent(@PathVariable Long id, @RequestBody ComponentDto dto) {
-        try {
             ComponentEntity entity = new ComponentEntity();
             entity.setClassId(dto.getClassId());
             entity.setName(dto.getName());
@@ -238,20 +200,13 @@ public class ComponentController {
 
             ComponentEntity updated = componentService.updateComponent(id, entity);
             return ApiResponse.success(toDto(updated));
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        }
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<Void> deleteComponent(@PathVariable Long id) {
-        try {
             componentService.deleteComponent(id);
             return ApiResponse.success("Компонент удалён", null);
-        } catch (Exception e) {
-            return ApiResponse.error(e.getMessage());
-        }
     }
 
     @GetMapping("/search")
@@ -279,7 +234,6 @@ public class ComponentController {
     public ApiResponse<ProductComponentDto> addComponentToProduct(
             @PathVariable Long productCardId,
             @RequestBody Map<String, Object> request) {
-        try {
             Long componentId = ((Number) request.get("componentId")).longValue();
             Double quantity = request.get("quantity") != null ? ((Number) request.get("quantity")).doubleValue() : 1.0;
             String position = (String) request.get("position");
@@ -288,9 +242,6 @@ public class ComponentController {
             ProductComponentEntity entity = componentService.addComponentToProduct(
                     productCardId, componentId, quantity, position, note);
             return ApiResponse.success(toProductDto(entity));
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        }
     }
 
     @PutMapping("/product/{productCardId}/{componentId}/quantity")
@@ -299,13 +250,9 @@ public class ComponentController {
             @PathVariable Long productCardId,
             @PathVariable Long componentId,
             @RequestBody Map<String, Double> request) {
-        try {
             Double quantity = request.get("quantity");
             componentService.updateComponentQuantity(productCardId, componentId, quantity);
             return ApiResponse.success("Количество обновлено", null);
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        }
     }
 
     @PutMapping("/product/{productCardId}/{componentId}/position")
@@ -314,13 +261,9 @@ public class ComponentController {
             @PathVariable Long productCardId,
             @PathVariable Long componentId,
             @RequestBody Map<String, String> request) {
-        try {
             String position = request.get("position");
             componentService.updateComponentPosition(productCardId, componentId, position);
             return ApiResponse.success("Позиция обновлена", null);
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        }
     }
 
     @DeleteMapping("/product/{productCardId}/{componentId}")
@@ -328,13 +271,9 @@ public class ComponentController {
     public ApiResponse<Void> removeComponentFromProduct(
             @PathVariable Long productCardId,
             @PathVariable Long componentId) {
-        try {
             componentService.removeComponentFromProduct(productCardId, componentId);
             return ApiResponse.success("Компонент удалён", null);
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
         }
-    }
 
     @PutMapping("/product/{productCardId}/{componentId}/note")
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
@@ -342,13 +281,9 @@ public class ComponentController {
             @PathVariable Long productCardId,
             @PathVariable Long componentId,
             @RequestBody Map<String, String> request) {
-        try {
             String note = request.get("note");
             componentService.updateComponentNote(productCardId, componentId, note);
             return ApiResponse.success("Примечание обновлено", null);
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        }
     }
 
     // ========== Mappers ==========
@@ -361,16 +296,6 @@ public class ComponentController {
                 .symbol(entity.getSymbol())
                 .category(entity.getCategory())
                 .isDefault(entity.getIsDefault())
-                .createdAt(entity.getCreatedAt())
-                .createdBy(entity.getCreatedBy())
-                .build();
-    }
-
-    private ComponentClassDto toDto(ComponentClassEntity entity) {
-        return ComponentClassDto.builder()
-                .id(entity.getId())
-                .name(entity.getName())
-                .description(entity.getDescription())
                 .createdAt(entity.getCreatedAt())
                 .createdBy(entity.getCreatedBy())
                 .build();

@@ -58,7 +58,6 @@ public class AuthController {
             throw new BadCredentialsException(message);
         }
 
-        try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
@@ -81,32 +80,17 @@ public class AuthController {
 
             return response;
 
-        } catch (Exception e) {
-            log.error("Authentication failed: {}", e.getMessage());
-            throw new BadCredentialsException("Неверный пароль");
-        }
     }
 
     @PostMapping("/register")
     public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
-        log.info("Register attempt for email: {}", request.getEmail());
-
-        // Проверка секретного ключа для ADMIN
         if ("ADMIN".equals(request.getRole())) {
             if (!AdminSecretKeyValidator.validate(request.getSecretKey())) {
-                throw new BadCredentialsException("Invalid admin secret key");
+                throw new IllegalArgumentException("Неверный секретный ключ администратора");
             }
         }
 
-        // Проверка, что роль существует
-        Role role;
-        try {
-            role = Role.valueOf(request.getRole());
-        } catch (IllegalArgumentException e) {
-            throw new BadCredentialsException("Invalid role: " + request.getRole());
-        }
-
-        // Создаём пользователя (пароль хешируется здесь, НЕ в UserService!)
+        Role role = Role.valueOf(request.getRole());
         UserEntity newUser = new UserEntity();
         newUser.setEmail(request.getEmail().trim().toLowerCase());
         newUser.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -114,13 +98,7 @@ public class AuthController {
         newUser.setLastName(request.getLastName());
         newUser.setPhone(request.getPhone());
         newUser.setRole(role);
-
-        // Устанавливаем статус: ADMIN сразу ACTIVE, остальные PENDING
-        if (role == Role.ADMIN) {
-            newUser.setStatus(UserStatus.ACTIVE);
-        } else {
-            newUser.setStatus(UserStatus.PENDING);
-        }
+        newUser.setStatus(role == Role.ADMIN ? UserStatus.ACTIVE : UserStatus.PENDING);
 
         UserEntity savedUser = userService.register(newUser);
 
@@ -130,8 +108,6 @@ public class AuthController {
         response.setToken(token);
         response.setEmail(savedUser.getEmail());
         response.setRole(savedUser.getRole().name());
-
-        log.info("User registered: {}", savedUser.getEmail());
 
         return response;
     }

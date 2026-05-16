@@ -46,7 +46,6 @@ public class ProductCardController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<ProductCardResponse> createCard(@Valid @RequestBody ProductCardRequest request) {
-        try {
             CardTemplateType cardType = CardTemplateType.valueOf(request.getCardType());
 
             // Добавляем name в fields
@@ -62,14 +61,7 @@ public class ProductCardController {
                     request.getFields(),
                     getCurrentUser()
             );
-
             return ApiResponse.success(productCardMapper.toResponse(card));
-
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error("Неверный тип карточки: " + request.getCardType());
-        } catch (Exception e) {
-            return ApiResponse.error("Ошибка создания карточки: " + e.getMessage());
-        }
     }
 
     /**
@@ -101,12 +93,10 @@ public class ProductCardController {
         Page<BaseProductCard> cardsPage;
 
         if (cardType != null && !cardType.isEmpty()) {
-            try {
+
                 CardTemplateType type = CardTemplateType.valueOf(cardType);
                 cardsPage = productCardService.getCardsByType(type, pageable);
-            } catch (IllegalArgumentException e) {
-                return ApiResponse.error("Неверный тип карточки: " + cardType);
-            }
+
         } else {
             cardsPage = productCardService.getAllCards(pageable);
         }
@@ -123,18 +113,11 @@ public class ProductCardController {
     public ApiResponse<ProductCardResponse> updateCard(
             @PathVariable Long id,
             @Valid @RequestBody ProductCardRequest request) {
-        try {
             // Добавляем name в fields
             request.getFields().put("name", request.getName());
 
             BaseProductCard card = productCardService.updateCard(id, request.getFields());
             return ApiResponse.success(productCardMapper.toResponse(card));
-
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        } catch (Exception e) {
-            return ApiResponse.error("Ошибка обновления карточки: " + e.getMessage());
-        }
     }
 
     /**
@@ -143,14 +126,8 @@ public class ProductCardController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<Void> deleteCard(@PathVariable Long id) {
-        try {
             productCardService.deleteCard(id);
             return ApiResponse.success("Карточка удалена", null);
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        } catch (Exception e) {
-            return ApiResponse.error("Ошибка удаления карточки: " + e.getMessage());
-        }
     }
 
     /**
@@ -181,14 +158,11 @@ public class ProductCardController {
     @PutMapping("/{id}/temporary")
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<Void> removeTemporaryFlag(@PathVariable Long id, @RequestBody Map<String, Boolean> request) {
-        try {
+
             Boolean isTemporary = request.get("isTemporary");
             if (isTemporary != null && !isTemporary) {
                 productCardService.removeTemporaryFlag(id);
             }
             return ApiResponse.success(null);
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        }
     }
 }
