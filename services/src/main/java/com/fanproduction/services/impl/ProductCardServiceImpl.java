@@ -1,17 +1,11 @@
 package com.fanproduction.services.impl;
 
-import com.fanproduction.core.entity.product.BaseProductCard;
-import com.fanproduction.core.entity.product.MotorCardEntity;
-import com.fanproduction.core.entity.product.MotorWheelCardEntity;
-import com.fanproduction.core.entity.product.RadialWheelCardEntity;
+import com.fanproduction.core.entity.product.*;
 import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.core.enums.AuditAction;
 import com.fanproduction.core.event.AuditEvent;
 import com.fanproduction.core.security.CurrentUserProvider;
-import com.fanproduction.repositories.product.ProductCardRepository;
-import com.fanproduction.repositories.product.MotorCardRepository;
-import com.fanproduction.repositories.product.MotorWheelCardRepository;
-import com.fanproduction.repositories.product.RadialWheelCardRepository;
+import com.fanproduction.repositories.product.*;
 import com.fanproduction.services.ProductCardService;
 import com.fanproduction.services.factory.ProductCardFactory;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +25,7 @@ public class ProductCardServiceImpl implements ProductCardService {
     private final MotorCardRepository motorCardRepository;
     private final MotorWheelCardRepository motorWheelCardRepository;
     private final RadialWheelCardRepository radialWheelCardRepository;
+    private final AxialWheelCardRepository axialWheelCardRepository;
     private final ProductCardFactory cardFactory;
     private final ApplicationEventPublisher eventPublisher;
     private final CurrentUserProvider currentUserProvider;

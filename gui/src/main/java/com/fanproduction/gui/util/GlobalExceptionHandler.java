@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 
 public class GlobalExceptionHandler implements Thread.UncaughtExceptionHandler {
 
@@ -42,39 +43,52 @@ public class GlobalExceptionHandler implements Thread.UncaughtExceptionHandler {
 
     private String getUserFriendlyMessage(Throwable e) {
         String message = e.getMessage();
+        Throwable cause = e.getCause();
 
-        // Проверка на ошибки соединения
-        if (e.getCause() instanceof ConnectException ||
-                (message != null && message.contains("Connection refused"))) {
+        // Ошибки соединения
+        if (cause instanceof ConnectException || (message != null && message.contains("Connection refused"))) {
             return "Нет соединения с сервером.\nПожалуйста, проверьте, запущен ли API.";
         }
-
-        if (e.getCause() instanceof SocketTimeoutException ||
-                (message != null && message.contains("timeout"))) {
+        if (cause instanceof SocketTimeoutException || (message != null && message.contains("timeout"))) {
             return "Сервер не отвечает.\nПревышено время ожидания ответа.";
         }
-
+        if (cause instanceof UnknownHostException) {
+            return "Не удалось найти сервер.\nПроверьте адрес сервера.";
+        }
         if (message != null && message.contains("connection")) {
             return "Потеряно соединение с сервером.\nПроверьте подключение и перезапустите приложение.";
         }
 
-        // Проверка на ошибки API
+        // Ошибки авторизации
+        if (message != null && (message.contains("401") || message.contains("Unauthorized"))) {
+            return "Сессия истекла. Пожалуйста, войдите заново.";
+        }
+        if (message != null && (message.contains("403") || message.contains("Forbidden"))) {
+            return "У вас нет прав для выполнения этой операции.";
+        }
+
+        // Ошибки API
         if (message != null && (message.contains("API error") || message.contains("500"))) {
             return "Ошибка сервера.\nПожалуйста, попробуйте позже.";
         }
+        if (message != null && message.contains("429")) {
+            return "Слишком много запросов. Подождите немного.";
+        }
 
+        // Бизнес-ошибки
         if (e instanceof IllegalArgumentException) {
             return "Ошибка: " + e.getMessage();
         }
-
         if (e instanceof ValidationException) {
             return "Ошибка валидации: " + e.getMessage();
         }
 
+        // Ошибки БД
         if (message != null && message.contains("SQL")) {
             return "Ошибка работы с базой данных.\nПожалуйста, обратитесь к администратору.";
         }
 
+        // Общая ошибка
         return """
                 Произошла непредвиденная ошибка. Пожалуйста, перезапустите приложение.
                 

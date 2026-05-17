@@ -1,13 +1,12 @@
 package com.fanproduction.gui.base;
 
 import com.fanproduction.gui.component.GroupedComboBox;
+import com.fanproduction.gui.component.IconFactory;
 import com.fanproduction.gui.dto.response.UnitOfMeasureDto;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
-import javafx.scene.Node;
-import javafx.scene.paint.Color;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.stage.FileChooser;
@@ -16,8 +15,6 @@ import lombok.Setter;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.kordamp.ikonli.fontawesome.FontAwesome;
-import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -192,7 +189,7 @@ public abstract class BaseCatalogController<T, C, CL> {
         TreeItem<CategoryTreeItem> categoryItem = new TreeItem<>(
                 new CategoryTreeItem(getCategoryId(category), getCategoryName(category), "category"));
         categoryItem.setExpanded(true);
-        categoryItem.setGraphic(createFolderIcon());
+        categoryItem.setGraphic(IconFactory.createFolderIcon());
         parent.getChildren().add(categoryItem);
 
         // Добавляем классы этой категории
@@ -203,7 +200,7 @@ public abstract class BaseCatalogController<T, C, CL> {
         for (CL cls : classesInCategory) {
             TreeItem<CategoryTreeItem> classItem = new TreeItem<>(
                     new CategoryTreeItem(getClassId(cls), getClassName(cls), "class", getClassId(cls)));
-            classItem.setGraphic(createClassIcon());
+            classItem.setGraphic(IconFactory.createClassIcon());
 
             // Добавляем элементы этого класса
             List<T> itemsInClass = itemList.stream()
@@ -213,7 +210,7 @@ public abstract class BaseCatalogController<T, C, CL> {
             for (T item : itemsInClass) {
                 TreeItem<CategoryTreeItem> itemNode = new TreeItem<>(
                         new CategoryTreeItem(getItemId(item), getItemName(item), "item", getItemClassId(item)));
-                itemNode.setGraphic(createFileIcon());
+                itemNode.setGraphic(IconFactory.createFileIcon());
                 classItem.getChildren().add(itemNode);
             }
 
@@ -243,11 +240,11 @@ public abstract class BaseCatalogController<T, C, CL> {
 
                     // Устанавливаем иконку в зависимости от типа
                     if ("category".equals(item.getType())) {
-                        setGraphic(createFolderIcon());
+                        setGraphic(IconFactory.createFolderIcon());
                     } else if ("class".equals(item.getType())) {
-                        setGraphic(createClassIcon());
+                        setGraphic(IconFactory.createClassIcon());
                     } else if ("item".equals(item.getType())) {
-                        setGraphic(createFileIcon());
+                        setGraphic(IconFactory.createFileIcon());
                     } else {
                         setGraphic(null);
                     }
@@ -268,8 +265,10 @@ public abstract class BaseCatalogController<T, C, CL> {
     protected void setupContextMenu(TreeView<CategoryTreeItem> treeView) {
         ContextMenu contextMenu = new ContextMenu();
 
-        MenuItem editItem = new MenuItem("✏️ Редактировать");
-        MenuItem deleteItem = new MenuItem("🗑️ Удалить");
+        MenuItem editItem = new MenuItem("Редактировать");
+        editItem.setGraphic(IconFactory.createEditIcon());
+        MenuItem deleteItem = new MenuItem("Удалить");
+        editItem.setGraphic(IconFactory.createDeleteIcon());
 
         editItem.setOnAction(e -> {
             CategoryTreeItem selected = treeView.getSelectionModel().getSelectedItem().getValue();
@@ -657,27 +656,6 @@ public abstract class BaseCatalogController<T, C, CL> {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
-    }
-
-    protected Node createFolderIcon() {
-        FontIcon icon = new FontIcon(FontAwesome.FOLDER);
-        icon.setIconSize(14);
-        icon.setIconColor(Color.web("#e6b422"));
-        return icon;
-    }
-
-    protected Node createClassIcon() {
-        FontIcon icon = new FontIcon(FontAwesome.FOLDER_OPEN);
-        icon.setIconSize(14);
-        icon.setIconColor(Color.web("#e6b422"));
-        return icon;
-    }
-
-    protected Node createFileIcon() {
-        FontIcon icon = new FontIcon(FontAwesome.FILE);
-        icon.setIconSize(14);
-        icon.setIconColor(Color.web("#555555"));
-        return icon;
     }
 
     protected void showCreateClassDialogCommon() {
