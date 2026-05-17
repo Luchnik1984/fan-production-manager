@@ -1,6 +1,6 @@
 package com.fanproduction.gui.configurator;
 
-import javafx.scene.control.Control;
+import javafx.scene.Node;
 import javafx.scene.control.Label;
 
 import java.util.HashMap;
@@ -32,7 +32,7 @@ public class CardFormConfigurator {
      * @param existingCardExists есть ли уже существующая карточка
      */
     public static void configure(String cardType,
-                                 Map<String, Control> fieldControls,
+                                 Map<String, Node> fieldControls,
                                  Map<String, Label> fieldLabels,
                                  Map<String, Label> fieldHints,
                                  boolean existingCardExists) {

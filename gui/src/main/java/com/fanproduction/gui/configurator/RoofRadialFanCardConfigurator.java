@@ -1,6 +1,7 @@
 package com.fanproduction.gui.configurator;
 
 
+import javafx.scene.Node;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Control;
 import javafx.scene.control.Label;
@@ -12,19 +13,19 @@ public class RoofRadialFanCardConfigurator implements CardFieldConfigurator {
 
     private TextField fullMarkingField;
     private String lastAutoMarking = "";
-    private Map<String, Control> fieldControls;
+    private Map<String, Node> fieldControls;
 
-    private TextField getTextField(Map<String, Control> controls, String name) {
-        Control c = controls.get(name);
+    private TextField getTextField(Map<String, Node> controls, String name) {
+        Node c = controls.get(name);
         return c instanceof TextField ? (TextField) c : null;
     }
 
-    private ComboBox<String> getComboBox(Map<String, Control> controls, String name) {
+    private ComboBox<String> getComboBox(Map<String, Node> controls, String name) {
         return CardFieldConfigurator.getComboBox(controls, name);
     }
 
     @Override
-    public void setupFields(Map<String, Control> fieldControls,
+    public void setupFields(Map<String, Node> fieldControls,
                             Map<String, Label> fieldLabels,
                             Map<String, Label> fieldHints,
                             boolean existingCardExists) {
@@ -130,7 +131,7 @@ public class RoofRadialFanCardConfigurator implements CardFieldConfigurator {
     }
 
     private String getFieldValue(String fieldName) {
-        Control control = fieldControls.get(fieldName);
+        Node control = fieldControls.get(fieldName);
         if (control == null) return "";
         if (control instanceof TextField) return ((TextField) control).getText().trim();
         if (control instanceof ComboBox) {

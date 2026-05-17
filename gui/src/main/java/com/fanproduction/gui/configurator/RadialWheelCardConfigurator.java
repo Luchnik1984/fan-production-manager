@@ -1,7 +1,8 @@
 package com.fanproduction.gui.configurator;
 
+import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.Control;
+
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 
@@ -11,10 +12,10 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
 
     private TextField fullMarkingField;
     private String lastAutoMarking = "";
-    private Map<String, Control> fieldControls;
+    private Map<String, Node> fieldControls;
 
     @Override
-    public void setupFields(Map<String, Control> fieldControls, Map<String, Label> fieldLabels,
+    public void setupFields(Map<String, Node> fieldControls, Map<String, Label> fieldLabels,
                             Map<String, Label> fieldHints, boolean existingCardExists) {
         this.fieldControls = fieldControls;
 
@@ -75,8 +76,8 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
     private void setupConditionalVisibility() {
         // Огнестойкость -> поле маркировки огнестойкости и предельной температуры
         CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
-        Control fireproofMarkingField = fieldControls.get("fireproofMarking");
-        Control tempField = fieldControls.get("maxTemperature");
+        Node fireproofMarkingField = fieldControls.get("fireproofMarking");
+        Node tempField = fieldControls.get("maxTemperature");
 
         if (fireproofCheck != null) {
             boolean isVisible = fireproofCheck.isSelected();
@@ -105,7 +106,7 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
 
         // Взрывозащита -> поле маркировки взрывозащиты
         CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
-        Control explosionMarkingField = fieldControls.get("explosionMarking");
+        Node explosionMarkingField = fieldControls.get("explosionMarking");
 
         if (explosionCheck != null && explosionMarkingField != null) {
             boolean isVisible = explosionCheck.isSelected();
@@ -205,19 +206,19 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
     }
 
     private String getFieldValue(String fieldName) {
-        Control control = fieldControls.get(fieldName);
+        Node control = fieldControls.get(fieldName);
         if (control == null) return "";
         if (control instanceof TextField) return ((TextField) control).getText().trim();
         return "";
     }
 
-    private TextField getTextField(Map<String, Control> controls, String name) {
-        Control c = controls.get(name);
+    private TextField getTextField(Map<String, Node> controls, String name) {
+        Node c = controls.get(name);
         return c instanceof TextField ? (TextField) c : null;
     }
 
-    private CheckBox getCheckBox(Map<String, Control> controls, String name) {
-        Control c = controls.get(name);
+    private CheckBox getCheckBox(Map<String, Node> controls, String name) {
+        Node c = controls.get(name);
         return c instanceof CheckBox ? (CheckBox) c : null;
     }
 }

@@ -1,5 +1,6 @@
 package com.fanproduction.gui.configurator;
 
+import javafx.scene.Node;
 import javafx.scene.control.*;
 
 import java.util.Map;
@@ -8,24 +9,24 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
 
     private TextField fullMarkingField;
     private String lastAutoMarking = "";
-    private Map<String, Control> fieldControls;
+    private Map<String, Node> fieldControls;
     private Map<String, Label> fieldLabels;
 
     // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
 
-    private TextField getTextField(Map<String, Control> controls, String name) {
-        Control c = controls.get(name);
+    private TextField getTextField(Map<String, Node> controls, String name) {
+        Node c = controls.get(name);
         return c instanceof TextField ? (TextField) c : null;
     }
 
     @SuppressWarnings("unchecked")
-    private ComboBox<String> getComboBox(Map<String, Control> controls, String name) {
-        Control c = controls.get(name);
+    private ComboBox<String> getComboBox(Map<String, Node> controls, String name) {
+        Node c = controls.get(name);
         return c instanceof ComboBox ? (ComboBox<String>) c : null;
     }
 
-    private CheckBox getCheckBox(Map<String, Control> controls, String name) {
-        Control c = controls.get(name);
+    private CheckBox getCheckBox(Map<String, Node> controls, String name) {
+        Node c = controls.get(name);
         return c instanceof CheckBox ? (CheckBox) c : null;
     }
 
@@ -35,7 +36,7 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
     }
 
     private String getFieldValue(String fieldName) {
-        Control control = fieldControls.get(fieldName);
+        Node control = fieldControls.get(fieldName);
         if (control == null) return "";
         if (control instanceof TextField) return ((TextField) control).getText().trim();
         if (control instanceof ComboBox) {
@@ -46,7 +47,7 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
     }
 
     private void setFieldValue(String fieldName, String value) {
-        Control control = fieldControls.get(fieldName);
+       Node control = fieldControls.get(fieldName);
         if (control instanceof TextField && value != null) {
             ((TextField) control).setText(value);
         }
@@ -74,7 +75,7 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
     }
 
     private void setVisible(String fieldName, boolean visible) {
-        Control control = fieldControls.get(fieldName);
+        Node control = fieldControls.get(fieldName);
         Label label = fieldLabels.get(fieldName);
         if (control != null) {
             control.setVisible(visible);
@@ -89,7 +90,7 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
     // ==================== ОСНОВНОЙ МЕТОД ====================
 
     @Override
-    public void setupFields(Map<String, Control> fieldControls,
+    public void setupFields(Map<String, Node> fieldControls,
                             Map<String, Label> fieldLabels,
                             Map<String, Label> fieldHints,
                             boolean existingCardExists) {

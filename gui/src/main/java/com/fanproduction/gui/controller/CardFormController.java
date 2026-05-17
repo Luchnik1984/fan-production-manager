@@ -2,6 +2,7 @@ package com.fanproduction.gui.controller;
 
 import com.fanproduction.gui.client.ApiClient;
 import com.fanproduction.gui.client.ProductCardClient;
+import com.fanproduction.gui.component.TreeSelectableComponentBox;
 import com.fanproduction.gui.configurator.CardFormConfigurator;
 import com.fanproduction.gui.dto.SelectableItem;
 import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
@@ -12,6 +13,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -35,7 +37,7 @@ public class CardFormController {
     private ProductMaterialsController materialsTabController;
     private Long temporaryCardId;
 
-    private final Map<String, Control> fieldControls = new HashMap<>();
+    private final Map<String, Node> fieldControls = new HashMap<>();
     private final Map<String, FieldMetadataDto> fieldMetadata = new HashMap<>();
     private final Map<String, TextField> referenceFields = new HashMap<>();
     private final Map<String, Label> fieldLabels = new HashMap<>();
@@ -100,7 +102,6 @@ public class CardFormController {
 
         saveButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
         saveButton.setOnAction(e -> saveCard(saveButton));
-        cancelButton.setOnAction(e -> stage.close());
 
         HBox buttonBox = new HBox(10);
         buttonBox.getChildren().addAll(saveButton, cancelButton);
@@ -176,7 +177,7 @@ public class CardFormController {
             Label label = new Label(field.getLabel() + (field.isRequired() ? " *" : ":"));
             label.setStyle("-fx-font-weight: bold;");
 
-            Control control = createControlForField(field);
+            Node control = createControlForField(field);
 
             grid.add(label, 0, row);
             grid.add(control, 1, row);
@@ -207,7 +208,7 @@ public class CardFormController {
         return grid;
     }
 
-    private Control createControlForField(FieldMetadataDto field) {
+    private Node createControlForField(FieldMetadataDto field) {
         Object existingValue = null;
         if (existingCard != null && existingCard.getFields() != null) {
             existingValue = existingCard.getFields().get(field.getName());
@@ -233,37 +234,25 @@ public class CardFormController {
         };
     }
 
-    private Control createSelectableComboBox(FieldMetadataDto field, Object existingValue) {
+    private Node createSelectableComboBox(FieldMetadataDto field, Object existingValue) {
         String refType = field.getReferenceType();
 
-        System.out.println("=== createSelectableComboBox ===");
-        System.out.println("field: " + field.getName());
-        System.out.println("refType: " + refType);
+        // Для всех типов компонентов используем TreeSelectableComponentBox
+        TreeSelectableComponentBox treeBox = new TreeSelectableComponentBox(
+                stage, refType,
+                id ->
+                    // Колбэк при выборе - автозаполнение полей
+                    autoFillFromSelection(refType, id)
+        );
 
-        ComboBox<SelectableItem> comboBox = new ComboBox<>();
-        comboBox.setPromptText(field.getHint() != null ? field.getHint() : "Выберите");
-
-        Long existingId = null;
         if (existingValue instanceof Number) {
-            existingId = ((Number) existingValue).longValue();
-        } else if (existingValue instanceof String) {
-            try {
-                existingId = Long.parseLong((String) existingValue);
-            } catch (NumberFormatException ignored) {}
+            treeBox.setSelectedId(((Number) existingValue).longValue());
         }
 
-        loadReferenceData(comboBox, refType, existingId);
-
-        comboBox.valueProperty().addListener((obs, old, newVal) -> {
-            if (newVal != null && newVal.getId() != null) {
-                autoFillFromSelection(refType, newVal.getId());
-            }
-        });
-
-        return comboBox;
+        return treeBox.getContainer();
     }
 
-    private TextField createTextField(FieldMetadataDto field, Object existingValue) {
+    private Node createTextField(FieldMetadataDto field, Object existingValue) {
         TextField textField = new TextField();
         if (existingValue != null) textField.setText(String.valueOf(existingValue));
         if (field.getDefaultValue() != null && existingValue == null) textField.setText(field.getDefaultValue());
@@ -271,7 +260,7 @@ public class CardFormController {
         return textField;
     }
 
-    private TextField createNumberField(FieldMetadataDto field, Object existingValue) {
+    private Node createNumberField(FieldMetadataDto field, Object existingValue) {
         TextField numberField = new TextField();
         if (existingValue != null) numberField.setText(String.valueOf(existingValue));
         if (field.getDefaultValue() != null && existingValue == null) numberField.setText(field.getDefaultValue());
@@ -279,7 +268,7 @@ public class CardFormController {
         return numberField;
     }
 
-    private TextField createDoubleField(FieldMetadataDto field, Object existingValue) {
+    private Node createDoubleField(FieldMetadataDto field, Object existingValue) {
         TextField doubleField = new TextField();
         if (existingValue != null) doubleField.setText(String.valueOf(existingValue));
         if (field.getDefaultValue() != null && existingValue == null) doubleField.setText(field.getDefaultValue());
@@ -287,7 +276,7 @@ public class CardFormController {
         return doubleField;
     }
 
-    private Control createComboBox(FieldMetadataDto field, Object existingValue) {
+    private Node createComboBox(FieldMetadataDto field, Object existingValue) {
         String refType = field.getReferenceType();
         boolean isReference = refType != null && !refType.isEmpty();
 
@@ -336,7 +325,7 @@ public class CardFormController {
         }
     }
 
-    private CheckBox createCheckBox(FieldMetadataDto field, Object existingValue) {
+    private Node createCheckBox(FieldMetadataDto field, Object existingValue) {
         CheckBox checkBox = new CheckBox();
         if (existingValue instanceof Boolean) checkBox.setSelected((Boolean) existingValue);
         if (field.getDefaultValue() != null && existingValue == null) {
@@ -345,7 +334,7 @@ public class CardFormController {
         return checkBox;
     }
 
-    private TextField createDefaultField(FieldMetadataDto field, Object existingValue) {
+    private Node createDefaultField(FieldMetadataDto field, Object existingValue) {
         TextField defaultField = new TextField();
         if (existingValue != null) defaultField.setText(String.valueOf(existingValue));
         return defaultField;
@@ -460,7 +449,7 @@ public class CardFormController {
     }
 
     private void setFieldValue(String fieldName, Object value) {
-        Control control = fieldControls.get(fieldName);
+        Node control = fieldControls.get(fieldName);
         if (control instanceof TextField && value != null) {
             ((TextField) control).setText(value.toString());
         }
@@ -470,35 +459,34 @@ public class CardFormController {
         // Полная маркировка обновится через слушатели в конфигураторе
     }
 
-    private Object getControlValue(Control control, String fieldName, FieldMetadataDto metadata) {
+    private Object getControlValue(Node control, String fieldName, FieldMetadataDto metadata) {
         if (control instanceof TextField) {
             String text = ((TextField) control).getText().trim();
             if (text.isEmpty()) return null;
-
             if (metadata != null) {
                 if ("number".equals(metadata.getType())) {
-                    try {
-                        return Integer.parseInt(text);
-                    } catch (NumberFormatException e) {
-                        return text;
-                    }
+                    try { return Integer.parseInt(text); } catch (NumberFormatException e) { return text; }
                 } else if ("double".equals(metadata.getType())) {
-                    try {
-                        return Double.parseDouble(text.replace(',', '.'));
-                    } catch (NumberFormatException e) {
-                        return text;
-                    }
+                    try { return Double.parseDouble(text.replace(',', '.')); } catch (NumberFormatException e) { return text; }
                 }
             }
             return text;
-        } else if (control instanceof ComboBox<?> combo) {
-            Object value = combo.getValue();
+        } else if (control instanceof ComboBox) {
+            Object value = ((ComboBox<?>) control).getValue();
             if (value instanceof SelectableItem) {
                 return ((SelectableItem) value).getId();
             }
             return value;
         } else if (control instanceof CheckBox) {
             return ((CheckBox) control).isSelected();
+        } else if (control instanceof HBox container) {
+            // Кастомный контейнер для TreeSelectableComponentBox
+            if (container.getChildren().size() >= 2 && container.getChildren().get(1) instanceof Label label) {
+                Object userData = label.getUserData();
+                if (userData instanceof Number) {
+                    return ((Number) userData).longValue();
+                }
+            }
         }
         return null;
     }
@@ -506,9 +494,9 @@ public class CardFormController {
     private void saveCard(Button saveButton) {
         Map<String, Object> fields = new HashMap<>();
 
-        for (Map.Entry<String, Control> entry : fieldControls.entrySet()) {
+        for (Map.Entry<String, Node> entry : fieldControls.entrySet()) {
             String fieldName = entry.getKey();
-            Control control = entry.getValue();
+            Node control = entry.getValue();
             FieldMetadataDto metadata = fieldMetadata.get(fieldName);
 
             Object value = getControlValue(control, fieldName, metadata);
@@ -528,7 +516,7 @@ public class CardFormController {
         }
 
         String name = "";
-        Control nameControl = fieldControls.get("name");
+        Node nameControl = fieldControls.get("name");
         if (nameControl instanceof TextField) {
             name = ((TextField) nameControl).getText().trim();
         }
@@ -735,14 +723,13 @@ public class CardFormController {
      */
     private void deleteTemporaryCard() {
         if (temporaryCardId != null) {
-            new Thread(() -> {
-                try {
-                    ProductCardClient.deleteCardWithCheck(temporaryCardId);
-                    System.out.println("Temporary card deleted: " + temporaryCardId);
-                } catch (Exception e) {
-                    System.err.println("Failed to delete temporary card: " + e.getMessage());
-                }
-            }).start();
+            try {
+                ProductCardClient.deleteCardWithCheck(temporaryCardId);
+                System.out.println("Temporary card deleted: " + temporaryCardId);
+                temporaryCardId = null;
+            } catch (Exception e) {
+                System.err.println("Failed to delete temporary card: " + e.getMessage());
+            }
         }
     }
 

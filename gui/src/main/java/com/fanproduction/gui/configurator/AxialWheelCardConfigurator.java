@@ -1,5 +1,6 @@
 package com.fanproduction.gui.configurator;
 
+import javafx.scene.Node;
 import javafx.scene.control.*;
 
 import java.util.Map;
@@ -10,21 +11,21 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
     private TextField wheelFormulaField;
     private TextField fullMarkingField;
     private String lastAutoMarking = "";
-    private Map<String, Control> fieldControls;
+    private Map<String, Node> fieldControls;
 
-    private ComboBox<String> getComboBox(Map<String, Control> controls, String name) {
+    private ComboBox<String> getComboBox(Map<String, Node> controls, String name) {
         return CardFieldConfigurator.getComboBox(controls, name);
     }
 
-    private TextField getTextField(Map<String, Control> controls, String name) {
+    private TextField getTextField(Map<String, Node> controls, String name) {
         return CardFieldConfigurator.getTextField(controls, name);
     }
 
-    private CheckBox getCheckBox(Map<String, Control> controls, String name) {
+    private CheckBox getCheckBox(Map<String, Node> controls, String name) {
         return CardFieldConfigurator.getCheckBox(controls, name);
     }
 
-    public void setupFields(Map<String, Control> fieldControls, Map<String, Label> fieldLabels, Map<String, Label> fieldHints, boolean existingCardExists) {
+    public void setupFields(Map<String, Node> fieldControls, Map<String, Label> fieldLabels, Map<String, Label> fieldHints, boolean existingCardExists) {
         this.fieldControls = fieldControls;
 
 //        // Отладка: выводим все ключи fieldControls
@@ -158,8 +159,8 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
 
     private void setupConditionalVisibility() {
         CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
-        Control fireproofMarkingField = fieldControls.get("fireproofMarking");
-        Control tempField = fieldControls.get("maxTemperature");
+        Node fireproofMarkingField = fieldControls.get("fireproofMarking");
+        Node tempField = fieldControls.get("maxTemperature");
 
         if (fireproofCheck != null) {
             boolean isVisible = fireproofCheck.isSelected();
@@ -185,7 +186,7 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         }
 
         CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
-        Control explosionMarkingField = fieldControls.get("explosionMarking");
+        Node explosionMarkingField = fieldControls.get("explosionMarking");
 
         if (explosionCheck != null && explosionMarkingField != null) {
             boolean isVisible = explosionCheck.isSelected();
@@ -284,7 +285,7 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
     }
 
     private String getFieldValue(String fieldName) {
-        Control control = fieldControls.get(fieldName);
+        Node control = fieldControls.get(fieldName);
         if (control == null) return "";
         if (control instanceof TextField) return ((TextField) control).getText().trim();
         if (control instanceof ComboBox) {
