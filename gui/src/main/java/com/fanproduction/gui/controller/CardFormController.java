@@ -25,6 +25,7 @@ import javafx.stage.Stage;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 public class CardFormController {
 
@@ -33,9 +34,13 @@ public class CardFormController {
     private final ProductCardDto existingCard;
     private final Runnable onSaveCallback;
     private final FieldMetadataService metadataService = new FieldMetadataService();
+    // Контроллеры вкладок
     private ProductComponentsController componentsTabController;
     private ProductMaterialsController materialsTabController;
-    private Long temporaryCardId;
+    // Для временных карточек
+    private final Map<String, Long> temporaryCardIds = new HashMap<>();
+    private Long currentTemporaryCardId;
+    private CompletableFuture<Long> temporaryCardFuture = null;
 
     private final Map<String, Node> fieldControls = new HashMap<>();
     private final Map<String, FieldMetadataDto> fieldMetadata = new HashMap<>();
@@ -113,41 +118,13 @@ public class CardFormController {
         stage.setScene(scene);
 
         // 4. СОЗДАЁМ ВРЕМЕННУЮ КАРТОЧКУ (ТОЛЬКО ДЛЯ НОВОЙ)
-        if (existingCard == null && temporaryCardId == null) {
-            createTemporaryCard();
+        if (existingCard == null && getTemporaryCardId() == null) {
+            createTemporaryCardAsync();
+            waitForTemporaryCardAndOpenTabs();
+        } else if (existingCard == null && getTemporaryCardId() != null) {
+            currentTemporaryCardId = getTemporaryCardId();
+            refreshTemporaryCardInTabs(currentTemporaryCardId);
         }
-    }
-
-    private void createTemporaryCard() {
-        new Thread(() -> {
-            try {
-                // Передаём флаг isTemporary = true
-                ApiResponse<ProductCardDto> response = ProductCardClient.createTemporaryCard(cardType, "system");
-                Platform.runLater(() -> {
-                    if (response.isSuccess() && response.getData() != null) {
-                        temporaryCardId = response.getData().getId();
-                        System.out.println("Temporary card created with ID: " + temporaryCardId);
-
-                        // Обновляем вкладки с реальным ID (он уже есть в БД)
-                        if (componentsTabController != null) {
-                            componentsTabController.refresh(temporaryCardId);
-                            componentsTabController.enableControls();
-                        }
-                        if (materialsTabController != null) {
-                            materialsTabController.refresh(temporaryCardId);
-                            materialsTabController.enableControls();
-                        }
-                    } else {
-                        showAlert("Ошибка", "Не удалось создать временную карточку: " + response.getMessage(),
-                                Alert.AlertType.ERROR);
-                    }
-                });
-            } catch (Exception e) {
-                Platform.runLater(() -> showAlert("Ошибка", "Ошибка создания временной карточки: " + e.getMessage(),
-                        Alert.AlertType.ERROR));
-                e.printStackTrace();
-            }
-        }).start();
     }
 
     private GridPane createFormGrid() {
@@ -177,7 +154,8 @@ public class CardFormController {
             Label label = new Label(field.getLabel() + (field.isRequired() ? " *" : ":"));
             label.setStyle("-fx-font-weight: bold;");
 
-            Node control = createControlForField(field);
+            Node control = createControlForField(field,
+                    existingCard != null ? existingCard.getFields().get(field.getName()) : null);
 
             grid.add(label, 0, row);
             grid.add(control, 1, row);
@@ -204,15 +182,10 @@ public class CardFormController {
         }
 
         CardFormConfigurator.configure(cardType, fieldControls, fieldLabels, fieldHints, existingCard != null);
-
         return grid;
     }
 
-    private Node createControlForField(FieldMetadataDto field) {
-        Object existingValue = null;
-        if (existingCard != null && existingCard.getFields() != null) {
-            existingValue = existingCard.getFields().get(field.getName());
-        }
+    private Node createControlForField(FieldMetadataDto field, Object existingValue) {
 
         return switch (field.getType()) {
             case "text" -> createTextField(field, existingValue);
@@ -465,22 +438,25 @@ public class CardFormController {
             if (text.isEmpty()) return null;
             if (metadata != null) {
                 if ("number".equals(metadata.getType())) {
-                    try { return Integer.parseInt(text); } catch (NumberFormatException e) { return text; }
+                    try {
+                        return Integer.parseInt(text);
+                    } catch (NumberFormatException e) {
+                        return text;
+                    }
                 } else if ("double".equals(metadata.getType())) {
-                    try { return Double.parseDouble(text.replace(',', '.')); } catch (NumberFormatException e) { return text; }
+                    try {
+                        return Double.parseDouble(text.replace(',', '.'));
+                    } catch (NumberFormatException e) {
+                        return text;
+                    }
                 }
             }
             return text;
         } else if (control instanceof ComboBox) {
-            Object value = ((ComboBox<?>) control).getValue();
-            if (value instanceof SelectableItem) {
-                return ((SelectableItem) value).getId();
-            }
-            return value;
+            return ((ComboBox<?>) control).getValue();
         } else if (control instanceof CheckBox) {
             return ((CheckBox) control).isSelected();
         } else if (control instanceof HBox container) {
-            // Кастомный контейнер для TreeSelectableComponentBox
             if (container.getChildren().size() >= 2 && container.getChildren().get(1) instanceof Label label) {
                 Object userData = label.getUserData();
                 if (userData instanceof Number) {
@@ -524,6 +500,8 @@ public class CardFormController {
         final String finalName = name;
         final Map<String, Object> finalFields = fields;
         final Long finalId = existingCard != null ? existingCard.getId() : null;
+        final boolean isNewCard = (existingCard == null);
+        final Long existingCardId = getCurrentCardId();
 
         if (finalName.isEmpty()) {
             showAlert("Ошибка", "Наименование обязательно для заполнения", Alert.AlertType.ERROR);
@@ -540,9 +518,6 @@ public class CardFormController {
                 }
             }
         }
-
-        final boolean isNewCard = (existingCard == null);
-        final Long existingCardId = getCurrentCardId();
 
         saveButton.setDisable(true);
         saveButton.setText("Сохранение...");
@@ -565,6 +540,7 @@ public class CardFormController {
 
                 Platform.runLater(() -> {
                     if (response.isSuccess()) {
+                        removeTemporaryCardId();
                         showAlert("Успешно", "Карточка " + (isNewCard ? "создана" : "обновлена"),
                                 Alert.AlertType.INFORMATION);
                         if (onSaveCallback != null) {
@@ -670,8 +646,10 @@ public class CardFormController {
                 // Вызываем метод refresh в зависимости от типа
                 if (controller instanceof ProductComponentsController) {
                     ((ProductComponentsController) controller).refresh(cardId);
+                    ((ProductComponentsController) controller).enableControls();
                 } else if (controller instanceof ProductMaterialsController) {
                     ((ProductMaterialsController) controller).refresh(cardId);
+                    ((ProductMaterialsController) controller).enableControls();
                 }
             } else {
                 // Показываем сообщение о загрузке
@@ -694,16 +672,6 @@ public class CardFormController {
         return tab;
     }
 
-    /**
-     * Возвращает ID текущей карточки (реальный или временный)
-     */
-    private Long getCurrentCardId() {
-        if (existingCard != null && existingCard.getId() != null) {
-            return existingCard.getId();
-        }
-        return temporaryCardId;
-    }
-
     private void removeTemporaryFlag(Long cardId) {
         new Thread(() -> {
             try {
@@ -718,19 +686,123 @@ public class CardFormController {
         }).start();
     }
 
-    /**
-     * Удаляет временную карточку, если она существует
-     */
-    private void deleteTemporaryCard() {
-        if (temporaryCardId != null) {
+    private void createTemporaryCard() {
+        System.out.println("=== createTemporaryCard START, cardType: " + cardType);
+        new Thread(() -> {
             try {
-                ProductCardClient.deleteCardWithCheck(temporaryCardId);
-                System.out.println("Temporary card deleted: " + temporaryCardId);
-                temporaryCardId = null;
+                // Передаём флаг isTemporary = true
+                ApiResponse<ProductCardDto> response = ProductCardClient.createTemporaryCard(cardType, "system");
+                Platform.runLater(() -> {
+                    if (response.isSuccess() && response.getData() != null) {
+                        Long newTempId = response.getData().getId();
+                        setTemporaryCardId(newTempId);
+                        System.out.println("Temporary card created for " + cardType + " with ID: " + newTempId);
+
+
+                        if (componentsTabController != null) {
+                            componentsTabController.refresh(currentTemporaryCardId);
+                            componentsTabController.enableControls();
+                        }
+                        if (materialsTabController != null) {
+                            materialsTabController.refresh(currentTemporaryCardId);
+                            materialsTabController.enableControls();
+                        }
+                    } else {
+                        showAlert("Ошибка", "Не удалось создать временную карточку: " + response.getMessage(),
+                                Alert.AlertType.ERROR);
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", "Ошибка создания временной карточки: " + e.getMessage(),
+                        Alert.AlertType.ERROR));
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    private void deleteTemporaryCard() {
+        Long tempId = getTemporaryCardId();
+        if (tempId != null) {
+            try {
+                ProductCardClient.deleteCardWithCheck(tempId);
+                System.out.println("Temporary card deleted: " + cardType + ": " + tempId);
+                removeTemporaryCardId();
             } catch (Exception e) {
                 System.err.println("Failed to delete temporary card: " + e.getMessage());
             }
         }
     }
 
+    private Long getCurrentCardId() {
+        if (existingCard != null && existingCard.getId() != null) {
+            return existingCard.getId();
+        }
+        return getTemporaryCardId();
+    }
+
+    private Long getTemporaryCardId() {
+        return temporaryCardIds.get(cardType);
+    }
+
+    private void setTemporaryCardId(Long id) {
+        temporaryCardIds.put(cardType, id);
+        this.currentTemporaryCardId = id;
+        System.out.println("Temporary card ID set for " + cardType + ": " + id);
+    }
+
+    private void removeTemporaryCardId() {
+        temporaryCardIds.remove(cardType);
+        this.currentTemporaryCardId = null;
+    }
+
+
+    private void refreshTemporaryCardInTabs(Long tempId) {
+        if (componentsTabController != null) {
+            componentsTabController.refresh(tempId);
+            componentsTabController.enableControls();
+        }
+        if (materialsTabController != null) {
+            materialsTabController.refresh(tempId);
+            materialsTabController.enableControls();
+        }
+    }
+
+    private void createTemporaryCardAsync() {
+        if (temporaryCardFuture != null && !temporaryCardFuture.isDone()) {
+            System.out.println("Temporary card creation already in progress, waiting...");
+            return;
+        }
+
+        temporaryCardFuture = CompletableFuture.supplyAsync(() -> {
+            try {
+                ApiResponse<ProductCardDto> response = ProductCardClient.createTemporaryCard(cardType, "system");
+                if (response.isSuccess() && response.getData() != null) {
+                    Long newTempId = response.getData().getId();
+                    setTemporaryCardId(newTempId);
+                    System.out.println("Temporary card created for " + cardType + " with ID: " + newTempId);
+                    return newTempId;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        });
+       // refreshTemporaryCardInTabs(currentTemporaryCardId);
+    }
+
+    private void waitForTemporaryCardAndOpenTabs() {
+        if (temporaryCardFuture == null) {
+            createTemporaryCardAsync();
+            refreshTemporaryCardInTabs(currentTemporaryCardId);
+        }
+
+        temporaryCardFuture.thenAccept(tempId -> {
+            Platform.runLater(() -> {
+                if (tempId != null) {
+                    currentTemporaryCardId = tempId;
+                    refreshTemporaryCardInTabs(tempId);
+                }
+            });
+        });
+    }
 }

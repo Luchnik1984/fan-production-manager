@@ -53,10 +53,6 @@ public class TreeSelectableComponentBox {
         selectedLabel.setUserData(id);
     }
 
-    public void setSelectedFullMarking(String fullMarking) {
-        selectedLabel.setText(fullMarking);
-    }
-
     private void openSelector() {
         new Thread(() -> {
             try {
@@ -125,6 +121,7 @@ public class TreeSelectableComponentBox {
     }
 
     private void runDialog() {
+        // Просто открываем форму создания — она сама создаст временную карточку
         CardFormController form = new CardFormController(
                 ownerStage,
                 referenceType,

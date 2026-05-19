@@ -198,13 +198,15 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
             fullMarking.append(poles);
         }
 
-        // Климатическое исполнение
-        if (climateType != null && !climateType.isEmpty()) {
-            fullMarking.append("-").append(climateType);
+        // Монтажное исполнение
+        if (mountingType != null && !mountingType.isEmpty()) {
+            fullMarking.append(" ").append(mountingType);
         }
 
-        if (mountingType != null && !mountingType.isEmpty())
-            fullMarking.append(" ").append(mountingType);
+        // Климатическое исполнение
+        if (climateType != null && !climateType.isEmpty()) {
+            fullMarking.append(" ").append(climateType);
+        }
 
         String newMarking = fullMarking.toString().trim();
         String currentMarking = fullMarkingField.getText();
