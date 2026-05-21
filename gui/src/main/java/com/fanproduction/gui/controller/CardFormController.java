@@ -1,5 +1,6 @@
 package com.fanproduction.gui.controller;
 
+import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.gui.client.ApiClient;
 import com.fanproduction.gui.client.ProductCardClient;
 import com.fanproduction.gui.component.TreeSelectableComponentBox;
@@ -565,18 +566,11 @@ public class CardFormController {
     }
 
     private String getTypeDisplayName(String cardType) {
-        Map<String, String> displayMap = Map.of(
-                "MOTOR", "Электродвигатель",
-                "MOTOR_WHEEL", "Мотор-колесо",
-                "RADIAL_WHEEL", "Колесо радиальное",
-                "AXIAL_WHEEL", "Колесо осевое",
-                "AXIAL_FAN", "Вентилятор осевой",
-                "RADIAL_FAN", "Вентилятор радиальный",
-                "DUCT_FAN", "Вентилятор канальный",
-                "CUP", "Стакан",
-                "ACCESSORY", "Комплектующее"
-        );
-        return displayMap.getOrDefault(cardType, cardType);
+        try {
+            return CardTemplateType.valueOf(cardType).getDisplayName();
+        } catch (IllegalArgumentException e) {
+            return cardType;
+        }
     }
 
     private void showAlert(String title, String message, Alert.AlertType type) {
@@ -796,13 +790,11 @@ public class CardFormController {
             refreshTemporaryCardInTabs(currentTemporaryCardId);
         }
 
-        temporaryCardFuture.thenAccept(tempId -> {
-            Platform.runLater(() -> {
-                if (tempId != null) {
-                    currentTemporaryCardId = tempId;
-                    refreshTemporaryCardInTabs(tempId);
-                }
-            });
-        });
+        temporaryCardFuture.thenAccept(tempId -> Platform.runLater(() -> {
+            if (tempId != null) {
+                currentTemporaryCardId = tempId;
+                refreshTemporaryCardInTabs(tempId);
+            }
+        }));
     }
 }
