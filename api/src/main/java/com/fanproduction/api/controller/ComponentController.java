@@ -9,10 +9,7 @@ import com.fanproduction.core.entity.dictionary.UnitOfMeasureEntity;
 import com.fanproduction.services.ComponentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -20,14 +17,9 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/components")
 @RequiredArgsConstructor
-public class ComponentController {
+public class ComponentController extends BaseController {
 
     private final ComponentService componentService;
-
-    private String getCurrentUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null ? auth.getName() : "system";
-    }
 
     // ========== Categories ==========
 

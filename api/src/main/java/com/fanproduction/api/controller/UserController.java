@@ -11,37 +11,42 @@ import com.fanproduction.core.enums.UserStatus;
 import com.fanproduction.services.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Контроллер для управления пользователями.
+ */
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
-public class UserController {
+public class UserController extends BaseController {
 
     private final UserService userService;
 
+
     /**
-     * Получает email текущего аутентифицированного пользователя из SecurityContext
+     * Вспомогательный метод.
+     * Возвращает email текущего пользователя или бросает исключение.
+     * Используется в методах, где аутентификация обязательна.
      */
-    private String getCurrentUserEmail() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) {
+    private String getCurrentUserOrThrow() {
+        if (!isAuthenticated()) {
             throw new SecurityException("Пользователь не авторизован");
         }
-        return auth.getName();
+        return super.getCurrentUser();  // ЯВНО вызываем метод родителя
     }
+
+    // ========== ПУБЛИЧНЫЕ МЕТОДЫ ==========
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<UserDto>> getAllUsers(@RequestParam(required = false) String status) {
         List<UserDto> users;
         if (status != null && !status.isEmpty()) {
-                UserStatus userStatus = UserStatus.valueOf(status);
-                users = userService.getUsersByStatus(userStatus);
+            UserStatus userStatus = UserStatus.valueOf(status);
+            users = userService.getUsersByStatus(userStatus);
         } else {
             users = userService.getAllUsers();
         }
@@ -58,10 +63,18 @@ public class UserController {
         return ApiResponse.success(user);
     }
 
+    /**
+     * Получить информацию о текущем пользователе.
+     */
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
-    public ApiResponse<UserDto> getCurrentUser() {
-        String email = getCurrentUserEmail();
+    public ApiResponse<UserDto> getCurrentUserInfo() {
+        String email = super.getCurrentUser();  // ЯВНО вызываем метод родителя
+
+        if ("system".equals(email)) {
+            return ApiResponse.error("Пользователь не авторизован");
+        }
+
         UserDto user = userService.getUserDtoByEmail(email);
         if (user == null) {
             return ApiResponse.error("Пользователь не найден");
@@ -72,7 +85,7 @@ public class UserController {
     @PutMapping("/me")
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<Void> updateCurrentUser(@RequestBody UpdateProfileRequest request) {
-        String email = getCurrentUserEmail();
+        String email = getCurrentUserOrThrow();
         userService.updateProfile(email, request.getFirstName(), request.getLastName(), request.getPhone());
         return ApiResponse.success("Профиль обновлён", null);
     }
@@ -80,15 +93,17 @@ public class UserController {
     @PostMapping("/me/change-password")
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<Void> changePassword(@RequestBody ChangePasswordRequest request) {
-        String email = getCurrentUserEmail();
+        String email = getCurrentUserOrThrow();
         userService.changePassword(email, request.getOldPassword(), request.getNewPassword());
         return ApiResponse.success("Пароль изменён", null);
     }
 
+    // ========== АДМИНИСТРАТИВНЫЕ МЕТОДЫ ==========
+
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> approveUser(@PathVariable Long id) {
-        String adminEmail = getCurrentUserEmail();
+        String adminEmail = getCurrentUserOrThrow();
         userService.approveUser(id, adminEmail);
         return ApiResponse.success("Пользователь подтверждён", null);
     }
@@ -96,7 +111,7 @@ public class UserController {
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> rejectUser(@PathVariable Long id, @RequestBody RejectRequest request) {
-        String adminEmail = getCurrentUserEmail();
+        String adminEmail = getCurrentUserOrThrow();
         userService.rejectUser(id, adminEmail, request.getReason());
         return ApiResponse.success("Регистрация отклонена", null);
     }
@@ -104,7 +119,7 @@ public class UserController {
     @PostMapping("/{id}/block")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> blockUser(@PathVariable Long id, @RequestBody(required = false) BlockRequest request) {
-        String adminEmail = getCurrentUserEmail();
+        String adminEmail = getCurrentUserOrThrow();
         String reason = request != null ? request.getReason() : null;
         userService.blockUser(id, adminEmail, reason);
         return ApiResponse.success("Пользователь заблокирован", null);
@@ -113,7 +128,7 @@ public class UserController {
     @PostMapping("/{id}/unblock")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> unblockUser(@PathVariable Long id) {
-        String adminEmail = getCurrentUserEmail();
+        String adminEmail = getCurrentUserOrThrow();
         userService.unblockUser(id, adminEmail);
         return ApiResponse.success("Пользователь разблокирован", null);
     }

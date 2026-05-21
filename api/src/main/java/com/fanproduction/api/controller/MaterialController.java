@@ -9,8 +9,6 @@ import com.fanproduction.core.entity.dictionary.UnitOfMeasureEntity;
 import com.fanproduction.services.MaterialService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,14 +18,9 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/materials")
 @RequiredArgsConstructor
-public class MaterialController {
+public class MaterialController extends BaseController {
 
     private final MaterialService materialService;
-
-    private String getCurrentUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null ? auth.getName() : "system";
-    }
 
     // ========== Unit of Measure ==========
 
