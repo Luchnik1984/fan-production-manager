@@ -1,6 +1,7 @@
 package com.fanproduction.api.exception;
 
 import com.fanproduction.api.dto.response.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -31,12 +33,10 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Обработчик для BadCredentialsException (неверные учетные данные или неактивный аккаунт)
-     * Возвращает статус 401 (Unauthorized) с понятным сообщением
+     * Обработчик для BadCredentialsException (неверные учетные данные)
      */
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Void>> handleBadCredentialsException(BadCredentialsException ex) {
-        // Возвращаем статус 401 (Unauthorized) с сообщением из исключения
         return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
                 .body(ApiResponse.error(ex.getMessage()));
@@ -63,27 +63,27 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Обработчик для нарушения уникальности
+     * Обработчик для нарушения уникальности (DataIntegrityViolationException)
      */
-
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
-        String message = "Ошибка сохранения данных";
         String errorMsg = ex.getMessage();
 
-        if (errorMsg != null) {
-            // Определяем тип сущности по имени индекса
-            if (errorMsg.contains("full_marking")) {
-                String entityType = extractEntityType(errorMsg);
-                message = entityType + " с такой маркировкой уже существует";
-            } else if (errorMsg.contains("idx_component_vendor_code_unique")) {
-                message = "Компонент с таким артикулом уже существует";
-            } else if (errorMsg.contains("idx_material_unique")) {
-                message = "Материал с такими параметрами уже существует";
-            } else if (errorMsg.contains("unique") || errorMsg.contains("UNIQUE")) {
-                message = "Запись с такими данными уже существует";
-            }
+        // Ранний return: если сообщения нет, возвращаем стандартную ошибку
+        if (errorMsg == null) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.error("Ошибка сохранения данных"));
         }
+
+        // Switch expression для определения типа ошибки
+        String message = switch (getErrorType(errorMsg)) {
+            case FULL_MARKING -> extractEntityType(errorMsg) + " с такой маркировкой уже существует";
+            case COMPONENT_VENDOR_CODE -> "Компонент с таким артикулом уже существует";
+            case MATERIAL_DUPLICATE -> "Материал с такими параметрами уже существует";
+            case GENERIC_UNIQUE -> "Запись с такими данными уже существует";
+            case UNKNOWN -> "Ошибка сохранения данных";
+        };
 
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
@@ -91,8 +91,37 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Типы ошибок для switch expression
+     */
+    private enum ErrorType {
+        FULL_MARKING,
+        COMPONENT_VENDOR_CODE,
+        MATERIAL_DUPLICATE,
+        GENERIC_UNIQUE,
+        UNKNOWN
+    }
+
+    /**
+     * Определяет тип ошибки по тексту сообщения
+     */
+    private ErrorType getErrorType(String errorMsg) {
+        if (errorMsg.contains("full_marking")) {
+            return ErrorType.FULL_MARKING;
+        }
+        if (errorMsg.contains("idx_component_vendor_code_unique")) {
+            return ErrorType.COMPONENT_VENDOR_CODE;
+        }
+        if (errorMsg.contains("idx_material_unique")) {
+            return ErrorType.MATERIAL_DUPLICATE;
+        }
+        if (errorMsg.contains("unique") || errorMsg.contains("UNIQUE")) {
+            return ErrorType.GENERIC_UNIQUE;
+        }
+        return ErrorType.UNKNOWN;
+    }
+
+    /**
      * Извлекает название сущности из имени индекса
-     * Пример: idx_motor_card_full_marking -> Электродвигатель
      */
     private String extractEntityType(String errorMsg) {
         if (errorMsg.contains("motor_card")) return "Электродвигатель";
@@ -109,9 +138,10 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
-        ex.printStackTrace();
+        log.error("Unexpected error", ex);
+
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("Внутренняя ошибка сервера: " + ex.getMessage()));
+                .body(ApiResponse.error("Внутренняя ошибка сервера"));
     }
 }
