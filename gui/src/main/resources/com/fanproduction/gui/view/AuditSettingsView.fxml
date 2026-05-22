@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<VBox spacing="15" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.fanproduction.gui.controller.AuditSettingsController" style="-fx-background-color: #f5f5f5;">
+    <padding>
+        <Insets bottom="20" left="20" right="20" top="20"/>
+    </padding>
+
+    <!-- Заголовок -->
+    <Label text="Настройки журнала аудита" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+    <Separator/>
+
+    <!-- ========== НАСТРОЙКИ ОЧИСТКИ ========== -->
+    <Label text="Настройки очистки" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+
+    <GridPane hgap="10" vgap="10">
+        <Label text="Срок хранения (дней, 0 = без ограничения):" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+        <TextField fx:id="retentionDaysField" GridPane.columnIndex="1" GridPane.rowIndex="0" promptText="90" prefWidth="150"/>
+        <Label fx:id="retentionDaysError" textFill="red" GridPane.columnIndex="2" GridPane.rowIndex="0"/>
+
+        <Label text="Макс. записей (0 = без ограничения):" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+        <TextField fx:id="maxRecordsField" GridPane.columnIndex="1" GridPane.rowIndex="1" promptText="50000" prefWidth="150"/>
+        <Label fx:id="maxRecordsError" textFill="red" GridPane.columnIndex="2" GridPane.rowIndex="1"/>
+
+        <Label text="Очистка журнала:" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+        <HBox spacing="10" alignment="CENTER_LEFT" GridPane.columnIndex="1" GridPane.rowIndex="2">
+            <ComboBox fx:id="cleanupPeriodCombo" prefWidth="140"/>
+            <Label text="в"/>
+            <ComboBox fx:id="cleanupTimeCombo" prefWidth="80"/>
+        </HBox>
+        <Label fx:id="cleanupPreviewLabel" GridPane.columnIndex="1" GridPane.rowIndex="3" style="-fx-text-fill: #2E7D32; -fx-font-size: 11px;"/>
+        <Label fx:id="cleanupCronDisplay" GridPane.columnIndex="1" GridPane.rowIndex="4" style="-fx-text-fill: #888; -fx-font-size: 10px;"/>
+    </GridPane>
+
+    <Separator/>
+
+    <!-- ========== ФИЛЬТРАЦИЯ ДЕЙСТВИЙ ========== -->
+    <Label text="Какие действия логировать" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+
+    <GridPane hgap="10" vgap="10">
+        <CheckBox fx:id="logLoginSuccessCheck" text="Успешные входы" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+        <CheckBox fx:id="logLoginFailedCheck" text="Неудачные входы" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+        <CheckBox fx:id="logLogoutCheck" text="Выход из системы" GridPane.columnIndex="2" GridPane.rowIndex="0"/>
+
+        <CheckBox fx:id="logRegisterCheck" text="Регистрация" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+        <CheckBox fx:id="logUserManagementCheck" text="Модерация пользователей" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+        <CheckBox fx:id="logProfileChangesCheck" text="Изменение профиля/пароля" GridPane.columnIndex="2" GridPane.rowIndex="1"/>
+
+        <CheckBox fx:id="logCardCreateCheck" text="Создание карточек" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+        <CheckBox fx:id="logCardUpdateCheck" text="Изменение карточек" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+        <CheckBox fx:id="logCardDeleteCheck" text="Удаление карточек" GridPane.columnIndex="2" GridPane.rowIndex="2"/>
+
+        <CheckBox fx:id="logDocumentGenerationCheck" text="Генерация документов" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+    </GridPane>
+
+    <Separator/>
+
+    <!-- ========== ИНФОРМАЦИЯ ОБ ИЗМЕНЕНИИ ========== -->
+    <GridPane hgap="10" vgap="5">
+        <Label text="Последнее изменение:" GridPane.columnIndex="0" GridPane.rowIndex="0" style="-fx-font-weight: bold;"/>
+        <Label fx:id="updatedAtLabel" GridPane.columnIndex="1" GridPane.rowIndex="0" style="-fx-text-fill: #555;"/>
+
+        <Label text="Кем изменено:" GridPane.columnIndex="0" GridPane.rowIndex="1" style="-fx-font-weight: bold;"/>
+        <Label fx:id="updatedByLabel" GridPane.columnIndex="1" GridPane.rowIndex="1" style="-fx-text-fill: #555;"/>
+    </GridPane>
+
+    <!-- ========== СООБЩЕНИЯ И КНОПКИ ========== -->
+    <Label fx:id="messageLabel" textFill="green" wrapText="true"/>
+
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button fx:id="saveButton" text="Сохранить" onAction="#handleSave" style="-fx-background-color: #4CAF50; -fx-text-fill: white;"/>
+        <Button fx:id="cancelButton" text="Отмена" onAction="#handleCancel" style="-fx-background-color: #f44336; -fx-text-fill: white;"/>
+    </HBox>
+</VBox>

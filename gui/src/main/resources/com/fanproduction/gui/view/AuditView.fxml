@@ -38,9 +38,10 @@
 
     <!-- Панель пагинации и экспорта -->
     <HBox spacing="10" alignment="CENTER_RIGHT">
-        <Button fx:id="exportButton" text="Экспорт" onAction="#showExportDialog" />
-        <Button fx:id="prevButton" text="Предыдущая" onAction="#handlePrevPage" disable="true" />
+        <Button fx:id="exportButton" text="📎 Экспорт" onAction="#showExportDialog" />
+        <Button fx:id="settingsButton" text="⚙ Настройки" onAction="#handleOpenSettings" />
+        <Button fx:id="prevButton" text="◀ Предыдущая" onAction="#handlePrevPage" disable="true" />
         <Label fx:id="pageLabel" text="Страница 1 из 1" />
-        <Button fx:id="nextButton" text="Следующая" onAction="#handleNextPage" disable="true" />
+        <Button fx:id="nextButton" text="Следующая ▶" onAction="#handleNextPage" disable="true" />
     </HBox>
 </VBox>

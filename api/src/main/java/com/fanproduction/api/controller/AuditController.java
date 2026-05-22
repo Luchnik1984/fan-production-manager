@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/audit")
 @RequiredArgsConstructor
-public class AuditController extends BaseController {
+public class   AuditController extends BaseController {
 
     private final AuditService auditService;
 
