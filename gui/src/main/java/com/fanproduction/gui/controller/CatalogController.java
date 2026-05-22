@@ -171,57 +171,71 @@ public class CatalogController {
         }).start();
     }
 
+    /**
+     * Формирует отображаемое название для карточки в таблице
+     */
     private String buildDisplayName(ProductCardDto dto) {
         String cardType = dto.getCardType();
         Map<String, Object> fields = dto.getFields();
 
-        // Электродвигатель
-        if ("MOTOR".equals(cardType) && fields != null) {
+        // Получаем displayName из enum
+        String typeDisplayName = getTypeDisplayName(cardType);
+
+        // Для типов, у которых есть полная маркировка
+        if (hasFullMarking(cardType)) {
             String fullMarking = (String) fields.get("fullMarking");
-            if (fullMarking != null && !fullMarking.isEmpty()) {
-                return dto.getCardTypeDisplay() + " " + fullMarking;
-            }
-            return dto.getCardTypeDisplay();
+            return formatWithFullMarking(typeDisplayName, fullMarking);
         }
 
-        // Мотор-колесо
-        if ("MOTOR_WHEEL".equals(cardType) && fields != null) {
-            String fullMarking = (String) fields.get("fullMarking");
-            if (fullMarking != null && !fullMarking.isEmpty()) {
-                return CardTemplateType.valueOf(cardType).getDisplayName() + " " + fullMarking;
+        // Для комплектующего — особый случай (используем name вместо fullMarking)
+        if ("ACCESSORY".equals(cardType) && fields != null) {
+            String name = (String) fields.get("name");
+            if (name != null && !name.isEmpty()) {
+                return typeDisplayName + " " + name;
             }
-            return CardTemplateType.valueOf(cardType).getDisplayName();
-        }
-
-        // Осевое колесо
-        if ("AXIAL_WHEEL".equals(cardType) && fields != null) {
-            String fullMarking = (String) fields.get("fullMarking");
-            if (fullMarking != null && !fullMarking.isEmpty()) {
-                return dto.getCardTypeDisplay() + " " + fullMarking;
-            }
-            return dto.getCardTypeDisplay();
-        }
-
-        // Для радиального колеса: Тип продукции + полная маркировка
-        if ("RADIAL_WHEEL".equals(cardType) && fields != null) {
-            String fullMarking = (String) fields.get("fullMarking");
-            System.out.println("DEBUG: RADIAL_WHEEL fullMarking = [" + fullMarking + "]");
-            if (fullMarking != null && !fullMarking.isEmpty()) {
-                return dto.getCardTypeDisplay() + " " + fullMarking;
-            }
-            return dto.getCardTypeDisplay();
-        }
-
-        // Для канального вентилятора: Тип продукции + полная маркировка
-        if ("DUCT_FAN".equals(cardType) && fields != null) {
-            String fullMarking = (String) fields.get("fullMarking");
-            if (fullMarking != null && !fullMarking.isEmpty()) {
-                return dto.getCardTypeDisplay() + " " + fullMarking;
-            }
-            return dto.getCardTypeDisplay();
+            return typeDisplayName;
         }
 
         return dto.getName();
+    }
+
+    /**
+     * Возвращает отображаемое название типа карточки по её коду
+     */
+    private String getTypeDisplayName(String cardType) {
+        try {
+            return CardTemplateType.valueOf(cardType).getDisplayName();
+        } catch (IllegalArgumentException e) {
+            return cardType; // fallback на случай неизвестного типа
+        }
+    }
+
+    /**
+     * Проверяет, есть ли у типа карточки поле fullMarking
+     */
+    private boolean hasFullMarking(String cardType) {
+        return switch (cardType) {
+            case "MOTOR",
+                 "MOTOR_WHEEL",
+                 "AXIAL_WHEEL",
+                 "RADIAL_WHEEL",
+                 "DUCT_FAN",
+                 "ROOF_LOW_PROFILE_FAN",
+                 "ROOF_RADIAL_FAN",
+                 "ROOF_AXIAL_FAN",
+                 "CUP" -> true;
+            default -> false;
+        };
+    }
+
+    /**
+     * Форматирует отображение: "Тип продукции + полная маркировка"
+     */
+    private String formatWithFullMarking(String typeDisplayName, String fullMarking) {
+        if (fullMarking != null && !fullMarking.isEmpty()) {
+            return typeDisplayName + " " + fullMarking;
+        }
+        return typeDisplayName;
     }
 
     private void updatePaginationControls() {

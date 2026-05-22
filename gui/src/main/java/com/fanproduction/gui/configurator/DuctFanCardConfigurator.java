@@ -1,248 +1,144 @@
 package com.fanproduction.gui.configurator;
 
 import javafx.scene.Node;
-import javafx.scene.control.*;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 
 import java.util.Map;
 
 public class DuctFanCardConfigurator implements CardFieldConfigurator {
 
-    private TextField fullMarkingField;
     private String lastAutoMarking = "";
-    private Map<String, Node> fieldControls;
-    private Map<String, Label> fieldLabels;
-
-    // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
-
-    private TextField getTextField(Map<String, Node> controls, String name) {
-        Node c = controls.get(name);
-        return c instanceof TextField ? (TextField) c : null;
-    }
-
-    @SuppressWarnings("unchecked")
-    private ComboBox<String> getComboBox(Map<String, Node> controls, String name) {
-        Node c = controls.get(name);
-        return c instanceof ComboBox ? (ComboBox<String>) c : null;
-    }
-
-    private CheckBox getCheckBox(Map<String, Node> controls, String name) {
-        Node c = controls.get(name);
-        return c instanceof CheckBox ? (CheckBox) c : null;
-    }
-
-    private boolean isSelected(String fieldName) {
-        CheckBox checkBox = getCheckBox(fieldControls, fieldName);
-        return checkBox != null && checkBox.isSelected();
-    }
-
-    private String getFieldValue(String fieldName) {
-        Node control = fieldControls.get(fieldName);
-        if (control == null) return "";
-        if (control instanceof TextField) return ((TextField) control).getText().trim();
-        if (control instanceof ComboBox) {
-            Object value = ((ComboBox<?>) control).getValue();
-            return value != null ? value.toString() : "";
-        }
-        return "";
-    }
-
-    private void setFieldValue(String fieldName, String value) {
-       Node control = fieldControls.get(fieldName);
-        if (control instanceof TextField && value != null) {
-            ((TextField) control).setText(value);
-        }
-    }
-
-    private void addTextFieldListener(String fieldName, Runnable callback) {
-        TextField textField = getTextField(fieldControls, fieldName);
-        if (textField != null) {
-            textField.textProperty().addListener((obs, old, val) -> callback.run());
-        }
-    }
-
-    private void addComboBoxListener(String fieldName, Runnable callback) {
-        ComboBox<String> comboBox = getComboBox(fieldControls, fieldName);
-        if (comboBox != null) {
-            comboBox.valueProperty().addListener((obs, old, val) -> callback.run());
-        }
-    }
-
-    private void addCheckBoxListener(String fieldName, Runnable callback) {
-        CheckBox checkBox = getCheckBox(fieldControls, fieldName);
-        if (checkBox != null) {
-            checkBox.selectedProperty().addListener((obs, old, val) -> callback.run());
-        }
-    }
-
-    private void setVisible(String fieldName, boolean visible) {
-        Node control = fieldControls.get(fieldName);
-        Label label = fieldLabels.get(fieldName);
-        if (control != null) {
-            control.setVisible(visible);
-            control.setManaged(visible);
-        }
-        if (label != null) {
-            label.setVisible(visible);
-            label.setManaged(visible);
-        }
-    }
-
-    // ==================== ОСНОВНОЙ МЕТОД ====================
 
     @Override
     public void setupFields(Map<String, Node> fieldControls,
                             Map<String, Label> fieldLabels,
                             Map<String, Label> fieldHints,
                             boolean existingCardExists) {
-        this.fieldControls = fieldControls;
-        this.fieldLabels = fieldLabels;
 
-        fullMarkingField = getTextField(fieldControls, "fullMarking");
+        setupTypeSelection(fieldControls, fieldLabels);
+        setupFullMarkingGeneration(fieldControls);
+        setupExclusiveSelection(fieldControls);
 
-        // Настройка выбора типа колеса
-        setupTypeSelection();
-
-        // Настройка слушателей для обновления полной маркировки
-        setupFullMarkingListeners();
-
-        setupExclusiveSelection();
-
-        // Принудительное обновление полной маркировки
-        updateFullMarking();
-
-
-        // Автозаполнение наименования для новой карточки
-        if (!existingCardExists) {
-            TextField nameField = getTextField(fieldControls, "name");
-            if (nameField != null && nameField.getText().isEmpty()) {
-                nameField.setText("Вентилятор канальный");
-            }
-        }
-    //        debugFullMarking();
+        autoFillName(fieldControls, "Вентилятор канальный", existingCardExists);
     }
 
-    // ==================== НАСТРОЙКА ТИПА КОЛЕСА ====================
-
-    private void setupTypeSelection() {
+    private void setupTypeSelection(Map<String, Node> fieldControls, Map<String, Label> fieldLabels) {
         ComboBox<String> typeCombo = getComboBox(fieldControls, "ductFanType");
         if (typeCombo == null) return;
 
-        // Сохраняем значение из карточки (если редактируем)
-        String savedType = getFieldValue("ductFanType");
+        String savedType = getFieldValue(fieldControls, "ductFanType");
 
-        // Устанавливаем русские названия
         typeCombo.getItems().clear();
         typeCombo.getItems().addAll("Мотор-колесо", "Радиальное колесо");
 
-        // Восстанавливаем сохранённое значение
         if ("MOTOR_WHEEL".equals(savedType)) {
             typeCombo.setValue("Мотор-колесо");
-            updateFieldsVisibility(true, false);
+            updateFieldsVisibility(fieldControls, fieldLabels, true, false);
         } else if ("RADIAL_WHEEL".equals(savedType)) {
             typeCombo.setValue("Радиальное колесо");
-            updateFieldsVisibility(false, true);
+            updateFieldsVisibility(fieldControls, fieldLabels, false, true);
         } else {
             typeCombo.setValue("Мотор-колесо");
-            updateFieldsVisibility(true, false);
+            updateFieldsVisibility(fieldControls, fieldLabels, true, false);
         }
 
-        // Слушатель изменения типа
         typeCombo.valueProperty().addListener((obs, old, newVal) -> {
             if (newVal != null) {
                 boolean isMotorWheel = "Мотор-колесо".equals(newVal);
                 boolean isRadialWheel = "Радиальное колесо".equals(newVal);
-                updateFieldsVisibility(isMotorWheel, isRadialWheel);
-                updateFullMarking();
+                updateFieldsVisibility(fieldControls, fieldLabels, isMotorWheel, isRadialWheel);
+                updateFullMarking(fieldControls);
             }
         });
     }
 
-    private void updateFieldsVisibility(boolean isMotorWheel, boolean isRadialWheel) {
-        setVisible("motorWheelId", isMotorWheel);
-        setVisible("radialWheelId", isRadialWheel);
-        setVisible("motorId", isRadialWheel);
-        setVisible("wheelSize", isRadialWheel);
+    private void updateFieldsVisibility(Map<String, Node> fieldControls,
+                                        Map<String, Label> fieldLabels,
+                                        boolean isMotorWheel,
+                                        boolean isRadialWheel) {
+        setVisible(fieldControls, fieldLabels, "motorWheelId", isMotorWheel);
+        setVisible(fieldControls, fieldLabels, "radialWheelId", isRadialWheel);
+        setVisible(fieldControls, fieldLabels, "motorId", isRadialWheel);
+        setVisible(fieldControls, fieldLabels, "wheelSize", isRadialWheel);
     }
 
-    // ==================== СЛУШАТЕЛИ ДЛЯ ПОЛНОЙ МАРКИРОВКИ ====================
-
-    private void setupFullMarkingListeners() {
+    private void setupFullMarkingGeneration(Map<String, Node> fieldControls) {
+        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
 
-        // Основные поля
-        addTextFieldListener("seriesName", this::updateFullMarking);
-        addTextFieldListener("executionType", this::updateFullMarking);
-        addTextFieldListener("ductSize", this::updateFullMarking);
-        addTextFieldListener("poles", this::updateFullMarking);
-        addTextFieldListener("voltage", this::updateFullMarking);
-        addTextFieldListener("wheelSize", this::updateFullMarking);
-        addComboBoxListener("ductFanType", this::updateFullMarking);
+        addTextFieldListener(fieldControls, "seriesName", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "executionType", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "ductSize", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "poles", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "voltage", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "wheelSize", () -> updateFullMarking(fieldControls));
+        addComboBoxListener(fieldControls, "ductFanType", () -> updateFullMarking(fieldControls));
 
-        // Исполнение по назначению
-        addCheckBoxListener("generalPurpose", this::updateFullMarking);
-        addCheckBoxListener("fireproof", this::updateFullMarking);
-        addCheckBoxListener("explosionProof", this::updateFullMarking);
-        addTextFieldListener("fireproofMarking", this::updateFullMarking);
-        addTextFieldListener("explosionMarking", this::updateFullMarking);
+        addCheckBoxListener(fieldControls, "generalPurpose", () -> updateFullMarking(fieldControls));
+        addCheckBoxListener(fieldControls, "fireproof", () -> updateFullMarking(fieldControls));
+        addCheckBoxListener(fieldControls, "explosionProof", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "fireproofMarking", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "explosionMarking", () -> updateFullMarking(fieldControls));
+
+        updateFullMarking(fieldControls);
     }
 
-    // ==================== ФОРМИРОВАНИЕ ПОЛНОЙ МАРКИРОВКИ ====================
-
-    private void updateFullMarking() {
+    private void updateFullMarking(Map<String, Node> fieldControls) {
+        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
 
-        String seriesName = getFieldValue("seriesName");
-        String executionType = getFieldValue("executionType");
-        String ductSize = getFieldValue("ductSize");
-        String poles = getFieldValue("poles");
-        String voltage = getFieldValue("voltage");
-        String wheelSize = getFieldValue("wheelSize");
-        String ductFanType = getFieldValue("ductFanType");
+        String seriesName = getFieldValue(fieldControls, "seriesName");
+        String executionType = getFieldValue(fieldControls, "executionType");
+        String ductSize = getFieldValue(fieldControls, "ductSize");
+        String poles = getFieldValue(fieldControls, "poles");
+        String voltage = getFieldValue(fieldControls, "voltage");
+        String wheelSize = getFieldValue(fieldControls, "wheelSize");
+        String ductFanType = getFieldValue(fieldControls, "ductFanType");
 
-        // Преобразуем русское название в английский код
         if ("Мотор-колесо".equals(ductFanType)) {
             ductFanType = "MOTOR_WHEEL";
         } else if ("Радиальное колесо".equals(ductFanType)) {
             ductFanType = "RADIAL_WHEEL";
         }
 
-        boolean isGeneralPurpose = isSelected("generalPurpose");
-        boolean isFireproof = isSelected("fireproof");
-        boolean isExplosionProof = isSelected("explosionProof");
+        boolean isGeneralPurpose = isSelected(fieldControls, "generalPurpose");
+        boolean isFireproof = isSelected(fieldControls, "fireproof");
+        boolean isExplosionProof = isSelected(fieldControls, "explosionProof");
 
         String purposeMarking = "";
         if (isFireproof) {
-            purposeMarking = getFieldValue("fireproofMarking");
+            purposeMarking = getFieldValue(fieldControls, "fireproofMarking");
         } else if (isExplosionProof) {
-            purposeMarking = getFieldValue("explosionMarking");
+            purposeMarking = getFieldValue(fieldControls, "explosionMarking");
         }
 
         StringBuilder fullMarking = new StringBuilder();
 
-        if (seriesName != null && !seriesName.isEmpty()) {
+        if (!seriesName.isEmpty()) {
             fullMarking.append(seriesName);
         }
-        if (executionType != null && !executionType.isEmpty()) {
+        if (!executionType.isEmpty()) {
             fullMarking.append("-").append(executionType);
         }
 
         if ("MOTOR_WHEEL".equals(ductFanType)) {
-            // Вариант с мотор-колесом: VRK-PatAIR-P-40-20-4-220
-            if (ductSize != null && !ductSize.isEmpty()) {
+            if (!ductSize.isEmpty()) {
                 fullMarking.append("-").append(ductSize);
             }
-            if (poles != null && !poles.isEmpty()) {
+            if (!poles.isEmpty()) {
                 fullMarking.append("-").append(poles);
             }
-            if (voltage != null && !voltage.isEmpty()) {
+            if (!voltage.isEmpty()) {
                 fullMarking.append("-").append(voltage);
             }
         } else if ("RADIAL_WHEEL".equals(ductFanType)) {
-            // Вариант с радиальным колесом: VRK-PatAIR-PKV-50-30/25.2D
-            if (ductSize != null && !ductSize.isEmpty()) {
+            if (!ductSize.isEmpty()) {
                 fullMarking.append("-").append(ductSize);
             }
-            if (wheelSize != null && !wheelSize.isEmpty()) {
+            if (!wheelSize.isEmpty()) {
                 try {
                     double ws = Double.parseDouble(wheelSize);
                     fullMarking.append("/").append((int) Math.round(ws * 10));
@@ -250,7 +146,7 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
                     fullMarking.append("/").append(wheelSize);
                 }
             }
-            if (poles != null && !poles.isEmpty()) {
+            if (!poles.isEmpty()) {
                 fullMarking.append(".").append(poles);
             }
             String voltageCode = getVoltageCode(voltage);
@@ -259,8 +155,7 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
             }
         }
 
-        // Добавляем исполнение по назначению (если не общее применение)
-        if (!isGeneralPurpose && purposeMarking != null && !purposeMarking.isEmpty()) {
+        if (!isGeneralPurpose && !purposeMarking.isEmpty()) {
             fullMarking.append("-").append(purposeMarking);
         }
 
@@ -270,7 +165,6 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
         if (currentMarking == null || currentMarking.isEmpty() || currentMarking.equals(lastAutoMarking)) {
             fullMarkingField.setText(newMarking);
             lastAutoMarking = newMarking;
-            System.out.println("  >>> FIELD UPDATED to: [" + newMarking + "]");
         }
     }
 
@@ -281,15 +175,7 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
         return "";
     }
 
-    private void debugFullMarking() {
-        System.out.println("=== DuctFanCardConfigurator DEBUG ===");
-        System.out.println("fullMarkingField = " + fullMarkingField);
-        System.out.println("fullMarkingField value = " + (fullMarkingField != null ? fullMarkingField.getText() : "null"));
-        System.out.println("fieldControls contains 'fullMarking'? " + fieldControls.containsKey("fullMarking"));
-        System.out.println("======================================");
-    }
-
-    private void setupExclusiveSelection() {
+    private void setupExclusiveSelection(Map<String, Node> fieldControls) {
         CheckBox generalPurposeCheck = getCheckBox(fieldControls, "generalPurpose");
         CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
         CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
@@ -300,7 +186,7 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
                     if (fireproofCheck != null) fireproofCheck.setSelected(false);
                     if (explosionCheck != null) explosionCheck.setSelected(false);
                 }
-                updateFullMarking();
+                updateFullMarking(fieldControls);
             });
         }
 
@@ -310,7 +196,7 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
                     if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
                     if (explosionCheck != null) explosionCheck.setSelected(false);
                 }
-                updateFullMarking();
+                updateFullMarking(fieldControls);
             });
         }
 
@@ -320,7 +206,7 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
                     if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
                     if (fireproofCheck != null) fireproofCheck.setSelected(false);
                 }
-                updateFullMarking();
+                updateFullMarking(fieldControls);
             });
         }
     }

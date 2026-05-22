@@ -139,5 +139,4 @@ public class ProductCardClient {
         }
         return result;
     }
-
 }

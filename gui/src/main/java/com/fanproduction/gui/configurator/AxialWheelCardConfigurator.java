@@ -1,64 +1,35 @@
 package com.fanproduction.gui.configurator;
 
 import javafx.scene.Node;
-import javafx.scene.control.*;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 
 import java.util.Map;
 
 public class AxialWheelCardConfigurator implements CardFieldConfigurator {
 
-    private TextField wheelDiameterField;
-    private TextField wheelFormulaField;
-    private TextField fullMarkingField;
     private String lastAutoMarking = "";
-    private Map<String, Node> fieldControls;
 
-    private ComboBox<String> getComboBox(Map<String, Node> controls, String name) {
-        return CardFieldConfigurator.getComboBox(controls, name);
+    @Override
+    public void setupFields(Map<String, Node> fieldControls,
+                            Map<String, Label> fieldLabels,
+                            Map<String, Label> fieldHints,
+                            boolean existingCardExists) {
+
+        setupCalculations(fieldControls);
+        setupExclusiveSelection(fieldControls);
+        setupConditionalVisibility(fieldControls, fieldLabels);
+        setupFullMarkingGeneration(fieldControls);
+
+        autoFillName(fieldControls, "Колесо осевое", existingCardExists);
     }
 
-    private TextField getTextField(Map<String, Node> controls, String name) {
-        return CardFieldConfigurator.getTextField(controls, name);
-    }
-
-    private CheckBox getCheckBox(Map<String, Node> controls, String name) {
-        return CardFieldConfigurator.getCheckBox(controls, name);
-    }
-
-    public void setupFields(Map<String, Node> fieldControls, Map<String, Label> fieldLabels, Map<String, Label> fieldHints, boolean existingCardExists) {
-        this.fieldControls = fieldControls;
-
-//        // Отладка: выводим все ключи fieldControls
-//        System.out.println("=== AxialWheelCardConfigurator: fieldControls keys ===");
-//        for (String key : fieldControls.keySet()) {
-//            System.out.println("  " + key);
-//        }
-
-        wheelDiameterField = getTextField(fieldControls, "wheelDiameter");
-        wheelFormulaField = getTextField(fieldControls, "wheelFormula");
-        fullMarkingField = getTextField(fieldControls, "fullMarking");
-
-//        // Проверка конкретного поля
-//        Control bladeMaterialControl = fieldControls.get("bladeMaterial");
-//        System.out.println("bladeMaterial control: " + bladeMaterialControl);
-//        System.out.println("bladeMaterial is ComboBox? " + (bladeMaterialControl instanceof ComboBox));
-
-        setupCalculations();
-        setupExclusiveSelection();
-        setupConditionalVisibility();
-        setupFullMarkingGeneration();
-
-        if (!existingCardExists) {
-            TextField nameField = getTextField(fieldControls, "name");
-            if (nameField != null && nameField.getText().isEmpty()) {
-                nameField.setText("Колесо осевое");
-            }
-        }
-    }
-
-    private void setupCalculations() {
+    private void setupCalculations(Map<String, Node> fieldControls) {
         TextField sizeField = getTextField(fieldControls, "size");
         TextField trimField = getTextField(fieldControls, "trimCoefficient");
+        TextField wheelDiameterField = getTextField(fieldControls, "wheelDiameter");
 
         if (sizeField != null && trimField != null && wheelDiameterField != null) {
             Runnable calculate = () -> {
@@ -89,6 +60,7 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         TextField bladeTypeField = getTextField(fieldControls, "bladeType");
         TextField bladeAngleField = getTextField(fieldControls, "bladeAngle");
         ComboBox<String> bladeMaterialCombo = getComboBox(fieldControls, "bladeMaterial");
+        TextField wheelFormulaField = getTextField(fieldControls, "wheelFormula");
 
         if (wheelFormulaField != null) {
             Runnable updateFormula = () -> {
@@ -110,18 +82,30 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
                 wheelFormulaField.setText(formula.toString());
             };
 
-            if (wheelDiameterField != null) wheelDiameterField.textProperty().addListener((obs, old, val) -> updateFormula.run());
-            if (bladeCountField != null) bladeCountField.textProperty().addListener((obs, old, val) -> updateFormula.run());
-            if (bladeSlotsField != null) bladeSlotsField.textProperty().addListener((obs, old, val) -> updateFormula.run());
-            if (bladeTypeField != null) bladeTypeField.textProperty().addListener((obs, old, val) -> updateFormula.run());
-            if (bladeAngleField != null) bladeAngleField.textProperty().addListener((obs, old, val) -> updateFormula.run());
-            if (bladeMaterialCombo != null) bladeMaterialCombo.valueProperty().addListener((obs, old, val) -> updateFormula.run());
+            if (wheelDiameterField != null) {
+                wheelDiameterField.textProperty().addListener((obs, old, val) -> updateFormula.run());
+            }
+            if (bladeCountField != null) {
+                bladeCountField.textProperty().addListener((obs, old, val) -> updateFormula.run());
+            }
+            if (bladeSlotsField != null) {
+                bladeSlotsField.textProperty().addListener((obs, old, val) -> updateFormula.run());
+            }
+            if (bladeTypeField != null) {
+                bladeTypeField.textProperty().addListener((obs, old, val) -> updateFormula.run());
+            }
+            if (bladeAngleField != null) {
+                bladeAngleField.textProperty().addListener((obs, old, val) -> updateFormula.run());
+            }
+            if (bladeMaterialCombo != null) {
+                bladeMaterialCombo.valueProperty().addListener((obs, old, val) -> updateFormula.run());
+            }
 
             updateFormula.run();
         }
     }
 
-    private void setupExclusiveSelection() {
+    private void setupExclusiveSelection(Map<String, Node> fieldControls) {
         CheckBox generalPurposeCheck = getCheckBox(fieldControls, "generalPurpose");
         CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
         CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
@@ -132,7 +116,7 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
                     if (fireproofCheck != null) fireproofCheck.setSelected(false);
                     if (explosionCheck != null) explosionCheck.setSelected(false);
                 }
-                updateFullMarking();
+                updateFullMarking(fieldControls);
             });
         }
 
@@ -142,7 +126,7 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
                     if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
                     if (explosionCheck != null) explosionCheck.setSelected(false);
                 }
-                updateFullMarking();
+                updateFullMarking(fieldControls);
             });
         }
 
@@ -152,121 +136,87 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
                     if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
                     if (fireproofCheck != null) fireproofCheck.setSelected(false);
                 }
-                updateFullMarking();
+                updateFullMarking(fieldControls);
             });
         }
     }
 
-    private void setupConditionalVisibility() {
+    private void setupConditionalVisibility(Map<String, Node> fieldControls,
+                                            Map<String, Label> fieldLabels) {
         CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
-        Node fireproofMarkingField = fieldControls.get("fireproofMarking");
-        Node tempField = fieldControls.get("maxTemperature");
-
         if (fireproofCheck != null) {
-            boolean isVisible = fireproofCheck.isSelected();
-            if (fireproofMarkingField != null) {
-                fireproofMarkingField.setVisible(isVisible);
-                fireproofMarkingField.setManaged(isVisible);
-            }
-            if (tempField != null) {
-                tempField.setVisible(isVisible);
-                tempField.setManaged(isVisible);
-            }
+            setVisible(fieldControls, fieldLabels, "fireproofMarking", fireproofCheck.isSelected());
+            setVisible(fieldControls, fieldLabels, "maxTemperature", fireproofCheck.isSelected());
+
             fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
-                if (fireproofMarkingField != null) {
-                    fireproofMarkingField.setVisible(val);
-                    fireproofMarkingField.setManaged(val);
-                }
-                if (tempField != null) {
-                    tempField.setVisible(val);
-                    tempField.setManaged(val);
-                }
-                updateFullMarking();
+                setVisible(fieldControls, fieldLabels, "fireproofMarking", val);
+                setVisible(fieldControls, fieldLabels, "maxTemperature", val);
+                updateFullMarking(fieldControls);
             });
         }
 
         CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
-        Node explosionMarkingField = fieldControls.get("explosionMarking");
+        if (explosionCheck != null) {
+            setVisible(fieldControls, fieldLabels, "explosionMarking", explosionCheck.isSelected());
 
-        if (explosionCheck != null && explosionMarkingField != null) {
-            boolean isVisible = explosionCheck.isSelected();
-            explosionMarkingField.setVisible(isVisible);
-            explosionMarkingField.setManaged(isVisible);
             explosionCheck.selectedProperty().addListener((obs, old, val) -> {
-                explosionMarkingField.setVisible(val);
-                explosionMarkingField.setManaged(val);
-                updateFullMarking();
+                setVisible(fieldControls, fieldLabels, "explosionMarking", val);
+                updateFullMarking(fieldControls);
             });
         }
     }
 
-    private void setupFullMarkingGeneration() {
+    private void setupFullMarkingGeneration(Map<String, Node> fieldControls) {
+        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
 
-        addTextFieldListener("marking", this::updateFullMarking);
-        addTextFieldListener("size", this::updateFullMarking);
-        addTextFieldListener("wheelFormula", this::updateFullMarking);
-        addTextFieldListener("fireproofMarking", this::updateFullMarking);
-        addTextFieldListener("explosionMarking", this::updateFullMarking);
+        addTextFieldListener(fieldControls, "marking", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "size", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "wheelFormula", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "fireproofMarking", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "explosionMarking", () -> updateFullMarking(fieldControls));
 
-        addCheckBoxListener("generalPurpose", this::updateFullMarking);
-        addCheckBoxListener("fireproof", this::updateFullMarking);
-        addCheckBoxListener("explosionProof", this::updateFullMarking);
+        addCheckBoxListener(fieldControls, "generalPurpose", () -> updateFullMarking(fieldControls));
+        addCheckBoxListener(fieldControls, "fireproof", () -> updateFullMarking(fieldControls));
+        addCheckBoxListener(fieldControls, "explosionProof", () -> updateFullMarking(fieldControls));
 
-        updateFullMarking();
+        updateFullMarking(fieldControls);
     }
 
-    private void addTextFieldListener(String fieldName, Runnable callback) {
-        TextField textField = getTextField(fieldControls, fieldName);
-        if (textField != null) {
-            textField.textProperty().addListener((obs, old, val) -> callback.run());
-        }
-    }
-
-    private void addCheckBoxListener(String fieldName, Runnable callback) {
-        CheckBox checkBox = getCheckBox(fieldControls, fieldName);
-        if (checkBox != null) {
-            checkBox.selectedProperty().addListener((obs, old, val) -> callback.run());
-        }
-    }
-
-    private void updateFullMarking() {
+    private void updateFullMarking(Map<String, Node> fieldControls) {
+        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
 
-        String marking = getFieldValue("marking");
-        String size = getFieldValue("size");
-        String wheelFormula = getFieldValue("wheelFormula");  // уже содержит материал
+        String marking = getFieldValue(fieldControls, "marking");
+        String size = getFieldValue(fieldControls, "size");
+        String wheelFormula = getFieldValue(fieldControls, "wheelFormula");
 
-        boolean isGeneralPurpose = isSelected("generalPurpose");
-        boolean isFireproof = isSelected("fireproof");
-        boolean isExplosionProof = isSelected("explosionProof");
+        boolean isGeneralPurpose = isSelected(fieldControls, "generalPurpose");
+        boolean isFireproof = isSelected(fieldControls, "fireproof");
+        boolean isExplosionProof = isSelected(fieldControls, "explosionProof");
 
-        String fireproofMarking = isFireproof ? getFieldValue("fireproofMarking") : "";
-        String explosionMarking = isExplosionProof ? getFieldValue("explosionMarking") : "";
+        String fireproofMarking = isFireproof ? getFieldValue(fieldControls, "fireproofMarking") : "";
+        String explosionMarking = isExplosionProof ? getFieldValue(fieldControls, "explosionMarking") : "";
 
         StringBuilder fullMarking = new StringBuilder();
 
-        // Маркировка
-        if (marking != null && !marking.isEmpty()) {
+        if (!marking.isEmpty()) {
             fullMarking.append(marking).append(" ");
         }
 
-        // Типоразмер
-        if (size != null && !size.isEmpty()) {
+        if (!size.isEmpty()) {
             fullMarking.append(size);
         }
 
-        // Исполнение
         if (isGeneralPurpose) {
             fullMarking.append("-C");
-        } else if (isFireproof && fireproofMarking != null && !fireproofMarking.isEmpty()) {
+        } else if (isFireproof && !fireproofMarking.isEmpty()) {
             fullMarking.append("-").append(fireproofMarking);
-        } else if (isExplosionProof && explosionMarking != null && !explosionMarking.isEmpty()) {
+        } else if (isExplosionProof && !explosionMarking.isEmpty()) {
             fullMarking.append("-").append(explosionMarking);
         }
 
-        // Формула колеса (уже содержит материал)
-        if (wheelFormula != null && !wheelFormula.isEmpty()) {
+        if (!wheelFormula.isEmpty()) {
             fullMarking.append("-").append(wheelFormula);
         }
 
@@ -277,21 +227,5 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
             fullMarkingField.setText(newMarking);
             lastAutoMarking = newMarking;
         }
-    }
-
-    private boolean isSelected(String fieldName) {
-        CheckBox checkBox = getCheckBox(fieldControls, fieldName);
-        return checkBox != null && checkBox.isSelected();
-    }
-
-    private String getFieldValue(String fieldName) {
-        Node control = fieldControls.get(fieldName);
-        if (control == null) return "";
-        if (control instanceof TextField) return ((TextField) control).getText().trim();
-        if (control instanceof ComboBox) {
-            Object value = ((ComboBox<?>) control).getValue();
-            return value != null ? value.toString() : "";
-        }
-        return "";
     }
 }

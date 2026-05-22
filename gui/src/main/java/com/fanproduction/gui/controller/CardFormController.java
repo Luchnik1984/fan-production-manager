@@ -781,7 +781,6 @@ public class CardFormController {
             }
             return null;
         });
-       // refreshTemporaryCardInTabs(currentTemporaryCardId);
     }
 
     private void waitForTemporaryCardAndOpenTabs() {

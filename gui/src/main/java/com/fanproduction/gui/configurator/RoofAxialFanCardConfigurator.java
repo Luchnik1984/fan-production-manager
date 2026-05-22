@@ -1,8 +1,6 @@
 package com.fanproduction.gui.configurator;
 
 import javafx.scene.Node;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Control;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 
@@ -10,75 +8,51 @@ import java.util.Map;
 
 public class RoofAxialFanCardConfigurator implements CardFieldConfigurator {
 
-    private TextField fullMarkingField;
     private String lastAutoMarking = "";
-    private Map<String, Node> fieldControls;
-
-    private TextField getTextField(Map<String, Node> controls, String name) {
-        Node c = controls.get(name);
-        return c instanceof TextField ? (TextField) c : null;
-    }
-
-    private ComboBox<String> getComboBox(Map<String, Node> controls, String name) {
-        return CardFieldConfigurator.getComboBox(controls, name);
-    }
 
     @Override
     public void setupFields(Map<String, Node> fieldControls,
                             Map<String, Label> fieldLabels,
                             Map<String, Label> fieldHints,
                             boolean existingCardExists) {
-        this.fieldControls = fieldControls;
-        fullMarkingField = getTextField(fieldControls, "fullMarking");
 
-        setupFullMarkingGeneration();
-
-        if (!existingCardExists) {
-            TextField nameField = getTextField(fieldControls, "name");
-            if (nameField != null && nameField.getText().isEmpty()) {
-                nameField.setText("Вентилятор крышный осевой");
-            }
-        }
+        setupFullMarkingGeneration(fieldControls);
+        autoFillName(fieldControls, "Вентилятор крышный осевой", existingCardExists);
     }
 
-    private void setupFullMarkingGeneration() {
+    private void setupFullMarkingGeneration(Map<String, Node> fieldControls) {
+        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
 
-        addTextFieldListener("seriesName", this::updateFullMarking);
-        addTextFieldListener("executionType", this::updateFullMarking);
-        addTextFieldListener("roofSize", this::updateFullMarking);
-        addTextFieldListener("climateType", this::updateFullMarking);
+        addTextFieldListener(fieldControls, "seriesName", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "executionType", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "roofSize", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "climateType", () -> updateFullMarking(fieldControls));
 
-        updateFullMarking();
+        updateFullMarking(fieldControls);
     }
 
-    private void addTextFieldListener(String fieldName, Runnable callback) {
-        TextField textField = getTextField(fieldControls, fieldName);
-        if (textField != null) {
-            textField.textProperty().addListener((obs, old, val) -> callback.run());
-        }
-    }
-
-    private void updateFullMarking() {
+    private void updateFullMarking(Map<String, Node> fieldControls) {
+        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
 
-        String seriesName = getFieldValue("seriesName");
-        String executionType = getFieldValue("executionType");
-        String roofSize = getFieldValue("roofSize");
-        String climateType = getFieldValue("climateType");
+        String seriesName = getFieldValue(fieldControls, "seriesName");
+        String executionType = getFieldValue(fieldControls, "executionType");
+        String roofSize = getFieldValue(fieldControls, "roofSize");
+        String climateType = getFieldValue(fieldControls, "climateType");
 
         StringBuilder fullMarking = new StringBuilder();
 
-        if (seriesName != null && !seriesName.isEmpty()) {
+        if (!seriesName.isEmpty()) {
             fullMarking.append(seriesName);
         }
-        if (executionType != null && !executionType.isEmpty()) {
+        if (!executionType.isEmpty()) {
             fullMarking.append("-").append(executionType);
         }
-        if (roofSize != null && !roofSize.isEmpty()) {
+        if (!roofSize.isEmpty()) {
             fullMarking.append("-").append(roofSize);
         }
-        if (climateType != null && !climateType.isEmpty()) {
+        if (!climateType.isEmpty()) {
             fullMarking.append("-").append(climateType);
         }
 
@@ -89,16 +63,5 @@ public class RoofAxialFanCardConfigurator implements CardFieldConfigurator {
             fullMarkingField.setText(newMarking);
             lastAutoMarking = newMarking;
         }
-    }
-
-    private String getFieldValue(String fieldName) {
-        Node control = fieldControls.get(fieldName);
-        if (control == null) return "";
-        if (control instanceof TextField) return ((TextField) control).getText().trim();
-        if (control instanceof ComboBox) {
-            Object value = ((ComboBox<?>) control).getValue();
-            return value != null ? value.toString() : "";
-        }
-        return "";
     }
 }
