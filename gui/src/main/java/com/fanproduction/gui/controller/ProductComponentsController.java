@@ -472,4 +472,21 @@ public class ProductComponentsController {
             }
         };
     }
+
+    public void showLoadingMessage() {
+        Platform.runLater(() -> {
+            componentsList.clear();
+            statusLabel.setText("Загрузка...");
+            addButton.setDisable(true);
+            selectComponentButton.setDisable(true);
+        });
+    }
+
+    public void enableControls() {
+        Platform.runLater(() -> {
+            addButton.setDisable(false);
+            selectComponentButton.setDisable(false);
+        });
+    }
+
 }

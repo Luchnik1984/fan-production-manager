@@ -1,6 +1,6 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.core.enums.CardTypeDisplay;
+import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -382,7 +382,11 @@ public class CardViewController {
     }
 
     private static String getCardTypeDisplay(String cardType) {
-        return CardTypeDisplay.getDisplayName(cardType);
+        try {
+            return CardTemplateType.valueOf(cardType).getDisplayName();
+        } catch (IllegalArgumentException e) {
+            return cardType;
+        }
     }
 
     private static String formatValue(Object value) {

@@ -1,11 +1,6 @@
 package com.fanproduction.api.controller;
 
-import com.fanproduction.api.dto.response.ApiResponse;
-import com.fanproduction.api.dto.response.MaterialCategoryDto;
-import com.fanproduction.api.dto.response.MaterialClassDto;
-import com.fanproduction.api.dto.response.MaterialDto;
-import com.fanproduction.api.dto.response.ProductMaterialRequirementDto;
-import com.fanproduction.api.dto.response.UnitOfMeasureDto;
+import com.fanproduction.api.dto.response.*;
 import com.fanproduction.core.entity.material.MaterialCategoryEntity;
 import com.fanproduction.core.entity.material.MaterialClassEntity;
 import com.fanproduction.core.entity.material.MaterialEntity;
@@ -14,8 +9,6 @@ import com.fanproduction.core.entity.dictionary.UnitOfMeasureEntity;
 import com.fanproduction.services.MaterialService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,14 +18,9 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/materials")
 @RequiredArgsConstructor
-public class MaterialController {
+public class MaterialController extends BaseController {
 
     private final MaterialService materialService;
-
-    private String getCurrentUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null ? auth.getName() : "system";
-    }
 
     // ========== Unit of Measure ==========
 
@@ -83,24 +71,28 @@ public class MaterialController {
         if (name == null || name.trim().isEmpty()) {
             return ApiResponse.error("Название категории обязательно");
         }
-
-        try {
             MaterialCategoryEntity entity = materialService.createCategory(name.trim(), parentId, getCurrentUser());
             return ApiResponse.success(toCategoryDto(entity));
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        }
     }
 
     @DeleteMapping("/categories/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<Void> deleteCategory(@PathVariable Long id) {
-        try {
             materialService.deleteCategory(id);
-            return ApiResponse.success("Категория удалена", null);
-        } catch (Exception e) {
-            return ApiResponse.error(e.getMessage());
-        }
+            return ApiResponse.success(null);
+    }
+
+    @PutMapping("/categories/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
+    public ApiResponse<MaterialCategoryDto> updateCategory(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> request) {
+            String name = (String) request.get("name");
+            Long parentId = request.get("parentId") != null ? ((Number) request.get("parentId")).longValue() : null;
+            String description = (String) request.get("description");
+
+            MaterialCategoryEntity entity = materialService.updateCategory(id, name, parentId, description);
+            return ApiResponse.success(toCategoryDto(entity));
     }
 
     // ========== Classes ==========
@@ -125,28 +117,33 @@ public class MaterialController {
     @PostMapping("/classes")
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<MaterialClassDto> createClass(@RequestBody Map<String, Object> request) {
-        try {
-            Long categoryId = ((Number) request.get("categoryId")).longValue();
-            String name = (String) request.get("name");
-            String description = (String) request.get("description");
-            Long unitId = request.get("unitId") != null ? ((Number) request.get("unitId")).longValue() : null;
+        Long categoryId = ((Number) request.get("categoryId")).longValue();
+        String name = (String) request.get("name");
+        String description = (String) request.get("description");
+        Long unitId = request.get("unitId") != null ? ((Number) request.get("unitId")).longValue() : null;
 
-            MaterialClassEntity entity = materialService.createClass(categoryId, name, description, unitId, getCurrentUser());
-            return ApiResponse.success(toClassDto(entity));
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        }
+        MaterialClassEntity entity = materialService.createClass(categoryId, name, description, getCurrentUser(), unitId);
+        return ApiResponse.success(toClassDto(entity));
     }
 
     @DeleteMapping("/classes/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<Void> deleteClass(@PathVariable Long id) {
-        try {
             materialService.deleteClass(id);
-            return ApiResponse.success("Класс удалён", null);
-        } catch (Exception e) {
-            return ApiResponse.error(e.getMessage());
-        }
+            return ApiResponse.success(null);
+    }
+
+    @PutMapping("/classes/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
+    public ApiResponse<MaterialClassDto> updateClass(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> request) {
+            String name = (String) request.get("name");
+            Long categoryId = ((Number) request.get("categoryId")).longValue();
+            String description = (String) request.get("description");
+
+            MaterialClassEntity entity = materialService.updateClass(id, name, categoryId, description);
+            return ApiResponse.success(toClassDto(entity));
     }
 
     // ========== Materials ==========
@@ -205,8 +202,9 @@ public class MaterialController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<MaterialDto> updateMaterial(@PathVariable Long id, @RequestBody MaterialDto dto) {
-        try {
+
             MaterialEntity entity = new MaterialEntity();
+            entity.setClassId(dto.getClassId());
             entity.setName(dto.getName());
             entity.setStandard(dto.getStandard());
             entity.setSpecification(dto.getSpecification());
@@ -220,20 +218,13 @@ public class MaterialController {
 
             MaterialEntity updated = materialService.updateMaterial(id, entity);
             return ApiResponse.success(toMaterialDto(updated));
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        }
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<Void> deleteMaterial(@PathVariable Long id) {
-        try {
             materialService.deleteMaterial(id);
             return ApiResponse.success("Материал удалён", null);
-        } catch (Exception e) {
-            return ApiResponse.error(e.getMessage());
-        }
     }
 
     @GetMapping("/search")
@@ -261,7 +252,6 @@ public class MaterialController {
     public ApiResponse<ProductMaterialRequirementDto> addMaterialToProduct(
             @PathVariable Long productCardId,
             @RequestBody Map<String, Object> request) {
-        try {
             Long materialId = ((Number) request.get("materialId")).longValue();
             Double quantity = request.get("quantityPerUnit") != null ? ((Number) request.get("quantityPerUnit")).doubleValue() : 1.0;
             String note = (String) request.get("note");
@@ -269,9 +259,6 @@ public class MaterialController {
             ProductMaterialRequirementEntity entity = materialService.addMaterialToProduct(
                     productCardId, materialId, quantity, note);
             return ApiResponse.success(toProductDto(entity));
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        }
     }
 
     @PutMapping("/product/{productCardId}/{materialId}/quantity")
@@ -280,16 +267,12 @@ public class MaterialController {
             @PathVariable Long productCardId,
             @PathVariable Long materialId,
             @RequestBody Map<String, Double> request) {
-        try {
             Double quantity = request.get("quantityPerUnit");
             if (quantity == null) {
                 return ApiResponse.error("Количество не указано");
             }
             materialService.updateMaterialQuantity(productCardId, materialId, quantity);
             return ApiResponse.success("Количество обновлено", null);
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        }
     }
 
     @PutMapping("/product/{productCardId}/{materialId}/note")
@@ -298,13 +281,9 @@ public class MaterialController {
             @PathVariable Long productCardId,
             @PathVariable Long materialId,
             @RequestBody Map<String, String> request) {
-        try {
             String note = request.get("note");
             materialService.updateMaterialNote(productCardId, materialId, note);
             return ApiResponse.success("Примечание обновлено", null);
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        }
     }
 
     @DeleteMapping("/product/{productCardId}/{materialId}")
@@ -312,12 +291,8 @@ public class MaterialController {
     public ApiResponse<Void> removeMaterialFromProduct(
             @PathVariable Long productCardId,
             @PathVariable Long materialId) {
-        try {
             materialService.removeMaterialFromProduct(productCardId, materialId);
             return ApiResponse.success("Материал удалён", null);
-        } catch (IllegalArgumentException e) {
-            return ApiResponse.error(e.getMessage());
-        }
     }
 
     // ========== Mappers ==========

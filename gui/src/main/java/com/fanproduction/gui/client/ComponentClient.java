@@ -9,7 +9,6 @@ import com.fanproduction.gui.dto.response.ComponentDto;
 import com.fanproduction.gui.dto.response.UnitOfMeasureDto;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * Клиент для работы с API компонентов.
@@ -93,7 +92,7 @@ public class ComponentClient {
     }
 
     public static void deleteComponent(Long id) throws Exception {
-        ApiClient.delete(BASE_PATH + "/" + id);
+        ApiClient.deleteWithCheck(BASE_PATH + "/" + id);
     }
 
     public static List<ComponentDto> searchComponents(String query) throws Exception {

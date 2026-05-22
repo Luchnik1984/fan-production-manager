@@ -39,6 +39,9 @@ public class MaterialCategoryEntity {
     @Column(name = "sort_order")
     private Integer sortOrder = 0;
 
+    @Column(name = "description", length = 500)
+    private String description;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

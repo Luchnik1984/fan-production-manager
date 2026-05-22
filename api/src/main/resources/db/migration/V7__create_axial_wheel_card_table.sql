@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS axial_wheel_card (
     max_temperature INTEGER,
     explosion_proof BOOLEAN DEFAULT FALSE,
     explosion_marking VARCHAR(100),
-    full_marking VARCHAR(500),
+    full_marking VARCHAR(200),
 
     FOREIGN KEY (id) REFERENCES base_product_card(id) ON DELETE CASCADE
     );
@@ -44,3 +44,4 @@ CREATE TABLE IF NOT EXISTS axial_wheel_card (
 CREATE INDEX IF NOT EXISTS idx_axial_wheel_size ON axial_wheel_card(size);
 CREATE INDEX IF NOT EXISTS idx_axial_wheel_marking ON axial_wheel_card(marking);
 CREATE INDEX IF NOT EXISTS idx_axial_wheel_blade_type ON axial_wheel_card(blade_type);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_axial_wheel_full_marking ON axial_wheel_card(full_marking);

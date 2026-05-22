@@ -31,4 +31,6 @@ public interface MaterialCategoryRepository extends JpaRepository<MaterialCatego
     Integer getMaxSortOrderByParentId(@Param("parentId") Long parentId);
 
     List<MaterialCategoryEntity> findByPathStartingWith(String path);
+
+    long countByParentId(Long parentId);
 }

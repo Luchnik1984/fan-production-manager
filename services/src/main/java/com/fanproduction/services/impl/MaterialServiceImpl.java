@@ -11,6 +11,7 @@ import com.fanproduction.repositories.material.MaterialRepository;
 import com.fanproduction.repositories.material.ProductMaterialRequirementRepository;
 import com.fanproduction.repositories.dictionary.UnitOfMeasureRepository;
 import com.fanproduction.services.MaterialService;
+import com.fanproduction.services.base.BaseValidationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,11 +19,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class MaterialServiceImpl implements MaterialService {
+public class MaterialServiceImpl extends BaseValidationService implements MaterialService {
 
     private final MaterialCategoryRepository materialCategoryRepository;
     private final MaterialClassRepository materialClassRepository;
@@ -84,31 +86,20 @@ public class MaterialServiceImpl implements MaterialService {
         return materialCategoryRepository.save(entity);
     }
 
-    @Override
-    @Transactional
-    public MaterialCategoryEntity updateCategory(Long id, String name, Integer sortOrder) {
-        MaterialCategoryEntity entity = materialCategoryRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Категория не найдена"));
 
-        if (name != null && !name.equals(entity.getName())) {
-            // Обновляем путь у всех дочерних категорий
-            String oldPath = entity.getPath();
-            String newPath = oldPath.substring(0, oldPath.lastIndexOf(entity.getName() + "/")) + name + "/";
-            entity.setPath(newPath);
-            entity.setName(name);
-        }
-        if (sortOrder != null) {
-            entity.setSortOrder(sortOrder);
-        }
-
-        return materialCategoryRepository.save(entity);
-    }
 
     @Override
     @Transactional
     public void deleteCategory(Long id) {
-        if (isCategoryInUse(id)) {
-            throw new IllegalStateException("Невозможно удалить категорию, так как существуют классы в этой категории");
+        // Проверяем наличие дочерних категорий
+        long childrenCount = materialCategoryRepository.countByParentId(id);
+        if (childrenCount > 0) {
+            throw new IllegalStateException("У категории есть дочерние категории. Удалите их сначала.");
+        }
+        // Проверяем наличие классов
+        long classesCount = materialClassRepository.countByCategoryId(id);
+        if (classesCount > 0) {
+            throw new IllegalStateException("В категории есть классы. Удалите их сначала.");
         }
         materialCategoryRepository.deleteById(id);
     }
@@ -142,13 +133,14 @@ public class MaterialServiceImpl implements MaterialService {
 
     @Override
     @Transactional
-    public MaterialClassEntity createClass(Long categoryId, String name, String description, Long unitId, String createdBy) {
-        materialCategoryRepository.findById(categoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Категория не найдена"));
-
+    public MaterialClassEntity createClass(Long categoryId, String name, String description, String createdBy, Long unitId) {
         if (materialClassRepository.existsByName(name)) {
             throw new IllegalArgumentException("Класс с таким именем уже существует");
         }
+
+        // Проверяем существование категории
+        materialCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Категория не найдена: " + categoryId));
 
         MaterialClassEntity entity = new MaterialClassEntity();
         entity.setCategoryId(categoryId);
@@ -156,7 +148,6 @@ public class MaterialServiceImpl implements MaterialService {
         entity.setDescription(description);
         entity.setUnitId(unitId);
         entity.setCreatedBy(createdBy);
-
         return materialClassRepository.save(entity);
     }
 
@@ -187,10 +178,13 @@ public class MaterialServiceImpl implements MaterialService {
     @Override
     @Transactional
     public void deleteClass(Long id) {
-        if (isClassInUse(id)) {
-            throw new IllegalStateException("Невозможно удалить класс, так как существуют материалы этого класса");
+        // Проверяем наличие компонентов
+        long componentsCount = materialRepository.countByClassId(id);
+        if (componentsCount > 0) {
+            throw new IllegalStateException("В классе есть компоненты. Удалите их сначала.");
         }
         materialClassRepository.deleteById(id);
+
     }
 
     @Override
@@ -223,16 +217,18 @@ public class MaterialServiceImpl implements MaterialService {
     @Override
     @Transactional
     public MaterialEntity createMaterial(MaterialEntity material) {
+        // Проверка существования класса
         materialClassRepository.findById(material.getClassId())
                 .orElseThrow(() -> new IllegalArgumentException("Класс материала не найден"));
 
+        // Проверка единицы измерения
         unitOfMeasureRepository.findById(material.getUnitId())
                 .orElseThrow(() -> new IllegalArgumentException("Единица измерения не найдена"));
 
-        Optional<MaterialEntity> existing = materialRepository.findByClassIdAndName(material.getClassId(), material.getName());
-        if (existing.isPresent()) {
-            throw new IllegalArgumentException("Материал с таким именем уже существует в этом классе");
-        }
+        // Проверка уникальности
+        checkUnique(() -> materialRepository.findByClassIdAndNameAndStandardAndSpecification(
+                        material.getClassId(), material.getName(), material.getStandard(), material.getSpecification()),
+                "Материал с такими параметрами уже существует");
 
         return materialRepository.save(material);
     }
@@ -243,11 +239,29 @@ public class MaterialServiceImpl implements MaterialService {
         MaterialEntity existing = materialRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Материал не найден"));
 
-        if (updated.getName() != null && !updated.getName().equals(existing.getName())) {
-            Optional<MaterialEntity> duplicate = materialRepository.findByClassIdAndName(existing.getClassId(), updated.getName());
-            if (duplicate.isPresent() && !duplicate.get().getId().equals(id)) {
-                throw new IllegalArgumentException("Материал с таким именем уже существует в этом классе");
-            }
+        // Проверка уникальности при изменении ключевых полей
+        if (!existing.getClassId().equals(updated.getClassId()) ||
+                !existing.getName().equals(updated.getName()) ||
+                !Objects.equals(existing.getStandard(), updated.getStandard()) ||
+                !Objects.equals(existing.getSpecification(), updated.getSpecification())) {
+
+            checkUniqueOnUpdate(
+                    () -> materialRepository.findByClassIdAndNameAndStandardAndSpecification(
+                            updated.getClassId(),
+                            updated.getName(),
+                            updated.getStandard(),
+                            updated.getSpecification()
+                    ),
+                    id,
+                    "Материал с такими параметрами уже существует"
+            );
+        }
+
+        // Обновление полей
+        if (updated.getClassId() != null) {
+            existing.setClassId(updated.getClassId());
+        }
+        if (updated.getName() != null) {
             existing.setName(updated.getName());
         }
         if (updated.getStandard() != null) {
@@ -260,8 +274,6 @@ public class MaterialServiceImpl implements MaterialService {
             existing.setMaterialType(updated.getMaterialType());
         }
         if (updated.getUnitId() != null) {
-            unitOfMeasureRepository.findById(updated.getUnitId())
-                    .orElseThrow(() -> new IllegalArgumentException("Единица измерения не найдена"));
             existing.setUnitId(updated.getUnitId());
         }
         if (updated.getDensity() != null) {
@@ -286,12 +298,13 @@ public class MaterialServiceImpl implements MaterialService {
     @Override
     @Transactional
     public void deleteMaterial(Long id) {
-        List<ProductMaterialRequirementEntity> usages = productMaterialRequirementRepository.findByMaterialId(id);
-        if (!usages.isEmpty()) {
-            throw new IllegalStateException("Невозможно удалить материал, так как он используется в " + usages.size() + " карточках продукции");
+        // Проверяем, используется ли материал в продукции
+        if (isMaterialUsedInProducts(id)) {
+            throw new IllegalStateException("Невозможно удалить материал: он используется в карточках продукции. Сначала удалите связи.");
         }
         materialRepository.deleteById(id);
     }
+
 
     @Override
     public List<MaterialEntity> searchMaterials(String query) {
@@ -374,6 +387,90 @@ public class MaterialServiceImpl implements MaterialService {
     @Transactional
     public void removeAllMaterialsFromProduct(Long productCardId) {
         productMaterialRequirementRepository.deleteByProductCardId(productCardId);
+    }
+
+    @Override
+    @Transactional
+    public MaterialCategoryEntity updateCategory(Long id, String name, Long parentId, String description) {
+        MaterialCategoryEntity entity = materialCategoryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Категория не найдена"));
+
+        if (name != null && !name.isEmpty()) {
+            entity.setName(name);
+        }
+        if (description != null) {
+            entity.setDescription(description);
+        }
+
+        // Обновляем родителя
+        if (parentId == null) {
+            // Перемещаем в корневую категорию
+            entity.setParentId(null);
+            entity.setLevel(1);
+            entity.setPath("/" + entity.getName() + "/");
+        } else {
+            MaterialCategoryEntity parent = materialCategoryRepository.findById(parentId)
+                    .orElseThrow(() -> new IllegalArgumentException("Родительская категория не найдена"));
+            entity.setParentId(parentId);
+            entity.setLevel(parent.getLevel() + 1);
+            entity.setPath(parent.getPath() + entity.getName() + "/");
+        }
+
+        return materialCategoryRepository.save(entity);
+    }
+
+    @Override
+    @Transactional
+    public MaterialClassEntity updateClass(Long id, String name, Long categoryId, String description) {
+        MaterialClassEntity entity = materialClassRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Класс не найден"));
+
+        if (name != null && !name.isEmpty()) {
+            entity.setName(name);
+        }
+        if (categoryId != null) {
+            entity.setCategoryId(categoryId);
+        }
+        if (description != null) {
+            entity.setDescription(description);
+        }
+        return materialClassRepository.save(entity);
+
+    }
+
+    @Override
+    public boolean hasChildrenCategories(Long categoryId) {
+        List<MaterialCategoryEntity> children = materialCategoryRepository.findByParentIdOrderBySortOrderAsc(categoryId);
+        return !children.isEmpty();
+    }
+
+    @Override
+    public boolean hasClassesInCategory(Long categoryId) {
+        List<MaterialClassEntity> classes = materialClassRepository.findByCategoryId(categoryId);
+        return !classes.isEmpty();
+    }
+
+    @Override
+    public boolean hasMaterialsInClass(Long classId) {
+        List<MaterialEntity> components = materialRepository.findByClassId(classId);
+        return !components.isEmpty();
+    }
+
+    @Override
+    public boolean isClassUsedInProducts(Long classId) {
+        // Находим все материалы этого класса
+        List<MaterialEntity> materials = materialRepository.findByClassId(classId);
+        for (MaterialEntity material : materials) {
+            if (isMaterialUsedInProducts(material.getId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isMaterialUsedInProducts(Long id) {
+        return !productMaterialRequirementRepository.findByMaterialId(id).isEmpty();
     }
 }
 

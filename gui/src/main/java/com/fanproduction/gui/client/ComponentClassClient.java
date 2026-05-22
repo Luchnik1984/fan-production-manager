@@ -33,7 +33,7 @@ public class ComponentClassClient {
         }
 
         TypeReference<ApiResponse<ComponentClassDto>> typeRef = new TypeReference<>() {};
-        ApiResponse<ComponentClassDto> response = ApiClient.post(BASE_PATH, request, typeRef);
+        ApiResponse<ComponentClassDto> response = ApiClient.post("/components/classes", request, typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
         }
@@ -41,6 +41,6 @@ public class ComponentClassClient {
     }
 
     public static void deleteClass(Long id) throws Exception {
-        ApiClient.delete(BASE_PATH + "/" + id);
+        ApiClient.deleteWithCheck(BASE_PATH + "/" + id);
     }
 }

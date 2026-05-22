@@ -1,9 +1,6 @@
 package com.fanproduction.services;
 
-import com.fanproduction.core.entity.product.BaseProductCard;
-import com.fanproduction.core.entity.product.MotorCardEntity;
-import com.fanproduction.core.entity.product.MotorWheelCardEntity;
-import com.fanproduction.core.entity.product.RadialWheelCardEntity;
+import com.fanproduction.core.entity.product.*;
 import com.fanproduction.core.enums.CardTemplateType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -91,5 +88,11 @@ public interface ProductCardService {
      */
     Optional<RadialWheelCardEntity> getRadialWheelById(Long id);
 
+    /**
+     * Снять флаг временной карточки
+     */
+    void removeTemporaryFlag(Long id);
+
     List<BaseProductCard> searchByFields(String query);
+
 }

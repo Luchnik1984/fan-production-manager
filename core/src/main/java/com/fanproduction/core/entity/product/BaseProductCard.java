@@ -59,6 +59,9 @@ public abstract class BaseProductCard {
     @Column(name = "created_by", length = 100)
     private String createdBy;
 
+    @Column(name = "is_temporary", nullable = false)
+    private boolean isTemporary = false;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -69,4 +72,6 @@ public abstract class BaseProductCard {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
+
 }

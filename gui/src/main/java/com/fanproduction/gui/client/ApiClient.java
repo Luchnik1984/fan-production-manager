@@ -1,5 +1,6 @@
 package com.fanproduction.gui.client;
 
+import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -7,6 +8,9 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.io.IOException;
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -57,16 +61,21 @@ public class ApiClient {
     }
 
     public static <T> T get(String path, TypeReference<T> typeReference) throws Exception {
-        HttpRequest request = createRequestBuilder(path)
-                .GET()
-                .build();
+        try {
+            HttpRequest request = createRequestBuilder(path).GET().build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() >= 200 && response.statusCode() < 300) {
-            return objectMapper.readValue(response.body(), typeReference);
-        } else {
-            throw new RuntimeException("API error: " + response.statusCode() + " - " + response.body());
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                return objectMapper.readValue(response.body(), typeReference);
+            } else {
+                throw new RuntimeException("API error: " + response.statusCode() + " - " + response.body());
+            }
+        } catch (ConnectException e) {
+            throw new RuntimeException("Нет соединения с сервером. Проверьте, запущен ли API.", e);
+        } catch (SocketTimeoutException e) {
+            throw new RuntimeException("Сервер не отвечает. Превышено время ожидания.", e);
+        } catch (IOException e) {
+            throw new RuntimeException("Ошибка соединения: " + e.getMessage(), e);
         }
     }
 
@@ -202,6 +211,17 @@ public class ApiClient {
 
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             throw new RuntimeException("API error: " + response.statusCode() + " - " + response.body());
+        }
+    }
+
+    public static void deleteWithCheck(String path) throws Exception {
+        TypeReference<ApiResponse<Void>> typeRef = new TypeReference<>() {};
+        ApiResponse<Void> response = delete(path, typeRef);
+        if (response == null) {
+            throw new RuntimeException("Ответ сервера пуст");
+        }
+        if (!response.isSuccess()) {
+            throw new RuntimeException(response.getMessage());
         }
     }
 }

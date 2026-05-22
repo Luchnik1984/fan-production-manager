@@ -51,6 +51,21 @@ public class ProductCardClient {
     }
 
     /**
+     * Создать временную карточку
+     */
+    public static ApiResponse<ProductCardDto> createTemporaryCard(String cardType, String createdBy) throws Exception {
+        Map<String, Object> request = new HashMap<>();
+        request.put("cardType", cardType);
+        request.put("name", "Временная карточка");
+        request.put("isTemporary", true);
+        request.put("fields", new HashMap<>());
+        request.put("createdBy", createdBy);
+
+        TypeReference<ApiResponse<ProductCardDto>> typeRef = new TypeReference<>() {};
+        return ApiClient.post(BASE_PATH, request, typeRef);
+    }
+
+    /**
      * Обновить карточку
      */
     public static ApiResponse<ProductCardDto> updateCard(Long id, String name, Map<String, Object> fields) throws Exception {
@@ -69,6 +84,17 @@ public class ProductCardClient {
     public static ApiResponse<Void> deleteCard(Long id) throws Exception {
         TypeReference<ApiResponse<Void>> typeRef = new TypeReference<>() {};
         return ApiClient.delete(BASE_PATH + "/" + id, typeRef);
+    }
+
+    /**
+     * Удалить карточку с проверкой
+     */
+    public static void deleteCardWithCheck(Long id) throws Exception {
+        ApiResponse<Void> response = deleteCard(id);
+        if (response == null || !response.isSuccess()) {
+            String errorMsg = response != null ? response.getMessage() : "Неизвестная ошибка";
+            throw new RuntimeException(errorMsg);
+        }
     }
 
     /**
@@ -111,7 +137,6 @@ public class ProductCardClient {
                 result.add(dto);
             }
         }
-
         return result;
     }
 }

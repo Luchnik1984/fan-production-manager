@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS material_category (
     level INT NOT NULL DEFAULT 1,
     path VARCHAR(500),
     sort_order INT DEFAULT 0,
+    description VARCHAR(500),
     created_at TIMESTAMP NOT NULL,
     created_by VARCHAR(100)
     );

@@ -38,4 +38,8 @@ public class ComponentCategoryClient {
         }
         throw new RuntimeException("Failed to create category: " + response.getMessage());
     }
+
+    public static void deleteCategory(Long id) throws Exception {
+        ApiClient.deleteWithCheck(BASE_PATH + "/" + id);
+    }
 }

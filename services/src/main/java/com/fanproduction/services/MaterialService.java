@@ -20,19 +20,20 @@ public interface MaterialService {
     Optional<MaterialCategoryEntity> getCategoryById(Long id);
     Optional<MaterialCategoryEntity> getCategoryByName(String name);
     MaterialCategoryEntity createCategory(String name, Long parentId, String createdBy);
-    MaterialCategoryEntity updateCategory(Long id, String name, Integer sortOrder);
     void deleteCategory(Long id);
     boolean isCategoryInUse(Long id);
+    MaterialCategoryEntity updateCategory(Long id, String name, Long parentId, String description);
 
     // ========== Material Class ==========
     List<MaterialClassEntity> getAllClasses();
     List<MaterialClassEntity> getClassesByCategory(Long categoryId);
     Optional<MaterialClassEntity> getClassById(Long id);
     Optional<MaterialClassEntity> getClassByName(String name);
-    MaterialClassEntity createClass(Long categoryId, String name, String description, Long unitId, String createdBy);
+    MaterialClassEntity createClass(Long categoryId, String name, String description,  String createdBy, Long unitId);
     MaterialClassEntity updateClass(Long id, String name, String description, Long unitId);
     void deleteClass(Long id);
     boolean isClassInUse(Long id);
+    MaterialClassEntity updateClass(Long id, String name, Long categoryId, String description);
 
     // ========== Material ==========
     List<MaterialEntity> getAllMaterials();
@@ -57,5 +58,11 @@ public interface MaterialService {
     void removeMaterialFromProduct(Long productCardId, Long materialId);
     void removeAllMaterialsFromProduct(Long productCardId);
     void updateMaterialNote(Long productCardId, Long materialId, String note);
+
+    boolean hasChildrenCategories(Long categoryId);
+    boolean hasClassesInCategory(Long categoryId);
+    boolean hasMaterialsInClass(Long classId);
+    boolean isClassUsedInProducts(Long classId);
+    boolean isMaterialUsedInProducts(Long materialId);
 
 }

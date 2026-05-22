@@ -19,4 +19,6 @@ public interface ComponentCategoryRepository extends JpaRepository<ComponentCate
     Optional<ComponentCategoryEntity> findByName(String name);
 
     boolean existsByName(String name);
+
+    long countByParentId(Long parentId);
 }

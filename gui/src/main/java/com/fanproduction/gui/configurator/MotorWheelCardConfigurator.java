@@ -1,8 +1,7 @@
 package com.fanproduction.gui.configurator;
 
-
+import javafx.scene.Node;
 import javafx.scene.control.ComboBox;
-import javafx.scene.control.Control;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 
@@ -10,35 +9,25 @@ import java.util.Map;
 
 public class MotorWheelCardConfigurator implements CardFieldConfigurator {
 
-    private TextField ratedSpeedField;
-    private TextField fullMarkingField;
     private String lastAutoMarking = "";
-    private Map<String, Control> fieldControls;
-
-    private TextField getTextField(Map<String, Control> controls, String name) {
-        Control c = controls.get(name);
-        return c instanceof TextField ? (TextField) c : null;
-    }
-
-    private ComboBox<String> getComboBox(Map<String, Control> controls, String name) {
-        return CardFieldConfigurator.getComboBox(controls, name);
-    }
 
     @Override
-    public void setupFields(Map<String, Control> fieldControls, Map<String, Label> fieldLabels,
-                            Map<String, Label> fieldHints, boolean existingCardExists) {
-        this.fieldControls = fieldControls;
+    public void setupFields(Map<String, Node> fieldControls,
+                            Map<String, Label> fieldLabels,
+                            Map<String, Label> fieldHints,
+                            boolean existingCardExists) {
 
-        ratedSpeedField = getTextField(fieldControls, "ratedSpeedRpm");
-        fullMarkingField = getTextField(fieldControls, "fullMarking");
+        setupVoltageAutoFill(fieldControls);
 
-        setupVoltageAutoFill();
-        setupRatedSpeedCalculation();
-        setupFullMarkingGeneration();
+        // Используем общий метод для расчёта скорости
+        setupRatedSpeedCalculation(fieldControls, () -> updateFullMarking(fieldControls));
 
+        setupFullMarkingGeneration(fieldControls);
+
+        autoFillName(fieldControls, "Мотор-колесо", existingCardExists);
     }
 
-    private void setupVoltageAutoFill() {
+    private void setupVoltageAutoFill(Map<String, Node> fieldControls) {
         ComboBox<String> voltageCodeCombo = getComboBox(fieldControls, "voltageCode");
         TextField voltageField = getTextField(fieldControls, "voltage");
 
@@ -62,72 +51,39 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
-    private void setupRatedSpeedCalculation() {
-        ComboBox<String> polesCombo = getComboBox(fieldControls, "poles");
-        if (polesCombo != null && ratedSpeedField != null) {
-            polesCombo.valueProperty().addListener((obs, old, val) -> {
-                updateRatedSpeed(polesCombo);
-                updateFullMarking();
-            });
-            updateRatedSpeed(polesCombo);
-        }
-    }
-
-    private void updateRatedSpeed(ComboBox<String> polesCombo) {
-        if (ratedSpeedField == null || polesCombo == null) return;
-
-        String value = polesCombo.getValue();
-        if (value != null && !value.isEmpty()) {
-            try {
-                int poles = Integer.parseInt(value);
-                int ratedSpeed = 6000 / poles;
-                ratedSpeedField.setText(String.valueOf(ratedSpeed));
-            } catch (NumberFormatException e) {
-                ratedSpeedField.setText("");
-            }
-        } else {
-            ratedSpeedField.setText("");
-        }
-    }
-
-    private void setupFullMarkingGeneration() {
+    private void setupFullMarkingGeneration(Map<String, Node> fieldControls) {
+        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
 
-        addTextFieldListener("name", this::updateFullMarking);
-        addTextFieldListener("poles", this::updateFullMarking);
-        addTextFieldListener("voltageCode", this::updateFullMarking);
-        addTextFieldListener("motorCode", this::updateFullMarking);
+        addTextFieldListener(fieldControls, "name", () -> updateFullMarking(fieldControls));
+        addComboBoxListener(fieldControls, "poles", () -> updateFullMarking(fieldControls));
+        addComboBoxListener(fieldControls, "voltageCode", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "motorCode", () -> updateFullMarking(fieldControls));
 
-        updateFullMarking();
+        updateFullMarking(fieldControls);
     }
 
-    private void addTextFieldListener(String fieldName, Runnable callback) {
-        TextField textField = getTextField(fieldControls, fieldName);
-        if (textField != null) {
-            textField.textProperty().addListener((obs, old, val) -> callback.run());
-        }
-    }
-
-    private void updateFullMarking() {
+    private void updateFullMarking(Map<String, Node> fieldControls) {
+        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
 
-        String name = getFieldValue("name");
-        String poles = getFieldValue("poles");
-        String voltageCode = getFieldValue("voltageCode");
-        String motorCode = getFieldValue("motorCode");
+        String name = getFieldValue(fieldControls, "name");
+        String poles = getFieldValue(fieldControls, "poles");
+        String voltageCode = getFieldValue(fieldControls, "voltageCode");
+        String motorCode = getFieldValue(fieldControls, "motorCode");
 
         StringBuilder fullMarking = new StringBuilder();
 
-        if (name != null && !name.isEmpty()) {
+        if (!name.isEmpty()) {
             fullMarking.append(name);
         }
-        if (poles != null && !poles.isEmpty()) {
+        if (!poles.isEmpty()) {
             fullMarking.append("-").append(poles);
         }
-        if (voltageCode != null && !voltageCode.isEmpty()) {
+        if (!voltageCode.isEmpty()) {
             fullMarking.append(voltageCode);
         }
-        if (motorCode != null && !motorCode.isEmpty()) {
+        if (!motorCode.isEmpty()) {
             fullMarking.append("-").append(motorCode);
         }
 
@@ -138,16 +94,5 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
             fullMarkingField.setText(newMarking);
             lastAutoMarking = newMarking;
         }
-    }
-
-    private String getFieldValue(String fieldName) {
-        Control control = fieldControls.get(fieldName);
-        if (control == null) return "";
-        if (control instanceof TextField) return ((TextField) control).getText().trim();
-        if (control instanceof ComboBox) {
-            Object value = ((ComboBox<?>) control).getValue();
-            return value != null ? value.toString() : "";
-        }
-        return "";
     }
 }

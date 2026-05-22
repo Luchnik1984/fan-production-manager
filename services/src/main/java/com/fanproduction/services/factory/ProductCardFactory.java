@@ -6,7 +6,9 @@ import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Фабрика для создания карточек продукции.
@@ -111,44 +113,29 @@ public class ProductCardFactory {
     /**
      * Преобразует значение к нужному типу
      */
+    private final Map<Class<?>, Function<Object, Object>> converters = new HashMap<>();
+
+    {
+        converters.put(Long.class, v -> v instanceof String ? Long.parseLong((String) v) : ((Number) v).longValue());
+        converters.put(long.class, v -> v instanceof String ? Long.parseLong((String) v) : ((Number) v).longValue());
+        converters.put(Integer.class, v -> v instanceof String ? Integer.parseInt((String) v) : ((Number) v).intValue());
+        converters.put(int.class, v -> v instanceof String ? Integer.parseInt((String) v) : ((Number) v).intValue());
+        converters.put(Double.class, v -> v instanceof String ? Double.parseDouble((String) v) : ((Number) v).doubleValue());
+        converters.put(double.class, v -> v instanceof String ? Double.parseDouble((String) v) : ((Number) v).doubleValue());
+        converters.put(Boolean.class, v -> v instanceof String ? Boolean.parseBoolean((String) v) : v);
+        converters.put(boolean.class, v -> v instanceof String ? Boolean.parseBoolean((String) v) : v);
+    }
+
     private Object convertValue(Object value, Class<?> targetType) {
-        if (targetType.isInstance(value)) {
-            return value;
-        }
-
-        if (targetType == Long.class || targetType == long.class) {
-            if (value instanceof String) {
-                return Long.parseLong((String) value);
-            }
-            if (value instanceof Number) {
-                return ((Number) value).longValue();
+        if (targetType.isInstance(value)) return value;
+        Function<Object, Object> converter = converters.get(targetType);
+        if (converter != null) {
+            try {
+                return converter.apply(value);
+            } catch (Exception e) {
+                return value;
             }
         }
-
-        if (targetType == Integer.class || targetType == int.class) {
-            if (value instanceof String) {
-                return Integer.parseInt((String) value);
-            }
-            if (value instanceof Number) {
-                return ((Number) value).intValue();
-            }
-        }
-
-        if (targetType == Double.class || targetType == double.class) {
-            if (value instanceof String) {
-                return Double.parseDouble((String) value);
-            }
-            if (value instanceof Number) {
-                return ((Number) value).doubleValue();
-            }
-        }
-
-        if (targetType == Boolean.class || targetType == boolean.class) {
-            if (value instanceof String) {
-                return Boolean.parseBoolean((String) value);
-            }
-        }
-
         return value;
     }
 }

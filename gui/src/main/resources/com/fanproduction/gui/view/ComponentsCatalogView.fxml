@@ -46,6 +46,7 @@
         <Button fx:id="createClassButton" text="📂 Создать класс" onAction="#handleCreateClass" />
         <Button fx:id="createButton" text="➕ Создать компонент" onAction="#handleCreate" />
         <Button fx:id="editButton" text="✏ Редактировать" onAction="#handleEdit" />
-        <Button fx:id="deleteButton" text="🗑 Удалить" onAction="#handleDelete" />
+        <Button fx:id="deleteButton" text="🗑 Удалить компонент" onAction="#handleDelete" />
+        <Button fx:id="exportButton" text="📎 Экспорт в Excel" onAction="#handleExportToExcel" />
     </HBox>
 </VBox>

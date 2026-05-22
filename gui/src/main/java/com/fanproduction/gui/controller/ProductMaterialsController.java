@@ -413,4 +413,20 @@ public class ProductMaterialsController {
         alert.setContentText(message);
         alert.showAndWait();
     }
+
+    public void showLoadingMessage() {
+        Platform.runLater(() -> {
+            materialsList.clear();
+            statusLabel.setText("Загрузка...");
+            addButton.setDisable(true);
+            selectMaterialButton.setDisable(true);
+        });
+    }
+
+    public void enableControls() {
+        Platform.runLater(() -> {
+            addButton.setDisable(false);
+            selectMaterialButton.setDisable(false);
+        });
+    }
 }
