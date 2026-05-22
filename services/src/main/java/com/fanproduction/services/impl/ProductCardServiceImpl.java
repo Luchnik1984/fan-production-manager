@@ -36,13 +36,11 @@ public class ProductCardServiceImpl implements ProductCardService {
         BaseProductCard card = cardFactory.createCard(cardType, fields);
         card.setCreatedBy(createdBy);
 
-        // Генерируем уникальный код
         String code = generateCode(card);
         card.setCode(code);
 
         BaseProductCard savedCard = productCardRepository.save(card);
 
-        // Публикуем событие аудита
         eventPublisher.publishEvent(new AuditEvent(
                 this,
                 createdBy,
@@ -59,11 +57,9 @@ public class ProductCardServiceImpl implements ProductCardService {
         BaseProductCard existingCard = productCardRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Карточка не найдена: " + id));
 
-        // Создаём новую карточку с обновлёнными полями
         CardTemplateType cardType = CardTemplateType.valueOf(existingCard.getCardType());
         BaseProductCard updatedCard = cardFactory.createCard(cardType, fields);
 
-        // Сохраняем ID и другие неизменяемые поля
         updatedCard.setId(id);
         updatedCard.setCode(existingCard.getCode());
         updatedCard.setCreatedBy(existingCard.getCreatedBy());
@@ -71,7 +67,6 @@ public class ProductCardServiceImpl implements ProductCardService {
 
         BaseProductCard savedCard = productCardRepository.save(updatedCard);
 
-        // Публикуем событие аудита
         eventPublisher.publishEvent(new AuditEvent(
                 this,
                 getCurrentUser(),
@@ -116,7 +111,6 @@ public class ProductCardServiceImpl implements ProductCardService {
         String cardName = card.getName();
         productCardRepository.deleteById(id);
 
-        // Публикуем событие аудита
         eventPublisher.publishEvent(new AuditEvent(
                 this,
                 getCurrentUser(),
@@ -127,8 +121,6 @@ public class ProductCardServiceImpl implements ProductCardService {
 
     @Override
     public String generateCode(BaseProductCard card) {
-        // Базовый код: тип_времямяти_уникальныйID
-        // TODO: Здесь будет более сложная логика в зависимости от типа вентилятора
         String timestamp = String.valueOf(System.currentTimeMillis()).substring(8);
         String uniqueId = UUID.randomUUID().toString().substring(0, 8);
         return card.getCardType().toLowerCase() + "_" + timestamp + "_" + uniqueId;
@@ -154,42 +146,55 @@ public class ProductCardServiceImpl implements ProductCardService {
         return radialWheelCardRepository.findById(id);
     }
 
+
+    @Override
+    public void removeTemporaryFlag(Long id) {
+        BaseProductCard card = productCardRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Карточка не найдена"));
+        card.setTemporary(false);
+        productCardRepository.save(card);
+    }
+
     /**
-     * Получение текущего пользователя (временное решение).
+     * Поиск карточек по полям (полная маркировка и т.д.)
+     */
+    @Override
+    public List<BaseProductCard> searchByFields(String query) {
+        String likePattern = "%" + query.toLowerCase() + "%";
+        List<BaseProductCard> results = new ArrayList<>();
+
+        // ========== КОМПОНЕНТЫ ==========
+        addSearchResults(results, motorCardRepository.searchByFields(likePattern));
+        addSearchResults(results, motorWheelCardRepository.searchByFields(likePattern));
+        addSearchResults(results, radialWheelCardRepository.searchByFields(likePattern));
+        addSearchResults(results, axialWheelCardRepository.searchByFields(likePattern));
+
+        return results;
+    }
+
+    /**
+     * Вспомогательный метод для добавления результатов поиска в общий список.
+     * Избегает дублирования кода и предупреждений unchecked.
+     *
+     * @param results      общий список результатов
+     * @param searchResults результаты поиска из конкретного репозитория
+     */
+    private void addSearchResults(List<BaseProductCard> results, List<?> searchResults) {
+        if (searchResults != null && !searchResults.isEmpty()) {
+            for (Object item : searchResults) {
+                if (item instanceof BaseProductCard) {
+                    results.add((BaseProductCard) item);
+                }
+            }
+        }
+    }
+
+    /**
+     * Получение текущего пользователя
      */
     private String getCurrentUser() {
         String email = currentUserProvider.getCurrentUserEmail();
         return email != null ? email : "system";
     }
-
-    @Override
-    @Transactional
-    public void removeTemporaryFlag(Long id) {
-        BaseProductCard card = productCardRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Карточка не найдена"));
-            card.setTemporary(false);
-            productCardRepository.save(card);
-    }
-
-
-    @Override
-    public List<BaseProductCard> searchByFields(String query) {
-        String likePattern = "%" + query.toLowerCase() + "%";
-
-        // Поиск по электродвигателям
-        List<MotorCardEntity> motors = motorCardRepository.searchByFields(likePattern);
-        List<BaseProductCard> results = new ArrayList<>(motors);
-
-        // Поиск по мотор-колёсам
-        List<MotorWheelCardEntity> motorWheels = motorWheelCardRepository.searchByFields(likePattern);
-        results.addAll(motorWheels);
-
-        // Поиск по радиальным колёсам
-        List<RadialWheelCardEntity> radialWheels = radialWheelCardRepository.searchByFields(likePattern);
-        results.addAll(radialWheels);
-
-        // TODO: добавить поиск по другим типам карточек
-
-        return results;
-    }
 }
+
