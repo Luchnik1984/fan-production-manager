@@ -3,12 +3,11 @@ package com.fanproduction.gui.controller;
 import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.gui.client.ApiClient;
 import com.fanproduction.gui.client.ProductCardClient;
-import com.fanproduction.gui.component.TreeSelectableComponentBox;
 import com.fanproduction.gui.configurator.CardFormConfigurator;
-import com.fanproduction.gui.dto.SelectableItem;
 import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
 import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.ProductCardDto;
+import com.fanproduction.gui.factory.FieldControlFactory;
 import com.fanproduction.gui.service.FieldMetadataService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import javafx.application.Platform;
@@ -35,6 +34,7 @@ public class CardFormController {
     private final ProductCardDto existingCard;
     private final Runnable onSaveCallback;
     private final FieldMetadataService metadataService = new FieldMetadataService();
+    private final FieldControlFactory controlFactory;
     // Контроллеры вкладок
     private ProductComponentsController componentsTabController;
     private ProductMaterialsController materialsTabController;
@@ -56,6 +56,7 @@ public class CardFormController {
         this.cardType = cardType;
         this.existingCard = existingCard;
         this.onSaveCallback = onSaveCallback;
+        this.controlFactory = new FieldControlFactory(this.stage, this::autoFillFromSelection);
 
         initUI();
     }
@@ -187,185 +188,7 @@ public class CardFormController {
     }
 
     private Node createControlForField(FieldMetadataDto field, Object existingValue) {
-
-        return switch (field.getType()) {
-            case "text" -> createTextField(field, existingValue);
-            case "number" -> createNumberField(field, existingValue);
-            case "double" -> createDoubleField(field, existingValue);
-            case "combobox" -> createComboBox(field, existingValue);
-            case "boolean" -> createCheckBox(field, existingValue);
-            case "selectable" -> createSelectableComboBox(field, existingValue);
-            case "hidden" -> {
-                TextField hiddenField = new TextField();
-                hiddenField.setVisible(false);
-                hiddenField.setManaged(false);
-                if (existingValue != null) {
-                    hiddenField.setText(String.valueOf(existingValue));
-                }
-                yield hiddenField;
-            }
-            default -> createDefaultField(field, existingValue);
-        };
-    }
-
-    private Node createSelectableComboBox(FieldMetadataDto field, Object existingValue) {
-        String refType = field.getReferenceType();
-
-        // Для всех типов компонентов используем TreeSelectableComponentBox
-        TreeSelectableComponentBox treeBox = new TreeSelectableComponentBox(
-                stage, refType,
-                id ->
-                    // Колбэк при выборе - автозаполнение полей
-                    autoFillFromSelection(refType, id)
-        );
-
-        if (existingValue instanceof Number) {
-            treeBox.setSelectedId(((Number) existingValue).longValue());
-        }
-
-        return treeBox.getContainer();
-    }
-
-    private Node createTextField(FieldMetadataDto field, Object existingValue) {
-        TextField textField = new TextField();
-        if (existingValue != null) textField.setText(String.valueOf(existingValue));
-        if (field.getDefaultValue() != null && existingValue == null) textField.setText(field.getDefaultValue());
-        textField.setPromptText(field.getHint());
-        return textField;
-    }
-
-    private Node createNumberField(FieldMetadataDto field, Object existingValue) {
-        TextField numberField = new TextField();
-        if (existingValue != null) numberField.setText(String.valueOf(existingValue));
-        if (field.getDefaultValue() != null && existingValue == null) numberField.setText(field.getDefaultValue());
-        numberField.setPromptText("Введите число");
-        return numberField;
-    }
-
-    private Node createDoubleField(FieldMetadataDto field, Object existingValue) {
-        TextField doubleField = new TextField();
-        if (existingValue != null) doubleField.setText(String.valueOf(existingValue));
-        if (field.getDefaultValue() != null && existingValue == null) doubleField.setText(field.getDefaultValue());
-        doubleField.setPromptText("Введите число (например: 5,5)");
-        return doubleField;
-    }
-
-    private Node createComboBox(FieldMetadataDto field, Object existingValue) {
-        String refType = field.getReferenceType();
-        boolean isReference = refType != null && !refType.isEmpty();
-
-        if (isReference) {
-            System.out.println("=== Creating REFERENCE ComboBox for " + field.getName());
-            System.out.println("refType: " + refType);
-            System.out.println("existingValue: " + existingValue);
-            ComboBox<SelectableItem> refComboBox = new ComboBox<>();
-            refComboBox.setPromptText(field.getHint() != null ? field.getHint() : "Выберите");
-
-            Long existingId = null;
-            if (existingValue instanceof Number) {
-                existingId = ((Number) existingValue).longValue();
-            } else if (existingValue instanceof String) {
-                try {
-                    existingId = Long.parseLong((String) existingValue);
-                } catch (NumberFormatException e) {
-                    // Игнорируем
-                }
-            }
-
-            loadReferenceData(refComboBox, refType, existingId);
-
-            refComboBox.valueProperty().addListener((obs, old, newVal) -> {
-                if (newVal != null && newVal.getId() != null) {
-                    autoFillFromSelection(refType, newVal.getId());
-                }
-            });
-
-            return refComboBox;
-        } else {
-            ComboBox<String> comboBox = new ComboBox<>();
-            if (field.getOptions() != null) {
-                comboBox.getItems().addAll(field.getOptions());
-            }
-            if (existingValue != null) {
-                comboBox.setValue(String.valueOf(existingValue));
-            }
-            if (field.getDefaultValue() != null && existingValue == null) {
-                comboBox.setValue(field.getDefaultValue());
-            }
-            if (field.getHint() != null && !field.getHint().isEmpty()) {
-                comboBox.setPromptText(field.getHint());
-            }
-            return comboBox;
-        }
-    }
-
-    private Node createCheckBox(FieldMetadataDto field, Object existingValue) {
-        CheckBox checkBox = new CheckBox();
-        if (existingValue instanceof Boolean) checkBox.setSelected((Boolean) existingValue);
-        if (field.getDefaultValue() != null && existingValue == null) {
-            checkBox.setSelected(Boolean.parseBoolean(field.getDefaultValue()));
-        }
-        return checkBox;
-    }
-
-    private Node createDefaultField(FieldMetadataDto field, Object existingValue) {
-        TextField defaultField = new TextField();
-        if (existingValue != null) defaultField.setText(String.valueOf(existingValue));
-        return defaultField;
-    }
-
-    private void loadReferenceData(ComboBox<SelectableItem> comboBox, String referenceType, Long existingId) {
-        System.out.println("=== loadReferenceData ===");
-        System.out.println("referenceType: " + referenceType);
-        System.out.println("existingId: " + existingId);
-
-        comboBox.getItems().clear();
-        comboBox.getItems().add(new SelectableItem(null, "Загрузка..."));
-
-        new Thread(() -> {
-            try {
-                List<ProductCardDto> items = switch (referenceType) {
-                    case "MOTOR_WHEEL" -> ProductCardClient.getCardsByType("MOTOR_WHEEL");
-                    case "RADIAL_WHEEL" -> ProductCardClient.getCardsByType("RADIAL_WHEEL");
-                    case "MOTOR" -> ProductCardClient.getCardsByType("MOTOR");
-                    case "AXIAL_WHEEL" -> ProductCardClient.getCardsByType("AXIAL_WHEEL");
-                    default -> new ArrayList<>();
-                };
-
-                Platform.runLater(() -> {
-                    comboBox.getItems().clear();
-                    if (!items.isEmpty()) {
-                        SelectableItem selectedItem = null;
-                        for (ProductCardDto dto : items) {
-                            // Используем полную маркировку для отображения
-                            String fullMarking = (String) dto.getFields().get("fullMarking");
-                            String displayName;
-                            if (fullMarking != null && !fullMarking.isEmpty()) {
-                                displayName = fullMarking;
-                            } else {
-                                displayName = dto.getName() + " (" + dto.getCode() + ")";
-                            }
-                            SelectableItem item = new SelectableItem(dto.getId(), displayName);
-                            comboBox.getItems().add(item);
-                            if (existingId != null && existingId.equals(dto.getId())) {
-                                selectedItem = item;
-                            }
-                        }
-                        if (selectedItem != null) {
-                            comboBox.setValue(selectedItem);
-                        }
-                    } else {
-                        comboBox.getItems().add(new SelectableItem(null, "Нет данных"));
-                    }
-                });
-            } catch (Exception e) {
-                Platform.runLater(() -> {
-                    comboBox.getItems().clear();
-                    comboBox.getItems().add(new SelectableItem(null, "Ошибка загрузки"));
-                });
-                e.printStackTrace();
-            }
-        }).start();
+        return controlFactory.createControl(field, existingValue,fieldControls);
     }
 
     private void autoFillFromSelection(String referenceType, Long selectedId) {
@@ -680,39 +503,6 @@ public class CardFormController {
         }).start();
     }
 
-    private void createTemporaryCard() {
-        System.out.println("=== createTemporaryCard START, cardType: " + cardType);
-        new Thread(() -> {
-            try {
-                // Передаём флаг isTemporary = true
-                ApiResponse<ProductCardDto> response = ProductCardClient.createTemporaryCard(cardType, "system");
-                Platform.runLater(() -> {
-                    if (response.isSuccess() && response.getData() != null) {
-                        Long newTempId = response.getData().getId();
-                        setTemporaryCardId(newTempId);
-                        System.out.println("Temporary card created for " + cardType + " with ID: " + newTempId);
-
-
-                        if (componentsTabController != null) {
-                            componentsTabController.refresh(currentTemporaryCardId);
-                            componentsTabController.enableControls();
-                        }
-                        if (materialsTabController != null) {
-                            materialsTabController.refresh(currentTemporaryCardId);
-                            materialsTabController.enableControls();
-                        }
-                    } else {
-                        showAlert("Ошибка", "Не удалось создать временную карточку: " + response.getMessage(),
-                                Alert.AlertType.ERROR);
-                    }
-                });
-            } catch (Exception e) {
-                Platform.runLater(() -> showAlert("Ошибка", "Ошибка создания временной карточки: " + e.getMessage(),
-                        Alert.AlertType.ERROR));
-                e.printStackTrace();
-            }
-        }).start();
-    }
 
     private void deleteTemporaryCard() {
         Long tempId = getTemporaryCardId();
@@ -761,12 +551,17 @@ public class CardFormController {
         }
     }
 
+    /**
+     * Асинхронное создание временной карточки с обновлением UI
+     */
     private void createTemporaryCardAsync() {
+        // Если уже есть будущий результат и он ещё не завершён — не создаём повторно
         if (temporaryCardFuture != null && !temporaryCardFuture.isDone()) {
             System.out.println("Temporary card creation already in progress, waiting...");
             return;
         }
 
+        // Создаём CompletableFuture для асинхронного создания карточки
         temporaryCardFuture = CompletableFuture.supplyAsync(() -> {
             try {
                 ApiResponse<ProductCardDto> response = ProductCardClient.createTemporaryCard(cardType, "system");
@@ -775,12 +570,36 @@ public class CardFormController {
                     setTemporaryCardId(newTempId);
                     System.out.println("Temporary card created for " + cardType + " with ID: " + newTempId);
                     return newTempId;
+                } else {
+                    System.err.println("Failed to create temporary card: " + response.getMessage());
+                    return null;
                 }
             } catch (Exception e) {
                 e.printStackTrace();
+                return null;
             }
-            return null;
         });
+
+        // После завершения создания — обновляем UI
+        temporaryCardFuture.thenAccept(tempId -> Platform.runLater(() -> {
+            if (tempId != null) {
+                currentTemporaryCardId = tempId;
+
+                // Обновляем вкладку компонентов
+                if (componentsTabController != null) {
+                    componentsTabController.refresh(currentTemporaryCardId);
+                    componentsTabController.enableControls();
+                }
+
+                // Обновляем вкладку материалов
+                if (materialsTabController != null) {
+                    materialsTabController.refresh(currentTemporaryCardId);
+                    materialsTabController.enableControls();
+                }
+            } else {
+                showAlert("Ошибка", "Не удалось создать временную карточку", Alert.AlertType.ERROR);
+            }
+        }));
     }
 
     private void waitForTemporaryCardAndOpenTabs() {
