@@ -1,6 +1,7 @@
 package com.fanproduction.gui.controller;
 
 import com.fanproduction.gui.base.BaseCatalogController;
+import com.fanproduction.gui.base.CatalogHelper;
 import com.fanproduction.gui.base.CategoryTreeItem;
 import com.fanproduction.gui.base.ExportRowDto;
 import com.fanproduction.gui.client.*;
@@ -69,7 +70,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         componentsTable.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 ComponentDto selected = componentsTable.getSelectionModel().getSelectedItem();
-                if (selected != null) showItemDialog(selected);
+                if (selected != null) showEditItemDialog(selected);
             }
         });
     }
@@ -80,38 +81,145 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         deleteButton.setDisable(!hasSelection);
     }
 
-    private List<Long> getAllCategoryIds(Long categoryId) {
-        List<Long> ids = new ArrayList<>();
-        ids.add(categoryId);
-        List<ComponentCategoryDto> children = allCategories.stream()
-                .filter(c -> c.getParentId() != null && c.getParentId().equals(categoryId))
-                .toList();
-        for (ComponentCategoryDto child : children) {
-            ids.addAll(getAllCategoryIds(child.getId()));
-        }
-        return ids;
-    }
-
     // ==========================================
     // РЕАЛИЗАЦИЯ АБСТРАКТНЫХ МЕТОДОВ
     // ==========================================
 
     @Override
-    protected void loadAllItems() {
-        new Thread(() -> {
-            try {
-                List<ComponentDto> components = ComponentClient.getAllComponents();
-                updateItemList(components);
-            } catch (Exception e) {
-                Platform.runLater(() -> showAlert("Ошибка", "Не удалось загрузить компоненты: " + e.getMessage(),
-                        Alert.AlertType.ERROR));
-            }
-        }).start();
+    protected List<ComponentCategoryDto> fetchCategories() throws Exception {
+        return ComponentCategoryClient.getAllCategories();
+    }
+
+    @Override
+    protected List<ComponentClassDto> fetchClasses() throws Exception {
+        return ComponentClassClient.getAllClasses();
     }
 
     @Override
     protected List<ComponentDto> fetchAllItems() throws Exception {
         return ComponentClient.getAllComponents();
+    }
+
+    @Override
+    protected void deleteCategoryById(Long id) throws Exception {
+        ComponentCategoryClient.deleteCategory(id);
+    }
+
+    @Override
+    protected void deleteClassById(Long id) throws Exception {
+        ComponentClassClient.deleteClass(id);
+    }
+
+    @Override
+    protected void deleteItemById(Long id) throws Exception {
+        ComponentClient.deleteComponent(id);
+    }
+
+    @Override
+    protected void updateCategory(Long id, String newName, Long parentId, String description) {
+        new Thread(() -> {
+            try {
+                Map<String, Object> request = new HashMap<>();
+                request.put("name", newName);
+                if (parentId != null) request.put("parentId", parentId);
+                if (description != null) request.put("description", description);
+                ApiClient.put("/components/categories/" + id, request, new TypeReference<ApiResponse<Void>>() {});
+                Platform.runLater(this::loadData);
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", e.getMessage()));
+            }
+        }).start();
+    }
+
+    @Override
+    protected void updateClass(Long id, String newName, String description, Long categoryId) {
+        new Thread(() -> {
+            try {
+                Map<String, Object> request = new HashMap<>();
+                request.put("name", newName);
+                request.put("categoryId", categoryId);
+                if (description != null) request.put("description", description);
+                ApiClient.put("/components/classes/" + id, request, new TypeReference<ApiResponse<Void>>() {});
+                Platform.runLater(this::loadData);
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", e.getMessage()));
+            }
+        }).start();
+    }
+
+    @Override
+    protected void createClass(Long categoryId, String name, String description, Long unitId) throws Exception {
+        ComponentClassClient.createClass(categoryId, name, description, unitId);
+    }
+
+    @Override
+    protected List<ExportRowDto> getExportData() {
+        List<ExportRowDto> data = new ArrayList<>();
+        for (ComponentDto dto : itemList) {
+            List<String> values = Arrays.asList(
+                    dto.getName(),
+                    dto.getClassName() != null ? dto.getClassName() : "",
+                    dto.getVendorCode() != null ? dto.getVendorCode() : "",
+                    dto.getUnitCode() != null ? dto.getUnitCode() : "",
+                    dto.getDescription() != null ? dto.getDescription() : ""
+            );
+            data.add(new ExportRowDto(values));
+        }
+        return data;
+    }
+
+    @Override
+    protected String[] getExportHeaders() {
+        return new String[]{"Наименование", "Класс", "Артикул", "Ед. изм.", "Описание"};
+    }
+
+    @Override
+    protected String getItemTypeName() {
+        return "компоненты";
+    }
+
+    // ==========================================
+    // GETTERS ДЛЯ ПОЛЕЙ (для хелперов)
+    // ==========================================
+
+    @Override
+    protected Long getCategoryId(ComponentCategoryDto category) {
+        return category.getId();
+    }
+
+    @Override
+    protected String getCategoryName(ComponentCategoryDto category) {
+        return category.getName();
+    }
+
+    @Override
+    protected Long getCategoryParentId(ComponentCategoryDto category) {
+        return category.getParentId();
+    }
+
+    @Override
+    protected String getCategoryDescription(ComponentCategoryDto category) {
+        return category.getDescription();
+    }
+
+    @Override
+    protected Long getClassId(ComponentClassDto cls) {
+        return cls.getId();
+    }
+
+    @Override
+    protected String getClassName(ComponentClassDto cls) {
+        return cls.getName();
+    }
+
+    @Override
+    protected Long getClassCategoryId(ComponentClassDto cls) {
+        return cls.getCategoryId();
+    }
+
+    @Override
+    protected String getClassDescription(ComponentClassDto cls) {
+        return cls.getDescription();
     }
 
     @Override
@@ -129,141 +237,40 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         return item.getClassId();
     }
 
+    // ==========================================
+    // UI ДОСТУП
+    // ==========================================
+
     @Override
-    protected void filterByClassId(Long classId) {
-        if (classId == null) {
-            loadAllItems();
-            return;
-        }
-        new Thread(() -> {
-            try {
-                List<ComponentDto> allComponents = ComponentClient.getAllComponents();
-                List<ComponentDto> filtered = allComponents.stream()
-                        .filter(c -> c.getClassId().equals(classId))
-                        .collect(Collectors.toList());
-                updateItemList(filtered);
-            } catch (Exception e) {
-                Platform.runLater(() -> showAlert("Ошибка", "Ошибка фильтрации: " + e.getMessage(),
-                        Alert.AlertType.ERROR));
-            }
-        }).start();
+    protected TreeView<CategoryTreeItem> getTreeView() {
+        return categoryTreeView;
     }
 
     @Override
-    protected void filterByCategoryId(Long categoryId) {
-        if (categoryId == null) {
-            loadAllItems();
-            return;
-        }
-        List<Long> categoryIds = getAllCategoryIds(categoryId);
-        List<Long> classIds = allClasses.stream()
-                .filter(cls -> cls.getCategoryId() != null && categoryIds.contains(cls.getCategoryId()))
-                .map(ComponentClassDto::getId)
-                .toList();
-
-        if (classIds.isEmpty()) {
-            updateItemList(new ArrayList<>());
-            return;
-        }
-
-        new Thread(() -> {
-            try {
-                List<ComponentDto> allComponents = ComponentClient.getAllComponents();
-                List<ComponentDto> filtered = allComponents.stream()
-                        .filter(c -> classIds.contains(c.getClassId()))
-                        .collect(Collectors.toList());
-                updateItemList(filtered);
-            } catch (Exception e) {
-                Platform.runLater(() -> showAlert("Ошибка", "Ошибка фильтрации: " + e.getMessage(),
-                        Alert.AlertType.ERROR));
-            }
-        }).start();
+    protected Label getStatusLabel() {
+        return statusLabel;
     }
 
     @Override
-    protected void showCreateCategoryDialog() {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Создание категории компонентов");
-        dialog.setHeaderText("Создание новой категории");
-        dialog.initOwner(stage);
+    protected TableView<ComponentDto> getTableView() {
+        return componentsTable;
+    }
 
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(20));
+    // ==========================================
+    // СОЗДАНИЕ/РЕДАКТИРОВАНИЕ ЭЛЕМЕНТОВ
+    // ==========================================
 
-        ComboBox<String> parentCombo = new ComboBox<>();
-        parentCombo.getItems().add("— Корневая категория —");
-        for (ComponentCategoryDto rootCat : allCategories.stream()
-                .filter(c -> c.getParentId() == null).toList()) {
-            parentCombo.getItems().add(rootCat.getName());
-            addChildCategoriesToParentComboSimple(parentCombo, rootCat, 1);
-        }
-        parentCombo.setValue("— Корневая категория —");
-
-        TextField nameField = new TextField();
-        nameField.setPromptText("Например: Кронштейны");
-        TextArea descriptionField = new TextArea();
-        descriptionField.setPromptText("Описание (необязательно)");
-        descriptionField.setPrefRowCount(3);
-
-        grid.add(new Label("Родительская категория:"), 0, 0);
-        grid.add(parentCombo, 1, 0);
-        grid.add(new Label("Название категории:*"), 0, 1);
-        grid.add(nameField, 1, 1);
-        grid.add(new Label("Описание:"), 0, 2);
-        grid.add(descriptionField, 1, 2);
-
-        dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
-        dialog.showAndWait().ifPresent(buttonType -> {
-            if (buttonType == ButtonType.OK) {
-                String name = nameField.getText().trim();
-                if (name.isEmpty()) {
-                    showAlert("Ошибка", "Введите название категории", Alert.AlertType.ERROR);
-                    return;
-                }
-                String parentName = parentCombo.getValue();
-                Long parentId = null;
-                if (!"— Корневая категория —".equals(parentName) && parentName != null) {
-                    String cleanName = parentName.replaceAll("^\\s+", "");
-                    for (ComponentCategoryDto cat : allCategories) {
-                        if (cat.getName().equals(cleanName)) {
-                            parentId = cat.getId();
-                            break;
-                        }
-                    }
-                }
-                final Long finalParentId = parentId;
-                new Thread(() -> {
-                    try {
-                        ComponentCategoryClient.createCategory(name, finalParentId, descriptionField.getText());
-                        Platform.runLater(() -> {
-                            showAlert("Успешно", "Категория создана", Alert.AlertType.INFORMATION);
-                            loadData();
-                        });
-                    } catch (Exception e) {
-                        Platform.runLater(() -> showAlert("Ошибка", "Не удалось создать категорию: " + e.getMessage(),
-                                Alert.AlertType.ERROR));
-                    }
-                }).start();
-            }
-        });
+    @Override
+    protected void showCreateItemDialog() {
+        showComponentDialog(null);
     }
 
     @Override
-    protected void showCreateClassDialog() {
-        showCreateClassDialogCommon();
+    protected void showEditItemDialog(ComponentDto existing) {
+        showComponentDialog(existing);
     }
 
-    @Override
-    protected void createClass(Long categoryId, String name, String description, Long unitId) throws Exception {
-        ComponentClassClient.createClass(categoryId, name, description, unitId);
-    }
-
-    @Override
-    protected void showItemDialog(ComponentDto existing) {
+    private void showComponentDialog(ComponentDto existing) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(existing == null ? "Создание компонента" : "Редактирование компонента");
         dialog.initOwner(stage);
@@ -273,6 +280,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         grid.setVgap(10);
         grid.setPadding(new Insets(20));
 
+        // Выбор категории
         ComboBox<String> categoryCombo = new ComboBox<>();
         categoryCombo.getItems().add("— Все категории —");
         Map<String, Long> categoryIdMap = new HashMap<>();
@@ -280,10 +288,11 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 .filter(c -> c.getParentId() == null).toList()) {
             categoryCombo.getItems().add(rootCat.getName());
             categoryIdMap.put(rootCat.getName(), rootCat.getId());
-            addChildCategoriesToParentComboWithMap(categoryCombo, rootCat, 1, categoryIdMap);
+            addChildCategoriesToCombo(categoryCombo, rootCat, 1, categoryIdMap);
         }
         categoryCombo.setValue("— Все категории —");
 
+        // Выбор класса
         ComboBox<String> classCombo = new ComboBox<>();
         classCombo.setPromptText("Выберите класс");
         classCombo.setDisable(true);
@@ -293,21 +302,18 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         warningLabel.setStyle("-fx-text-fill: red; -fx-font-size: 11px;");
         warningLabel.setVisible(false);
 
+        // Поля компонента
         TextField nameField = new TextField();
         nameField.setPromptText("Наименование компонента");
         TextField vendorCodeField = new TextField();
         vendorCodeField.setPromptText("Артикул производителя");
 
-        GroupedComboBox<UnitOfMeasureDto> unitCombo = new GroupedComboBox<>();
-        Map<String, List<UnitOfMeasureDto>> groupedUnits = allUnits.stream()
-                .collect(Collectors.groupingBy(UnitOfMeasureDto::getCategory));
-        unitCombo.setGroupedItems(groupedUnits);
-        unitCombo.setPromptText("Выберите единицу измерения");
-
+        GroupedComboBox<UnitOfMeasureDto> unitCombo = CatalogHelper.createUnitCombo(allUnits);
         TextArea descriptionField = new TextArea();
         descriptionField.setPromptText("Описание");
         descriptionField.setPrefRowCount(3);
 
+        // Логика выбора категории -> класс
         categoryCombo.valueProperty().addListener((obs, old, newVal) -> {
             if (newVal == null || "— Все категории —".equals(newVal)) {
                 classCombo.setDisable(true);
@@ -338,6 +344,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
             }
         });
 
+        // Заполняем существующие значения
         if (existing != null) {
             nameField.setText(existing.getName());
             if (existing.getVendorCode() != null) vendorCodeField.setText(existing.getVendorCode());
@@ -368,6 +375,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
             }
         }
 
+        // Сборка формы
         int row = 0;
         grid.add(new Label("Категория:*"), 0, row);
         grid.add(categoryCombo, 1, row++);
@@ -381,7 +389,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         grid.add(new Label("Единица измерения:*"), 0, row);
         grid.add(unitCombo, 1, row++);
         grid.add(new Label("Описание:"), 0, row);
-        grid.add(descriptionField, 1, row++);
+        grid.add(descriptionField, 1, row);
 
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -395,21 +403,21 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 String description = descriptionField.getText().trim();
 
                 if (selectedClass == null || selectedClass.isEmpty()) {
-                    showAlert("Ошибка", "Выберите класс", Alert.AlertType.ERROR);
+                    showAlert("Ошибка", "Выберите класс");
                     return;
                 }
                 if (name.isEmpty()) {
-                    showAlert("Ошибка", "Введите наименование", Alert.AlertType.ERROR);
+                    showAlert("Ошибка", "Введите наименование");
                     return;
                 }
                 if (selectedUnit == null) {
-                    showAlert("Ошибка", "Выберите единицу измерения", Alert.AlertType.ERROR);
+                    showAlert("Ошибка", "Выберите единицу измерения");
                     return;
                 }
 
                 ComponentClassDto selectedClassDto = classMap.get(selectedClass);
                 if (selectedClassDto == null) {
-                    showAlert("Ошибка", "Класс не найден", Alert.AlertType.ERROR);
+                    showAlert("Ошибка", "Класс не найден");
                     return;
                 }
 
@@ -424,172 +432,28 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                             ComponentClient.updateComponent(existing.getId(), request);
                         }
                         Platform.runLater(() -> {
-                            showAlert("Успешно", "Компонент " + (existing == null ? "создан" : "обновлён"),
-                                    Alert.AlertType.INFORMATION);
+                            showAlert("Успешно", "Компонент " + (existing == null ? "создан" : "обновлён"));
                             loadData();
                         });
                     } catch (Exception e) {
-                        Platform.runLater(() -> showAlert("Ошибка", "Не удалось сохранить: " + e.getMessage(),
-                                Alert.AlertType.ERROR));
+                        Platform.runLater(() -> showAlert("Ошибка", "Не удалось сохранить: " + e.getMessage()));
                     }
                 }).start();
             }
         });
     }
 
-
-    @Override
-    protected void deleteCategoryById(Long id) throws Exception {
-        ComponentCategoryClient.deleteCategory(id);
-    }
-
-    @Override
-    protected void deleteClassById(Long id) throws Exception {
-        ComponentClassClient.deleteClass(id);
-    }
-
-    @Override
-    protected void deleteItemById(Long id) throws Exception {
-        ComponentClient.deleteComponent(id);
-    }
-
-    @Override
-    protected String getCategoryUpdatePath() {
-        return "/components/categories/";
-    }
-
-    @Override
-    protected String getClassUpdatePath() {
-        return "/components/classes/";
-    }
-
-    @Override
-    protected List<ComponentCategoryDto> fetchCategories() throws Exception {
-        return ComponentCategoryClient.getAllCategories();
-    }
-
-    @Override
-    protected List<ComponentClassDto> fetchClasses() throws Exception {
-        return ComponentClassClient.getAllClasses();
-    }
-
-    @Override
-    protected String getItemTypeName() {
-        return "компоненты";
-    }
-
-    @Override
-    protected Long getCategoryId(ComponentCategoryDto category) {
-        return category.getId();
-    }
-
-    @Override
-    protected String getCategoryName(ComponentCategoryDto category) {
-        return category.getName();
-    }
-
-    @Override
-    protected Long getCategoryParentId(ComponentCategoryDto category) {
-        return category.getParentId();
-    }
-
-    @Override
-    protected Long getClassId(ComponentClassDto cls) {
-        return cls.getId();
-    }
-
-    @Override
-    protected String getClassName(ComponentClassDto cls) {
-        return cls.getName();
-    }
-
-    @Override
-    protected Long getClassCategoryId(ComponentClassDto cls) {
-        return cls.getCategoryId();
-    }
-
-    @Override
-    protected TreeView<CategoryTreeItem> getTreeView() {
-        return categoryTreeView;
-    }
-
-    @Override
-    protected Label getStatusLabel() {
-        return statusLabel;
-    }
-
-    @Override
-    protected TableView<ComponentDto> getTableView() {
-        return componentsTable;
-    }
-
-    @Override
-    protected List<ExportRowDto> getExportData() {
-        List<ExportRowDto> data = new ArrayList<>();
-        for (ComponentDto dto : itemList) {
-            List<String> values = Arrays.asList(
-                    dto.getName(),
-                    dto.getClassName() != null ? dto.getClassName() : "",
-                    dto.getVendorCode() != null ? dto.getVendorCode() : "",
-                    dto.getUnitCode() != null ? dto.getUnitCode() : "",
-                    dto.getDescription() != null ? dto.getDescription() : ""
-            );
-            data.add(new ExportRowDto(values));
+    private void addChildCategoriesToCombo(ComboBox<String> combo, ComponentCategoryDto parent, int depth, Map<String, Long> idMap) {
+        String indent = "    ".repeat(depth + 1);
+        List<ComponentCategoryDto> children = allCategories.stream()
+                .filter(c -> c.getParentId() != null && c.getParentId().equals(parent.getId()))
+                .toList();
+        for (ComponentCategoryDto child : children) {
+            String display = indent + child.getName();
+            combo.getItems().add(display);
+            idMap.put(display, child.getId());
+            addChildCategoriesToCombo(combo, child, depth + 1, idMap);
         }
-        return data;
-    }
-
-    @Override
-    protected String[] getExportHeaders() {
-        return new String[]{"Наименование", "Класс", "Артикул", "Ед. изм.", "Описание"};
-    }
-
-    @Override
-    protected String getClassDescription(ComponentClassDto cls) {
-        return cls.getDescription();
-    }
-
-    @Override
-    protected String getCategoryDescription(ComponentCategoryDto category) {
-        return category.getDescription();
-    }
-
-    @Override
-    protected void updateCategory(Long id, String newName, Long parentId, String description) {
-        new Thread(() -> {
-            try {
-                Map<String, Object> request = new HashMap<>();
-                request.put("name", newName);
-                if (parentId != null) {
-                    request.put("parentId", parentId);
-                }
-                if (description != null) {
-                    request.put("description", description);
-                }
-                ApiClient.put("/components/categories/" + id, request, new TypeReference<ApiResponse<Void>>() {});
-                Platform.runLater(this::loadData);
-            } catch (Exception e) {
-                Platform.runLater(() -> showAlert("Ошибка", e.getMessage(), Alert.AlertType.ERROR));
-            }
-        }).start();
-    }
-
-    @Override
-    protected void updateClass(Long id, String newName, String description, Long categoryId) {
-        new Thread(() -> {
-            try {
-                Map<String, Object> request = new HashMap<>();
-                request.put("name", newName);
-                request.put("categoryId", categoryId);
-                if (description != null) {
-                    request.put("description", description);
-                }
-                ApiClient.put("/components/classes/" + id, request, new TypeReference<ApiResponse<Void>>() {});
-                Platform.runLater(this::loadData);
-            } catch (Exception e) {
-                Platform.runLater(() -> showAlert("Ошибка", e.getMessage(), Alert.AlertType.ERROR));
-            }
-        }).start();
     }
 
     // ==========================================
@@ -600,7 +464,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     private void handleSearch() {
         String searchText = searchField.getText().toLowerCase();
         if (searchText.isEmpty()) {
-            loadAllItems();
+            loadData();
         } else {
             performSearch(searchText);
         }
@@ -617,8 +481,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 updateItemList(filtered);
                 Platform.runLater(() -> getStatusLabel().setText("Найдено: " + filtered.size()));
             } catch (Exception e) {
-                Platform.runLater(() -> showAlert("Ошибка", "Ошибка поиска: " + e.getMessage(),
-                        Alert.AlertType.ERROR));
+                Platform.runLater(() -> showAlert("Ошибка", "Ошибка поиска: " + e.getMessage()));
             }
         }).start();
     }
@@ -630,34 +493,54 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     }
 
     @FXML
-    private void handleCreateCategory() { showCreateCategoryDialog(); }
+    private void handleCreateCategory() {
+        dialogHelper.showCategoryDialog(null, result -> new Thread(() -> {
+            try {
+                ComponentCategoryClient.createCategory(result.name(), result.parentId(), result.description());
+                Platform.runLater(() -> {
+                    showAlert("Успешно", "Категория создана");
+                    loadData();
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", "Не удалось создать категорию: " + e.getMessage()));
+            }
+        }).start());
+    }
 
     @FXML
-    private void handleCreateClass() { showCreateClassDialog(); }
+    private void handleCreateClass() {
+        dialogHelper.showClassDialog(null, result -> new Thread(() -> {
+            try {
+                createClass(result.categoryId(), result.name(), result.description(), null);
+                Platform.runLater(() -> {
+                    showAlert("Успешно", "Класс создан");
+                    loadData();
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", "Не удалось создать класс: " + e.getMessage()));
+            }
+        }).start());
+    }
 
     @FXML
-    private void handleCreate() { showItemDialog(null); }
+    private void handleCreate() {
+        showCreateItemDialog();
+    }
 
     @FXML
     private void handleEdit() {
         ComponentDto selected = getTableView().getSelectionModel().getSelectedItem();
-        if (selected != null) showItemDialog(selected);
-        else showAlert("Внимание", "Выберите компонент для редактирования", Alert.AlertType.WARNING);
+        if (selected != null) showEditItemDialog(selected);
+        else showAlert("Внимание", "Выберите компонент для редактирования");
     }
 
     @FXML
     private void handleDelete() {
         ComponentDto selected = getTableView().getSelectionModel().getSelectedItem();
         if (selected == null) {
-            showAlert("Внимание", "Выберите компонент для удаления", Alert.AlertType.WARNING);
+            showAlert("Внимание", "Выберите компонент для удаления");
             return;
         }
         deleteItem(selected.getId(), selected.getName());
     }
-
-    @FXML
-    protected void handleExportToExcel() {
-        super.handleExportToExcel();
-    }
-
 }
