@@ -478,7 +478,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
                             MaterialClient.updateMaterial(existing.getId(), request);
                         }
                         Platform.runLater(() -> {
-                            showAlert("Успешно", "Материал " + (existing == null ? "создан" : "обновлён"));
+                            showAlert("Успешно", "Материал " + (existing == null ? "создан" : "обновлён"), Alert.AlertType.INFORMATION);
                             loadData();
                         });
                     } catch (Exception e) {
@@ -545,7 +545,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
             try {
                 MaterialCategoryClient.createCategory(result.name(), result.parentId(), result.description());
                 Platform.runLater(() -> {
-                    showAlert("Успешно", "Категория создана");
+                    showAlert("Успешно", "Категория создана", Alert.AlertType.INFORMATION);
                     loadData();
                 });
             } catch (Exception e) {
@@ -560,7 +560,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
             try {
                 createClass(result.categoryId(), result.name(), result.description(), null);
                 Platform.runLater(() -> {
-                    showAlert("Успешно", "Класс создан");
+                    showAlert("Успешно", "Класс создан", Alert.AlertType.INFORMATION);
                     loadData();
                 });
             } catch (Exception e) {
@@ -578,16 +578,22 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
     private void handleEdit() {
         MaterialDto selected = getTableView().getSelectionModel().getSelectedItem();
         if (selected != null) showEditItemDialog(selected);
-        else showAlert("Внимание", "Выберите материал для редактирования");
+        else showAlert("Внимание", "Выберите материал для редактирования", Alert.AlertType.CONFIRMATION);
     }
 
     @FXML
     private void handleDelete() {
         MaterialDto selected = getTableView().getSelectionModel().getSelectedItem();
         if (selected == null) {
-            showAlert("Внимание", "Выберите материал для удаления");
+            showAlert("Внимание", "Выберите материал для удаления", Alert.AlertType.CONFIRMATION);
             return;
         }
         deleteItem(selected.getId(), selected.getName());
     }
+
+    @Override
+    protected List<UnitOfMeasureDto> fetchUnits() throws Exception {
+        return ComponentClient.getAllUnits();  // или MaterialClient.getAllUnits()
+    }
+
 }

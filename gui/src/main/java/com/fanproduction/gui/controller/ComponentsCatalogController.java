@@ -432,7 +432,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                             ComponentClient.updateComponent(existing.getId(), request);
                         }
                         Platform.runLater(() -> {
-                            showAlert("Успешно", "Компонент " + (existing == null ? "создан" : "обновлён"));
+                            showAlert("Успешно", "Компонент " + (existing == null ? "создан" : "обновлён"), Alert.AlertType.INFORMATION);
                             loadData();
                         });
                     } catch (Exception e) {
@@ -498,7 +498,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
             try {
                 ComponentCategoryClient.createCategory(result.name(), result.parentId(), result.description());
                 Platform.runLater(() -> {
-                    showAlert("Успешно", "Категория создана");
+                    showAlert("Успешно", "Категория создана", Alert.AlertType.INFORMATION);
                     loadData();
                 });
             } catch (Exception e) {
@@ -513,7 +513,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
             try {
                 createClass(result.categoryId(), result.name(), result.description(), null);
                 Platform.runLater(() -> {
-                    showAlert("Успешно", "Класс создан");
+                    showAlert("Успешно", "Класс создан", Alert.AlertType.INFORMATION);
                     loadData();
                 });
             } catch (Exception e) {
@@ -531,16 +531,22 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     private void handleEdit() {
         ComponentDto selected = getTableView().getSelectionModel().getSelectedItem();
         if (selected != null) showEditItemDialog(selected);
-        else showAlert("Внимание", "Выберите компонент для редактирования");
+        else showAlert("Внимание", "Выберите компонент для редактирования", Alert.AlertType.CONFIRMATION);
     }
 
     @FXML
     private void handleDelete() {
         ComponentDto selected = getTableView().getSelectionModel().getSelectedItem();
         if (selected == null) {
-            showAlert("Внимание", "Выберите компонент для удаления");
+            showAlert("Внимание", "Выберите компонент для удаления", Alert.AlertType.CONFIRMATION);
             return;
         }
         deleteItem(selected.getId(), selected.getName());
     }
+
+    @Override
+    protected List<UnitOfMeasureDto> fetchUnits() throws Exception {
+        return ComponentClient.getAllUnits();
+    }
+
 }

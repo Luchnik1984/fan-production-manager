@@ -1,5 +1,6 @@
 package com.fanproduction.gui.base;
 
+import com.fanproduction.gui.component.GroupedComboBox;
 import com.fanproduction.gui.dto.response.UnitOfMeasureDto;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
@@ -57,15 +58,13 @@ public class CatalogDialogHelper<C, CL> {
         this.getClassDescription = getClassDescription;
     }
 
-    // ==========================================
-    // ДИАЛОГ КАТЕГОРИИ
-    // ==========================================
+    // ДИАЛОГ РЕДАКТИРОВАНИЯ КАТЕГОРИИ
 
-    /**
-     * Показывает диалог создания/редактирования категории
-     */
-    public void showCategoryDialog(C existingCategory,
-                                   Consumer<CategoryDialogResult> onSave) {
+    public void showEditCategoryDialog(C category, Consumer<CategoryDialogResult> onSave) {
+        showCategoryDialog(category, onSave);
+    }
+
+    public void showCategoryDialog(C existingCategory, Consumer<CategoryDialogResult> onSave) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(existingCategory == null ? "Создание категории" : "Редактирование категории");
         dialog.setHeaderText(existingCategory == null ? "Создание новой категории" : "Редактирование категории \"" + getCategoryName.apply(existingCategory) + "\"");
@@ -76,7 +75,7 @@ public class CatalogDialogHelper<C, CL> {
         grid.setVgap(10);
         grid.setPadding(new Insets(20));
 
-        // ========== ВЫБОР РОДИТЕЛЬСКОЙ КАТЕГОРИИ ==========
+        // Выбор родительской категории
         ComboBox<String> parentCombo = new ComboBox<>();
         parentCombo.getItems().add("— Корневая категория —");
 
@@ -106,14 +105,14 @@ public class CatalogDialogHelper<C, CL> {
             parentCombo.setValue("— Корневая категория —");
         }
 
-        // ========== НАЗВАНИЕ ==========
+        // Название
         TextField nameField = new TextField();
         if (existingCategory != null) {
             nameField.setText(getCategoryName.apply(existingCategory));
         }
         nameField.setPromptText("Название категории");
 
-        // ========== ОПИСАНИЕ ==========
+        // Описание
         TextArea descriptionField = new TextArea();
         if (existingCategory != null) {
             String existingDescription = getCategoryDescription.apply(existingCategory);
@@ -174,15 +173,13 @@ public class CatalogDialogHelper<C, CL> {
         }
     }
 
-    // ==========================================
-    // ДИАЛОГ КЛАССА (без выбора единицы измерения)
-    // ==========================================
+    // ДИАЛОГ РЕДАКТИРОВАНИЯ КЛАССА
 
-    /**
-     * Показывает диалог создания/редактирования класса
-     */
-    public void showClassDialog(CL existingClass,
-                                Consumer<ClassDialogResult> onSave) {
+    public void showEditClassDialog(CL cls, Consumer<ClassDialogResult> onSave) {
+        showClassDialog(cls, onSave);
+    }
+
+    public void showClassDialog(CL existingClass, Consumer<ClassDialogResult> onSave) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(existingClass == null ? "Создание класса" : "Редактирование класса");
         dialog.setHeaderText(existingClass == null ? "Создание нового класса" : "Редактирование класса \"" + getClassName.apply(existingClass) + "\"");
@@ -193,7 +190,7 @@ public class CatalogDialogHelper<C, CL> {
         grid.setVgap(10);
         grid.setPadding(new Insets(20));
 
-        // ========== ВЫБОР КАТЕГОРИИ ==========
+        // Выбор категории
         ComboBox<String> categoryCombo = new ComboBox<>();
         Map<String, Long> categoryIdMap = new java.util.HashMap<>();
 
@@ -204,6 +201,7 @@ public class CatalogDialogHelper<C, CL> {
             addChildCategoriesToCombo(categoryCombo, categoryIdMap, rootCat, 1);
         }
 
+        // Устанавливаем текущую категорию
         if (existingClass != null) {
             Long currentCategoryId = getClassCategoryId.apply(existingClass);
             for (C cat : allCategories) {
@@ -214,14 +212,14 @@ public class CatalogDialogHelper<C, CL> {
             }
         }
 
-        // ========== НАЗВАНИЕ ==========
+        // Название
         TextField nameField = new TextField();
         if (existingClass != null) {
             nameField.setText(getClassName.apply(existingClass));
         }
         nameField.setPromptText("Название класса");
 
-        // ========== ОПИСАНИЕ ==========
+        // Описание
         TextArea descriptionField = new TextArea();
         if (existingClass != null) {
             String existingDescription = getClassDescription.apply(existingClass);
@@ -291,6 +289,10 @@ public class CatalogDialogHelper<C, CL> {
             }
         }
         return null;
+    }
+
+    public GroupedComboBox<UnitOfMeasureDto> createUnitComboBox() {
+        return CatalogHelper.createUnitCombo(allUnits);
     }
 
     private void showError(String message) {

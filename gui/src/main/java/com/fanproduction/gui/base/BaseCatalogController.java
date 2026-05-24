@@ -1,6 +1,7 @@
 package com.fanproduction.gui.base;
 
 
+import com.fanproduction.gui.component.IconFactory;
 import com.fanproduction.gui.dto.response.UnitOfMeasureDto;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -94,7 +95,6 @@ public abstract class BaseCatalogController<T, C, CL> {
                 allClasses = fetchClasses();
                 List<T> items = fetchAllItems();
 
-                // Инициализация хелперов
                 initHelpers();
 
                 Platform.runLater(() -> {
@@ -120,14 +120,8 @@ public abstract class BaseCatalogController<T, C, CL> {
         exportHelper = new CatalogExportHelper(stage);
         filterHelper = new CatalogFilterHelper<>(allCategories, this::getCategoryId, this::getCategoryParentId, this::getItemClassId);
         dialogHelper = new CatalogDialogHelper<>(stage, allCategories, allClasses, allUnits,
-                this::getCategoryId,
-                this::getCategoryName,
-                this::getCategoryParentId,
-                this::getCategoryDescription,
-                this::getClassId,
-                this::getClassName,
-                this::getClassCategoryId,
-                this::getClassDescription);
+                this::getCategoryId, this::getCategoryName, this::getCategoryParentId, this::getCategoryDescription,
+                this::getClassId, this::getClassName, this::getClassCategoryId, this::getClassDescription);
     }
 
     protected void refreshTree() {
@@ -137,16 +131,17 @@ public abstract class BaseCatalogController<T, C, CL> {
                 this::getItemId, this::getItemClassId, this::getItemName);
 
         TreeView<CategoryTreeItem> newTree = treeBuilder.buildTree();
-        CatalogTreeBuilder.setupTreeCellFactory(newTree);
 
         TreeView<CategoryTreeItem> oldTree = getTreeView();
         if (oldTree != null) {
-            // Получаем корень из нового дерева и устанавливаем его в старое
             TreeItem<CategoryTreeItem> newRoot = newTree.getRoot();
             if (newRoot != null) {
                 oldTree.setRoot(newRoot);
                 oldTree.setShowRoot(false);
             }
+
+            CatalogTreeBuilder.setupTreeCellFactory(oldTree);
+            setupContextMenu(oldTree);
         }
     }
 
@@ -159,16 +154,188 @@ public abstract class BaseCatalogController<T, C, CL> {
         });
     }
 
-    protected void showAlert(String title, String message) {
-        showAlert(title, message, Alert.AlertType.ERROR);
+    protected List<UnitOfMeasureDto> fetchUnits() throws Exception {
+        return new ArrayList<>();
     }
 
-    protected void showAlert(String title, String message, Alert.AlertType type) {
-        Alert alert = new Alert(type);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+    // КОНТЕКСТНОЕ МЕНЮ
+
+    protected void setupContextMenu(TreeView<CategoryTreeItem> treeView) {
+        ContextMenu contextMenu = new ContextMenu();
+
+        MenuItem editItem = new MenuItem("Редактировать");
+        editItem.setGraphic(IconFactory.createEditIcon());
+        MenuItem deleteItem = new MenuItem("Удалить");
+        deleteItem.setGraphic(IconFactory.createDeleteIcon());
+
+        contextMenu.getItems().addAll(editItem, deleteItem);
+
+        // Закрываем меню при клике левой кнопкой мыши в любом месте
+        treeView.setOnMouseClicked(event -> {
+            if (event.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
+                contextMenu.hide();
+            }
+        });
+
+        treeView.setOnContextMenuRequested(event -> {
+            TreeItem<CategoryTreeItem> selectedItem = treeView.getSelectionModel().getSelectedItem();
+            if (selectedItem == null || selectedItem.getValue() == null) {
+                contextMenu.hide();
+                return;
+            }
+
+            CategoryTreeItem item = selectedItem.getValue();
+            String type = item.getType();
+
+            editItem.setOnAction(e -> {
+                if ("category".equals(type)) {
+                    editCategoryById(item.getCategoryId());
+                } else if ("class".equals(type)) {
+                    editClassById(item.getClassId());
+                } else if ("item".equals(type)) {
+                    editItemById(item.getId());
+                }
+                contextMenu.hide();
+            });
+
+            deleteItem.setOnAction(e -> {
+                if ("category".equals(type)) {
+                    deleteCategory(item.getCategoryId(), item.getDisplayName());
+                } else if ("class".equals(type)) {
+                    deleteClass(item.getClassId(), item.getDisplayName());
+                } else if ("item".equals(type)) {
+                    deleteItem(item.getId(), item.getDisplayName());
+                }
+                contextMenu.hide();
+            });
+
+            contextMenu.show(treeView, event.getScreenX(), event.getScreenY());
+        });
+    }
+
+    // РЕДАКТИРОВАНИЕ
+
+    protected void editCategoryById(Long categoryId) {
+        for (C cat : allCategories) {
+            if (getCategoryId(cat).equals(categoryId)) {
+                showEditCategoryDialog(cat);
+                break;
+            }
+        }
+    }
+
+    protected void editClassById(Long classId) {
+        for (CL cls : allClasses) {
+            if (getClassId(cls).equals(classId)) {
+                showEditClassDialog(cls);
+                break;
+            }
+        }
+    }
+
+    protected void editItemById(Long id) {
+        for (T item : itemList) {
+            if (getItemId(item).equals(id)) {
+                showEditItemDialog(item);
+                break;
+            }
+        }
+    }
+
+    // ДИАЛОГИ РЕДАКТИРОВАНИЯ (через dialogHelper)
+
+    protected void showEditCategoryDialog(C category) {
+        dialogHelper.showEditCategoryDialog(category, result -> new Thread(() -> {
+            try {
+                updateCategory(getCategoryId(category), result.name(), result.parentId(), result.description());
+                Platform.runLater(() -> {
+                    showAlert("Успешно", "Категория обновлена", Alert.AlertType.INFORMATION);
+                    loadData();
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", e.getMessage()));
+            }
+        }).start());
+    }
+
+    protected void showEditClassDialog(CL cls) {
+        dialogHelper.showEditClassDialog(cls, result -> new Thread(() -> {
+            try {
+                updateClass(getClassId(cls), result.name(), result.description(), result.categoryId());
+                Platform.runLater(() -> {
+                    showAlert("Успешно", "Класс обновлён", Alert.AlertType.INFORMATION);
+                    loadData();
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", e.getMessage()));
+            }
+        }).start());
+    }
+
+    // УДАЛЕНИЕ С ПРОВЕРКАМИ
+
+    protected void deleteCategory(Long id, String name) {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Подтверждение удаления");
+        confirm.setHeaderText("Удаление категории \"" + name + "\"");
+        confirm.setContentText("Вы уверены?");
+
+        confirm.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                new Thread(() -> {
+                    try {
+                        deleteCategoryById(id);
+                        Platform.runLater(() -> {
+                            showAlert("Успешно", "Категория удалена", Alert.AlertType.INFORMATION);
+                            loadData();
+                        });
+                    } catch (Exception e) {
+                        String msg = e.getMessage();
+                        Platform.runLater(() -> {
+                            if (msg.contains("дочерние категории")) {
+                                showAlert("Ошибка", "Сначала удалите все подкатегории", Alert.AlertType.WARNING);
+                            } else if (msg.contains("классы")) {
+                                showAlert("Ошибка", "Сначала удалите все классы в категории", Alert.AlertType.WARNING);
+                            } else {
+                                showAlert("Ошибка", msg);
+                            }
+                        });
+                    }
+                }).start();
+            }
+        });
+    }
+
+    protected void deleteClass(Long id, String name) {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Подтверждение удаления");
+        confirm.setHeaderText("Удаление класса \"" + name + "\"");
+        confirm.setContentText("Вы уверены?");
+
+        confirm.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                new Thread(() -> {
+                    try {
+                        deleteClassById(id);
+                        Platform.runLater(() -> {
+                            showAlert("Успешно", "Класс удалён", Alert.AlertType.INFORMATION);
+                            loadData();
+                        });
+                    } catch (Exception e) {
+                        String msg = e.getMessage();
+                        Platform.runLater(() -> {
+                            if (msg.contains("элементы") || msg.contains("компоненты")) {
+                                showAlert("Ошибка", "Сначала удалите все элементы в классе", Alert.AlertType.WARNING);
+                            } else if (msg.contains("используется")) {
+                                showAlert("Ошибка", msg);
+                            } else {
+                                showAlert("Ошибка", msg);
+                            }
+                        });
+                    }
+                }).start();
+            }
+        });
     }
 
     protected void deleteItem(Long id, String name) {
@@ -183,23 +350,37 @@ public abstract class BaseCatalogController<T, C, CL> {
                     try {
                         deleteItemById(id);
                         Platform.runLater(() -> {
-                            loadData();
                             showAlert("Успешно", "Элемент удалён", Alert.AlertType.INFORMATION);
+                            loadData();
                         });
                     } catch (Exception e) {
-                        Platform.runLater(() -> showAlert("Ошибка", e.getMessage()));
+                        String msg = e.getMessage();
+                        Platform.runLater(() -> {
+                            if (msg.contains("используется")) {
+                                showAlert("Ошибка", "Элемент используется в карточках продукции. Сначала удалите связи.", Alert.AlertType.WARNING);
+                            } else {
+                                showAlert("Ошибка", msg);
+                            }
+                        });
                     }
                 }).start();
             }
         });
     }
 
-    protected List<UnitOfMeasureDto> fetchUnits() {
-        // Базовый метод, может быть переопределён в наследниках
-        return new ArrayList<>();
+    // УТИЛИТЫ
+
+    protected void showAlert(String title, String message) {
+        showAlert(title, message, Alert.AlertType.ERROR);
     }
 
-    // ========== ОБРАБОТЧИКИ ==========
+    protected void showAlert(String title, String message, Alert.AlertType type) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
 
     @javafx.fxml.FXML
     protected void handleExportToExcel() {
@@ -207,4 +388,5 @@ public abstract class BaseCatalogController<T, C, CL> {
             exportHelper.exportToExcel(getExportData(), getExportHeaders(), getItemTypeName(), getItemTypeName());
         }
     }
+
 }

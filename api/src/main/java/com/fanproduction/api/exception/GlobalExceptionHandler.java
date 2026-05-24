@@ -33,6 +33,17 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Обработчик для IllegalStateException (бизнес-ошибки, конфликты)
+     * Возвращает статус 409 (Conflict) с понятным сообщением
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalStateException(IllegalStateException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    /**
      * Обработчик для BadCredentialsException (неверные учетные данные)
      */
     @ExceptionHandler(BadCredentialsException.class)

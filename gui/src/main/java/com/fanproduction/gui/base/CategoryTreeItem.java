@@ -21,4 +21,9 @@ public class CategoryTreeItem {
     }
 
     public Long getCategoryId() { return id; }
+
+    @Override
+    public String toString() {
+        return displayName;
+    }
 }

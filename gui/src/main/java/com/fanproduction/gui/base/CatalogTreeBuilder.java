@@ -1,6 +1,8 @@
 package com.fanproduction.gui.base;
 
 import com.fanproduction.gui.component.IconFactory;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 
@@ -176,6 +178,69 @@ public class CatalogTreeBuilder<C, CL, T> {
                     }
                 }
             }
+        });
+    }
+
+    /**
+     * Настраивает контекстное меню для дерева (правой кнопкой мыши)
+     * @param treeView дерево, для которого настраивается меню
+     * @param onEditCategory действие при редактировании категории
+     * @param onEditClass действие при редактировании класса
+     * @param onEditItem действие при редактировании элемента
+     * @param onDeleteCategory действие при удалении категории
+     * @param onDeleteClass действие при удалении класса
+     * @param onDeleteItem действие при удалении элемента
+     */
+    public static void setupContextMenu(TreeView<CategoryTreeItem> treeView,
+                                        Runnable onEditCategory,
+                                        Runnable onEditClass,
+                                        Runnable onEditItem,
+                                        Runnable onDeleteCategory,
+                                        Runnable onDeleteClass,
+                                        Runnable onDeleteItem) {
+        ContextMenu contextMenu = new ContextMenu();
+
+        MenuItem editItem = new MenuItem("Редактировать");
+        editItem.setGraphic(IconFactory.createEditIcon());
+        MenuItem deleteItem = new MenuItem("Удалить");
+        deleteItem.setGraphic(IconFactory.createDeleteIcon());
+
+        contextMenu.getItems().addAll(editItem, deleteItem);
+
+        treeView.setContextMenu(contextMenu);
+
+        treeView.setOnContextMenuRequested(event -> {
+            TreeItem<CategoryTreeItem> selectedItem = treeView.getSelectionModel().getSelectedItem();
+            if (selectedItem == null || selectedItem.getValue() == null) {
+                contextMenu.hide();
+                return;
+            }
+
+            CategoryTreeItem item = selectedItem.getValue();
+            String type = item.getType();
+
+            // Настраиваем действия в зависимости от типа выбранного элемента
+            editItem.setOnAction(e -> {
+                if ("category".equals(type) && onEditCategory != null) {
+                    onEditCategory.run();
+                } else if ("class".equals(type) && onEditClass != null) {
+                    onEditClass.run();
+                } else if ("item".equals(type) && onEditItem != null) {
+                    onEditItem.run();
+                }
+            });
+
+            deleteItem.setOnAction(e -> {
+                if ("category".equals(type) && onDeleteCategory != null) {
+                    onDeleteCategory.run();
+                } else if ("class".equals(type) && onDeleteClass != null) {
+                    onDeleteClass.run();
+                } else if ("item".equals(type) && onDeleteItem != null) {
+                    onDeleteItem.run();
+                }
+            });
+
+            contextMenu.show(treeView, event.getScreenX(), event.getScreenY());
         });
     }
 }
