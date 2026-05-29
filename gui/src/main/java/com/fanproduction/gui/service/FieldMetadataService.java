@@ -129,54 +129,36 @@ public class FieldMetadataService {
         // ========== Колесо радиальное (RADIAL_WHEEL) ==========
         List<FieldMetadataDto> radialWheelFields = new ArrayList<>();
 
-        // Производитель
-        radialWheelFields.add(createField("manufacturer", "Производитель", "text", false, null, null, null, "Например: Siemens, ABB"));
+        // Раздел 1: Основная информация
+        radialWheelFields.add(createField("manufacturer", "Производитель", "text", false, null, null, null));
+        radialWheelFields.add(createField("series", "Серия колеса", "text", true, null, null, null, "КЦ, РК"));
+        radialWheelFields.add(createField("size", "Размер колеса", "double", true, null, null, null, "220, 560"));
+        radialWheelFields.add(createField("marking", "Первичная маркировка колеса", "text", true, null, null, null, "формируется автоматически (КЦ-220)", true));
 
-        // Маркировка колеса
-        radialWheelFields.add(createField("marking", "Маркировка колеса", "text", true, null, null, null, "КЦ-220"));
+        // Раздел 2: Характеристики колеса
+        radialWheelFields.add(createField("bladeType", "Тип лопаток", "combobox", true, "N",
+                new String[]{"впередзагнутые", "назадзагнутые", "радиальнооканчивающиеся"}, null,
+                "впередзагнутые(V) / назадзагнутые(N) / радиальнооканчивающиеся(RO)"));
 
-        // Тип лопаток (выпадающий список)
-        radialWheelFields.add(createField("bladeType", "Тип лопаток", "combobox", true, "назадзагнутые",
-                new String[]{"впередзагнутые", "назадзагнутые"}, null, "впередзагнутые / назадзагнутые"));
+        radialWheelFields.add(createField("hubComponentId", "Ступица", "selectable", true,
+                null, null, "COMPONENT", "Выберите ступицу из базы компонентов"));
+        radialWheelFields.add(createField("hubName", "", "text", false, null, null, null, "", false));
 
-        // Модификация лопатки (новое поле)
-        radialWheelFields.add(createField("bladeMod", "Модификация лопатки", "text", false, null, null, null, "1.05, 14, 12U"));
-
-        // Размер колеса
-        radialWheelFields.add(createField("size", "Размер колеса", "double", true, null, null, null, "5,6"));
-
-        // Формула колеса
-        radialWheelFields.add(createField("wheelFormula", "Формула колеса", "text", false, null, null, null, "5,6_B14"));
-
-        // Количество лопаток
-        radialWheelFields.add(createField("bladeCount", "Количество лопаток", "number", false, null, null, null, "6, 7, 9"));
-
-        // Ступица
-        radialWheelFields.add(createField("hubType", "Ступица", "text", false, null, null, null, "SM1610, BF2012"));
-
-        // Максимальная скорость вращения
-        radialWheelFields.add(createField("maxSpeedRpm", "Макс. скорость (об/мин)", "number", false, null, null, null));
-
-        // Масса
+        radialWheelFields.add(createField("maxSpeedRpm", "Максимальная скорость (об/мин)", "number", false, null, null, null));
         radialWheelFields.add(createField("weightKg", "Масса (кг)", "double", false, null, null, null));
 
-        // Галочка "Общего применения"
-        radialWheelFields.add(createField("generalPurpose", "Общего применения", "boolean", false, "true", null, null));
+        // Раздел 3: Дополнительные параметры
+        radialWheelFields.add(createField("bladeMod", "Модификация лопатки", "text", false, null, null, null, "14, 12U"));
+        radialWheelFields.add(createField("frontDiskMod", "Модификация переднего диска", "text", false, null, null, null, "A, B"));
+        radialWheelFields.add(createField("wheelWidth", "Ширина колеса", "double", false, null, null, null, "0.27, 0.33"));
+        radialWheelFields.add(createField("bladeLengthCoeff", "Коэффициент длины лопатки", "double", false, "1.00", null, null, "1.03, 1.00, 0.97"));
+        radialWheelFields.add(createField("bladeCount", "Количество лопаток", "number", false, null, null, null, "6, 7, 9"));
 
-        // Галочка "Огнестойкость"
-        radialWheelFields.add(createField("fireproof", "Огнестойкость", "boolean", false, "false", null, null));
+        radialWheelFields.add(createField("wheelCode", "Код колеса", "text", false, null, null, null, "формируется автоматически из модификации лопатки", false));
+        radialWheelFields.add(createField("wheelFormula", "Формула колеса", "text", false, null, null, null, "формируется автоматически, можно редактировать",true));
 
-        // Маркировка огнестойкости (скрыто по умолчанию)
-        radialWheelFields.add(createField("fireproofMarking", "Маркировка огнестойкости", "text", false, "F400", null, null, "F400",false));
-
-        // Галочка "Взрывозащита"
-        radialWheelFields.add(createField("explosionProof", "Взрывозащита", "boolean", false, "false", null, null));
-
-        // Поле маркировки взрывозащиты (скрыто по умолчанию)
-        radialWheelFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex d IIC T4 Gb", null, null, "1Ex d IIC T4 Gb",false));
-
-        // Полная маркировка (формируется автоматически)
-        radialWheelFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
+        // Раздел 4: Исполнение
+        radialWheelFields.addAll(getFanSpecialFields());
 
         metadataMap.put("RADIAL_WHEEL", radialWheelFields);
 

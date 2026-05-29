@@ -1,4 +1,4 @@
--- V22__create_component_table.sql
+-- V10__create_component_table.sql
 CREATE TABLE IF NOT EXISTS component (
                                          id BIGSERIAL PRIMARY KEY,
                                          class_id BIGINT NOT NULL REFERENCES component_class(id) ON DELETE CASCADE,

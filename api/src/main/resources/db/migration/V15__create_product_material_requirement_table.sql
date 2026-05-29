@@ -1,4 +1,4 @@
--- V27__create_product_material_requirement_table.sql
+-- V15__create_product_material_requirement_table.sql
 CREATE TABLE IF NOT EXISTS product_material_requirement (
                                                             id BIGSERIAL PRIMARY KEY,
                                                             product_card_id BIGINT NOT NULL REFERENCES base_product_card(id) ON DELETE CASCADE,

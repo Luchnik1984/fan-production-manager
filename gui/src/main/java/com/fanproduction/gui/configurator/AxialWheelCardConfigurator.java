@@ -1,7 +1,6 @@
 package com.fanproduction.gui.configurator;
 
 import javafx.scene.Node;
-import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -18,12 +17,18 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
                             Map<String, Label> fieldHints,
                             boolean existingCardExists) {
 
+        // Взаимоисключающие галочки - из интерфейса
+        setupExclusiveSelection(fieldControls, () -> updateFullMarking(fieldControls));
+
+        // Настройка расчётов (диаметр колеса, формула колеса)
         setupCalculations(fieldControls);
-        setupExclusiveSelection(fieldControls);
-        setupConditionalVisibility(fieldControls, fieldLabels);
+
+        // Настройка автоматического формирования полной маркировки
         setupFullMarkingGeneration(fieldControls);
 
+        // Автоматическое заполнение наименования
         autoFillName(fieldControls, "Колесо осевое", existingCardExists);
+
     }
 
     private void setupCalculations(Map<String, Node> fieldControls) {
@@ -61,10 +66,11 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         TextField bladeAngleField = getTextField(fieldControls, "bladeAngle");
         ComboBox<String> bladeMaterialCombo = getComboBox(fieldControls, "bladeMaterial");
         TextField wheelFormulaField = getTextField(fieldControls, "wheelFormula");
+        TextField wheelDiameterForFormula = getTextField(fieldControls, "wheelDiameter");
 
         if (wheelFormulaField != null) {
             Runnable updateFormula = () -> {
-                String diameter = wheelDiameterField != null ? wheelDiameterField.getText() : "";
+                String diameter = wheelDiameterForFormula != null ? wheelDiameterForFormula.getText() : "";
                 String bladeCount = bladeCountField != null ? bladeCountField.getText() : "";
                 String bladeSlots = bladeSlotsField != null ? bladeSlotsField.getText() : "";
                 String bladeType = bladeTypeField != null ? bladeTypeField.getText() : "";
@@ -82,8 +88,8 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
                 wheelFormulaField.setText(formula.toString());
             };
 
-            if (wheelDiameterField != null) {
-                wheelDiameterField.textProperty().addListener((obs, old, val) -> updateFormula.run());
+            if (wheelDiameterForFormula != null) {
+                wheelDiameterForFormula.textProperty().addListener((obs, old, val) -> updateFormula.run());
             }
             if (bladeCountField != null) {
                 bladeCountField.textProperty().addListener((obs, old, val) -> updateFormula.run());
@@ -105,66 +111,6 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
-    private void setupExclusiveSelection(Map<String, Node> fieldControls) {
-        CheckBox generalPurposeCheck = getCheckBox(fieldControls, "generalPurpose");
-        CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
-        CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
-
-        if (generalPurposeCheck != null) {
-            generalPurposeCheck.selectedProperty().addListener((obs, old, val) -> {
-                if (val) {
-                    if (fireproofCheck != null) fireproofCheck.setSelected(false);
-                    if (explosionCheck != null) explosionCheck.setSelected(false);
-                }
-                updateFullMarking(fieldControls);
-            });
-        }
-
-        if (fireproofCheck != null) {
-            fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
-                if (val) {
-                    if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
-                    if (explosionCheck != null) explosionCheck.setSelected(false);
-                }
-                updateFullMarking(fieldControls);
-            });
-        }
-
-        if (explosionCheck != null) {
-            explosionCheck.selectedProperty().addListener((obs, old, val) -> {
-                if (val) {
-                    if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
-                    if (fireproofCheck != null) fireproofCheck.setSelected(false);
-                }
-                updateFullMarking(fieldControls);
-            });
-        }
-    }
-
-    private void setupConditionalVisibility(Map<String, Node> fieldControls,
-                                            Map<String, Label> fieldLabels) {
-        CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
-        if (fireproofCheck != null) {
-            setVisible(fieldControls, fieldLabels, "fireproofMarking", fireproofCheck.isSelected());
-            setVisible(fieldControls, fieldLabels, "maxTemperature", fireproofCheck.isSelected());
-
-            fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
-                setVisible(fieldControls, fieldLabels, "fireproofMarking", val);
-                setVisible(fieldControls, fieldLabels, "maxTemperature", val);
-                updateFullMarking(fieldControls);
-            });
-        }
-
-        CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
-        if (explosionCheck != null) {
-            setVisible(fieldControls, fieldLabels, "explosionMarking", explosionCheck.isSelected());
-
-            explosionCheck.selectedProperty().addListener((obs, old, val) -> {
-                setVisible(fieldControls, fieldLabels, "explosionMarking", val);
-                updateFullMarking(fieldControls);
-            });
-        }
-    }
 
     private void setupFullMarkingGeneration(Map<String, Node> fieldControls) {
         TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
@@ -200,14 +146,8 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
 
         StringBuilder fullMarking = new StringBuilder();
 
-        if (!marking.isEmpty()) {
-            fullMarking.append(marking).append(" ");
-        }
-
-        if (!size.isEmpty()) {
-            fullMarking.append(size);
-        }
-
+        if (!marking.isEmpty()) fullMarking.append(marking).append(" ");
+        if (!size.isEmpty()) fullMarking.append(size);
         if (isGeneralPurpose) {
             fullMarking.append("-C");
         } else if (isFireproof && !fireproofMarking.isEmpty()) {
@@ -215,10 +155,7 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         } else if (isExplosionProof && !explosionMarking.isEmpty()) {
             fullMarking.append("-").append(explosionMarking);
         }
-
-        if (!wheelFormula.isEmpty()) {
-            fullMarking.append("-").append(wheelFormula);
-        }
+        if (!wheelFormula.isEmpty()) fullMarking.append("-").append(wheelFormula);
 
         String newMarking = fullMarking.toString();
         String currentMarking = fullMarkingField.getText();

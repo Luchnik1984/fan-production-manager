@@ -1,4 +1,4 @@
--- V23__create_product_component_table.sql
+-- V11__create_product_component_table.sql
 CREATE TABLE IF NOT EXISTS product_component (
                                                  id BIGSERIAL PRIMARY KEY,
                                                  product_card_id BIGINT NOT NULL REFERENCES base_product_card(id) ON DELETE CASCADE,

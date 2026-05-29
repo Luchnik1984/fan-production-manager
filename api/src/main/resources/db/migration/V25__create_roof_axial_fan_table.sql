@@ -1,4 +1,4 @@
--- V17__create_roof_axial_fan_table.sql
+-- V25__create_roof_axial_fan_table.sql
 -- Создание таблицы для крышных осевых вентиляторов
 
 CREATE TABLE IF NOT EXISTS roof_axial_fan (

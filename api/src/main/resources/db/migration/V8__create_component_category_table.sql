@@ -1,4 +1,4 @@
--- V20__create_component_category_table.sql
+-- V8__create_component_category_table.sql
 CREATE TABLE IF NOT EXISTS component_category (
                                                   id BIGSERIAL PRIMARY KEY,
                                                   parent_id BIGINT REFERENCES component_category(id) ON DELETE CASCADE,

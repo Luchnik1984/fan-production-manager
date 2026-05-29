@@ -1,4 +1,4 @@
--- V15__create_roof_low_profile_fan_table.sql
+-- V26__create_roof_low_profile_fan_table.sql
 -- Создание таблицы для крышных низкопрофильных вентиляторов
 
 CREATE TABLE IF NOT EXISTS roof_low_profile_fan (

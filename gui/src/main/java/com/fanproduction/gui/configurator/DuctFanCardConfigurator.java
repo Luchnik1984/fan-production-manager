@@ -1,7 +1,6 @@
 package com.fanproduction.gui.configurator;
 
 import javafx.scene.Node;
-import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -18,11 +17,21 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
                             Map<String, Label> fieldHints,
                             boolean existingCardExists) {
 
-        setupTypeSelection(fieldControls, fieldLabels);
-        setupFullMarkingGeneration(fieldControls);
-        setupExclusiveSelection(fieldControls);
+        // Условная видимость (огнестойкость/взрывозащита) - из интерфейса
+        setupConditionalVisibility(fieldControls, fieldLabels, () -> updateFullMarking(fieldControls));
 
+        // Взаимоисключающие галочки - из интерфейса
+        setupExclusiveSelection(fieldControls, () -> updateFullMarking(fieldControls));
+
+        // Настройка выбора типа колеса
+        setupTypeSelection(fieldControls, fieldLabels);
+
+        // Настройка автоматического формирования полной маркировки
+        setupFullMarkingGeneration(fieldControls);
+
+        // Автоматическое заполнение наименования
         autoFillName(fieldControls, "Вентилятор канальный", existingCardExists);
+
     }
 
     private void setupTypeSelection(Map<String, Node> fieldControls, Map<String, Label> fieldLabels) {
@@ -175,39 +184,4 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
         return "";
     }
 
-    private void setupExclusiveSelection(Map<String, Node> fieldControls) {
-        CheckBox generalPurposeCheck = getCheckBox(fieldControls, "generalPurpose");
-        CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
-        CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
-
-        if (generalPurposeCheck != null) {
-            generalPurposeCheck.selectedProperty().addListener((obs, old, val) -> {
-                if (val) {
-                    if (fireproofCheck != null) fireproofCheck.setSelected(false);
-                    if (explosionCheck != null) explosionCheck.setSelected(false);
-                }
-                updateFullMarking(fieldControls);
-            });
-        }
-
-        if (fireproofCheck != null) {
-            fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
-                if (val) {
-                    if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
-                    if (explosionCheck != null) explosionCheck.setSelected(false);
-                }
-                updateFullMarking(fieldControls);
-            });
-        }
-
-        if (explosionCheck != null) {
-            explosionCheck.selectedProperty().addListener((obs, old, val) -> {
-                if (val) {
-                    if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
-                    if (fireproofCheck != null) fireproofCheck.setSelected(false);
-                }
-                updateFullMarking(fieldControls);
-            });
-        }
-    }
 }

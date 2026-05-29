@@ -2,10 +2,12 @@ package com.fanproduction.gui.controller;
 
 import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.gui.client.ApiClient;
+import com.fanproduction.gui.client.ComponentClient;
 import com.fanproduction.gui.client.ProductCardClient;
 import com.fanproduction.gui.configurator.CardFormConfigurator;
 import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
 import com.fanproduction.gui.dto.response.ApiResponse;
+import com.fanproduction.gui.dto.response.ComponentDto;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fanproduction.gui.factory.FieldControlFactory;
 import com.fanproduction.gui.service.FieldMetadataService;
@@ -127,6 +129,9 @@ public class CardFormController {
             currentTemporaryCardId = getTemporaryCardId();
             refreshTemporaryCardInTabs(currentTemporaryCardId);
         }
+
+        // ========== 5. ЗАГРУЖАЕМ ДОПОЛНИТЕЛЬНЫЕ ДАННЫЕ ДЛЯ РЕДАКТИРОВАНИЯ ==========
+        loadAdditionalData();
     }
 
     private GridPane createFormGrid() {
@@ -218,9 +223,16 @@ public class CardFormController {
                                 setFieldValue("motorWheelFullMarking", fullMarking);
                                 break;
                             case "RADIAL_WHEEL":
-                                setFieldValue("wheelSize", fields.get("size"));
-                                // Сохраняем полную маркировку радиального колеса
                                 setFieldValue("radialWheelFullMarking", fullMarking);
+                                setFieldValue("wheelSize", fields.get("size"));
+                                setFieldValue("poles", fields.get("poles"));
+
+                                // Добавляем компонент ступицы
+                                Object hubComponentId = fields.get("hubComponentId");
+                                if (hubComponentId instanceof Number) {
+                                    Long componentId = ((Number) hubComponentId).longValue();
+                                    addComponentToProduct(componentId, 1.0, "Ступица колеса");
+                                }
                                 break;
                             case "AXIAL_WHEEL":
                                 // Пока нет полей для автозаполнения
@@ -234,6 +246,14 @@ public class CardFormController {
                                 setFieldValue("ratedSpeedRpm", fields.get("ratedSpeedRpm"));
                                 setFieldValue("actualSpeedRpm", fields.get("actualSpeedRpm"));
                                 setFieldValue("motorFullMarking", fullMarking);
+                                break;
+
+                            case "COMPONENT":
+                                // Выбор компонента (ступица и т.д.)
+                                String componentName = dto.getName();
+                                setFieldValue("hubName", componentName);
+                                setFieldValue("hubComponentId", selectedId);
+                                addComponentToProduct(selectedId, 1.0, "Ступица");
                                 break;
                         }
                         updateFullMarking();
@@ -615,4 +635,86 @@ public class CardFormController {
             }
         }));
     }
+
+    /**
+     * Добавляет компонент в карточку продукции (во вкладку "Компоненты")
+     * @param componentId ID компонента
+     * @param quantity количество
+     * @param role роль компонента (для колонки "Место установки")
+     */
+    private void addComponentToProduct(Long componentId, Double quantity, String role) {
+        Long cardId = getCurrentCardId();
+        if (cardId == null) {
+            System.out.println("Cannot add component: cardId is null");
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                Map<String, Object> request = new HashMap<>();
+                request.put("componentId", componentId);
+                request.put("quantity", quantity != null ? quantity : 1.0);
+                request.put("position", role);  // "Место установки" или "Роль в изделии"
+
+                TypeReference<ApiResponse<Map<String, Object>>> typeRef = new TypeReference<>() {};
+                ApiResponse<Map<String, Object>> response = ApiClient.post(
+                        "/components/product/" + cardId, request, typeRef);
+
+                Platform.runLater(() -> {
+                    if (response.isSuccess()) {
+                        System.out.println("Component added to product: " + componentId + " as " + role);
+                        // Обновляем вкладку компонентов
+                        if (componentsTabController != null) {
+                            componentsTabController.refresh(cardId);
+                        }
+                    } else {
+                        System.err.println("Failed to add component: " + response.getMessage());
+                    }
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+                Platform.runLater(() -> System.err.println("Error adding component: " + e.getMessage()));
+            }
+        }).start();
+    }
+
+    /**
+     * Загружает имя компонента по ID и сохраняет в скрытое поле hubName
+     */
+    private void loadComponentName(Long componentId) {
+        new Thread(() -> {
+            try {
+                ComponentDto component = ComponentClient.getComponentById(componentId);
+                Platform.runLater(() -> {
+                    setFieldValue("hubName", component.getName());
+                    // Обновляем полную маркировку (триггерится через слушатель на hubName)
+                });
+            } catch (Exception e) {
+                System.err.println("Failed to load component name for ID: " + componentId);
+                e.printStackTrace();
+                Platform.runLater(() -> setFieldValue("hubName", "Компонент #" + componentId));
+            }
+        }).start();
+    }
+
+    /**
+     * Загружает дополнительные данные для редактирования карточки
+     * (например, имя компонента ступицы для радиального колеса)
+     */
+    private void loadAdditionalData() {
+        // Только для редактирования существующей карточки
+        if (existingCard == null) return;
+
+        String cardType = existingCard.getCardType();
+        Map<String, Object> fields = existingCard.getFields();
+
+        // Для радиального колеса: загружаем имя ступицы
+        if ("RADIAL_WHEEL".equals(cardType)) {
+            Object hubComponentId = fields.get("hubComponentId");
+            if (hubComponentId instanceof Number) {
+                Long componentId = ((Number) hubComponentId).longValue();
+                loadComponentName(componentId);
+            }
+        }
+        }
 }

@@ -350,4 +350,43 @@ public interface CardFieldConfigurator {
             label.setManaged(visible);
         }
     }
+
+    /**
+     * Настраивает условную видимость полей для огнестойкости и взрывозащиты
+     *
+     * @param fieldControls карта контролов
+     * @param fieldLabels карта лейблов
+     * @param updateCallback действие при изменении (обычно обновление полной маркировки)
+     */
+    default void setupConditionalVisibility(Map<String, Node> fieldControls,
+                                            Map<String, Label> fieldLabels,
+                                            Runnable updateCallback) {
+        // Огнестойкость -> поле маркировки огнестойкости и предельной температуры
+        CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
+        if (fireproofCheck != null) {
+            setVisible(fieldControls, fieldLabels, "fireproofMarking", fireproofCheck.isSelected());
+            setVisible(fieldControls, fieldLabels, "maxTemperature", fireproofCheck.isSelected());
+
+            fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
+                setVisible(fieldControls, fieldLabels, "fireproofMarking", val);
+                setVisible(fieldControls, fieldLabels, "maxTemperature", val);
+                if (updateCallback != null) {
+                    updateCallback.run();
+                }
+            });
+        }
+
+        // Взрывозащита -> поле маркировки взрывозащиты
+        CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
+        if (explosionCheck != null) {
+            setVisible(fieldControls, fieldLabels, "explosionMarking", explosionCheck.isSelected());
+
+            explosionCheck.selectedProperty().addListener((obs, old, val) -> {
+                setVisible(fieldControls, fieldLabels, "explosionMarking", val);
+                if (updateCallback != null) {
+                    updateCallback.run();
+                }
+            });
+        }
+    }
 }

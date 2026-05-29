@@ -1,4 +1,4 @@
--- V16__create_roof_radial_fan_table.sql
+-- V24__create_roof_radial_fan_table.sql
 -- Создание таблицы для крышных радиальных вентиляторов
 
 CREATE TABLE IF NOT EXISTS roof_radial_fan (

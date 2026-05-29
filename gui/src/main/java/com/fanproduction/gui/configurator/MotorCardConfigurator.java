@@ -18,8 +18,11 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
                             Map<String, Label> fieldHints,
                             boolean existingCardExists) {
 
-        // Настройка условного отображения полей
-        setupConditionalVisibility(fieldControls, fieldLabels);
+        // Условная видимость (огнестойкость/взрывозащита) - из интерфейса
+        setupConditionalVisibility(fieldControls, fieldLabels, () -> updateFullMarking(fieldControls));
+
+        // Взаимоисключающие галочки - из интерфейса
+        setupExclusiveSelection(fieldControls, () -> updateFullMarking(fieldControls));
 
         // Используем общий метод для расчёта скорости
         setupRatedSpeedCalculation(fieldControls, ()-> updateFullMarking(fieldControls));
@@ -34,38 +37,6 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         autoFillName(fieldControls, "Электродвигатель", existingCardExists);
     }
 
-
-
-
-    /**
-     * Настройка условного отображения полей
-     */
-    private void setupConditionalVisibility(Map<String, Node> fieldControls,
-                                            Map<String, Label> fieldLabels) {
-        // Огнестойкость -> поле маркировки огнестойкости и предельной температуры
-        CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
-        if (fireproofCheck != null) {
-            setVisible(fieldControls, fieldLabels, "fireproofMarking", fireproofCheck.isSelected());
-            setVisible(fieldControls, fieldLabels, "maxTemperature", fireproofCheck.isSelected());
-
-            fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
-                setVisible(fieldControls, fieldLabels, "fireproofMarking", val);
-                setVisible(fieldControls, fieldLabels, "maxTemperature", val);
-                updateFullMarking(fieldControls);
-            });
-        }
-
-        // Взрывозащита -> поле маркировки взрывозащиты
-        CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
-        if (explosionCheck != null) {
-            setVisible(fieldControls, fieldLabels, "explosionMarking", explosionCheck.isSelected());
-
-            explosionCheck.selectedProperty().addListener((obs, old, val) -> {
-                setVisible(fieldControls, fieldLabels, "explosionMarking", val);
-                updateFullMarking(fieldControls);
-            });
-        }
-    }
 
     /**
      * Настройка автоматического формирования полной маркировки
