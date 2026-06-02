@@ -162,7 +162,7 @@ public class TreeSelectableComponentBox {
                                         }
                                     }
                                 },
-                                this::runDialog
+                                this::openComponentCreationDialog
                         );
                         dialog.show();
                     });
