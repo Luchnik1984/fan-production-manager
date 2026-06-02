@@ -1,8 +1,10 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.gui.client.ComponentClient;
-import com.fanproduction.gui.client.ComponentClassClient;
+import com.fanproduction.core.dto.Displayable;
+import com.fanproduction.gui.builder.ComponentTreeBuilder;
 import com.fanproduction.gui.client.ComponentCategoryClient;
+import com.fanproduction.gui.client.ComponentClassClient;
+import com.fanproduction.gui.client.ComponentClient;
 import com.fanproduction.gui.dto.response.ComponentCategoryDto;
 import com.fanproduction.gui.dto.response.ComponentClassDto;
 import com.fanproduction.gui.dto.response.ComponentDto;
@@ -34,11 +36,12 @@ public class ComponentSelectorController {
     @Setter
     private Stage dialogStage;
     @Getter
-    private ComponentDto selectedComponent;  // ← храним ComponentDto, а не ComponentSelectionResult
+    private ComponentDto selectedComponent;
+
     private List<ComponentCategoryDto> allCategories;
     private List<ComponentClassDto> allClasses;
     private List<ComponentDto> allComponents;
-    private Map<Long, List<ComponentDto>> componentsByClassId = new java.util.HashMap<>();
+    private Map<Long, List<ComponentDto>> componentsByClassId;
 
     @FXML
     private void initialize() {
@@ -65,26 +68,14 @@ public class ComponentSelectorController {
     }
 
     private void buildTree() {
-        TreeItem<Object> rootItem = new TreeItem<>();
-        rootItem.setValue(null);
-        rootItem.setExpanded(true);
-
-        TreeItem<Object> allItem = new TreeItem<>("Все компоненты");
-        allItem.setExpanded(true);
-        rootItem.getChildren().add(allItem);
-
-        List<ComponentCategoryDto> rootCategories = allCategories.stream()
-                .filter(c -> c.getParentId() == null)
-                .toList();
-
-        for (ComponentCategoryDto category : rootCategories) {
-            TreeItem<Object> categoryItem = buildCategoryTreeItem(category);
-            allItem.getChildren().add(categoryItem);
-        }
+        // 1. Строим дерево через билдер
+        ComponentTreeBuilder builder = new ComponentTreeBuilder(allCategories, allClasses, allComponents);
+        TreeItem<Object> rootItem = builder.buildTree();
 
         categoryTreeView.setRoot(rootItem);
         categoryTreeView.setShowRoot(false);
 
+        // 2. Настройка отображения ячеек (используем Displayable)
         categoryTreeView.setCellFactory(tv -> new TreeCell<>() {
             @Override
             protected void updateItem(Object item, boolean empty) {
@@ -92,34 +83,20 @@ public class ComponentSelectorController {
                 if (empty || item == null) {
                     setText(null);
                     setGraphic(null);
-                } else if (item instanceof ComponentCategoryDto) {
-                    setText(((ComponentCategoryDto) item).getName());
-                } else if (item instanceof ComponentClassDto) {
-                    setText(((ComponentClassDto) item).getName());
-                } else if (item instanceof ComponentDto comp) {
-                    String display = comp.getName();
-                    if (comp.getVendorCode() != null && !comp.getVendorCode().isEmpty()) {
-                        display += " (" + comp.getVendorCode() + ")";
-                    }
-                    if (comp.getUnitCode() != null) {
-                        display += " - " + comp.getUnitCode();
-                    }
-                    setText(display);
+                } else if (item instanceof Displayable) {
+                    setText(((Displayable) item).getDisplayName());
                 } else {
                     setText(item.toString());
                 }
             }
         });
 
+        // 3. Настройка обработки выбора
         categoryTreeView.getSelectionModel().selectedItemProperty().addListener(
                 (obs, old, newVal) -> {
                     if (newVal != null && newVal.getValue() instanceof ComponentDto) {
                         selectedComponent = (ComponentDto) newVal.getValue();
-                        String display = selectedComponent.getName();
-                        if (selectedComponent.getUnitCode() != null) {
-                            display += " (" + selectedComponent.getUnitCode() + ")";
-                        }
-                        selectedComponentLabel.setText("Выбран: " + display);
+                        selectedComponentLabel.setText("Выбран: " + selectedComponent.getDisplayName());
                         selectButton.setDisable(false);
                     } else {
                         selectedComponent = null;
@@ -127,37 +104,6 @@ public class ComponentSelectorController {
                         selectButton.setDisable(true);
                     }
                 });
-    }
-
-    private TreeItem<Object> buildCategoryTreeItem(ComponentCategoryDto category) {
-        TreeItem<Object> categoryItem = new TreeItem<>(category);
-        categoryItem.setExpanded(true);
-
-        List<ComponentClassDto> classesInCategory = allClasses.stream()
-                .filter(cls -> cls.getCategoryId() != null && cls.getCategoryId().equals(category.getId()))
-                .toList();
-
-        for (ComponentClassDto cls : classesInCategory) {
-            TreeItem<Object> classItem = new TreeItem<>(cls);
-            classItem.setExpanded(true);
-
-            List<ComponentDto> components = componentsByClassId.getOrDefault(cls.getId(), List.of());
-            for (ComponentDto comp : components) {
-                classItem.getChildren().add(new TreeItem<>(comp));
-            }
-
-            categoryItem.getChildren().add(classItem);
-        }
-
-        List<ComponentCategoryDto> children = allCategories.stream()
-                .filter(c -> c.getParentId() != null && c.getParentId().equals(category.getId()))
-                .toList();
-
-        for (ComponentCategoryDto child : children) {
-            categoryItem.getChildren().add(buildCategoryTreeItem(child));
-        }
-
-        return categoryItem;
     }
 
     @FXML

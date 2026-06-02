@@ -1,5 +1,6 @@
 package com.fanproduction.gui.component;
 
+import com.fanproduction.core.dto.Displayable;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -34,13 +35,17 @@ public class TreeSelectorDialog {
         treeView.setShowRoot(false);
         treeView.setPrefHeight(400);
 
-        treeView.setCellFactory(tv -> new TreeCell<Object>() {
+        // Используем Displayable для отображения
+        treeView.setCellFactory(tv -> new TreeCell<>() {
             @Override
             protected void updateItem(Object item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setText(null);
                     setGraphic(null);
+                } else if (item instanceof Displayable) {
+                    setText(((Displayable) item).getDisplayName());
+                    setGraphic(getTreeItem().getGraphic());
                 } else {
                     setText(item.toString());
                     setGraphic(getTreeItem().getGraphic());
@@ -60,9 +65,7 @@ public class TreeSelectorDialog {
         selectButton.setDefaultButton(true);
         selectButton.setDisable(true);
 
-        treeView.getSelectionModel().selectedItemProperty().addListener((obs, old, newVal) -> {
-            selectButton.setDisable(newVal == null || newVal.getValue() == null);
-        });
+        treeView.getSelectionModel().selectedItemProperty().addListener((obs, old, newVal) -> selectButton.setDisable(newVal == null || newVal.getValue() == null));
 
         selectButton.setOnAction(e -> {
             if (selectedItem != null) {

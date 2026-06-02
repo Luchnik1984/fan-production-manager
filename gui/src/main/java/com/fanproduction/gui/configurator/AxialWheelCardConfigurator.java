@@ -17,7 +17,10 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
                             Map<String, Label> fieldHints,
                             boolean existingCardExists) {
 
-        // Взаимоисключающие галочки - из интерфейса
+        // Условная видимость (огнестойкость/взрывозащита) — с fieldHints
+        setupConditionalVisibility(fieldControls, fieldLabels, fieldHints, () -> updateFullMarking(fieldControls));
+
+        // Взаимоисключающие галочки
         setupExclusiveSelection(fieldControls, () -> updateFullMarking(fieldControls));
 
         // Настройка расчётов (диаметр колеса, формула колеса)
@@ -28,10 +31,10 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
 
         // Автоматическое заполнение наименования
         autoFillName(fieldControls, "Колесо осевое", existingCardExists);
-
     }
 
     private void setupCalculations(Map<String, Node> fieldControls) {
+        // Расчёт диаметра колеса
         TextField sizeField = getTextField(fieldControls, "size");
         TextField trimField = getTextField(fieldControls, "trimCoefficient");
         TextField wheelDiameterField = getTextField(fieldControls, "wheelDiameter");
@@ -60,6 +63,7 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
             calculate.run();
         }
 
+        // Расчёт формулы колеса
         TextField bladeCountField = getTextField(fieldControls, "bladeCount");
         TextField bladeSlotsField = getTextField(fieldControls, "bladeSlots");
         TextField bladeTypeField = getTextField(fieldControls, "bladeType");
@@ -111,7 +115,6 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
-
     private void setupFullMarkingGeneration(Map<String, Node> fieldControls) {
         TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
@@ -121,7 +124,6 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         addTextFieldListener(fieldControls, "wheelFormula", () -> updateFullMarking(fieldControls));
         addTextFieldListener(fieldControls, "fireproofMarking", () -> updateFullMarking(fieldControls));
         addTextFieldListener(fieldControls, "explosionMarking", () -> updateFullMarking(fieldControls));
-
         addCheckBoxListener(fieldControls, "generalPurpose", () -> updateFullMarking(fieldControls));
         addCheckBoxListener(fieldControls, "fireproof", () -> updateFullMarking(fieldControls));
         addCheckBoxListener(fieldControls, "explosionProof", () -> updateFullMarking(fieldControls));

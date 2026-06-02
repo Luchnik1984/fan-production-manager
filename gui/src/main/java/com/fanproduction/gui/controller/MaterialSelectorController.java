@@ -1,5 +1,7 @@
 package com.fanproduction.gui.controller;
 
+import com.fanproduction.core.dto.Displayable;
+import com.fanproduction.gui.builder.MaterialTreeBuilder;
 import com.fanproduction.gui.client.MaterialCategoryClient;
 import com.fanproduction.gui.client.MaterialClassClient;
 import com.fanproduction.gui.client.MaterialClient;
@@ -35,6 +37,7 @@ public class MaterialSelectorController {
     private Stage dialogStage;
     @Getter
     private MaterialDto selectedMaterial;
+
     private List<MaterialCategoryDto> allCategories;
     private List<MaterialClassDto> allClasses;
     private List<MaterialDto> allMaterials;
@@ -65,26 +68,14 @@ public class MaterialSelectorController {
     }
 
     private void buildTree() {
-        TreeItem<Object> rootItem = new TreeItem<>();
-        rootItem.setValue(null);
-        rootItem.setExpanded(true);
-
-        TreeItem<Object> allItem = new TreeItem<>("Все материалы");
-        allItem.setExpanded(true);
-        rootItem.getChildren().add(allItem);
-
-        List<MaterialCategoryDto> rootCategories = allCategories.stream()
-                .filter(c -> c.getParentId() == null)
-                .toList();
-
-        for (MaterialCategoryDto category : rootCategories) {
-            TreeItem<Object> categoryItem = buildCategoryTreeItem(category);
-            allItem.getChildren().add(categoryItem);
-        }
+        // 1. Строим дерево через билдер
+        MaterialTreeBuilder builder = new MaterialTreeBuilder(allCategories, allClasses, allMaterials);
+        TreeItem<Object> rootItem = builder.buildTree();
 
         categoryTreeView.setRoot(rootItem);
         categoryTreeView.setShowRoot(false);
 
+        // 2. Настройка отображения ячеек (используем Displayable)
         categoryTreeView.setCellFactory(tv -> new TreeCell<>() {
             @Override
             protected void updateItem(Object item, boolean empty) {
@@ -92,34 +83,20 @@ public class MaterialSelectorController {
                 if (empty || item == null) {
                     setText(null);
                     setGraphic(null);
-                } else if (item instanceof MaterialCategoryDto) {
-                    setText(((MaterialCategoryDto) item).getName());
-                } else if (item instanceof MaterialClassDto) {
-                    setText(((MaterialClassDto) item).getName());
-                } else if (item instanceof MaterialDto m) {
-                    String display = m.getName();
-                    if (m.getVendorCode() != null && !m.getVendorCode().isEmpty()) {
-                        display += " (" + m.getVendorCode() + ")";
-                    }
-                    if (m.getUnitCode() != null) {
-                        display += " - " + m.getUnitCode();
-                    }
-                    setText(display);
+                } else if (item instanceof Displayable) {
+                    setText(((Displayable) item).getDisplayName());
                 } else {
                     setText(item.toString());
                 }
             }
         });
 
+        // 3. Настройка обработки выбора
         categoryTreeView.getSelectionModel().selectedItemProperty().addListener(
                 (obs, old, newVal) -> {
                     if (newVal != null && newVal.getValue() instanceof MaterialDto) {
                         selectedMaterial = (MaterialDto) newVal.getValue();
-                        String display = selectedMaterial.getName();
-                        if (selectedMaterial.getUnitCode() != null) {
-                            display += " (" + selectedMaterial.getUnitCode() + ")";
-                        }
-                        selectedMaterialLabel.setText("Выбран: " + display);
+                        selectedMaterialLabel.setText("Выбран: " + selectedMaterial.getDisplayName());
                         selectButton.setDisable(false);
                     } else {
                         selectedMaterial = null;
@@ -127,37 +104,6 @@ public class MaterialSelectorController {
                         selectButton.setDisable(true);
                     }
                 });
-    }
-
-    private TreeItem<Object> buildCategoryTreeItem(MaterialCategoryDto category) {
-        TreeItem<Object> categoryItem = new TreeItem<>(category);
-        categoryItem.setExpanded(true);
-
-        List<MaterialClassDto> classesInCategory = allClasses.stream()
-                .filter(cls -> cls.getCategoryId() != null && cls.getCategoryId().equals(category.getId()))
-                .toList();
-
-        for (MaterialClassDto cls : classesInCategory) {
-            TreeItem<Object> classItem = new TreeItem<>(cls);
-            classItem.setExpanded(true);
-
-            List<MaterialDto> materials = materialsByClassId.getOrDefault(cls.getId(), List.of());
-            for (MaterialDto m : materials) {
-                classItem.getChildren().add(new TreeItem<>(m));
-            }
-
-            categoryItem.getChildren().add(classItem);
-        }
-
-        List<MaterialCategoryDto> children = allCategories.stream()
-                .filter(c -> c.getParentId() != null && c.getParentId().equals(category.getId()))
-                .toList();
-
-        for (MaterialCategoryDto child : children) {
-            categoryItem.getChildren().add(buildCategoryTreeItem(child));
-        }
-
-        return categoryItem;
     }
 
     @FXML

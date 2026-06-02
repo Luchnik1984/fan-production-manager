@@ -1,6 +1,8 @@
 package com.fanproduction.gui.configurator;
 
 import javafx.scene.Node;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 
@@ -19,23 +21,74 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
                             Map<String, Label> fieldHints,
                             boolean existingCardExists) {
 
-        // Условная видимость (огнестойкость/взрывозащита) - из интерфейса
-        setupConditionalVisibility(fieldControls, fieldLabels, () -> updateFullMarking(fieldControls));
+        // Управление видимостью полей для собственного производства
+        setupOwnProductionVisibility(fieldControls, fieldLabels, fieldHints);
 
-        // Взаимоисключающие галочки - из интерфейса
+        // Условная видимость (огнестойкость/взрывозащита) — из интерфейса
+        setupConditionalVisibility(fieldControls, fieldLabels, fieldHints, () -> updateFullMarking(fieldControls));
+
+        // Взаимоисключающие галочки — из интерфейса
         setupExclusiveSelection(fieldControls, () -> updateFullMarking(fieldControls));
 
         // Автоматическое формирование полей
-        setupMarkingGeneration(fieldControls);
-        setupWheelCodeGeneration(fieldControls);
-        setupWheelFormulaGeneration(fieldControls);
-        setupFullMarkingGeneration(fieldControls);
+        setupAutoGeneration(fieldControls);
 
         // Автоматическое заполнение наименования
         autoFillName(fieldControls, "Колесо радиальное", existingCardExists);
     }
 
+    // ========== УПРАВЛЕНИЕ ВИДИМОСТЬЮ ДЛЯ СОБСТВЕННОГО ПРОИЗВОДСТВА ==========
+
+    private void setupOwnProductionVisibility(Map<String, Node> fieldControls,
+                                              Map<String, Label> fieldLabels,
+                                              Map<String, Label> fieldHints) {
+        CheckBox ownProductionCheck = getCheckBox(fieldControls, "isOwnProduction");
+        if (ownProductionCheck == null) return;
+
+        String[] dependentFields = {
+                "bladeType", "hubComponentId", "hubName",
+                "bladeMod", "frontDiskMod", "wheelWidth",
+                "bladeCount", "bladeLengthCoeff", "wheelCode", "wheelFormula"
+        };
+
+        boolean isOwn = ownProductionCheck.isSelected();
+        for (String fieldName : dependentFields) {
+            setVisible(fieldControls, fieldLabels, fieldHints, fieldName, isOwn);
+        }
+
+        ownProductionCheck.selectedProperty().addListener((obs, old, val) -> {
+            for (String fieldName : dependentFields) {
+                setVisible(fieldControls, fieldLabels, fieldHints, fieldName, val);
+            }
+            if (!val) {
+                clearDependentFields(fieldControls, dependentFields);
+            }
+            updateFullMarking(fieldControls);
+        });
+    }
+
+    private void clearDependentFields(Map<String, Node> fieldControls, String[] fieldNames) {
+        for (String fieldName : fieldNames) {
+            Node control = fieldControls.get(fieldName);
+            if (control instanceof TextField) {
+                ((TextField) control).clear();
+            } else if (control instanceof ComboBox) {
+                ((ComboBox<?>) control).setValue(null);
+            }
+        }
+    }
+
     // ========== АВТОМАТИЧЕСКОЕ ФОРМИРОВАНИЕ ПОЛЕЙ ==========
+
+    private void setupAutoGeneration(Map<String, Node> fieldControls) {
+        setupMarkingGeneration(fieldControls);
+        setupWheelCodeGeneration(fieldControls);
+        setupWheelFormulaGeneration(fieldControls);
+        setupFireproofMarkingGeneration(fieldControls);
+        setupFullMarkingGeneration(fieldControls);
+    }
+
+    // ========== МАРКИРОВКА (series + size) ==========
 
     private void setupMarkingGeneration(Map<String, Node> fieldControls) {
         addTextFieldListener(fieldControls, "series", () -> updateMarking(fieldControls));
@@ -51,9 +104,7 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         String size = getFieldValue(fieldControls, "size");
 
         StringBuilder newMarking = new StringBuilder();
-        if (!series.isEmpty()) {
-            newMarking.append(series);
-        }
+        if (!series.isEmpty()) newMarking.append(series);
         if (!size.isEmpty()) {
             if (!newMarking.isEmpty()) newMarking.append("-");
             newMarking.append(size);
@@ -68,7 +119,7 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
-    // ========== КОД КОЛЕСА ==========
+    // ========== КОД КОЛЕСА (bladeMod → wheelCode) ==========
 
     private void setupWheelCodeGeneration(Map<String, Node> fieldControls) {
         addTextFieldListener(fieldControls, "bladeMod", () -> updateWheelCode(fieldControls));
@@ -97,15 +148,14 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         addTextFieldListener(fieldControls, "bladeLengthCoeff", () -> updateWheelFormula(fieldControls));
         addTextFieldListener(fieldControls, "bladeCount", () -> updateWheelFormula(fieldControls));
         addComboBoxListener(fieldControls, "bladeType", () -> updateWheelFormula(fieldControls));
-        updateWheelFormula(fieldControls);
     }
 
-    private String getBladeTypeMarking(String bladeTypeRussian) {
-        if (bladeTypeRussian == null) return "";
-        return switch (bladeTypeRussian) {
-            case "впередзагнутые" -> "V";
-            case "назадзагнутые" -> "N";
-            case "радиальнооканчивающиеся" -> "RO";
+    private String getBladeTypeMarking(String bladeTypeValue) {
+        if (bladeTypeValue == null) return "";
+        return switch (bladeTypeValue) {
+            case "V" -> "V";
+            case "N" -> "N";
+            case "RO" -> "RO";
             default -> "";
         };
     }
@@ -121,13 +171,21 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         TextField wheelFormulaField = getTextField(fieldControls, "wheelFormula");
         if (wheelFormulaField == null) return;
 
-        String bladeTypeRussian = getFieldValue(fieldControls, "bladeType");
-        String bladeTypeMarking = getBladeTypeMarking(bladeTypeRussian);
+        String bladeTypeValue = getFieldValue(fieldControls, "bladeType");
+        String bladeTypeMarking = getBladeTypeMarking(bladeTypeValue);
         String wheelCode = getFieldValue(fieldControls, "wheelCode");
         String frontDiskMod = getFieldValue(fieldControls, "frontDiskMod");
         String wheelWidthStr = getFieldValue(fieldControls, "wheelWidth");
         String bladeLengthCoeff = getFieldValue(fieldControls, "bladeLengthCoeff");
         String bladeCount = getFieldValue(fieldControls, "bladeCount");
+
+        if (bladeTypeMarking.isEmpty() && wheelCode.isEmpty() && frontDiskMod.isEmpty() &&
+                wheelWidthStr.isEmpty() && bladeCount.isEmpty() && bladeLengthCoeff.isEmpty()) {
+            if (wheelFormulaField.getText().isEmpty()) return;
+            wheelFormulaField.setText("");
+            lastAutoWheelFormula = "";
+            return;
+        }
 
         Double wheelWidth = null;
         try {
@@ -135,7 +193,7 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
                 wheelWidth = Double.parseDouble(wheelWidthStr.replace(',', '.'));
             }
         } catch (NumberFormatException e) {
-            // игнорируем
+            // ignore
         }
         String formattedWheelWidth = formatWheelWidth(wheelWidth);
 
@@ -157,6 +215,42 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
+    // ========== ОГНЕСТОЙКОСТЬ (авто-формирование fireproofMarking) ==========
+
+    private void setupFireproofMarkingGeneration(Map<String, Node> fieldControls) {
+        addTextFieldListener(fieldControls, "fireproofTime", () -> updateFireproofMarking(fieldControls));
+        addTextFieldListener(fieldControls, "maxTemperature", () -> updateFireproofMarking(fieldControls));
+        addCheckBoxListener(fieldControls, "fireproof", () -> updateFireproofMarking(fieldControls));
+        updateFireproofMarking(fieldControls);
+    }
+
+    private void updateFireproofMarking(Map<String, Node> fieldControls) {
+        TextField fireproofMarkingField = getTextField(fieldControls, "fireproofMarking");
+        if (fireproofMarkingField == null) return;
+
+        boolean isFireproof = isSelected(fieldControls, "fireproof");
+
+        if (!isFireproof) {
+            fireproofMarkingField.setText("");
+            return;
+        }
+
+        String fireproofTime = getFieldValue(fieldControls, "fireproofTime");
+        String maxTemperature = getFieldValue(fieldControls, "maxTemperature");
+
+        StringBuilder marking = new StringBuilder("F");
+
+        if (!fireproofTime.isEmpty()) {
+            marking.append("-").append(fireproofTime);
+        }
+
+        String temp = maxTemperature.isEmpty() ? "400" : maxTemperature;
+        marking.append("/").append(temp);
+
+        String newMarking = marking.toString();
+        fireproofMarkingField.setText(newMarking);
+    }
+
     // ========== ПОЛНАЯ МАРКИРОВКА ==========
 
     private void setupFullMarkingGeneration(Map<String, Node> fieldControls) {
@@ -164,9 +258,7 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         addTextFieldListener(fieldControls, "size", () -> updateFullMarking(fieldControls));
         addTextFieldListener(fieldControls, "marking", () -> updateFullMarking(fieldControls));
         addTextFieldListener(fieldControls, "wheelFormula", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "fireproofMarking", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "explosionMarking", () -> updateFullMarking(fieldControls));
-        addComboBoxListener(fieldControls, "bladeType", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "hubName", () -> updateFullMarking(fieldControls));
         addCheckBoxListener(fieldControls, "generalPurpose", () -> updateFullMarking(fieldControls));
         addCheckBoxListener(fieldControls, "fireproof", () -> updateFullMarking(fieldControls));
         addCheckBoxListener(fieldControls, "explosionProof", () -> updateFullMarking(fieldControls));
@@ -179,22 +271,13 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         boolean isExplosionProof = isSelected(fieldControls, "explosionProof");
 
         if (isGeneralPurpose) return "C";
-        if (isFireproof) return "F";
-        if (isExplosionProof) return "Ex";
-        return "";
-    }
-
-    private String getSpecialMarking(Map<String, Node> fieldControls) {
-        boolean isFireproof = isSelected(fieldControls, "fireproof");
-        boolean isExplosionProof = isSelected(fieldControls, "explosionProof");
-
         if (isFireproof) {
-            String marking = getFieldValue(fieldControls, "fireproofMarking");
-            return !marking.isEmpty() ? marking : "F/400";
+            String fireproofMarking = getFieldValue(fieldControls, "fireproofMarking");
+            return !fireproofMarking.isEmpty() ? fireproofMarking : "F/400";
         }
         if (isExplosionProof) {
-            String marking = getFieldValue(fieldControls, "explosionMarking");
-            return !marking.isEmpty() ? marking : "1Ex d IIC T4 Gb";
+            String explosionMarking = getFieldValue(fieldControls, "explosionMarking");
+            return !explosionMarking.isEmpty() ? explosionMarking : "1Ex d IIC T4 Gb";
         }
         return "";
     }
@@ -204,18 +287,29 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         if (fullMarkingField == null) return;
 
         String marking = getFieldValue(fieldControls, "marking");
-        String execution = getExecutionMarking(fieldControls);
-        String specialMarking = getSpecialMarking(fieldControls);
-        String wheelFormula = getFieldValue(fieldControls, "wheelFormula");
-        String hubName = getFieldValue(fieldControls, "hubName");
+        String executionMarking = getExecutionMarking(fieldControls);
 
         StringBuilder fullMarking = new StringBuilder();
+        fullMarking.append(marking);
 
-        if (!marking.isEmpty()) fullMarking.append(marking);
-        if (!execution.isEmpty()) fullMarking.append("-").append(execution);
-        if (!specialMarking.isEmpty()) fullMarking.append("-").append(specialMarking);
-        if (!wheelFormula.isEmpty()) fullMarking.append("-").append(wheelFormula);
-        if (!hubName.isEmpty()) fullMarking.append("-").append(hubName);
+        if (!executionMarking.isEmpty()) {
+            fullMarking.append("-").append(executionMarking);
+        }
+
+        CheckBox ownProductionCheck = getCheckBox(fieldControls, "isOwnProduction");
+        boolean isOwn = ownProductionCheck != null && ownProductionCheck.isSelected();
+
+        if (isOwn) {
+            String wheelFormula = getFieldValue(fieldControls, "wheelFormula");
+            String hubName = getFieldValue(fieldControls, "hubName");
+
+            if (!wheelFormula.isEmpty()) {
+                fullMarking.append("-").append(wheelFormula);
+            }
+            if (!hubName.isEmpty()) {
+                fullMarking.append("-").append(hubName);
+            }
+        }
 
         String newFullMarking = fullMarking.toString();
         String currentFullMarking = fullMarkingField.getText();

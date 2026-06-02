@@ -549,4 +549,21 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         return ComponentClient.getAllUnits();
     }
 
+    /**
+     * Устанавливает предзагруженные данные, чтобы избежать повторной загрузки
+     */
+    public void setPreloadedData(List<ComponentCategoryDto> categories,
+                                 List<ComponentClassDto> classes,
+                                 List<ComponentDto> components) {
+        this.allCategories = categories;
+        this.allClasses = classes;
+        this.itemList.setAll(components);
+
+        // Обновляем UI
+        Platform.runLater(() -> {
+            getStatusLabel().setText("Всего: " + components.size());
+            refreshTree();
+        });
+    }
+
 }

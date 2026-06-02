@@ -18,25 +18,21 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
                             Map<String, Label> fieldHints,
                             boolean existingCardExists) {
 
-        // Условная видимость (огнестойкость/взрывозащита) - из интерфейса
-        setupConditionalVisibility(fieldControls, fieldLabels, () -> updateFullMarking(fieldControls));
+        // Условная видимость (огнестойкость/взрывозащита) — с fieldHints
+        setupConditionalVisibility(fieldControls, fieldLabels, fieldHints, () -> updateFullMarking(fieldControls));
 
-        // Взаимоисключающие галочки - из интерфейса
+        // Взаимоисключающие галочки
         setupExclusiveSelection(fieldControls, () -> updateFullMarking(fieldControls));
 
-        // Используем общий метод для расчёта скорости
-        setupRatedSpeedCalculation(fieldControls, ()-> updateFullMarking(fieldControls));
+        // Настройка автоматического расчёта номинальной скорости
+        setupRatedSpeedCalculation(fieldControls, () -> updateFullMarking(fieldControls));
 
         // Настройка автоматического формирования полной маркировки
         setupFullMarkingGeneration(fieldControls);
 
-        // Используем общий метод для взаимоисключающих галочек
-        setupExclusiveSelection(fieldControls, () -> updateFullMarking(fieldControls));
-
         // Автоматическое заполнение наименования
         autoFillName(fieldControls, "Электродвигатель", existingCardExists);
     }
-
 
     /**
      * Настройка автоматического формирования полной маркировки

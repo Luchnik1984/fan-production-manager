@@ -19,9 +19,7 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -140,8 +138,18 @@ public class CardFormController {
         grid.setVgap(12);
         grid.setPadding(new Insets(10));
 
-        List<FieldMetadataDto> fields = metadataService.getFieldsForType(cardType);
+        // Устанавливаем процентную ширину колонок
+        ColumnConstraints col1 = new ColumnConstraints();
+        col1.setPercentWidth(30);
+        col1.setHgrow(Priority.NEVER);
 
+        ColumnConstraints col2 = new ColumnConstraints();
+        col2.setPercentWidth(70);
+        col2.setHgrow(Priority.ALWAYS);
+
+        grid.getColumnConstraints().addAll(col1, col2);
+
+        List<FieldMetadataDto> fields = metadataService.getFieldsForType(cardType);
         int row = 0;
 
         // Поле "Наименование"
@@ -158,14 +166,38 @@ public class CardFormController {
         row++;
 
         for (FieldMetadataDto field : fields) {
+            if ("separator".equals(field.getType())) {
+                Separator separator = new Separator();
+                separator.setPadding(new Insets(10, 0, 5, 0));
+                grid.add(separator, 0, row, 2, 1);
+                row++;
+
+                Label titleLabel = new Label(field.getLabel());
+                titleLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #555; -fx-font-size: 12px;");
+                grid.add(titleLabel, 0, row, 2, 1);
+                row++;
+                continue;
+            }
+
             Label label = new Label(field.getLabel() + (field.isRequired() ? " *" : ":"));
             label.setStyle("-fx-font-weight: bold;");
 
             Node control = createControlForField(field,
                     existingCard != null ? existingCard.getFields().get(field.getName()) : null);
 
+            // Контейнер для поля и подсказки
+            VBox fieldContainer = new VBox(2);
+            fieldContainer.getChildren().add(control);
+
+            if (field.getHint() != null && !field.getHint().isEmpty()) {
+                Label hintLabel = new Label(field.getHint());
+                hintLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #888;");
+                fieldContainer.getChildren().add(hintLabel);
+                fieldHints.put(field.getName(), hintLabel);
+            }
+
             grid.add(label, 0, row);
-            grid.add(control, 1, row);
+            grid.add(fieldContainer, 1, row);
             fieldControls.put(field.getName(), control);
             fieldMetadata.put(field.getName(), field);
             fieldLabels.put(field.getName(), label);
@@ -173,18 +205,9 @@ public class CardFormController {
             boolean isVisible = field.isVisible();
             label.setVisible(isVisible);
             label.setManaged(isVisible);
-            control.setVisible(isVisible);
-            control.setManaged(isVisible);
+            fieldContainer.setVisible(isVisible);
+            fieldContainer.setManaged(isVisible);
 
-            if (field.getHint() != null && !field.getHint().isEmpty()) {
-                Label hintLabel = new Label(field.getHint());
-                hintLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #888;");
-                grid.add(hintLabel, 1, row + 1);
-                fieldHints.put(field.getName(), hintLabel);
-                hintLabel.setVisible(isVisible);
-                hintLabel.setManaged(isVisible);
-                row++;
-            }
             row++;
         }
 
@@ -193,72 +216,73 @@ public class CardFormController {
     }
 
     private Node createControlForField(FieldMetadataDto field, Object existingValue) {
-        return controlFactory.createControl(field, existingValue,fieldControls);
+        return controlFactory.createControl(field, existingValue, fieldControls);
     }
 
     private void autoFillFromSelection(String referenceType, Long selectedId) {
         new Thread(() -> {
             try {
-                ApiResponse<ProductCardDto> response = ProductCardClient.getCardById(selectedId);
-                Platform.runLater(() -> {
-                    if (response.isSuccess() && response.getData() != null) {
-                        ProductCardDto dto = response.getData();
-                        Map<String, Object> fields = dto.getFields();
-
-                        // Полная маркировка выбранного компонента
-                        String fullMarking = (String) fields.get("fullMarking");
-                        if (fullMarking == null) {
-                            fullMarking = dto.getName();
-                        }
-
-                        switch (referenceType) {
-                            case "MOTOR_WHEEL":
-                                setFieldValue("poles", fields.get("poles"));
-                                setFieldValue("voltage", fields.get("voltage"));
-                                setFieldValue("voltageCode", fields.get("voltageCode"));
-                                setFieldValue("powerKw", fields.get("powerKw"));
-                                setFieldValue("ratedSpeedRpm", fields.get("ratedSpeedRpm"));
-                                setFieldValue("actualSpeedRpm", fields.get("actualSpeedRpm"));
-                                // Сохраняем полную маркировку мотор-колеса
-                                setFieldValue("motorWheelFullMarking", fullMarking);
-                                break;
-                            case "RADIAL_WHEEL":
-                                setFieldValue("radialWheelFullMarking", fullMarking);
-                                setFieldValue("wheelSize", fields.get("size"));
-                                setFieldValue("poles", fields.get("poles"));
-
-                                // Добавляем компонент ступицы
-                                Object hubComponentId = fields.get("hubComponentId");
-                                if (hubComponentId instanceof Number) {
-                                    Long componentId = ((Number) hubComponentId).longValue();
-                                    addComponentToProduct(componentId, 1.0, "Ступица колеса");
-                                }
-                                break;
-                            case "AXIAL_WHEEL":
-                                // Пока нет полей для автозаполнения
-                                break;
-                            case "MOTOR":
-                                setFieldValue("poles", fields.get("poles"));
-                                setFieldValue("voltage", fields.get("voltage"));
-                                // Используем отдельный метод для кода напряжения
-                                setFieldValue("voltageCode", getVoltageCode(fields.get("voltage")));
-                                setFieldValue("powerKw", fields.get("powerKw"));
-                                setFieldValue("ratedSpeedRpm", fields.get("ratedSpeedRpm"));
-                                setFieldValue("actualSpeedRpm", fields.get("actualSpeedRpm"));
-                                setFieldValue("motorFullMarking", fullMarking);
-                                break;
-
-                            case "COMPONENT":
-                                // Выбор компонента (ступица и т.д.)
-                                String componentName = dto.getName();
-                                setFieldValue("hubName", componentName);
-                                setFieldValue("hubComponentId", selectedId);
-                                addComponentToProduct(selectedId, 1.0, "Ступица");
-                                break;
-                        }
+                if ("COMPONENT".equals(referenceType)) {
+                    // Загружаем компонент по ID
+                    ComponentDto component = ComponentClient.getComponentById(selectedId);
+                    Platform.runLater(() -> {
+                        setFieldValue("hubName", component.getName());
+                        setFieldValue("hubComponentId", selectedId);
+                        addComponentToProduct(selectedId, 1.0, "Ступица");
                         updateFullMarking();
-                    }
-                });
+                    });
+                } else {
+                    ApiResponse<ProductCardDto> response = ProductCardClient.getCardById(selectedId);
+                    Platform.runLater(() -> {
+                        if (response.isSuccess() && response.getData() != null) {
+                            ProductCardDto dto = response.getData();
+                            Map<String, Object> fields = dto.getFields();
+
+                            // Полная маркировка выбранного компонента
+                            String fullMarking = (String) fields.get("fullMarking");
+                            if (fullMarking == null) {
+                                fullMarking = dto.getName();
+                            }
+
+                            switch (referenceType) {
+                                case "MOTOR_WHEEL":
+                                    setFieldValue("poles", fields.get("poles"));
+                                    setFieldValue("voltage", fields.get("voltage"));
+                                    setFieldValue("voltageCode", fields.get("voltageCode"));
+                                    setFieldValue("powerKw", fields.get("powerKw"));
+                                    setFieldValue("ratedSpeedRpm", fields.get("ratedSpeedRpm"));
+                                    setFieldValue("actualSpeedRpm", fields.get("actualSpeedRpm"));
+                                    setFieldValue("motorWheelFullMarking", fullMarking);
+                                    break;
+                                case "RADIAL_WHEEL":
+                                    setFieldValue("radialWheelFullMarking", fullMarking);
+                                    setFieldValue("wheelSize", fields.get("size"));
+                                    setFieldValue("poles", fields.get("poles"));
+
+                                    // Добавляем компонент ступицы
+                                    Object hubComponentId = fields.get("hubComponentId");
+                                    if (hubComponentId instanceof Number) {
+                                        Long componentId = ((Number) hubComponentId).longValue();
+                                        addComponentToProduct(componentId, 1.0, "Ступица колеса");
+                                    }
+                                    break;
+                                case "AXIAL_WHEEL":
+                                    // Пока нет полей для автозаполнения
+                                    break;
+                                case "MOTOR":
+                                    setFieldValue("poles", fields.get("poles"));
+                                    setFieldValue("voltage", fields.get("voltage"));
+                                    setFieldValue("voltageCode", getVoltageCode(fields.get("voltage")));
+                                    setFieldValue("powerKw", fields.get("powerKw"));
+                                    setFieldValue("ratedSpeedRpm", fields.get("ratedSpeedRpm"));
+                                    setFieldValue("actualSpeedRpm", fields.get("actualSpeedRpm"));
+                                    setFieldValue("motorFullMarking", fullMarking);
+                                    break;
+                            }
+                            updateFullMarking();
+                        }
+                    });
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -523,7 +547,6 @@ public class CardFormController {
         }).start();
     }
 
-
     private void deleteTemporaryCard() {
         Long tempId = getTemporaryCardId();
         if (tempId != null) {
@@ -558,7 +581,6 @@ public class CardFormController {
         temporaryCardIds.remove(cardType);
         this.currentTemporaryCardId = null;
     }
-
 
     private void refreshTemporaryCardInTabs(Long tempId) {
         if (componentsTabController != null) {
@@ -685,10 +707,7 @@ public class CardFormController {
         new Thread(() -> {
             try {
                 ComponentDto component = ComponentClient.getComponentById(componentId);
-                Platform.runLater(() -> {
-                    setFieldValue("hubName", component.getName());
-                    // Обновляем полную маркировку (триггерится через слушатель на hubName)
-                });
+                Platform.runLater(() -> setFieldValue("hubName", component.getName()));
             } catch (Exception e) {
                 System.err.println("Failed to load component name for ID: " + componentId);
                 e.printStackTrace();
@@ -716,5 +735,5 @@ public class CardFormController {
                 loadComponentName(componentId);
             }
         }
-        }
+    }
 }

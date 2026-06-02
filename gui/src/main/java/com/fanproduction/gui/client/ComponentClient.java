@@ -30,6 +30,7 @@ public class ComponentClient {
     // ========== Components ==========
 
     public static List<ComponentDto> getAllComponents() throws Exception {
+        System.out.println("=== ComponentClient.getAllComponents() called ===");
         TypeReference<ApiResponse<List<ComponentDto>>> typeRef = new TypeReference<>() {};
         ApiResponse<List<ComponentDto>> response = ApiClient.get(BASE_PATH, typeRef);
         if (response.isSuccess() && response.getData() != null) {

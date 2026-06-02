@@ -1,12 +1,13 @@
 package com.fanproduction.gui.base;
 
+import com.fanproduction.core.dto.Displayable;
 import lombok.Getter;
 
 @Getter
-public class CategoryTreeItem {
+public class CategoryTreeItem implements Displayable {
     private final Long id;
     private final String displayName;
-    private final String type; // "root", "category", "class"
+    private final String type;
     private final Long classId;
 
     public CategoryTreeItem(Long id, String displayName, String type) {
@@ -21,6 +22,11 @@ public class CategoryTreeItem {
     }
 
     public Long getCategoryId() { return id; }
+
+    @Override
+    public String getDisplayName() {
+        return displayName;
+    }
 
     @Override
     public String toString() {
