@@ -6,6 +6,7 @@ import com.fanproduction.gui.base.CategoryTreeItem;
 import com.fanproduction.gui.base.ExportRowDto;
 import com.fanproduction.gui.client.*;
 import com.fanproduction.gui.component.GroupedComboBox;
+import com.fanproduction.gui.component.IconFactory;
 import com.fanproduction.gui.dto.request.CreateComponentRequest;
 import com.fanproduction.gui.dto.response.*;
 import com.fanproduction.gui.util.TooltipUtil;
@@ -21,6 +22,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class ComponentsCatalogController extends BaseCatalogController<ComponentDto, ComponentCategoryDto, ComponentClassDto> {
+
+    private final Map<String, Long> categoryIdMap = new HashMap<>();
+    private final Map<String, ComponentClassDto> classMap = new HashMap<>();
 
     @FXML private TextField searchField;
     @FXML private TableView<ComponentDto> componentsTable;
@@ -48,7 +52,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
 
     @Override
     protected void setupTable() {
-        nameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getName()));
+        nameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getDisplayName()));
         nameColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
 
         classNameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getClassName()));
@@ -148,11 +152,6 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     }
 
     @Override
-    protected void createClass(Long categoryId, String name, String description, Long unitId) throws Exception {
-        ComponentClassClient.createClass(categoryId, name, description, unitId);
-    }
-
-    @Override
     protected List<ExportRowDto> getExportData() {
         List<ExportRowDto> data = new ArrayList<>();
         for (ComponentDto dto : itemList) {
@@ -229,7 +228,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
 
     @Override
     protected String getItemName(ComponentDto item) {
-        return item.getName();
+        return item.getDisplayName();
     }
 
     @Override
@@ -270,6 +269,17 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         showComponentDialog(existing);
     }
 
+    // ========== НОВЫЙ RECORD ДЛЯ ПОЛЕЙ ФОРМЫ ==========
+    private record ComponentFormFields(
+            TextField name,
+            TextField designation,
+            TextField vendorCode,
+            GroupedComboBox<UnitOfMeasureDto> unit,
+            TextArea description
+    ) {}
+
+    // ========== ОСНОВНОЙ МЕТОД ==========
+
     private void showComponentDialog(ComponentDto existing) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(existing == null ? "Создание компонента" : "Редактирование компонента");
@@ -280,102 +290,24 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         grid.setVgap(10);
         grid.setPadding(new Insets(20));
 
-        // Выбор категории
-        ComboBox<String> categoryCombo = new ComboBox<>();
-        categoryCombo.getItems().add("— Все категории —");
-        Map<String, Long> categoryIdMap = new HashMap<>();
-        for (ComponentCategoryDto rootCat : allCategories.stream()
-                .filter(c -> c.getParentId() == null).toList()) {
-            categoryCombo.getItems().add(rootCat.getName());
-            categoryIdMap.put(rootCat.getName(), rootCat.getId());
-            addChildCategoriesToCombo(categoryCombo, rootCat, 1, categoryIdMap);
-        }
-        categoryCombo.setValue("— Все категории —");
-
-        // Выбор класса
-        ComboBox<String> classCombo = new ComboBox<>();
-        classCombo.setPromptText("Выберите класс");
-        classCombo.setDisable(true);
-        Map<String, ComponentClassDto> classMap = new HashMap<>();
+        // 1. Создаём компоненты формы
+        ComboBox<String> categoryCombo = createCategoryCombo();
+        ComboBox<String> classCombo = createClassCombo();
+        ComponentFormFields formFields = createComponentFormFields();
 
         Label warningLabel = new Label();
         warningLabel.setStyle("-fx-text-fill: red; -fx-font-size: 11px;");
         warningLabel.setVisible(false);
 
-        // Поля компонента
-        TextField nameField = new TextField();
-        nameField.setPromptText("Наименование компонента");
-        TextField vendorCodeField = new TextField();
-        vendorCodeField.setPromptText("Артикул производителя");
+        // 2. Настраиваем зависимость категория → класс
+        setupCategoryClassDependency(categoryCombo, classCombo, warningLabel);
 
-        GroupedComboBox<UnitOfMeasureDto> unitCombo = CatalogHelper.createUnitCombo(allUnits);
-        TextArea descriptionField = new TextArea();
-        descriptionField.setPromptText("Описание");
-        descriptionField.setPrefRowCount(3);
-
-        // Логика выбора категории -> класс
-        categoryCombo.valueProperty().addListener((obs, old, newVal) -> {
-            if (newVal == null || "— Все категории —".equals(newVal)) {
-                classCombo.setDisable(true);
-                classCombo.getItems().clear();
-                warningLabel.setVisible(false);
-            } else {
-                Long selectedCategoryId = categoryIdMap.get(newVal);
-                if (selectedCategoryId != null) {
-                    classMap.clear();
-                    List<ComponentClassDto> filteredClasses = allClasses.stream()
-                            .filter(cls -> cls.getCategoryId() != null && cls.getCategoryId().equals(selectedCategoryId))
-                            .toList();
-                    classCombo.getItems().clear();
-                    for (ComponentClassDto cls : filteredClasses) {
-                        classCombo.getItems().add(cls.getName());
-                        classMap.put(cls.getName(), cls);
-                    }
-                    if (filteredClasses.isEmpty()) {
-                        classCombo.setDisable(true);
-                        classCombo.setPromptText("Нет классов");
-                        warningLabel.setText("⚠ Сначала создайте классы в этой категории");
-                        warningLabel.setVisible(true);
-                    } else {
-                        classCombo.setDisable(false);
-                        warningLabel.setVisible(false);
-                    }
-                }
-            }
-        });
-
-        // Заполняем существующие значения
+        // 3. Заполняем поля при редактировании
         if (existing != null) {
-            nameField.setText(existing.getName());
-            if (existing.getVendorCode() != null) vendorCodeField.setText(existing.getVendorCode());
-            if (existing.getDescription() != null) descriptionField.setText(existing.getDescription());
-
-            if (existing.getClassId() != null) {
-                for (ComponentClassDto cls : allClasses) {
-                    if (cls.getId().equals(existing.getClassId())) {
-                        classCombo.setValue(cls.getName());
-                        classMap.put(cls.getName(), cls);
-                        for (ComponentCategoryDto cat : allCategories) {
-                            if (cat.getId().equals(cls.getCategoryId())) {
-                                categoryCombo.setValue(cat.getName());
-                                break;
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-            if (existing.getUnitId() != null) {
-                for (UnitOfMeasureDto unit : allUnits) {
-                    if (unit.getId().equals(existing.getUnitId())) {
-                        unitCombo.setValue(unit);
-                        break;
-                    }
-                }
-            }
+            loadExistingComponentData(existing, formFields, categoryCombo, classCombo, classMap);
         }
 
-        // Сборка формы
+        // 4. Собираем форму
         int row = 0;
         grid.add(new Label("Категория:*"), 0, row);
         grid.add(categoryCombo, 1, row++);
@@ -383,64 +315,239 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         grid.add(classCombo, 1, row++);
         grid.add(warningLabel, 1, row++);
         grid.add(new Label("Наименование:*"), 0, row);
-        grid.add(nameField, 1, row++);
+        grid.add(formFields.name(), 1, row++);
+        grid.add(new Label("Обозначение:"), 0, row);
+        grid.add(formFields.designation(), 1, row++);
         grid.add(new Label("Артикул:"), 0, row);
-        grid.add(vendorCodeField, 1, row++);
+        grid.add(formFields.vendorCode(), 1, row++);
         grid.add(new Label("Единица измерения:*"), 0, row);
-        grid.add(unitCombo, 1, row++);
+        grid.add(formFields.unit(), 1, row++);
         grid.add(new Label("Описание:"), 0, row);
-        grid.add(descriptionField, 1, row);
+        grid.add(formFields.description(), 1, row);
 
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
+        // 5. Сохранение
         dialog.showAndWait().ifPresent(buttonType -> {
             if (buttonType == ButtonType.OK) {
-                String selectedClass = classCombo.getValue();
-                String name = nameField.getText().trim();
-                String vendorCode = vendorCodeField.getText().trim();
-                UnitOfMeasureDto selectedUnit = unitCombo.getValue();
-                String description = descriptionField.getText().trim();
-
-                if (selectedClass == null || selectedClass.isEmpty()) {
-                    showAlert("Ошибка", "Выберите класс");
-                    return;
-                }
-                if (name.isEmpty()) {
-                    showAlert("Ошибка", "Введите наименование");
-                    return;
-                }
-                if (selectedUnit == null) {
-                    showAlert("Ошибка", "Выберите единицу измерения");
-                    return;
-                }
-
-                ComponentClassDto selectedClassDto = classMap.get(selectedClass);
-                if (selectedClassDto == null) {
-                    showAlert("Ошибка", "Класс не найден");
-                    return;
-                }
-
-                CreateComponentRequest request = new CreateComponentRequest(
-                        selectedClassDto.getId(), name, vendorCode, selectedUnit.getId(), description);
-
-                new Thread(() -> {
-                    try {
-                        if (existing == null) {
-                            ComponentClient.createComponent(request);
-                        } else {
-                            ComponentClient.updateComponent(existing.getId(), request);
-                        }
-                        Platform.runLater(() -> {
-                            showAlert("Успешно", "Компонент " + (existing == null ? "создан" : "обновлён"), Alert.AlertType.INFORMATION);
-                            loadData();
-                        });
-                    } catch (Exception e) {
-                        Platform.runLater(() -> showAlert("Ошибка", "Не удалось сохранить: " + e.getMessage()));
-                    }
-                }).start();
+                collectAndSaveComponent(existing, formFields, classCombo, classMap);
             }
         });
+    }
+
+    // ========== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
+
+    private ComboBox<String> createCategoryCombo() {
+        ComboBox<String> categoryCombo = new ComboBox<>();
+        categoryCombo.getItems().add("— Все категории —");
+        categoryIdMap.clear();
+
+        for (ComponentCategoryDto rootCat : allCategories.stream()
+                .filter(c -> c.getParentId() == null).toList()) {
+            categoryCombo.getItems().add(rootCat.getName());
+            categoryIdMap.put(rootCat.getName(), rootCat.getId());
+            addChildCategoriesToCombo(categoryCombo, rootCat, 1, categoryIdMap);
+        }
+        categoryCombo.setValue("— Все категории —");
+        return categoryCombo;
+    }
+
+    private ComboBox<String> createClassCombo() {
+        ComboBox<String> classCombo = new ComboBox<>();
+        classCombo.setPromptText("Выберите класс");
+        classCombo.setDisable(true);
+        return classCombo;
+    }
+
+    private ComponentFormFields createComponentFormFields() {
+        TextField nameField = new TextField();
+        nameField.setPromptText("Наименование компонента");
+
+        TextField designationField = new TextField();
+        designationField.setPromptText("Обозначение (например: SM1210)");
+
+        TextField vendorCodeField = new TextField();
+        vendorCodeField.setPromptText("Артикул производителя");
+
+        GroupedComboBox<UnitOfMeasureDto> unitCombo = CatalogHelper.createUnitCombo(allUnits);
+
+        TextArea descriptionField = new TextArea();
+        descriptionField.setPromptText("Описание");
+        descriptionField.setPrefRowCount(3);
+
+        return new ComponentFormFields(nameField, designationField, vendorCodeField, unitCombo, descriptionField);
+    }
+
+    private void setupCategoryClassDependency(ComboBox<String> categoryCombo,
+                                              ComboBox<String> classCombo,
+                                              Label warningLabel) {
+        categoryCombo.valueProperty().addListener((obs, old, newVal) -> {
+            // Ранний выход: "Все категории" или null
+            if (newVal == null || "— Все категории —".equals(newVal)) {
+                clearClassCombo(classCombo, warningLabel);
+                return;
+            }
+
+            Long selectedCategoryId = categoryIdMap.get(newVal);
+            if (selectedCategoryId == null) {
+                clearClassCombo(classCombo, warningLabel);
+                return;
+            }
+
+            updateClassComboForCategory(selectedCategoryId, classCombo, warningLabel);
+        });
+    }
+
+    private void clearClassCombo(ComboBox<String> classCombo, Label warningLabel) {
+        classCombo.setDisable(true);
+        classCombo.getItems().clear();
+        warningLabel.setVisible(false);
+    }
+
+    private void updateClassComboForCategory(Long categoryId,
+                                             ComboBox<String> classCombo,
+                                             Label warningLabel) {
+        List<ComponentClassDto> filteredClasses = allClasses.stream()
+                .filter(cls -> cls.getCategoryId() != null && cls.getCategoryId().equals(categoryId))
+                .toList();
+
+        classMap.clear();
+        classCombo.getItems().clear();
+
+        for (ComponentClassDto cls : filteredClasses) {
+            classCombo.getItems().add(cls.getName());
+            classMap.put(cls.getName(), cls);
+        }
+
+        if (filteredClasses.isEmpty()) {
+            classCombo.setDisable(true);
+            classCombo.setPromptText("Нет классов");
+            warningLabel.setGraphic(IconFactory.createWarningIcon());
+            warningLabel.setText(" Сначала создайте классы в этой категории");
+        } else {
+            classCombo.setDisable(false);
+            warningLabel.setVisible(false);
+        }
+    }
+
+    private void loadExistingComponentData(ComponentDto existing,
+                                           ComponentFormFields formFields,
+                                           ComboBox<String> categoryCombo,
+                                           ComboBox<String> classCombo,
+                                           Map<String, ComponentClassDto> classMap) {
+        // Заполнение текстовых полей
+        fillTextField(formFields.name(), existing.getName());
+        fillTextField(formFields.designation(), existing.getDesignation());
+        fillTextField(formFields.vendorCode(), existing.getVendorCode());
+
+        // Заполнение TextArea (отдельно)
+        if (existing.getDescription() != null) {
+            formFields.description().setText(existing.getDescription());
+        }
+
+        // Восстановление выбранных значений (категория, класс, единица измерения)
+        restoreCategoryAndClass(existing, categoryCombo, classCombo, classMap);
+        restoreUnit(existing, formFields.unit());
+    }
+
+    private void fillTextField(TextField field, String value) {
+        if (value != null) {
+            field.setText(value);
+        }
+    }
+
+    private void restoreCategoryAndClass(ComponentDto existing,
+                                         ComboBox<String> categoryCombo,
+                                         ComboBox<String> classCombo,
+                                         Map<String, ComponentClassDto> classMap) {
+        if (existing.getClassId() == null) return;
+
+        for (ComponentClassDto cls : allClasses) {
+            if (!cls.getId().equals(existing.getClassId())) continue;
+
+            classCombo.setValue(cls.getName());
+            classMap.put(cls.getName(), cls);
+
+            for (ComponentCategoryDto cat : allCategories) {
+                if (cat.getId().equals(cls.getCategoryId())) {
+                    categoryCombo.setValue(cat.getName());
+                    break;
+                }
+            }
+            break;
+        }
+    }
+
+    private void restoreUnit(ComponentDto existing, GroupedComboBox<UnitOfMeasureDto> unitCombo) {
+        if (existing.getUnitId() == null) return;
+
+        for (UnitOfMeasureDto unit : allUnits) {
+            if (unit.getId().equals(existing.getUnitId())) {
+                unitCombo.setValue(unit);
+                break;
+            }
+        }
+    }
+
+    private void collectAndSaveComponent(ComponentDto existing,
+                                         ComponentFormFields formFields,
+                                         ComboBox<String> classCombo,
+                                         Map<String, ComponentClassDto> classMap) {
+        String selectedClass = classCombo.getValue();
+        String name = formFields.name().getText().trim();
+        String designation = formFields.designation().getText().trim();
+        String vendorCode = formFields.vendorCode().getText().trim();
+        UnitOfMeasureDto selectedUnit = formFields.unit().getValue();
+        String description = formFields.description().getText().trim();
+
+        // Валидация
+        if (selectedClass == null || selectedClass.isEmpty()) {
+            showAlert("Ошибка", "Выберите класс");
+            return;
+        }
+        if (name.isEmpty()) {
+            showAlert("Ошибка", "Введите наименование");
+            return;
+        }
+        if (designation.isEmpty()) {
+            showAlert("Ошибка", "Введите обозначение");
+            return;
+        }
+        if (selectedUnit == null) {
+            showAlert("Ошибка", "Выберите единицу измерения");
+            return;
+        }
+
+        ComponentClassDto selectedClassDto = classMap.get(selectedClass);
+        if (selectedClassDto == null) {
+            showAlert("Ошибка", "Класс не найден");
+            return;
+        }
+
+        CreateComponentRequest request = new CreateComponentRequest(
+                selectedClassDto.getId(),
+                name,
+                designation,
+                vendorCode,
+                selectedUnit.getId(),
+                description);
+
+        new Thread(() -> {
+            try {
+                if (existing == null) {
+                    ComponentClient.createComponent(request);
+                } else {
+                    ComponentClient.updateComponent(existing.getId(), request);
+                }
+                Platform.runLater(() -> {
+                    showAlert("Успешно", "Компонент " + (existing == null ? "создан" : "обновлён"), Alert.AlertType.INFORMATION);
+                    loadData();
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", "Не удалось сохранить: " + e.getMessage()));
+            }
+        }).start();
     }
 
     private void addChildCategoriesToCombo(ComboBox<String> combo, ComponentCategoryDto parent, int depth, Map<String, Long> idMap) {
@@ -492,34 +599,14 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         loadData();
     }
 
-    @FXML
-    private void handleCreateCategory() {
-        dialogHelper.showCategoryDialog(null, result -> new Thread(() -> {
-            try {
-                ComponentCategoryClient.createCategory(result.name(), result.parentId(), result.description());
-                Platform.runLater(() -> {
-                    showAlert("Успешно", "Категория создана", Alert.AlertType.INFORMATION);
-                    loadData();
-                });
-            } catch (Exception e) {
-                Platform.runLater(() -> showAlert("Ошибка", "Не удалось создать категорию: " + e.getMessage()));
-            }
-        }).start());
+    @Override
+    protected void createCategory(String name, Long parentId, String description) throws Exception {
+        ComponentCategoryClient.createCategory(name, parentId, description);
     }
 
-    @FXML
-    private void handleCreateClass() {
-        dialogHelper.showClassDialog(null, result -> new Thread(() -> {
-            try {
-                createClass(result.categoryId(), result.name(), result.description(), null);
-                Platform.runLater(() -> {
-                    showAlert("Успешно", "Класс создан", Alert.AlertType.INFORMATION);
-                    loadData();
-                });
-            } catch (Exception e) {
-                Platform.runLater(() -> showAlert("Ошибка", "Не удалось создать класс: " + e.getMessage()));
-            }
-        }).start());
+    @Override
+    protected void createClass(Long categoryId, String name, String description, Long unitId) throws Exception {
+        ComponentClassClient.createClass(categoryId, name, description, unitId);
     }
 
     @FXML

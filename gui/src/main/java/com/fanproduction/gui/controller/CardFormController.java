@@ -226,7 +226,10 @@ public class CardFormController {
                     // Загружаем компонент по ID
                     ComponentDto component = ComponentClient.getComponentById(selectedId);
                     Platform.runLater(() -> {
-                        setFieldValue("hubName", component.getName());
+                        String hubDesignation = component.getDesignation() != null && !component.getDesignation().isEmpty()
+                                ? component.getDesignation()
+                                : component.getName();
+                        setFieldValue("hubName", hubDesignation);
                         setFieldValue("hubComponentId", selectedId);
                         addComponentToProduct(selectedId, 1.0, "Ступица");
                         updateFullMarking();

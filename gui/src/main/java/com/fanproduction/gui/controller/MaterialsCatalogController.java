@@ -160,11 +160,6 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
     }
 
     @Override
-    protected void createClass(Long categoryId, String name, String description, Long unitId) throws Exception {
-        MaterialClassClient.createClass(categoryId, name, description, unitId);
-    }
-
-    @Override
     protected List<ExportRowDto> getExportData() {
         List<ExportRowDto> data = new ArrayList<>();
         for (MaterialDto dto : itemList) {
@@ -539,34 +534,14 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         loadData();
     }
 
-    @FXML
-    private void handleCreateCategory() {
-        dialogHelper.showCategoryDialog(null, result -> new Thread(() -> {
-            try {
-                MaterialCategoryClient.createCategory(result.name(), result.parentId(), result.description());
-                Platform.runLater(() -> {
-                    showAlert("Успешно", "Категория создана", Alert.AlertType.INFORMATION);
-                    loadData();
-                });
-            } catch (Exception e) {
-                Platform.runLater(() -> showAlert("Ошибка", "Не удалось создать категорию: " + e.getMessage()));
-            }
-        }).start());
+    @Override
+    protected void createCategory(String name, Long parentId, String description) throws Exception {
+        MaterialCategoryClient.createCategory(name, parentId, description);
     }
 
-    @FXML
-    private void handleCreateClass() {
-        dialogHelper.showClassDialog(null, result -> new Thread(() -> {
-            try {
-                createClass(result.categoryId(), result.name(), result.description(), null);
-                Platform.runLater(() -> {
-                    showAlert("Успешно", "Класс создан", Alert.AlertType.INFORMATION);
-                    loadData();
-                });
-            } catch (Exception e) {
-                Platform.runLater(() -> showAlert("Ошибка", "Не удалось создать класс: " + e.getMessage()));
-            }
-        }).start());
+    @Override
+    protected void createClass(Long categoryId, String name, String description, Long unitId) throws Exception {
+        MaterialClassClient.createClass(categoryId, name, description, unitId);
     }
 
     @FXML

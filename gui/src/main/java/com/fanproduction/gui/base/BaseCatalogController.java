@@ -6,6 +6,7 @@ import com.fanproduction.gui.dto.response.UnitOfMeasureDto;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
 import lombok.Setter;
@@ -47,6 +48,7 @@ public abstract class BaseCatalogController<T, C, CL> {
     protected abstract List<T> fetchAllItems() throws Exception;
 
     // Абстрактные методы для CRUD операций
+
     protected abstract void deleteCategoryById(Long id) throws Exception;
     protected abstract void deleteClassById(Long id) throws Exception;
     protected abstract void deleteItemById(Long id) throws Exception;
@@ -83,6 +85,7 @@ public abstract class BaseCatalogController<T, C, CL> {
     protected abstract void setupTable();
     protected abstract void showCreateItemDialog();
     protected abstract void showEditItemDialog(T item);
+    protected abstract void createCategory(String name, Long parentId, String description) throws Exception;
     protected abstract void createClass(Long categoryId, String name, String description, Long unitId) throws Exception;
 
     // ========== ОСНОВНЫЕ МЕТОДЫ ==========
@@ -387,6 +390,36 @@ public abstract class BaseCatalogController<T, C, CL> {
         if (exportHelper != null) {
             exportHelper.exportToExcel(getExportData(), getExportHeaders(), getItemTypeName(), getItemTypeName());
         }
+    }
+
+    @FXML
+    protected void handleCreateCategory() {
+        dialogHelper.showCategoryDialog(null, result -> new Thread(() -> {
+            try {
+                createCategory(result.name(), result.parentId(), result.description());
+                Platform.runLater(() -> {
+                    showAlert("Успешно", "Категория создана");
+                    loadData();
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", "Не удалось создать категорию: " + e.getMessage()));
+            }
+        }).start());
+    }
+
+    @FXML
+    protected void handleCreateClass() {
+        dialogHelper.showClassDialog(null, result -> new Thread(() -> {
+            try {
+                createClass(result.categoryId(), result.name(), result.description(), null);
+                Platform.runLater(() -> {
+                    showAlert("Успешно", "Класс создан");
+                    loadData();
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", "Не удалось создать класс: " + e.getMessage()));
+            }
+        }).start());
     }
 
 }

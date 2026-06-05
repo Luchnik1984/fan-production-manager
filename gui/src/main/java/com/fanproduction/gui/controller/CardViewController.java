@@ -65,13 +65,17 @@ public class CardViewController {
         FIELD_RUSSIAN_NAMES.put("motorCode", "Код двигателя");
 
         // Поля радиального колеса
-
         FIELD_RUSSIAN_NAMES.put("marking", "Маркировка колеса");
         FIELD_RUSSIAN_NAMES.put("bladeMod", "Модификация лопатки");
         FIELD_RUSSIAN_NAMES.put("wheelFormula", "Формула колеса");
         FIELD_RUSSIAN_NAMES.put("bladeCount", "Количество лопаток");
         FIELD_RUSSIAN_NAMES.put("hubType", "Ступица");
+        FIELD_RUSSIAN_NAMES.put("hubName", "Ступица");
         FIELD_RUSSIAN_NAMES.put("maxSpeedRpm", "Максимальная скорость (об/мин)");
+        FIELD_RUSSIAN_NAMES.put("frontDiskMod", "Модификация переднего диска");
+        FIELD_RUSSIAN_NAMES.put("wheelWidth", "Ширина колеса");
+        FIELD_RUSSIAN_NAMES.put("bladeLengthCoeff", "Коэффициент длины лопатки");
+        FIELD_RUSSIAN_NAMES.put("wheelCode", "Код колеса");
 
         // Поля осевого колеса
         FIELD_RUSSIAN_NAMES.put("execution", "Исполнение");

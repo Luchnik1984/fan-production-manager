@@ -18,6 +18,7 @@ public class ComponentDto implements Displayable {
     private Long classId;
     private String className;
     private String name;
+    private String designation;
     private String vendorCode;
     private Long unitId;
     private String unitCode;
@@ -32,8 +33,8 @@ public class ComponentDto implements Displayable {
     @Override
     public String getDisplayName() {
         String display = name;
-        if (vendorCode != null && !vendorCode.isEmpty()) {
-            display += " (" + vendorCode + ")";
+        if (designation != null && !designation.isEmpty()) {
+            display += " " + designation;
         }
         return display;
     }

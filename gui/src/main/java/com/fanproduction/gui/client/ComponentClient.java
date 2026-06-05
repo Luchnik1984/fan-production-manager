@@ -34,6 +34,11 @@ public class ComponentClient {
         TypeReference<ApiResponse<List<ComponentDto>>> typeRef = new TypeReference<>() {};
         ApiResponse<List<ComponentDto>> response = ApiClient.get(BASE_PATH, typeRef);
         if (response.isSuccess() && response.getData() != null) {
+            for (ComponentDto dto : response.getData()) {
+                System.out.println("=== DEBUG ComponentDto from API ===");
+                System.out.println("name: " + dto.getName());
+                System.out.println("designation: " + dto.getDesignation());
+            }
             return response.getData();
         }
         throw new RuntimeException("Failed to load components: " + response.getMessage());
