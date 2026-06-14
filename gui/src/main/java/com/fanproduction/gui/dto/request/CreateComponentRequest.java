@@ -13,5 +13,7 @@ public class CreateComponentRequest {
     private String designation;
     private String vendorCode;
     private Long unitId;
+    private Double weightKg;
+    private String material;
     private String description;
 }

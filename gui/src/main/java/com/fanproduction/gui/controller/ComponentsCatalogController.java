@@ -32,6 +32,8 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     @FXML private TableColumn<ComponentDto, String> classNameColumn;
     @FXML private TableColumn<ComponentDto, String> vendorCodeColumn;
     @FXML private TableColumn<ComponentDto, String> unitColumn;
+    @FXML private TableColumn<ComponentDto, String> weightColumn;
+    @FXML private TableColumn<ComponentDto, String> materialColumn;
     @FXML private TableColumn<ComponentDto, String> descriptionColumn;
     @FXML private Label statusLabel;
     @FXML private Button createCategoryButton;
@@ -52,6 +54,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
 
     @Override
     protected void setupTable() {
+
         nameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getDisplayName()));
         nameColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
 
@@ -68,6 +71,15 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         descriptionColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
                 cellData.getValue().getDescription() != null ? cellData.getValue().getDescription() : ""));
         descriptionColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
+
+        weightColumn.setCellValueFactory(cellData -> {
+            Double weight = cellData.getValue().getWeightKg();
+            return new SimpleStringProperty(weight != null ? String.valueOf(weight) : "");
+        });
+
+        materialColumn.setCellValueFactory(cellData ->
+                new SimpleStringProperty(cellData.getValue().getMaterial() != null ?
+                        cellData.getValue().getMaterial() : ""));
 
         componentsTable.setItems(itemList);
 
@@ -155,11 +167,14 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     protected List<ExportRowDto> getExportData() {
         List<ExportRowDto> data = new ArrayList<>();
         for (ComponentDto dto : itemList) {
+            String displayName = dto.getDisplayName();
             List<String> values = Arrays.asList(
-                    dto.getName(),
+                    displayName,
                     dto.getClassName() != null ? dto.getClassName() : "",
                     dto.getVendorCode() != null ? dto.getVendorCode() : "",
                     dto.getUnitCode() != null ? dto.getUnitCode() : "",
+                    dto.getWeightKg() != null ? String.valueOf(dto.getWeightKg()) : "",
+                    dto.getMaterial() != null ? dto.getMaterial() : "",
                     dto.getDescription() != null ? dto.getDescription() : ""
             );
             data.add(new ExportRowDto(values));
@@ -169,7 +184,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
 
     @Override
     protected String[] getExportHeaders() {
-        return new String[]{"Наименование", "Класс", "Артикул", "Ед. изм.", "Описание"};
+        return new String[]{"Наименование", "Класс", "Артикул", "Ед. изм.","Масса (кг)", "Материал", "Описание"};
     }
 
     @Override
@@ -275,7 +290,9 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
             TextField designation,
             TextField vendorCode,
             GroupedComboBox<UnitOfMeasureDto> unit,
-            TextArea description
+            TextArea description,
+            TextField weightKg,
+            TextField material
     ) {}
 
     // ========== ОСНОВНОЙ МЕТОД ==========
@@ -322,6 +339,12 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         grid.add(formFields.vendorCode(), 1, row++);
         grid.add(new Label("Единица измерения:*"), 0, row);
         grid.add(formFields.unit(), 1, row++);
+
+        grid.add(new Label("Масса (кг):"), 0, row);
+        grid.add(formFields.weightKg(), 1, row++);
+        grid.add(new Label("Материал:"), 0, row);
+        grid.add(formFields.material(), 1, row++);
+
         grid.add(new Label("Описание:"), 0, row);
         grid.add(formFields.description(), 1, row);
 
@@ -376,7 +399,20 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         descriptionField.setPromptText("Описание");
         descriptionField.setPrefRowCount(3);
 
-        return new ComponentFormFields(nameField, designationField, vendorCodeField, unitCombo, descriptionField);
+        TextField weightKgField = new TextField();
+        weightKgField.setPromptText("Масса (кг)");
+
+        TextField materialField = new TextField();
+        materialField.setPromptText("Материал");
+
+        return new ComponentFormFields(
+                nameField,
+                designationField,
+                vendorCodeField,
+                unitCombo,
+                descriptionField,
+                weightKgField,
+                materialField);
     }
 
     private void setupCategoryClassDependency(ComboBox<String> categoryCombo,
@@ -441,6 +477,13 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         fillTextField(formFields.designation(), existing.getDesignation());
         fillTextField(formFields.vendorCode(), existing.getVendorCode());
 
+        if (existing.getWeightKg() != null) {
+            formFields.weightKg().setText(String.valueOf(existing.getWeightKg()));
+        }
+        if (existing.getMaterial() != null) {
+            formFields.material().setText(existing.getMaterial());
+        }
+
         // Заполнение TextArea (отдельно)
         if (existing.getDescription() != null) {
             formFields.description().setText(existing.getDescription());
@@ -500,6 +543,18 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         String vendorCode = formFields.vendorCode().getText().trim();
         UnitOfMeasureDto selectedUnit = formFields.unit().getValue();
         String description = formFields.description().getText().trim();
+        Double weightKg = null;
+        try {
+            String weightText = formFields.weightKg().getText().trim();
+            if (!weightText.isEmpty()) {
+                weightKg = Double.parseDouble(weightText);
+            }
+        } catch (NumberFormatException e) {
+            // игнорируем — оставляем null
+        }
+        String material = formFields.material().getText().trim();
+        if (material.isEmpty()) material = null;
+
 
         // Валидация
         if (selectedClass == null || selectedClass.isEmpty()) {
@@ -531,6 +586,8 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 designation,
                 vendorCode,
                 selectedUnit.getId(),
+                weightKg,
+                material,
                 description);
 
         new Thread(() -> {
@@ -540,9 +597,6 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 } else {
                     ComponentClient.updateComponent(existing.getId(), request);
                 }
-                System.out.println("=== collectAndSaveComponent ===");
-                System.out.println("designation: " + designation);
-                System.out.println("request designation: " + request.getDesignation());
 
                 Platform.runLater(() -> {
                     showAlert("Успешно", "Компонент " + (existing == null ? "создан" : "обновлён"), Alert.AlertType.INFORMATION);

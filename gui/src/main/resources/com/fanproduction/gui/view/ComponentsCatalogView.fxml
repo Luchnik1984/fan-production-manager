@@ -31,6 +31,8 @@
                     <TableColumn fx:id="classNameColumn" text="Класс" prefWidth="150" />
                     <TableColumn fx:id="vendorCodeColumn" text="Артикул" prefWidth="100" />
                     <TableColumn fx:id="unitColumn" text="Ед. изм." prefWidth="55" minWidth="55" maxWidth="55" resizable="false" />
+                    <TableColumn fx:id="weightColumn" text="Масса (кг)" prefWidth="65" minWidth="65" maxWidth="65" resizable="false" />
+                    <TableColumn fx:id="materialColumn" text="Материал" prefWidth="100" />
                     <TableColumn fx:id="descriptionColumn" text="Описание" prefWidth="250" />
                 </columns>
                 <columnResizePolicy>
