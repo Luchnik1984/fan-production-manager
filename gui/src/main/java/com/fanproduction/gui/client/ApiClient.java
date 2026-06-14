@@ -138,12 +138,15 @@ public class ApiClient {
 
     public static <T> T put(String path, Object body, TypeReference<T> typeReference) throws Exception {
         String bodyJson = objectMapper.writeValueAsString(body);
+        System.out.println("=== PUT " + BASE_URL + path);
+        System.out.println("Body: " + bodyJson);
 
         HttpRequest request = createRequestBuilder(path)
                 .PUT(HttpRequest.BodyPublishers.ofString(bodyJson))
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println("Response: " + response.body());
 
         if (response.statusCode() >= 200 && response.statusCode() < 300) {
             return objectMapper.readValue(response.body(), typeReference);

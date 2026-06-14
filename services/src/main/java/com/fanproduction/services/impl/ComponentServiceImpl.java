@@ -269,6 +269,10 @@ public class ComponentServiceImpl extends BaseValidationService implements Compo
         // ==========================================
         // ОБНОВЛЕНИЕ ПОЛЕЙ
         // ==========================================
+        if (updated.getDesignation() != null && !updated.getDesignation().equals(existing.getDesignation())) {
+            existing.setDesignation(updated.getDesignation());
+        }
+
         if (updated.getUnitId() != null) {
             unitOfMeasureRepository.findById(updated.getUnitId())
                     .orElseThrow(() -> new IllegalArgumentException("Единица измерения не найдена"));
@@ -395,18 +399,6 @@ public class ComponentServiceImpl extends BaseValidationService implements Compo
 
     @Override
     @Transactional
-    public void removeComponentFromProduct(Long productCardId, Long componentId) {
-        productComponentRepository.deleteByProductCardIdAndComponentId(productCardId, componentId);
-    }
-
-    @Override
-    @Transactional
-    public void removeAllComponentsFromProduct(Long productCardId) {
-        productComponentRepository.deleteByProductCardId(productCardId);
-    }
-
-    @Override
-    @Transactional
     public ComponentCategoryEntity updateCategory(Long id, String name, Long parentId, String description) {
         ComponentCategoryEntity entity = componentCategoryRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Категория не найдена"));
@@ -449,6 +441,18 @@ public class ComponentServiceImpl extends BaseValidationService implements Compo
             entity.setDescription(description);
         }
         return componentClassRepository.save(entity);
+    }
+
+    @Override
+    @Transactional
+    public void removeComponentFromProduct(Long productCardId, Long componentId) {
+        productComponentRepository.deleteByProductCardIdAndComponentId(productCardId, componentId);
+    }
+
+    @Override
+    @Transactional
+    public void removeAllComponentsFromProduct(Long productCardId) {
+        productComponentRepository.deleteByProductCardId(productCardId);
     }
 
     @Override

@@ -540,6 +540,10 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 } else {
                     ComponentClient.updateComponent(existing.getId(), request);
                 }
+                System.out.println("=== collectAndSaveComponent ===");
+                System.out.println("designation: " + designation);
+                System.out.println("request designation: " + request.getDesignation());
+
                 Platform.runLater(() -> {
                     showAlert("Успешно", "Компонент " + (existing == null ? "создан" : "обновлён"), Alert.AlertType.INFORMATION);
                     loadData();
