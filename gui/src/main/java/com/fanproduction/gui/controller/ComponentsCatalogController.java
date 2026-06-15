@@ -537,26 +537,22 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                                          ComponentFormFields formFields,
                                          ComboBox<String> classCombo,
                                          Map<String, ComponentClassDto> classMap) {
+        // ========== СБОР ДАННЫХ ИЗ ФОРМЫ ==========
         String selectedClass = classCombo.getValue();
         String name = formFields.name().getText().trim();
         String designation = formFields.designation().getText().trim();
         String vendorCode = formFields.vendorCode().getText().trim();
         UnitOfMeasureDto selectedUnit = formFields.unit().getValue();
         String description = formFields.description().getText().trim();
-        Double weightKg = null;
-        try {
-            String weightText = formFields.weightKg().getText().trim();
-            if (!weightText.isEmpty()) {
-                weightKg = Double.parseDouble(weightText);
-            }
-        } catch (NumberFormatException e) {
-            // игнорируем — оставляем null
-        }
+
+        // Масса (кг) — необязательное поле, с поддержкой запятой
+        Double weightKg = parseDouble(formFields.weightKg().getText().trim());
+
+        // Материал — необязательное поле
         String material = formFields.material().getText().trim();
         if (material.isEmpty()) material = null;
 
-
-        // Валидация
+        // ========== ВАЛИДАЦИЯ ==========
         if (selectedClass == null || selectedClass.isEmpty()) {
             showAlert("Ошибка", "Выберите класс");
             return;
@@ -580,6 +576,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
             return;
         }
 
+        // ========== СОЗДАНИЕ ЗАПРОСА ==========
         CreateComponentRequest request = new CreateComponentRequest(
                 selectedClassDto.getId(),
                 name,
@@ -588,8 +585,10 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 selectedUnit.getId(),
                 weightKg,
                 material,
-                description);
+                description
+                );
 
+        // ========== ОТПРАВКА НА СЕРВЕР ==========
         new Thread(() -> {
             try {
                 if (existing == null) {
@@ -599,7 +598,8 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 }
 
                 Platform.runLater(() -> {
-                    showAlert("Успешно", "Компонент " + (existing == null ? "создан" : "обновлён"), Alert.AlertType.INFORMATION);
+                    showAlert("Успешно", "Компонент " + (existing == null ? "создан" : "обновлён"),
+                            Alert.AlertType.INFORMATION);
                     loadData();
                 });
             } catch (Exception e) {
@@ -607,6 +607,8 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
             }
         }).start();
     }
+
+
 
     private void addChildCategoriesToCombo(ComboBox<String> combo, ComponentCategoryDto parent, int depth, Map<String, Long> idMap) {
         String indent = "    ".repeat(depth + 1);

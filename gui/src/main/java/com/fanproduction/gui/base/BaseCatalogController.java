@@ -422,4 +422,20 @@ public abstract class BaseCatalogController<T, C, CL> {
         }).start());
     }
 
+    /**
+     * Преобразует строку в Double, поддерживая как точку, так и запятую в качестве разделителя.
+     *
+     * @param value строковое представление числа (например "0.87" или "0,87")
+     * @return Double значение или null, если строка пустая или некорректная
+     */
+    protected Double parseDouble(String value) {
+        if (value == null || value.isEmpty()) return null;
+        try {
+            String normalized = value.replace(',', '.');
+            return Double.parseDouble(normalized);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
 }

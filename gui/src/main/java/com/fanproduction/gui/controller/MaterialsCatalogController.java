@@ -433,12 +433,8 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
                 String specification = specificationField.getText().trim();
                 String materialType = materialTypeField.getText().trim();
                 String vendorCode = vendorCodeField.getText().trim();
-                Double density = null;
-                try {
-                    if (!densityField.getText().trim().isEmpty()) {
-                        density = Double.parseDouble(densityField.getText().trim());
-                    }
-                } catch (NumberFormatException ignored) {}
+                Double density = parseDouble(densityField.getText().trim());
+
                 UnitOfMeasureDto selectedUnit = unitCombo.getValue();
                 String description = descriptionField.getText().trim();
 
