@@ -4,6 +4,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+import java.util.Map;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -16,4 +18,5 @@ public class CreateComponentRequest {
     private Double weightKg;
     private String material;
     private String description;
+    private Map<String, Object> technicalSpecs;
 }

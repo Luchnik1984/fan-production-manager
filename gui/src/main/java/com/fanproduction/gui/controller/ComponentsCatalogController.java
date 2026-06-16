@@ -7,6 +7,7 @@ import com.fanproduction.gui.base.ExportRowDto;
 import com.fanproduction.gui.client.*;
 import com.fanproduction.gui.component.GroupedComboBox;
 import com.fanproduction.gui.component.IconFactory;
+import com.fanproduction.gui.component.TechnicalSpecsEditor;
 import com.fanproduction.gui.dto.request.CreateComponentRequest;
 import com.fanproduction.gui.dto.response.*;
 import com.fanproduction.gui.util.TooltipUtil;
@@ -22,9 +23,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class ComponentsCatalogController extends BaseCatalogController<ComponentDto, ComponentCategoryDto, ComponentClassDto> {
-
-    private final Map<String, Long> categoryIdMap = new HashMap<>();
-    private final Map<String, ComponentClassDto> classMap = new HashMap<>();
 
     @FXML private TextField searchField;
     @FXML private TableView<ComponentDto> componentsTable;
@@ -43,6 +41,18 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     @FXML private Button deleteButton;
     @FXML private Button exportButton;
     @FXML private TreeView<CategoryTreeItem> categoryTreeView;
+
+    // ========== RECORD ДЛЯ ПОЛЕЙ ФОРМЫ ==========
+    private record ComponentFormFields(
+            TextField name,
+            TextField designation,
+            TextField vendorCode,
+            GroupedComboBox<UnitOfMeasureDto> unit,
+            TextArea description,
+            TextField weightKg,
+            TextField material,
+            TechnicalSpecsEditor technicalSpecs
+    ) {}
 
     @FXML
     private void initialize() {
@@ -92,9 +102,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     }
 
     private void updateButtonsState(ComponentDto selected) {
-        boolean hasSelection = selected != null;
-        editButton.setDisable(!hasSelection);
-        deleteButton.setDisable(!hasSelection);
+        updateButtonsState(selected != null, editButton, deleteButton);
     }
 
     // ==========================================
@@ -284,30 +292,24 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         showComponentDialog(existing);
     }
 
-    // ========== НОВЫЙ RECORD ДЛЯ ПОЛЕЙ ФОРМЫ ==========
-    private record ComponentFormFields(
-            TextField name,
-            TextField designation,
-            TextField vendorCode,
-            GroupedComboBox<UnitOfMeasureDto> unit,
-            TextArea description,
-            TextField weightKg,
-            TextField material
-    ) {}
+
 
     // ========== ОСНОВНОЙ МЕТОД ==========
 
     private void showComponentDialog(ComponentDto existing) {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle(existing == null ? "Создание компонента" : "Редактирование компонента");
-        dialog.initOwner(stage);
+        String title = existing == null ? "Создание компонента" : "Редактирование компонента";
+        Dialog<ButtonType> dialog = createBaseDialog(title);
+
+        TabPane tabPane = createBaseTabPane();
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
         grid.setPadding(new Insets(20));
 
-        // 1. Создаём компоненты формы
+        Tab mainTab = createMainTab("Основные поля", grid);
+
+        // Выбор категории
         ComboBox<String> categoryCombo = createCategoryCombo();
         ComboBox<String> classCombo = createClassCombo();
         ComponentFormFields formFields = createComponentFormFields();
@@ -316,15 +318,16 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         warningLabel.setStyle("-fx-text-fill: red; -fx-font-size: 11px;");
         warningLabel.setVisible(false);
 
-        // 2. Настраиваем зависимость категория → класс
+        // Настраиваем зависимость категория → класс
         setupCategoryClassDependency(categoryCombo, classCombo, warningLabel);
 
-        // 3. Заполняем поля при редактировании
+        // Заполняем поля при редактировании
+        Map<String, ComponentClassDto> classMap = new HashMap<>();
         if (existing != null) {
             loadExistingComponentData(existing, formFields, categoryCombo, classCombo, classMap);
         }
 
-        // 4. Собираем форму
+        // Сборка формы (основные поля)
         int row = 0;
         grid.add(new Label("Категория:*"), 0, row);
         grid.add(categoryCombo, 1, row++);
@@ -339,49 +342,27 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         grid.add(formFields.vendorCode(), 1, row++);
         grid.add(new Label("Единица измерения:*"), 0, row);
         grid.add(formFields.unit(), 1, row++);
-
         grid.add(new Label("Масса (кг):"), 0, row);
         grid.add(formFields.weightKg(), 1, row++);
         grid.add(new Label("Материал:"), 0, row);
         grid.add(formFields.material(), 1, row++);
-
         grid.add(new Label("Описание:"), 0, row);
         grid.add(formFields.description(), 1, row);
 
-        dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        TechnicalSpecsEditor technicalSpecsEditor = new TechnicalSpecsEditor(allUnits);
+        if (existing != null && existing.getTechnicalSpecs() != null) {
+            technicalSpecsEditor.setTechnicalSpecs(existing.getTechnicalSpecs());
+        }
 
-        // 5. Сохранение
-        dialog.showAndWait().ifPresent(buttonType -> {
-            if (buttonType == ButtonType.OK) {
-                collectAndSaveComponent(existing, formFields, classCombo, classMap);
-            }
-        });
+        setupDialogWithTabs(dialog, tabPane, mainTab, grid, technicalSpecsEditor,
+                () -> collectAndSaveComponent(existing, formFields, classCombo, classMap, technicalSpecsEditor)
+        );
+
+        dialog.getDialogPane().setContent(tabPane);
+        dialog.showAndWait();
     }
 
     // ========== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
-
-    private ComboBox<String> createCategoryCombo() {
-        ComboBox<String> categoryCombo = new ComboBox<>();
-        categoryCombo.getItems().add("— Все категории —");
-        categoryIdMap.clear();
-
-        for (ComponentCategoryDto rootCat : allCategories.stream()
-                .filter(c -> c.getParentId() == null).toList()) {
-            categoryCombo.getItems().add(rootCat.getName());
-            categoryIdMap.put(rootCat.getName(), rootCat.getId());
-            addChildCategoriesToCombo(categoryCombo, rootCat, 1, categoryIdMap);
-        }
-        categoryCombo.setValue("— Все категории —");
-        return categoryCombo;
-    }
-
-    private ComboBox<String> createClassCombo() {
-        ComboBox<String> classCombo = new ComboBox<>();
-        classCombo.setPromptText("Выберите класс");
-        classCombo.setDisable(true);
-        return classCombo;
-    }
 
     private ComponentFormFields createComponentFormFields() {
         TextField nameField = new TextField();
@@ -405,6 +386,8 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         TextField materialField = new TextField();
         materialField.setPromptText("Материал");
 
+        TechnicalSpecsEditor technicalSpecsEditor = createTechnicalSpecsEditor();
+
         return new ComponentFormFields(
                 nameField,
                 designationField,
@@ -412,36 +395,13 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 unitCombo,
                 descriptionField,
                 weightKgField,
-                materialField);
+                materialField,
+                technicalSpecsEditor);
     }
 
-    private void setupCategoryClassDependency(ComboBox<String> categoryCombo,
-                                              ComboBox<String> classCombo,
-                                              Label warningLabel) {
-        categoryCombo.valueProperty().addListener((obs, old, newVal) -> {
-            // Ранний выход: "Все категории" или null
-            if (newVal == null || "— Все категории —".equals(newVal)) {
-                clearClassCombo(classCombo, warningLabel);
-                return;
-            }
 
-            Long selectedCategoryId = categoryIdMap.get(newVal);
-            if (selectedCategoryId == null) {
-                clearClassCombo(classCombo, warningLabel);
-                return;
-            }
-
-            updateClassComboForCategory(selectedCategoryId, classCombo, warningLabel);
-        });
-    }
-
-    private void clearClassCombo(ComboBox<String> classCombo, Label warningLabel) {
-        classCombo.setDisable(true);
-        classCombo.getItems().clear();
-        warningLabel.setVisible(false);
-    }
-
-    private void updateClassComboForCategory(Long categoryId,
+    @Override
+    protected void updateClassComboForCategory(Long categoryId,
                                              ComboBox<String> classCombo,
                                              Label warningLabel) {
         List<ComponentClassDto> filteredClasses = allClasses.stream()
@@ -489,15 +449,14 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
             formFields.description().setText(existing.getDescription());
         }
 
+        // ========== ТЕХНИЧЕСКИЕ ХАРАКТЕРИСТИКИ ==========
+        if (existing.getTechnicalSpecs() != null) {
+            formFields.technicalSpecs().setTechnicalSpecs(existing.getTechnicalSpecs());
+        }
+
         // Восстановление выбранных значений (категория, класс, единица измерения)
         restoreCategoryAndClass(existing, categoryCombo, classCombo, classMap);
         restoreUnit(existing, formFields.unit());
-    }
-
-    private void fillTextField(TextField field, String value) {
-        if (value != null) {
-            field.setText(value);
-        }
     }
 
     private void restoreCategoryAndClass(ComponentDto existing,
@@ -536,7 +495,8 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     private void collectAndSaveComponent(ComponentDto existing,
                                          ComponentFormFields formFields,
                                          ComboBox<String> classCombo,
-                                         Map<String, ComponentClassDto> classMap) {
+                                         Map<String, ComponentClassDto> classMap,
+                                         TechnicalSpecsEditor technicalSpecsEditor) {
         // ========== СБОР ДАННЫХ ИЗ ФОРМЫ ==========
         String selectedClass = classCombo.getValue();
         String name = formFields.name().getText().trim();
@@ -544,13 +504,15 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         String vendorCode = formFields.vendorCode().getText().trim();
         UnitOfMeasureDto selectedUnit = formFields.unit().getValue();
         String description = formFields.description().getText().trim();
-
-        // Масса (кг) — необязательное поле, с поддержкой запятой
         Double weightKg = parseDouble(formFields.weightKg().getText().trim());
-
-        // Материал — необязательное поле
         String material = formFields.material().getText().trim();
         if (material.isEmpty()) material = null;
+        Map<String, Object> technicalSpecs = technicalSpecsEditor.getTechnicalSpecs();
+
+        // Если характеристик нет, отправляем пустой объект (а не null)
+        if (technicalSpecs == null) {
+            technicalSpecs = new HashMap<>();
+        }
 
         // ========== ВАЛИДАЦИЯ ==========
         if (selectedClass == null || selectedClass.isEmpty()) {
@@ -585,7 +547,8 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 selectedUnit.getId(),
                 weightKg,
                 material,
-                description
+                description,
+                technicalSpecs
                 );
 
         // ========== ОТПРАВКА НА СЕРВЕР ==========
@@ -606,21 +569,6 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 Platform.runLater(() -> showAlert("Ошибка", "Не удалось сохранить: " + e.getMessage()));
             }
         }).start();
-    }
-
-
-
-    private void addChildCategoriesToCombo(ComboBox<String> combo, ComponentCategoryDto parent, int depth, Map<String, Long> idMap) {
-        String indent = "    ".repeat(depth + 1);
-        List<ComponentCategoryDto> children = allCategories.stream()
-                .filter(c -> c.getParentId() != null && c.getParentId().equals(parent.getId()))
-                .toList();
-        for (ComponentCategoryDto child : children) {
-            String display = indent + child.getName();
-            combo.getItems().add(display);
-            idMap.put(display, child.getId());
-            addChildCategoriesToCombo(combo, child, depth + 1, idMap);
-        }
     }
 
     // ==========================================

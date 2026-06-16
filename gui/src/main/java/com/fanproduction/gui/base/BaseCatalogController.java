@@ -1,13 +1,14 @@
 package com.fanproduction.gui.base;
 
-
 import com.fanproduction.gui.component.IconFactory;
+import com.fanproduction.gui.component.TechnicalSpecsEditor;
 import com.fanproduction.gui.dto.response.UnitOfMeasureDto;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 import lombok.Setter;
 import java.util.ArrayList;
@@ -31,6 +32,8 @@ public abstract class BaseCatalogController<T, C, CL> {
 
     protected final ObservableList<T> itemList = FXCollections.observableArrayList();
     protected final Map<Long, String> unitNames = new HashMap<>();
+    protected final Map<String, Long> categoryIdMap = new HashMap<>();
+    protected final Map<String, CL> classMap = new HashMap<>();
 
     protected List<C> allCategories = new ArrayList<>();
     protected List<CL> allClasses = new ArrayList<>();
@@ -436,6 +439,200 @@ public abstract class BaseCatalogController<T, C, CL> {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    /**
+     * Создаёт редактор технических характеристик
+     */
+    protected TechnicalSpecsEditor createTechnicalSpecsEditor() {
+        return new TechnicalSpecsEditor(allUnits);
+    }
+
+    // БАЗОВЫЕ МЕТОДЫ ДЛЯ КОМБОБОКСОВ
+    /**
+     * Создаёт ComboBox для выбора категории
+     */
+    protected ComboBox<String> createCategoryCombo() {
+        ComboBox<String> categoryCombo = new ComboBox<>();
+        categoryCombo.getItems().add("— Все категории —");
+        categoryIdMap.clear();
+
+        List<C> rootCategories = allCategories.stream()
+                .filter(c -> getCategoryParentId(c) == null)
+                .toList();
+
+        for (C rootCat : rootCategories) {
+            categoryCombo.getItems().add(getCategoryName(rootCat));
+            categoryIdMap.put(getCategoryName(rootCat), getCategoryId(rootCat));
+            addChildCategoriesToCombo(categoryCombo, rootCat, 1);
+        }
+        categoryCombo.setValue("— Все категории —");
+        return categoryCombo;
+    }
+
+    /**
+     * Создаёт ComboBox для выбора класса
+     */
+    protected ComboBox<String> createClassCombo() {
+        ComboBox<String> classCombo = new ComboBox<>();
+        classCombo.setPromptText("Выберите класс");
+        classCombo.setDisable(true);
+        return classCombo;
+    }
+
+    /**
+     * Добавляет дочерние категории в ComboBox с отступами
+     */
+    protected void addChildCategoriesToCombo(ComboBox<String> combo, C parent, int depth) {
+        String indent = "    ".repeat(depth + 1);
+        List<C> children = allCategories.stream()
+                .filter(c -> getCategoryParentId(c) != null && getCategoryParentId(c).equals(getCategoryId(parent)))
+                .toList();
+        for (C child : children) {
+            String display = indent + getCategoryName(child);
+            combo.getItems().add(display);
+            categoryIdMap.put(display, getCategoryId(child));
+            addChildCategoriesToCombo(combo, child, depth + 1);
+        }
+    }
+
+    /**
+     * Настраивает зависимость категория → класс
+     */
+    protected void setupCategoryClassDependency(ComboBox<String> categoryCombo,
+                                                ComboBox<String> classCombo,
+                                                Label warningLabel) {
+        categoryCombo.valueProperty().addListener((obs, old, newVal) -> {
+            if (newVal == null || "— Все категории —".equals(newVal)) {
+                clearClassCombo(classCombo, warningLabel);
+                return;
+            }
+
+            Long selectedCategoryId = categoryIdMap.get(newVal);
+            if (selectedCategoryId == null) {
+                clearClassCombo(classCombo, warningLabel);
+                return;
+            }
+
+            updateClassComboForCategory(selectedCategoryId, classCombo, warningLabel);
+        });
+    }
+
+    /**
+     * Очищает ComboBox классов
+     */
+    protected void clearClassCombo(ComboBox<String> classCombo, Label warningLabel) {
+        classCombo.setDisable(true);
+        classCombo.getItems().clear();
+        classMap.clear();
+        warningLabel.setVisible(false);
+    }
+
+    /**
+     * Обновляет ComboBox классов для выбранной категории
+     */
+    protected abstract void updateClassComboForCategory(Long categoryId,
+                                                        ComboBox<String> classCombo,
+                                                        Label warningLabel);
+
+    /**
+     * Заполняет TextField, если значение не null
+     */
+    protected void fillTextField(TextField field, String value) {
+        if (value != null) {
+            field.setText(value);
+        }
+    }
+
+    // БАЗОВЫЙ МЕТОД ДЛЯ ОБНОВЛЕНИЯ СОСТОЯНИЯ КНОПОК
+    protected void updateButtonsState(boolean hasSelection, Button editButton, Button deleteButton) {
+        editButton.setDisable(!hasSelection);
+        deleteButton.setDisable(!hasSelection);
+    }
+
+    /**
+     * Настраивает диалог с вкладками и техническими характеристиками
+     * @param dialog диалог
+     * @param tabPane панель вкладок
+     * @param mainTab вкладка "Основные поля"
+     * @param grid основная форма
+     * @param technicalSpecsEditor редактор технических характеристик
+     * @param saveAction действие при сохранении
+     */
+    protected void setupDialogWithTabs(Dialog<ButtonType> dialog,
+                                       TabPane tabPane,
+                                       Tab mainTab,
+                                       GridPane grid,
+                                       TechnicalSpecsEditor technicalSpecsEditor,
+                                       Runnable saveAction) {
+        // Вкладка 1: Основные поля
+        ScrollPane scrollPane = new ScrollPane(grid);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefHeight(450);
+        mainTab.setContent(scrollPane);
+        tabPane.getTabs().add(mainTab);
+
+        // Вкладка 2: Технические характеристики
+        Tab technicalTab = new Tab("Технические характеристики");
+        technicalTab.setClosable(false);
+        technicalTab.setContent(technicalSpecsEditor);
+        tabPane.getTabs().add(technicalTab);
+
+        // Кнопки
+        ButtonType saveButtonType = new ButtonType("Сохранить", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelButtonType = new ButtonType("Отмена", ButtonBar.ButtonData.CANCEL_CLOSE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, cancelButtonType);
+
+        Button saveButton = (Button) dialog.getDialogPane().lookupButton(saveButtonType);
+        saveButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            event.consume();
+            saveAction.run();
+        });
+
+        dialog.getDialogPane().setContent(tabPane);
+    }
+
+    /**
+     * Создаёт базовый диалог с настройками
+     * @param title заголовок диалога
+     * @return настроенный диалог
+     */
+    protected Dialog<ButtonType> createBaseDialog(String title) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(title);
+        dialog.initOwner(stage);
+        dialog.setResizable(true);
+        dialog.setWidth(900);
+        dialog.setHeight(700);
+        return dialog;
+    }
+
+    /**
+     * Создаёт базовый TabPane для вкладок
+     * @return настроенный TabPane
+     */
+    protected TabPane createBaseTabPane() {
+        TabPane tabPane = new TabPane();
+        tabPane.setPrefHeight(500);
+        return tabPane;
+    }
+
+    /**
+     * Создаёт основную вкладку с GridPane
+     * @param title заголовок вкладки
+     * @param grid основная форма
+     * @return настроенная вкладка
+     */
+    protected Tab createMainTab(String title, GridPane grid) {
+        Tab mainTab = new Tab(title);
+        mainTab.setClosable(false);
+
+        ScrollPane scrollPane = new ScrollPane(grid);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefHeight(450);
+        mainTab.setContent(scrollPane);
+
+        return mainTab;
     }
 
 }

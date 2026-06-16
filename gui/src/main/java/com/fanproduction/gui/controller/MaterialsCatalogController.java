@@ -3,6 +3,8 @@ package com.fanproduction.gui.controller;
 import com.fanproduction.gui.base.*;
 import com.fanproduction.gui.client.*;
 import com.fanproduction.gui.component.GroupedComboBox;
+import com.fanproduction.gui.component.IconFactory;
+import com.fanproduction.gui.component.TechnicalSpecsEditor;
 import com.fanproduction.gui.dto.request.CreateMaterialRequest;
 import com.fanproduction.gui.dto.response.*;
 import com.fanproduction.gui.util.TooltipUtil;
@@ -37,6 +39,19 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
     @FXML private Button deleteButton;
     @FXML private Button exportButton;
     @FXML private TreeView<CategoryTreeItem> categoryTreeView;
+
+    // ========== RECORD ДЛЯ ПОЛЕЙ ФОРМЫ ==========
+    private record MaterialFormFields(
+            TextField name,
+            TextField standard,
+            TextField specification,
+            TextField materialType,
+            TextField vendorCode,
+            TextField density,
+            GroupedComboBox<UnitOfMeasureDto> unit,
+            TextArea description,
+            TechnicalSpecsEditor technicalSpecs
+    ) {}
 
     @FXML
     private void initialize() {
@@ -88,9 +103,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
     }
 
     private void updateButtonsState(MaterialDto selected) {
-        boolean hasSelection = selected != null;
-        editButton.setDisable(!hasSelection);
-        deleteButton.setDisable(!hasSelection);
+        updateButtonsState(selected != null, editButton, deleteButton);
     }
 
     // ==========================================
@@ -280,125 +293,35 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         showMaterialDialog(existing);
     }
 
+    // ========== ОСНОВНОЙ МЕТОД ==========
     private void showMaterialDialog(MaterialDto existing) {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle(existing == null ? "Создание материала" : "Редактирование материала");
-        dialog.initOwner(stage);
+        String title = existing == null ? "Создание компонента" : "Редактирование компонента";
+        Dialog<ButtonType> dialog = createBaseDialog(title);
+
+        TabPane tabPane = createBaseTabPane();
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
         grid.setPadding(new Insets(20));
 
-        // Выбор категории
-        ComboBox<String> categoryCombo = new ComboBox<>();
-        categoryCombo.getItems().add("— Все категории —");
-        Map<String, Long> categoryIdMap = new HashMap<>();
-        for (MaterialCategoryDto rootCat : allCategories.stream()
-                .filter(c -> c.getParentId() == null).toList()) {
-            categoryCombo.getItems().add(rootCat.getName());
-            categoryIdMap.put(rootCat.getName(), rootCat.getId());
-            addChildCategoriesToCombo(categoryCombo, rootCat, 1, categoryIdMap);
-        }
-        categoryCombo.setValue("— Все категории —");
+        Tab mainTab = createMainTab("Основные поля", grid);
 
-        // Выбор класса
-        ComboBox<String> classCombo = new ComboBox<>();
-        classCombo.setPromptText("Выберите класс");
-        classCombo.setDisable(true);
-        Map<String, MaterialClassDto> classMap = new HashMap<>();
+        ComboBox<String> categoryCombo = createCategoryCombo();
+        ComboBox<String> classCombo = createClassCombo();
+        MaterialFormFields formFields = createMaterialFormFields();
 
         Label warningLabel = new Label();
         warningLabel.setStyle("-fx-text-fill: red; -fx-font-size: 11px;");
         warningLabel.setVisible(false);
 
-        // Поля материала
-        TextField nameField = new TextField();
-        nameField.setPromptText("Наименование материала");
-        TextField standardField = new TextField();
-        standardField.setPromptText("ГОСТ/ТУ (необязательно)");
-        TextField specificationField = new TextField();
-        specificationField.setPromptText("Тех. параметры (необязательно)");
-        TextField materialTypeField = new TextField();
-        materialTypeField.setPromptText("Тип материала (крепёж, металл...)");
-        TextField vendorCodeField = new TextField();
-        vendorCodeField.setPromptText("Артикул (необязательно)");
-        TextField densityField = new TextField();
-        densityField.setPromptText("Плотность (кг/м³) (необязательно)");
+        setupCategoryClassDependency(categoryCombo, classCombo, warningLabel);
 
-        GroupedComboBox<UnitOfMeasureDto> unitCombo = CatalogHelper.createUnitCombo(allUnits);
-        TextArea descriptionField = new TextArea();
-        descriptionField.setPromptText("Описание");
-        descriptionField.setPrefRowCount(3);
-
-        // Логика выбора категории -> класс
-        categoryCombo.valueProperty().addListener((obs, old, newVal) -> {
-            if (newVal == null || "— Все категории —".equals(newVal)) {
-                classCombo.setDisable(true);
-                classCombo.getItems().clear();
-                warningLabel.setVisible(false);
-            } else {
-                Long selectedCategoryId = categoryIdMap.get(newVal);
-                if (selectedCategoryId != null) {
-                    classMap.clear();
-                    List<MaterialClassDto> filteredClasses = allClasses.stream()
-                            .filter(cls -> cls.getCategoryId() != null && cls.getCategoryId().equals(selectedCategoryId))
-                            .toList();
-                    classCombo.getItems().clear();
-                    for (MaterialClassDto cls : filteredClasses) {
-                        classCombo.getItems().add(cls.getName());
-                        classMap.put(cls.getName(), cls);
-                    }
-                    if (filteredClasses.isEmpty()) {
-                        classCombo.setDisable(true);
-                        classCombo.setPromptText("Нет классов");
-                        warningLabel.setText("⚠ Сначала создайте классы в этой категории");
-                        warningLabel.setVisible(true);
-                    } else {
-                        classCombo.setDisable(false);
-                        warningLabel.setVisible(false);
-                    }
-                }
-            }
-        });
-
-        // Заполняем существующие значения
+        Map<String, MaterialClassDto> classMap = new HashMap<>();
         if (existing != null) {
-            nameField.setText(existing.getName());
-            if (existing.getStandard() != null) standardField.setText(existing.getStandard());
-            if (existing.getSpecification() != null) specificationField.setText(existing.getSpecification());
-            if (existing.getMaterialType() != null) materialTypeField.setText(existing.getMaterialType());
-            if (existing.getVendorCode() != null) vendorCodeField.setText(existing.getVendorCode());
-            if (existing.getDensity() != null) densityField.setText(String.valueOf(existing.getDensity()));
-            if (existing.getDescription() != null) descriptionField.setText(existing.getDescription());
-
-            // Устанавливаем выбранные категорию и класс
-            if (existing.getClassId() != null) {
-                for (MaterialClassDto cls : allClasses) {
-                    if (cls.getId().equals(existing.getClassId())) {
-                        classCombo.setValue(cls.getName());
-                        classMap.put(cls.getName(), cls);
-                        for (MaterialCategoryDto cat : allCategories) {
-                            if (cat.getId().equals(cls.getCategoryId())) {
-                                categoryCombo.setValue(cat.getName());
-                                break;
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-            if (existing.getUnitId() != null) {
-                for (UnitOfMeasureDto unit : allUnits) {
-                    if (unit.getId().equals(existing.getUnitId())) {
-                        unitCombo.setValue(unit);
-                        break;
-                    }
-                }
-            }
+            loadExistingMaterialData(existing, formFields, categoryCombo, classCombo, classMap);
         }
 
-        // Сборка формы
         int row = 0;
         grid.add(new Label("Категория:*"), 0, row);
         grid.add(categoryCombo, 1, row++);
@@ -406,91 +329,233 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         grid.add(classCombo, 1, row++);
         grid.add(warningLabel, 1, row++);
         grid.add(new Label("Наименование:*"), 0, row);
-        grid.add(nameField, 1, row++);
+        grid.add(formFields.name(), 1, row++);
         grid.add(new Label("ГОСТ/ТУ:"), 0, row);
-        grid.add(standardField, 1, row++);
+        grid.add(formFields.standard(), 1, row++);
         grid.add(new Label("Тех. параметры:"), 0, row);
-        grid.add(specificationField, 1, row++);
+        grid.add(formFields.specification(), 1, row++);
         grid.add(new Label("Тип материала:"), 0, row);
-        grid.add(materialTypeField, 1, row++);
+        grid.add(formFields.materialType(), 1, row++);
         grid.add(new Label("Артикул:"), 0, row);
-        grid.add(vendorCodeField, 1, row++);
+        grid.add(formFields.vendorCode(), 1, row++);
         grid.add(new Label("Единица измерения:*"), 0, row);
-        grid.add(unitCombo, 1, row++);
+        grid.add(formFields.unit(), 1, row++);
         grid.add(new Label("Плотность (кг/м³):"), 0, row);
-        grid.add(densityField, 1, row++);
+        grid.add(formFields.density(), 1, row++);
         grid.add(new Label("Описание:"), 0, row);
-        grid.add(descriptionField, 1, row);
+        grid.add(formFields.description(), 1, row);
 
-        dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        TechnicalSpecsEditor technicalSpecsEditor = new TechnicalSpecsEditor(allUnits);
+        if (existing != null && existing.getTechnicalSpecs() != null) {
+            technicalSpecsEditor.setTechnicalSpecs(existing.getTechnicalSpecs());
+        }
 
-        dialog.showAndWait().ifPresent(buttonType -> {
-            if (buttonType == ButtonType.OK) {
-                String selectedClass = classCombo.getValue();
-                String name = nameField.getText().trim();
-                String standard = standardField.getText().trim();
-                String specification = specificationField.getText().trim();
-                String materialType = materialTypeField.getText().trim();
-                String vendorCode = vendorCodeField.getText().trim();
-                Double density = parseDouble(densityField.getText().trim());
+        setupDialogWithTabs(dialog, tabPane, mainTab, grid, technicalSpecsEditor,
+                () -> collectAndSaveMaterial(existing, formFields, classCombo, classMap, technicalSpecsEditor)
+        );
 
-                UnitOfMeasureDto selectedUnit = unitCombo.getValue();
-                String description = descriptionField.getText().trim();
-
-                if (selectedClass == null || selectedClass.isEmpty()) {
-                    showAlert("Ошибка", "Выберите класс");
-                    return;
-                }
-                if (name.isEmpty()) {
-                    showAlert("Ошибка", "Введите наименование");
-                    return;
-                }
-                if (selectedUnit == null) {
-                    showAlert("Ошибка", "Выберите единицу измерения");
-                    return;
-                }
-
-                MaterialClassDto selectedClassDto = classMap.get(selectedClass);
-                if (selectedClassDto == null) {
-                    showAlert("Ошибка", "Класс не найден");
-                    return;
-                }
-
-                CreateMaterialRequest request = new CreateMaterialRequest(
-                        selectedClassDto.getId(), name, standard, specification, materialType,
-                        selectedUnit.getId(), density, vendorCode, null, description);
-
-                new Thread(() -> {
-                    try {
-                        if (existing == null) {
-                            MaterialClient.createMaterial(request);
-                        } else {
-                            MaterialClient.updateMaterial(existing.getId(), request);
-                        }
-                        Platform.runLater(() -> {
-                            showAlert("Успешно", "Материал " + (existing == null ? "создан" : "обновлён"), Alert.AlertType.INFORMATION);
-                            loadData();
-                        });
-                    } catch (Exception e) {
-                        Platform.runLater(() -> showAlert("Ошибка", "Не удалось сохранить: " + e.getMessage()));
-                    }
-                }).start();
-            }
-        });
+        dialog.getDialogPane().setContent(tabPane);
+        dialog.showAndWait();
     }
 
-    private void addChildCategoriesToCombo(ComboBox<String> combo, MaterialCategoryDto parent, int depth, Map<String, Long> idMap) {
-        String indent = "    ".repeat(depth + 1);
-        List<MaterialCategoryDto> children = allCategories.stream()
-                .filter(c -> c.getParentId() != null && c.getParentId().equals(parent.getId()))
+    // ========== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
+
+    private MaterialFormFields createMaterialFormFields() {
+        TextField nameField = new TextField();
+        nameField.setPromptText("Наименование материала");
+
+        TextField standardField = new TextField();
+        standardField.setPromptText("ГОСТ/ТУ (необязательно)");
+
+        TextField specificationField = new TextField();
+        specificationField.setPromptText("Тех. параметры (необязательно)");
+
+        TextField materialTypeField = new TextField();
+        materialTypeField.setPromptText("Тип материала (крепёж, металл...)");
+
+        TextField vendorCodeField = new TextField();
+        vendorCodeField.setPromptText("Артикул (необязательно)");
+
+        TextField densityField = new TextField();
+        densityField.setPromptText("Плотность (кг/м³) (необязательно)");
+
+        GroupedComboBox<UnitOfMeasureDto> unitCombo = CatalogHelper.createUnitCombo(allUnits);
+
+        TextArea descriptionField = new TextArea();
+        descriptionField.setPromptText("Описание");
+        descriptionField.setPrefRowCount(3);
+
+        TechnicalSpecsEditor technicalSpecsEditor = createTechnicalSpecsEditor();
+        return new MaterialFormFields(
+                nameField,
+                standardField,
+                specificationField,
+                materialTypeField,
+                vendorCodeField,
+                densityField,
+                unitCombo,
+                descriptionField,
+                technicalSpecsEditor
+        );
+    }
+
+    @Override
+    protected void updateClassComboForCategory(Long categoryId,
+                                             ComboBox<String> classCombo,
+                                             Label warningLabel) {
+        List<MaterialClassDto> filteredClasses = allClasses.stream()
+                .filter(cls -> cls.getCategoryId() != null && cls.getCategoryId().equals(categoryId))
                 .toList();
-        for (MaterialCategoryDto child : children) {
-            String display = indent + child.getName();
-            combo.getItems().add(display);
-            idMap.put(display, child.getId());
-            addChildCategoriesToCombo(combo, child, depth + 1, idMap);
+
+        classMap.clear();
+        classCombo.getItems().clear();
+
+        for (MaterialClassDto cls : filteredClasses) {
+            classCombo.getItems().add(cls.getName());
+            classMap.put(cls.getName(), cls);
         }
+
+        if (filteredClasses.isEmpty()) {
+            classCombo.setDisable(true);
+            classCombo.setPromptText("Нет классов");
+            warningLabel.setGraphic(IconFactory.createWarningIcon());
+            warningLabel.setText(" Сначала создайте классы в этой категории");
+            warningLabel.setVisible(true);
+        } else {
+            classCombo.setDisable(false);
+            warningLabel.setVisible(false);
+        }
+    }
+
+    private void loadExistingMaterialData(MaterialDto existing,
+                                          MaterialFormFields formFields,
+                                          ComboBox<String> categoryCombo,
+                                          ComboBox<String> classCombo,
+                                          Map<String, MaterialClassDto> classMap) {
+        // Заполнение текстовых полей
+        if (existing.getName() != null) formFields.name().setText(existing.getName());
+        if (existing.getStandard() != null) formFields.standard().setText(existing.getStandard());
+        if (existing.getSpecification() != null) formFields.specification().setText(existing.getSpecification());
+        if (existing.getMaterialType() != null) formFields.materialType().setText(existing.getMaterialType());
+        if (existing.getVendorCode() != null) formFields.vendorCode().setText(existing.getVendorCode());
+        if (existing.getDensity() != null) formFields.density().setText(String.valueOf(existing.getDensity()));
+        if (existing.getDescription() != null) formFields.description().setText(existing.getDescription());
+
+        // Технические характеристики
+        if (existing.getTechnicalSpecs() != null) {
+            formFields.technicalSpecs().setTechnicalSpecs(existing.getTechnicalSpecs());
+        }
+
+        // Восстановление выбранных значений
+        restoreCategoryAndClass(existing, categoryCombo, classCombo, classMap);
+        restoreUnit(existing, formFields.unit());
+    }
+
+    private void restoreCategoryAndClass(MaterialDto existing,
+                                         ComboBox<String> categoryCombo,
+                                         ComboBox<String> classCombo,
+                                         Map<String, MaterialClassDto> classMap) {
+        if (existing.getClassId() == null) return;
+
+        for (MaterialClassDto cls : allClasses) {
+            if (!cls.getId().equals(existing.getClassId())) continue;
+
+            classCombo.setValue(cls.getName());
+            classMap.put(cls.getName(), cls);
+
+            for (MaterialCategoryDto cat : allCategories) {
+                if (cat.getId().equals(cls.getCategoryId())) {
+                    categoryCombo.setValue(cat.getName());
+                    break;
+                }
+            }
+            break;
+        }
+    }
+
+    private void restoreUnit(MaterialDto existing, GroupedComboBox<UnitOfMeasureDto> unitCombo) {
+        if (existing.getUnitId() == null) return;
+
+        for (UnitOfMeasureDto unit : allUnits) {
+            if (unit.getId().equals(existing.getUnitId())) {
+                unitCombo.setValue(unit);
+                break;
+            }
+        }
+    }
+
+    private void collectAndSaveMaterial(MaterialDto existing,
+                                        MaterialFormFields formFields,
+                                        ComboBox<String> classCombo,
+                                        Map<String, MaterialClassDto> classMap,
+                                        TechnicalSpecsEditor technicalSpecsEditor) {
+        String selectedClass = classCombo.getValue();
+        String name = formFields.name().getText().trim();
+        String standard = formFields.standard().getText().trim();
+        String specification = formFields.specification().getText().trim();
+        String materialType = formFields.materialType().getText().trim();
+        String vendorCode = formFields.vendorCode().getText().trim();
+        Double density = parseDouble(formFields.density().getText().trim());
+        UnitOfMeasureDto selectedUnit = formFields.unit().getValue();
+        String description = formFields.description().getText().trim();
+        Map<String, Object> technicalSpecs = technicalSpecsEditor.getTechnicalSpecs();
+
+        // Если характеристик нет, отправляем пустой объект (а не null)
+        if (technicalSpecs == null) {
+            technicalSpecs = new HashMap<>();
+        }
+
+        // ========== ВАЛИДАЦИЯ ==========
+        if (selectedClass == null || selectedClass.isEmpty()) {
+            showAlert("Ошибка", "Выберите класс");
+            return;
+        }
+        if (name.isEmpty()) {
+            showAlert("Ошибка", "Введите наименование");
+            return;
+        }
+        if (selectedUnit == null) {
+            showAlert("Ошибка", "Выберите единицу измерения");
+            return;
+        }
+
+        MaterialClassDto selectedClassDto = classMap.get(selectedClass);
+        if (selectedClassDto == null) {
+            showAlert("Ошибка", "Класс не найден");
+            return;
+        }
+
+        // ========== СОЗДАНИЕ ЗАПРОСА ==========
+        CreateMaterialRequest request = new CreateMaterialRequest(
+                selectedClassDto.getId(),
+                name, standard,
+                specification,
+                materialType,
+                selectedUnit.getId(),
+                density,
+                vendorCode,
+                null,
+                description,
+                technicalSpecs
+        );
+
+        // ========== ОТПРАВКА НА СЕРВЕР ==========
+        new Thread(() -> {
+            try {
+                if (existing == null) {
+                    MaterialClient.createMaterial(request);
+                } else {
+                    MaterialClient.updateMaterial(existing.getId(), request);
+                }
+                Platform.runLater(() -> {
+                    showAlert("Успешно", "Материал " + (existing == null ? "создан" : "обновлён"),
+                            Alert.AlertType.INFORMATION);
+                    loadData();
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert("Ошибка", "Не удалось сохранить: " + e.getMessage()));
+            }
+        }).start();
     }
 
     // ==========================================
