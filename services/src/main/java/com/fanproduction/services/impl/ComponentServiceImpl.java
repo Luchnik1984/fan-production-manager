@@ -222,16 +222,17 @@ public class ComponentServiceImpl extends BaseValidationService implements Compo
         unitOfMeasureRepository.findById(component.getUnitId())
                 .orElseThrow(() -> new IllegalArgumentException("Единица измерения не найдена: " + component.getUnitId()));
 
+        // Проверяем уникальность обозначения
+        checkUnique(
+                () -> componentRepository.findByDesignation(component.getDesignation()),
+                "Компонент с обозначением '" + component.getDesignation() + "' уже существует"
+        );
 
         // Проверяем уникальность артикула
         if (component.getVendorCode() != null && !component.getVendorCode().isEmpty()) {
             checkUnique(() -> componentRepository.findByVendorCode(component.getVendorCode()),
                     "Компонент с артикулом '" + component.getVendorCode() + "' уже существует");
         }
-
-        // Проверка уникальности имени в классе
-        checkUnique(() -> componentRepository.findByClassIdAndName(component.getClassId(), component.getName()),
-                "Компонент с именем '" + component.getName() + "' уже существует в этом классе");
 
         return componentRepository.save(component);
     }
@@ -242,35 +243,40 @@ public class ComponentServiceImpl extends BaseValidationService implements Compo
         ComponentEntity existing = componentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Компонент не найден: " + id));
 
-        // ==========================================
-        // ПРОВЕРКА УНИКАЛЬНОСТИ АРТИКУЛА ПРИ ИЗМЕНЕНИИ
-        // ==========================================
-        if (updated.getVendorCode() != null && !updated.getVendorCode().equals(existing.getVendorCode())) {
+        System.out.println("=== DEBUG VENDOR CODE COMPARISON ===");
+        System.out.println("updated vendorCode: '" + updated.getVendorCode() + "'");
+        System.out.println("existing vendorCode: '" + existing.getVendorCode() + "'");
+        System.out.println("Are they equal? " + updated.getVendorCode().equals(existing.getVendorCode()));
+
+        // ========== ПРОВЕРКА УНИКАЛЬНОСТИ designation (если изменилось) ==========
+        String newDesignation = updated.getDesignation();
+        String oldDesignation = existing.getDesignation();
+
+        if (newDesignation != null && !newDesignation.equals(oldDesignation)) {
             checkUniqueOnUpdate(
-                    () -> componentRepository.findByVendorCode(updated.getVendorCode()),
+                    () -> componentRepository.findByDesignation(newDesignation),
                     id,
-                    "Компонент с артикулом '" + updated.getVendorCode() + "' уже существует"
+                    "Компонент с обозначением '" + newDesignation + "' уже существует"
             );
-            existing.setVendorCode(updated.getVendorCode());
+            existing.setDesignation(newDesignation);
         }
 
-        // ==========================================
-        // ПРОВЕРКА УНИКАЛЬНОСТИ ИМЕНИ В КЛАССЕ ПРИ ИЗМЕНЕНИИ
-        // ==========================================
-        if (updated.getName() != null && !updated.getName().equals(existing.getName())) {
+        // ========== ОБНОВЛЕНИЕ АРТИКУЛА ==========
+        String newVendorCode = updated.getVendorCode() != null ? updated.getVendorCode() : null;
+        String existingVendorCode = existing.getVendorCode() != null ? existing.getVendorCode() : null;
+
+        if (newVendorCode != null && !newVendorCode.equals(existingVendorCode)) {
             checkUniqueOnUpdate(
-                    () -> componentRepository.findByClassIdAndName(existing.getClassId(), updated.getName()),
+                    () -> componentRepository.findByVendorCode(newVendorCode),
                     id,
-                    "Компонент с именем '" + updated.getName() + "' уже существует в этом классе"
+                    "Компонент с артикулом '" + newVendorCode + "' уже существует"
             );
-            existing.setName(updated.getName());
+            existing.setVendorCode(newVendorCode);
         }
 
-        // ==========================================
         // ОБНОВЛЕНИЕ ПОЛЕЙ
-        // ==========================================
-        if (updated.getDesignation() != null && !updated.getDesignation().equals(existing.getDesignation())) {
-            existing.setDesignation(updated.getDesignation());
+        if (updated.getName() != null && !updated.getName().equals(existing.getName())) {
+            existing.setName(updated.getName());
         }
 
         if (updated.getUnitId() != null) {

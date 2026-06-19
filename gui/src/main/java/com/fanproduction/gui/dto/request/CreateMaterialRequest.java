@@ -12,6 +12,7 @@ import java.util.Map;
 public class CreateMaterialRequest {
     private Long classId;
     private String name;
+    private String designation;
     private String standard;
     private String specification;
     private String materialType;

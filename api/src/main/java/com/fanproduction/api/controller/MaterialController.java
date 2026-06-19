@@ -178,22 +178,10 @@ public class MaterialController extends BaseController {
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<MaterialDto> createMaterial(@RequestBody MaterialDto dto) {
         try {
-            MaterialEntity entity = new MaterialEntity();
-            entity.setClassId(dto.getClassId());
-            entity.setName(dto.getName());
-            entity.setStandard(dto.getStandard());
-            entity.setSpecification(dto.getSpecification());
-            entity.setMaterialType(dto.getMaterialType());
-            entity.setUnitId(dto.getUnitId());
-            entity.setDensity(dto.getDensity());
-            entity.setVendorCode(dto.getVendorCode());
-            entity.setMinOrder(dto.getMinOrder());
-            entity.setDescription(dto.getDescription());
-            entity.setTechnicalSpecs(dto.getTechnicalSpecs());
-            entity.setCreatedBy(getCurrentUser());
-
+            validateMaterialDto(dto);
+            MaterialEntity entity = toEntity(dto);
             MaterialEntity saved = materialService.createMaterial(entity);
-            return ApiResponse.success(toMaterialDto(saved));
+            return ApiResponse.success(toMaterialDto(saved));  // ← ИСПРАВЛЕНО
         } catch (IllegalArgumentException e) {
             return ApiResponse.error(e.getMessage());
         }
@@ -203,21 +191,14 @@ public class MaterialController extends BaseController {
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<MaterialDto> updateMaterial(@PathVariable Long id, @RequestBody MaterialDto dto) {
 
-            MaterialEntity entity = new MaterialEntity();
-            entity.setClassId(dto.getClassId());
-            entity.setName(dto.getName());
-            entity.setStandard(dto.getStandard());
-            entity.setSpecification(dto.getSpecification());
-            entity.setMaterialType(dto.getMaterialType());
-            entity.setUnitId(dto.getUnitId());
-            entity.setDensity(dto.getDensity());
-            entity.setVendorCode(dto.getVendorCode());
-            entity.setMinOrder(dto.getMinOrder());
-            entity.setDescription(dto.getDescription());
-            entity.setTechnicalSpecs(dto.getTechnicalSpecs());
-
+        try {
+            validateMaterialDto(dto);
+            MaterialEntity entity = toEntity(dto);
             MaterialEntity updated = materialService.updateMaterial(id, entity);
             return ApiResponse.success(toMaterialDto(updated));
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")
@@ -293,6 +274,43 @@ public class MaterialController extends BaseController {
             @PathVariable Long materialId) {
             materialService.removeMaterialFromProduct(productCardId, materialId);
             return ApiResponse.success("Материал удалён", null);
+    }
+
+    private void validateMaterialDto(MaterialDto dto) {
+        String name = dto.getName();
+        String designation = dto.getDesignation();
+        Long classId = dto.getClassId();
+        Long unitId = dto.getUnitId();
+
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Наименование обязательно для заполнения");
+        }
+        if (designation == null || designation.trim().isEmpty()) {
+            throw new IllegalArgumentException("Обозначение обязательно для заполнения");
+        }
+        if (classId == null) {
+            throw new IllegalArgumentException("Класс материала обязателен");
+        }
+        if (unitId == null) {
+            throw new IllegalArgumentException("Единица измерения обязательна");
+        }
+    }
+
+    private MaterialEntity toEntity(MaterialDto dto) {
+        MaterialEntity entity = new MaterialEntity();
+        entity.setClassId(dto.getClassId());
+        entity.setName(dto.getName().trim());
+        entity.setDesignation(dto.getDesignation().trim());
+        entity.setStandard(dto.getStandard());
+        entity.setSpecification(dto.getSpecification());
+        entity.setMaterialType(dto.getMaterialType());
+        entity.setUnitId(dto.getUnitId());
+        entity.setDensity(dto.getDensity());
+        entity.setVendorCode(dto.getVendorCode());
+        entity.setMinOrder(dto.getMinOrder());
+        entity.setDescription(dto.getDescription());
+        entity.setTechnicalSpecs(dto.getTechnicalSpecs());
+        return entity;
     }
 
     // ========== Mappers ==========

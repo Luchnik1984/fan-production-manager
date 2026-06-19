@@ -36,12 +36,15 @@ public class ProductCardController extends BaseController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<ProductCardResponse> createCard(@Valid @RequestBody ProductCardRequest request) {
+        try {
+            validateProductCardRequest(request);
+
             CardTemplateType cardType = CardTemplateType.valueOf(request.getCardType());
 
             // Добавляем name в fields
             request.getFields().put("name", request.getName());
 
-            // Если это временная карточка, используем упрощённое создание
+            // Если это временная карточка
             if (request.getIsTemporary() != null && request.getIsTemporary()) {
                 request.getFields().put("isTemporary", true);
             }
@@ -52,6 +55,10 @@ public class ProductCardController extends BaseController {
                     getCurrentUser()
             );
             return ApiResponse.success(productCardMapper.toResponse(card));
+
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
     }
 
     /**
@@ -103,11 +110,18 @@ public class ProductCardController extends BaseController {
     public ApiResponse<ProductCardResponse> updateCard(
             @PathVariable Long id,
             @Valid @RequestBody ProductCardRequest request) {
+        try {
+            validateProductCardRequest(request);
+
             // Добавляем name в fields
             request.getFields().put("name", request.getName());
 
             BaseProductCard card = productCardService.updateCard(id, request.getFields());
             return ApiResponse.success(productCardMapper.toResponse(card));
+
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
     }
 
     /**
@@ -154,5 +168,17 @@ public class ProductCardController extends BaseController {
                 productCardService.removeTemporaryFlag(id);
             }
             return ApiResponse.success(null);
+    }
+
+    private void validateProductCardRequest(ProductCardRequest request) {
+        String name = request.getName();
+        String cardType = request.getCardType();
+
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Наименование обязательно для заполнения");
+        }
+        if (cardType == null || cardType.trim().isEmpty()) {
+            throw new IllegalArgumentException("Тип карточки обязателен");
+        }
     }
 }

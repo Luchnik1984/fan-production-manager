@@ -18,6 +18,7 @@ public class MaterialDto implements Displayable {
     private Long classId;
     private String className;
     private String name;
+    private String designation;
     private String standard;
     private String specification;
     private String materialType;
@@ -35,8 +36,8 @@ public class MaterialDto implements Displayable {
     @Override
     public String getDisplayName() {
         String display = name;
-        if (vendorCode != null && !vendorCode.isEmpty()) {
-            display += " (" + vendorCode + ")";
+        if (designation != null && !designation.isEmpty()) {
+            display += " (" + designation + ")";
         }
         return display;
     }

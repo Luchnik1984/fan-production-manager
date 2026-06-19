@@ -31,7 +31,7 @@ public class ComponentEntity {
     @Column(name = "name", nullable = false, length = 200)
     private String name;
 
-    @Column(name = "designation", length = 100)
+    @Column(name = "designation", nullable = false, length = 100)
     private String designation;
 
     @Column(name = "vendor_code", length = 100)

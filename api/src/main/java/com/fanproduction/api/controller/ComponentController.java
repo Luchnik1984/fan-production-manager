@@ -162,38 +162,28 @@ public class ComponentController extends BaseController {
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<ComponentDto> createComponent(@RequestBody ComponentDto dto) {
 
-            ComponentEntity entity = new ComponentEntity();
-            entity.setClassId(dto.getClassId());
-            entity.setName(dto.getName());
-            entity.setDesignation(dto.getDesignation());
-            entity.setVendorCode(dto.getVendorCode());
-            entity.setUnitId(dto.getUnitId());
-            entity.setDescription(dto.getDescription());
-            entity.setTechnicalSpecs(dto.getTechnicalSpecs());
-            entity.setWeightKg(dto.getWeightKg());
-            entity.setMaterial(dto.getMaterial());
-            entity.setCreatedBy(getCurrentUser());
-
+        try {
+            validateComponentDto(dto);
+            ComponentEntity entity = toEntity(dto);
             ComponentEntity saved = componentService.createComponent(entity);
             return ApiResponse.success(toDto(saved));
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ApiResponse<ComponentDto> updateComponent(@PathVariable Long id, @RequestBody ComponentDto dto) {
-            ComponentEntity entity = new ComponentEntity();
-            entity.setClassId(dto.getClassId());
-            entity.setName(dto.getName());
-            entity.setDesignation(dto.getDesignation());
-            entity.setVendorCode(dto.getVendorCode());
-            entity.setUnitId(dto.getUnitId());
-            entity.setDescription(dto.getDescription());
-            entity.setTechnicalSpecs(dto.getTechnicalSpecs());
-            entity.setWeightKg(dto.getWeightKg());
-            entity.setMaterial(dto.getMaterial());
 
+        try {
+            validateComponentDto(dto);
+            ComponentEntity entity = toEntity(dto);
             ComponentEntity updated = componentService.updateComponent(id, entity);
             return ApiResponse.success(toDto(updated));
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")
@@ -278,6 +268,40 @@ public class ComponentController extends BaseController {
             String note = request.get("note");
             componentService.updateComponentNote(productCardId, componentId, note);
             return ApiResponse.success("Примечание обновлено", null);
+    }
+
+    private void validateComponentDto(ComponentDto dto) {
+        String name = dto.getName();
+        String designation = dto.getDesignation();
+        Long classId = dto.getClassId();
+        Long unitId = dto.getUnitId();
+
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Наименование обязательно для заполнения");
+        }
+        if (designation == null || designation.trim().isEmpty()) {
+            throw new IllegalArgumentException("Обозначение обязательно для заполнения");
+        }
+        if (classId == null) {
+            throw new IllegalArgumentException("Класс компонента обязателен");
+        }
+        if (unitId == null) {
+            throw new IllegalArgumentException("Единица измерения обязательна");
+        }
+    }
+
+    private ComponentEntity toEntity(ComponentDto dto) {
+        ComponentEntity entity = new ComponentEntity();
+        entity.setClassId(dto.getClassId());
+        entity.setName(dto.getName().trim());
+        entity.setDesignation(dto.getDesignation().trim());
+        entity.setVendorCode(dto.getVendorCode());
+        entity.setUnitId(dto.getUnitId());
+        entity.setDescription(dto.getDescription());
+        entity.setTechnicalSpecs(dto.getTechnicalSpecs());
+        entity.setWeightKg(dto.getWeightKg());
+        entity.setMaterial(dto.getMaterial());
+        return entity;
     }
 
     // ========== Mappers ==========
@@ -383,5 +407,6 @@ public class ComponentController extends BaseController {
         }
 
         return builder.build();
+
     }
 }

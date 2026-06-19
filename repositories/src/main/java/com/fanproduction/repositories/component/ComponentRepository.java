@@ -55,5 +55,10 @@ public interface ComponentRepository extends JpaRepository<ComponentEntity, Long
      */
     Optional<ComponentEntity> findByVendorCode(String vendorCode);
 
+    /**
+     * Поиск по обозначению
+     */
+    Optional<ComponentEntity> findByDesignation(String designation);
+
 
 }

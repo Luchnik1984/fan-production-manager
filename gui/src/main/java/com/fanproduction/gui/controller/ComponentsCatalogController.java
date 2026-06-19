@@ -192,7 +192,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
 
     @Override
     protected String[] getExportHeaders() {
-        return new String[]{"Наименование", "Класс", "Артикул", "Ед. изм.","Масса (кг)", "Материал", "Описание"};
+        return new String[]{"Наименование", "Класс", "Артикул", "Ед. измерения","Масса (кг)", "Материал", "Описание"};
     }
 
     @Override
@@ -318,14 +318,14 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         warningLabel.setStyle("-fx-text-fill: red; -fx-font-size: 11px;");
         warningLabel.setVisible(false);
 
-        // Настраиваем зависимость категория → класс
-        setupCategoryClassDependency(categoryCombo, classCombo, warningLabel);
-
         // Заполняем поля при редактировании
-        Map<String, ComponentClassDto> classMap = new HashMap<>();
+        Map<String, ComponentClassDto> classMap = this.classMap;
         if (existing != null) {
             loadExistingComponentData(existing, formFields, categoryCombo, classCombo, classMap);
         }
+
+        // Настраиваем зависимость категория → класс
+        setupCategoryClassDependency(categoryCombo, classCombo, warningLabel);
 
         // Сборка формы (основные поля)
         int row = 0;
@@ -404,6 +404,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     protected void updateClassComboForCategory(Long categoryId,
                                              ComboBox<String> classCombo,
                                              Label warningLabel) {
+        System.out.println("=== updateClassComboForCategory called, categoryId: " + categoryId);
         List<ComponentClassDto> filteredClasses = allClasses.stream()
                 .filter(cls -> cls.getCategoryId() != null && cls.getCategoryId().equals(categoryId))
                 .toList();
@@ -414,6 +415,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         for (ComponentClassDto cls : filteredClasses) {
             classCombo.getItems().add(cls.getName());
             classMap.put(cls.getName(), cls);
+            System.out.println("  Added class: " + cls.getName() + " -> " + cls.getId());
         }
 
         if (filteredClasses.isEmpty()) {
@@ -463,13 +465,20 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                                          ComboBox<String> categoryCombo,
                                          ComboBox<String> classCombo,
                                          Map<String, ComponentClassDto> classMap) {
-        if (existing.getClassId() == null) return;
+        System.out.println("=== restoreCategoryAndClass called ===");
+        System.out.println("classMap object: " + System.identityHashCode(classMap));
+        System.out.println("existing.getClassId(): " + existing.getClassId());
+        if (existing.getClassId() == null) {
+            System.out.println("❌ existing.getClassId() is null, exiting");
+            return;
+        }
 
         for (ComponentClassDto cls : allClasses) {
             if (!cls.getId().equals(existing.getClassId())) continue;
 
             classCombo.setValue(cls.getName());
             classMap.put(cls.getName(), cls);
+            System.out.println("✅ Added class: " + cls.getName() + " -> " + cls.getId());
 
             for (ComponentCategoryDto cat : allCategories) {
                 if (cat.getId().equals(cls.getCategoryId())) {
@@ -479,6 +488,8 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
             }
             break;
         }
+        System.out.println("classMap size after restore: " + classMap.size());
+        System.out.println("classMap object after: " + System.identityHashCode(classMap));
     }
 
     private void restoreUnit(ComponentDto existing, GroupedComboBox<UnitOfMeasureDto> unitCombo) {
@@ -497,6 +508,10 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                                          ComboBox<String> classCombo,
                                          Map<String, ComponentClassDto> classMap,
                                          TechnicalSpecsEditor technicalSpecsEditor) {
+
+        System.out.println("=== collectAndSaveComponent START ===");
+        System.out.println("existing: " + (existing != null ? "not null, id=" + existing.getId() : "null"));
+
         // ========== СБОР ДАННЫХ ИЗ ФОРМЫ ==========
         String selectedClass = classCombo.getValue();
         String name = formFields.name().getText().trim();
@@ -513,6 +528,10 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         if (technicalSpecs == null) {
             technicalSpecs = new HashMap<>();
         }
+
+        System.out.println("selectedClass: '" + selectedClass + "'");
+        System.out.println("classMap size: " + classMap.size());
+        System.out.println("classMap keys: " + classMap.keySet());
 
         // ========== ВАЛИДАЦИЯ ==========
         if (selectedClass == null || selectedClass.isEmpty()) {
@@ -534,14 +553,30 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
 
         ComponentClassDto selectedClassDto = classMap.get(selectedClass);
         if (selectedClassDto == null) {
-            showAlert("Ошибка", "Класс не найден");
+            System.err.println("❌ Class not found for: " + selectedClass);
+            System.err.println("Available classes: " + classMap.keySet());
+            showAlert("Ошибка", "Класс не найден" + selectedClass);
             return;
+        }
+
+        // ========== ФОРМИРУЕМ ПОЛНОЕ ИМЯ ==========
+        // При создании нового компонента: name + " " + designation
+        // При редактировании: оставляем существующее имя
+        String fullName;
+        if (existing == null) {
+            // Новый компонент — формируем полное имя
+            fullName = name + " " + designation;
+            System.out.println(" Creating new component with fullName: '" + fullName + "'");
+        } else {
+            // Редактирование — оставляем существующее имя
+            fullName = existing.getName();
+            System.out.println(" Editing existing component, keeping name: '" + fullName + "'");
         }
 
         // ========== СОЗДАНИЕ ЗАПРОСА ==========
         CreateComponentRequest request = new CreateComponentRequest(
                 selectedClassDto.getId(),
-                name,
+                fullName,
                 designation,
                 vendorCode,
                 selectedUnit.getId(),
@@ -556,8 +591,10 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
             try {
                 if (existing == null) {
                     ComponentClient.createComponent(request);
+                    System.out.println("✅ Component created with name: " + fullName);
                 } else {
                     ComponentClient.updateComponent(existing.getId(), request);
+                    System.out.println("✅ Component updated, name: " + fullName);
                 }
 
                 Platform.runLater(() -> {
