@@ -43,6 +43,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
     // ========== RECORD ДЛЯ ПОЛЕЙ ФОРМЫ ==========
     private record MaterialFormFields(
             TextField name,
+            TextField designation,
             TextField standard,
             TextField specification,
             TextField materialType,
@@ -63,7 +64,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
 
     @Override
     protected void setupTable() {
-        nameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getName()));
+        nameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getDisplayName()));
         nameColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
 
         classNameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getClassName()));
@@ -177,7 +178,8 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         List<ExportRowDto> data = new ArrayList<>();
         for (MaterialDto dto : itemList) {
             List<String> values = Arrays.asList(
-                    dto.getName(),
+                    dto.getDisplayName(),
+                    dto.getDesignation(),
                     dto.getClassName() != null ? dto.getClassName() : "",
                     dto.getUnitCode() != null ? dto.getUnitCode() : "",
                     dto.getStandard() != null ? dto.getStandard() : "",
@@ -193,8 +195,42 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
 
     @Override
     protected String[] getExportHeaders() {
-        return new String[]{"Наименование", "Класс", "Ед. изм.", "ГОСТ/ТУ", "Тех. параметры", "Тип", "Артикул", "Описание"};
+        return new String[]{"Наименование", "Обозначение", "Класс", "Ед. измер.", "ГОСТ/ТУ", "Тех. параметры", "Тип", "Артикул", "Описание"};
     }
+
+    @Override
+    protected String[][] getExportDataForItem(Object existing, Object formFields) {
+        MaterialDto dto = (MaterialDto) existing;
+        MaterialFormFields fields = (MaterialFormFields) formFields;
+
+        String name = dto != null ? dto.getName() : fields.name().getText().trim();
+        String designation = dto != null ? dto.getDesignation() : fields.designation().getText().trim();
+        String className = dto != null ? dto.getClassName() : "";
+        String unitCode = dto != null ? dto.getUnitCode() :
+                (fields.unit().getValue() != null ? fields.unit().getValue().getCode() : "");
+        String standard = dto != null ? (dto.getStandard() != null ? dto.getStandard() : "") : fields.standard().getText().trim();
+        String specification = dto != null ? (dto.getSpecification() != null ? dto.getSpecification() : "") : fields.specification().getText().trim();
+        String materialType = dto != null ? (dto.getMaterialType() != null ? dto.getMaterialType() : "") : fields.materialType().getText().trim();
+        String vendorCode = dto != null ? (dto.getVendorCode() != null ? dto.getVendorCode() : "") : fields.vendorCode().getText().trim();
+        String density = dto != null ? (dto.getDensity() != null ? String.valueOf(dto.getDensity()) : "") : fields.density().getText().trim();
+        String description = dto != null ? (dto.getDescription() != null ? dto.getDescription() : "") :
+                fields.description().getText().trim();
+
+        return new String[][]{
+                {"Наименование", name},
+                {"Обозначение", designation},
+                {"Класс", className},
+                {"Единица измерения", unitCode},
+                {"ГОСТ/ТУ", standard},
+                {"Тех. параметры", specification},
+                {"Тип материала", materialType},
+                {"Артикул", vendorCode},
+                {"Плотность (кг/м³)", density},
+                {"Описание", description}
+        };
+    }
+
+
 
     @Override
     protected String getItemTypeName() {
@@ -252,7 +288,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
 
     @Override
     protected String getItemName(MaterialDto item) {
-        return item.getName();
+        return item.getDisplayName();
     }
 
     @Override
@@ -330,6 +366,8 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         grid.add(warningLabel, 1, row++);
         grid.add(new Label("Наименование:*"), 0, row);
         grid.add(formFields.name(), 1, row++);
+        grid.add(new Label("Обозначение:"), 0, row);
+        grid.add(formFields.designation(), 1, row++);
         grid.add(new Label("ГОСТ/ТУ:"), 0, row);
         grid.add(formFields.standard(), 1, row++);
         grid.add(new Label("Тех. параметры:"), 0, row);
@@ -364,6 +402,9 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         TextField nameField = new TextField();
         nameField.setPromptText("Наименование материала");
 
+        TextField designationField = new TextField();
+        designationField.setPromptText("Обозначение (например: 08Пс)");
+
         TextField standardField = new TextField();
         standardField.setPromptText("ГОСТ/ТУ (необязательно)");
 
@@ -388,6 +429,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         TechnicalSpecsEditor technicalSpecsEditor = createTechnicalSpecsEditor();
         return new MaterialFormFields(
                 nameField,
+                designationField,
                 standardField,
                 specificationField,
                 materialTypeField,
@@ -434,6 +476,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
                                           Map<String, MaterialClassDto> classMap) {
         // Заполнение текстовых полей
         if (existing.getName() != null) formFields.name().setText(existing.getName());
+        if (existing.getDesignation() != null) formFields.designation().setText(existing.getDesignation());
         if (existing.getStandard() != null) formFields.standard().setText(existing.getStandard());
         if (existing.getSpecification() != null) formFields.specification().setText(existing.getSpecification());
         if (existing.getMaterialType() != null) formFields.materialType().setText(existing.getMaterialType());
@@ -491,6 +534,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
                                         TechnicalSpecsEditor technicalSpecsEditor) {
         String selectedClass = classCombo.getValue();
         String name = formFields.name().getText().trim();
+        String designation = formFields.designation().getText().trim();
         String standard = formFields.standard().getText().trim();
         String specification = formFields.specification().getText().trim();
         String materialType = formFields.materialType().getText().trim();
@@ -514,6 +558,12 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
             showAlert("Ошибка", "Введите наименование");
             return;
         }
+
+        if (designation.isEmpty()) {
+            showAlert("Ошибка", "Введите обозначение");
+            return;
+        }
+
         if (selectedUnit == null) {
             showAlert("Ошибка", "Выберите единицу измерения");
             return;
@@ -528,7 +578,9 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         // ========== СОЗДАНИЕ ЗАПРОСА ==========
         CreateMaterialRequest request = new CreateMaterialRequest(
                 selectedClassDto.getId(),
-                name, standard,
+                name,
+                designation,
+                standard,
                 specification,
                 materialType,
                 selectedUnit.getId(),

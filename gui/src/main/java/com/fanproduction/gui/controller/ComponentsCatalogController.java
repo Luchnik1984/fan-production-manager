@@ -175,9 +175,8 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     protected List<ExportRowDto> getExportData() {
         List<ExportRowDto> data = new ArrayList<>();
         for (ComponentDto dto : itemList) {
-            String displayName = dto.getDisplayName();
             List<String> values = Arrays.asList(
-                    displayName,
+                    dto.getDisplayName(),
                     dto.getClassName() != null ? dto.getClassName() : "",
                     dto.getVendorCode() != null ? dto.getVendorCode() : "",
                     dto.getUnitCode() != null ? dto.getUnitCode() : "",
@@ -192,7 +191,33 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
 
     @Override
     protected String[] getExportHeaders() {
-        return new String[]{"Наименование", "Класс", "Артикул", "Ед. измерения","Масса (кг)", "Материал", "Описание"};
+        return new String[]{"Наименование", "Класс", "Артикул", "Ед. измер. ","Масса (кг)", "Материал", "Описание"};
+    }
+
+    @Override
+    protected String[][] getExportDataForItem(Object existing, Object formFields) {
+        ComponentDto dto = (ComponentDto) existing;
+        ComponentFormFields fields = (ComponentFormFields) formFields;
+
+        String name = dto != null ? dto.getName() : fields.name().getText().trim();
+        String designation = dto != null ? dto.getDesignation() : fields.designation().getText().trim();
+        String vendorCode = dto != null ? dto.getVendorCode() : fields.vendorCode().getText().trim();
+        String className = dto != null ? dto.getClassName() : "";
+        String unitCode = dto != null ? dto.getUnitCode() : (fields.unit().getValue() != null ? fields.unit().getValue().getCode() : "");
+        String weight = dto != null ? (dto.getWeightKg() != null ? String.valueOf(dto.getWeightKg()) : "") : fields.weightKg().getText().trim();
+        String material = dto != null ? (dto.getMaterial() != null ? dto.getMaterial() : "") : fields.material().getText().trim();
+        String description = dto != null ? (dto.getDescription() != null ? dto.getDescription() : "") : fields.description().getText().trim();
+
+        return new String[][]{
+                {"Наименование", name},
+                {"Обозначение", designation},
+                {"Артикул", vendorCode},
+                {"Класс", className},
+                {"Единица измерения", unitCode},
+                {"Масса (кг)", weight},
+                {"Материал", material},
+                {"Описание", description}
+        };
     }
 
     @Override

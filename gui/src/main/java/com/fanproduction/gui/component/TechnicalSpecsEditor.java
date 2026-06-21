@@ -155,9 +155,23 @@ public class TechnicalSpecsEditor extends VBox {
                             .orElse(null);
                 }
             });
+            // Сохраняем значение СРАЗУ при выборе в ComboBox
             comboBox.valueProperty().addListener((obs, old, newVal) -> {
-                if (isEditing()) {
-                    commitEdit(newVal);
+                if (newVal != null) {
+                    TechnicalSpec spec = getTableRow().getItem();
+                    if (spec != null) {
+                        // Обновляем TechnicalSpec в списке items
+                        TechnicalSpec updated = new TechnicalSpec(
+                                spec.name(),
+                                spec.value(),
+                                newVal.getId(),
+                                newVal.getCode()
+                        );
+                        int index = items.indexOf(spec);
+                        if (index >= 0) {
+                            items.set(index, updated);
+                        }
+                    }
                 }
             });
         }
@@ -169,10 +183,19 @@ public class TechnicalSpecsEditor extends VBox {
                 setGraphic(null);
                 setText(null);
             } else {
-                comboBox.setValue(item);
-                setGraphic(comboBox);
-                setText(null);
+                updateComboBoxValue();
             }
+        }
+
+        private void updateComboBoxValue() {
+            TechnicalSpec spec = getTableRow().getItem();
+            if (spec != null && spec.unitId() != null && unitsById.containsKey(spec.unitId())) {
+                comboBox.setValue(unitsById.get(spec.unitId()));
+            } else {
+                comboBox.setValue(null);
+            }
+            setGraphic(comboBox);
+            setText(null);
         }
 
         @Override
@@ -181,9 +204,7 @@ public class TechnicalSpecsEditor extends VBox {
                 return;
             }
             super.startEdit();
-            comboBox.setValue(getItem());
-            setGraphic(comboBox);
-            setText(null);
+            updateComboBoxValue();
             comboBox.requestFocus();
         }
 

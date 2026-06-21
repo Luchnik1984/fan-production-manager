@@ -395,6 +395,11 @@ public abstract class BaseCatalogController<T, C, CL> {
         }
     }
 
+    /**
+     * Возвращает данные для экспорта одного элемента
+     */
+    protected abstract String[][] getExportDataForItem(Object existing, Object formFields);
+
     @FXML
     protected void handleCreateCategory() {
         dialogHelper.showCategoryDialog(null, result -> new Thread(() -> {
