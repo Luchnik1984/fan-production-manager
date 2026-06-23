@@ -415,16 +415,16 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         technicalTab.setContent(technicalSpecsEditor);
         tabPane.getTabs().add(technicalTab);
 
-        // Кнопки
+        // ========== КНОПКИ ==========
         ButtonType saveButtonType = new ButtonType("Сохранить", ButtonBar.ButtonData.OK_DONE);
         ButtonType cancelButtonType = new ButtonType("Отмена", ButtonBar.ButtonData.CANCEL_CLOSE);
-        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, cancelButtonType);
+        ButtonType exportButtonType = new ButtonType("📎 Экспорт в Excel", ButtonBar.ButtonData.OTHER);
 
-        // Настройка диалога
-        dialog.getDialogPane().setContent(tabPane);
+        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, cancelButtonType, exportButtonType);
 
-        // Обработка кнопки "Сохранить"
+        // Настраиваем кнопку "Сохранить"
         Button saveButton = (Button) dialog.getDialogPane().lookupButton(saveButtonType);
+        saveButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;");
         saveButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
             event.consume();
             collectAndSaveComponent(
@@ -439,9 +439,14 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
             );
         });
 
-        // Обработка закрытия диалога
-        dialog.setOnCloseRequest(e -> loadData());
+        // Настраиваем кнопку "Экспорт в Excel"
+        Button exportButton = (Button) dialog.getDialogPane().lookupButton(exportButtonType);
+        exportButton.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-weight: bold;");
+        exportButton.setOnAction(e -> exportFromDialog(formFields, technicalSpecsEditor, dialog, existing, "компонент"));
 
+        // Кнопка "Отмена" — работает по умолчанию, ничего делать не нужно
+
+        dialog.getDialogPane().setContent(tabPane);
         dialog.showAndWait();
     }
 

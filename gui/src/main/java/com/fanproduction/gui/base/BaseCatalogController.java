@@ -1,8 +1,10 @@
 package com.fanproduction.gui.base;
 
+import com.fanproduction.core.dto.TechnicalSpec;
 import com.fanproduction.gui.component.IconFactory;
 import com.fanproduction.gui.component.TechnicalSpecsEditor;
 import com.fanproduction.gui.dto.response.UnitOfMeasureDto;
+import com.fanproduction.gui.util.ExcelExportUtil;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -556,43 +558,61 @@ public abstract class BaseCatalogController<T, C, CL> {
     }
 
     /**
-     * Настраивает диалог с вкладками и техническими характеристиками
-     * @param dialog диалог
-     * @param tabPane панель вкладок
-     * @param mainTab вкладка "Основные поля"
-     * @param grid основная форма
+     * Настраивает диалог создания/редактирования с вкладками
+     *
+     * @param dialog               диалог
+     * @param tabPane              панель вкладок
+     * @param mainGrid             GridPane с основными полями
      * @param technicalSpecsEditor редактор технических характеристик
-     * @param saveAction действие при сохранении
+     * @param saveAction           действие при сохранении
+     * @param exportAction         действие при экспорте (может быть null)
      */
     protected void setupDialogWithTabs(Dialog<ButtonType> dialog,
                                        TabPane tabPane,
-                                       Tab mainTab,
-                                       GridPane grid,
+                                       GridPane mainGrid,
                                        TechnicalSpecsEditor technicalSpecsEditor,
-                                       Runnable saveAction) {
-        // Вкладка 1: Основные поля
-        ScrollPane scrollPane = new ScrollPane(grid);
+                                       Runnable saveAction,
+                                       Runnable exportAction) {
+        // Создаём вкладку "Основные поля"
+        Tab mainTab = new Tab("Основные поля");
+        mainTab.setClosable(false);
+        ScrollPane scrollPane = new ScrollPane(mainGrid);
         scrollPane.setFitToWidth(true);
         scrollPane.setPrefHeight(450);
         mainTab.setContent(scrollPane);
         tabPane.getTabs().add(mainTab);
 
-        // Вкладка 2: Технические характеристики
+        // Создаём вкладку "Технические характеристики"
         Tab technicalTab = new Tab("Технические характеристики");
         technicalTab.setClosable(false);
         technicalTab.setContent(technicalSpecsEditor);
         tabPane.getTabs().add(technicalTab);
 
-        // Кнопки
+        // ========== КНОПКИ ==========
         ButtonType saveButtonType = new ButtonType("Сохранить", ButtonBar.ButtonData.OK_DONE);
         ButtonType cancelButtonType = new ButtonType("Отмена", ButtonBar.ButtonData.CANCEL_CLOSE);
-        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, cancelButtonType);
+        ButtonType exportButtonType = new ButtonType("📎 Экспорт в Excel", ButtonBar.ButtonData.OTHER);
 
+        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, cancelButtonType, exportButtonType);
+
+        // Настраиваем кнопку "Сохранить"
         Button saveButton = (Button) dialog.getDialogPane().lookupButton(saveButtonType);
-        saveButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
-            event.consume();
-            saveAction.run();
-        });
+        saveButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;");
+        if (saveAction != null) {
+            saveButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+                event.consume();
+                saveAction.run();
+            });
+        }
+
+        // Настраиваем кнопку "Экспорт в Excel"
+        Button exportButton = (Button) dialog.getDialogPane().lookupButton(exportButtonType);
+        exportButton.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-weight: bold;");
+        if (exportAction != null) {
+            exportButton.setOnAction(e -> exportAction.run());
+        } else {
+            exportButton.setDisable(true);
+        }
 
         dialog.getDialogPane().setContent(tabPane);
     }
@@ -638,6 +658,98 @@ public abstract class BaseCatalogController<T, C, CL> {
         mainTab.setContent(scrollPane);
 
         return mainTab;
+    }
+
+    /**
+     * Экспортирует данные из диалога в Excel
+     *
+     * @param formFields           поля формы (Object, чтобы подходило для любого типа)
+     * @param technicalSpecsEditor редактор технических характеристик
+     * @param dialog               диалог
+     * @param existing             существующий элемент (или null для нового)
+     * @param itemTypeName         название типа ("компонент" или "материал")
+     */
+    protected void exportFromDialog(Object formFields,
+                                    TechnicalSpecsEditor technicalSpecsEditor,
+                                    Dialog<ButtonType> dialog,
+                                    Object existing,
+                                    String itemTypeName) {
+        // ========== 1. ПОЛУЧАЕМ ОСНОВНЫЕ ПОЛЯ через существующий метод ==========
+        String[][] mainData = getExportDataForItem(existing, formFields);
+
+        // ========== 2. ПОЛУЧАЕМ ТЕХНИЧЕСКИЕ ХАРАКТЕРИСТИКИ ==========
+        Map<String, Object> techSpecsMap = technicalSpecsEditor.getTechnicalSpecs();
+        List<TechnicalSpec> techSpecs = new ArrayList<>();
+        if (techSpecsMap != null && !techSpecsMap.isEmpty()) {
+            for (Map.Entry<String, Object> entry : techSpecsMap.entrySet()) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
+                String valueStr = "";
+                Long unitId = null;
+                String unitCode = null;
+
+                if (value instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> valueMap = (Map<String, Object>) value;
+                    valueStr = valueMap.get("value") != null ? valueMap.get("value").toString() : "";
+                    Object unitIdObj = valueMap.get("unitId");
+                    if (unitIdObj instanceof Number) {
+                        unitId = ((Number) unitIdObj).longValue();
+                    }
+                    unitCode = (String) valueMap.get("unitCode");
+                } else {
+                    valueStr = value != null ? value.toString() : "";
+                }
+                techSpecs.add(new TechnicalSpec(key, valueStr, unitId, unitCode));
+            }
+        }
+
+        // ========== 3. СОБИРАЕМ ДАННЫЕ ДЛЯ ПЕРВОГО ЛИСТА ==========
+        List<ExcelExportUtil.ExcelRowData> mainSheetData = new ArrayList<>();
+        for (String[] row : mainData) {
+            if (row.length >= 2) {
+                mainSheetData.add(new ExcelExportUtil.ExcelRowData(row[0], row[1]));
+            }
+        }
+
+        // ========== 4. ПОЛУЧАЕМ ИМЯ ДЛЯ ФАЙЛА ==========
+        String name = extractNameFromForm(formFields);
+        String fileNamePrefix = (name == null || name.isEmpty()) ? itemTypeName : name;
+
+        // ========== 5. ЭКСПОРТ ==========
+        ExcelExportUtil.exportToExcel(
+                dialog.getOwner(),
+                fileNamePrefix,
+                "Основные поля",
+                mainSheetData,
+                "Технические характеристики",
+                techSpecs
+        );
+    }
+
+    /**
+     * Извлекает имя из формы (для разных типов форм)
+     */
+    private String extractNameFromForm(Object formFields) {
+        if (formFields == null) {
+            return null;
+        }
+
+        // Пытаемся получить name через рефлексию
+        try {
+            java.lang.reflect.Field nameField = formFields.getClass().getDeclaredField("name");
+            nameField.setAccessible(true);
+            Object nameObj = nameField.get(formFields);
+            if (nameObj instanceof TextField) {
+                return ((TextField) nameObj).getText().trim();
+            }
+            if (nameObj instanceof String) {
+                return ((String) nameObj).trim();
+            }
+        } catch (Exception e) {
+            // Игнорируем — возвращаем null
+        }
+        return null;
     }
 
 }
