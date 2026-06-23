@@ -1,4 +1,4 @@
--- V7__create_axial_wheel_card_table.sql
+-- V19__create_axial_wheel_card_table.sql
 -- Создание таблицы для осевого колеса
 
 CREATE TABLE IF NOT EXISTS axial_wheel_card (

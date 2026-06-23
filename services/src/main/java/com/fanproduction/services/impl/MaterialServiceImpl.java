@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -225,10 +224,22 @@ public class MaterialServiceImpl extends BaseValidationService implements Materi
         unitOfMeasureRepository.findById(material.getUnitId())
                 .orElseThrow(() -> new IllegalArgumentException("Единица измерения не найдена"));
 
-        // Проверка уникальности
-        checkUnique(() -> materialRepository.findByClassIdAndNameAndStandardAndSpecification(
-                        material.getClassId(), material.getName(), material.getStandard(), material.getSpecification()),
+        // Проверка по: classId + designation + standard + specification
+        checkUnique(() -> materialRepository.findByClassIdAndDesignationAndStandardAndSpecification(
+                        material.getClassId(),
+                        material.getDesignation(),
+                        material.getStandard(),
+                        material.getSpecification()),
                 "Материал с такими параметрами уже существует");
+
+        // Проверка уникальности артикула (если есть)
+        if (material.getVendorCode() != null && !material.getVendorCode().isEmpty()) {
+            checkUnique(
+                    () -> materialRepository.findByVendorCode(material.getVendorCode()),
+                    "Материал с артикулом '" + material.getVendorCode() + "' уже существует"
+            );
+        }
+
 
         return materialRepository.save(material);
     }
@@ -240,59 +251,88 @@ public class MaterialServiceImpl extends BaseValidationService implements Materi
                 .orElseThrow(() -> new IllegalArgumentException("Материал не найден"));
 
         // Проверка уникальности при изменении ключевых полей
-        if (!existing.getClassId().equals(updated.getClassId()) ||
-                !existing.getName().equals(updated.getName()) ||
-                !Objects.equals(existing.getStandard(), updated.getStandard()) ||
-                !Objects.equals(existing.getSpecification(), updated.getSpecification())) {
+        String newDesignation = updated.getDesignation();
+        String oldDesignation = existing.getDesignation();
+        String newStandard = updated.getStandard();
+        String oldStandard = existing.getStandard();
+        String newSpecification = updated.getSpecification();
+        String oldSpecification = existing.getSpecification();
 
+        boolean designationChanged = newDesignation != null && !newDesignation.equals(oldDesignation);
+        boolean standardChanged = newStandard != null && !newStandard.equals(oldStandard);
+        boolean specificationChanged = newSpecification != null && !newSpecification.equals(oldSpecification);
+
+        if (designationChanged || standardChanged || specificationChanged) {
+            // Проверяем уникальность по: classId + designation + standard + specification
             checkUniqueOnUpdate(
-                    () -> materialRepository.findByClassIdAndNameAndStandardAndSpecification(
-                            updated.getClassId(),
-                            updated.getName(),
-                            updated.getStandard(),
-                            updated.getSpecification()
+                    () -> materialRepository.findByClassIdAndDesignationAndStandardAndSpecification(
+                            existing.getClassId(),
+                            newDesignation != null ? newDesignation : oldDesignation,
+                            newStandard != null ? newStandard : oldStandard,
+                            newSpecification != null ? newSpecification : oldSpecification
                     ),
                     id,
                     "Материал с такими параметрами уже существует"
             );
         }
 
-        // Обновление полей
-        if (updated.getClassId() != null) {
-            existing.setClassId(updated.getClassId());
+        // ========== ОБНОВЛЕНИЕ ПОЛЕЙ ==========
+        if (newDesignation != null && !newDesignation.equals(oldDesignation)) {
+            existing.setDesignation(newDesignation);
         }
-        if (updated.getName() != null) {
+
+        if (updated.getName() != null && !updated.getName().equals(existing.getName())) {
             existing.setName(updated.getName());
         }
-        if (updated.getStandard() != null) {
-            existing.setStandard(updated.getStandard());
+
+        if (newStandard != null) {
+            existing.setStandard(newStandard);
         }
-        if (updated.getSpecification() != null) {
-            existing.setSpecification(updated.getSpecification());
+
+        if (newSpecification != null) {
+            existing.setSpecification(newSpecification);
         }
+
         if (updated.getMaterialType() != null) {
             existing.setMaterialType(updated.getMaterialType());
         }
+
         if (updated.getUnitId() != null) {
+            unitOfMeasureRepository.findById(updated.getUnitId())
+                    .orElseThrow(() -> new IllegalArgumentException("Единица измерения не найдена"));
             existing.setUnitId(updated.getUnitId());
         }
+
         if (updated.getDensity() != null) {
             existing.setDensity(updated.getDensity());
         }
+
         if (updated.getVendorCode() != null) {
-            existing.setVendorCode(updated.getVendorCode());
+            // Проверка уникальности артикула
+            if (!updated.getVendorCode().equals(existing.getVendorCode())) {
+                checkUniqueOnUpdate(
+                        () -> materialRepository.findByVendorCode(updated.getVendorCode()),
+                        id,
+                        "Материал с артикулом '" + updated.getVendorCode() + "' уже существует"
+                );
+                existing.setVendorCode(updated.getVendorCode());
+            }
         }
+
         if (updated.getMinOrder() != null) {
             existing.setMinOrder(updated.getMinOrder());
         }
+
         if (updated.getDescription() != null) {
             existing.setDescription(updated.getDescription());
         }
+
         if (updated.getTechnicalSpecs() != null) {
             existing.setTechnicalSpecs(updated.getTechnicalSpecs());
         }
 
         return materialRepository.save(existing);
+
     }
 
     @Override

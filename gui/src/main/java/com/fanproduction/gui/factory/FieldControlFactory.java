@@ -1,8 +1,10 @@
 package com.fanproduction.gui.factory;
 
+import com.fanproduction.gui.client.ComponentClient;
 import com.fanproduction.gui.component.TreeSelectableComponentBox;
 import com.fanproduction.gui.dto.SelectableItem;
 import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
+import com.fanproduction.gui.dto.response.ComponentDto;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fanproduction.gui.client.ProductCardClient;
 import javafx.scene.Node;
@@ -10,6 +12,7 @@ import javafx.scene.control.*;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -77,9 +80,11 @@ public class FieldControlFactory {
         TextField doubleField = new TextField();
         if (existingValue != null) doubleField.setText(String.valueOf(existingValue));
         if (field.getDefaultValue() != null && existingValue == null) doubleField.setText(field.getDefaultValue());
-        doubleField.setPromptText("Введите число (например: 5,5)");
 
-        // Исправленное регулярное выражение: \d*([,.]\d*)?
+        // Используем hint из метаданных, если он есть
+        String hint = field.getHint() != null ? field.getHint() : "Введите число (например: 5,5)";
+        doubleField.setPromptText(hint);
+
         doubleField.textProperty().addListener((obs, old, newVal) -> {
             if (newVal != null && !newVal.matches("\\d*([,.]\\d*)?")) {
                 doubleField.setText(old);
@@ -195,6 +200,7 @@ public class FieldControlFactory {
                     case "RADIAL_WHEEL" -> ProductCardClient.getCardsByType("RADIAL_WHEEL");
                     case "MOTOR" -> ProductCardClient.getCardsByType("MOTOR");
                     case "AXIAL_WHEEL" -> ProductCardClient.getCardsByType("AXIAL_WHEEL");
+                    case "COMPONENT" -> convertComponentsToProductCards(ComponentClient.getAllComponents());
                     default -> new ArrayList<>();
                 };
 
@@ -242,5 +248,25 @@ public class FieldControlFactory {
                 e.printStackTrace();
             }
         }).start();
+    }
+
+    /**
+     * Конвертирует ComponentDto в ProductCardDto для совместимости с SelectableItem
+     */
+    private List<ProductCardDto> convertComponentsToProductCards(List<ComponentDto> components) {
+        List<ProductCardDto> result = new ArrayList<>();
+        for (ComponentDto comp : components) {
+            ProductCardDto dto = new ProductCardDto();
+            dto.setId(comp.getId());
+            dto.setName(comp.getName());
+            dto.setCode(comp.getVendorCode());
+
+            Map<String, Object> fields = new HashMap<>();
+            fields.put("fullMarking", comp.getName());
+            dto.setFields(fields);
+
+            result.add(dto);
+        }
+        return result;
     }
 }

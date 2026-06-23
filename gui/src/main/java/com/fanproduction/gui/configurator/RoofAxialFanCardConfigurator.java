@@ -43,18 +43,10 @@ public class RoofAxialFanCardConfigurator implements CardFieldConfigurator {
 
         StringBuilder fullMarking = new StringBuilder();
 
-        if (!seriesName.isEmpty()) {
-            fullMarking.append(seriesName);
-        }
-        if (!executionType.isEmpty()) {
-            fullMarking.append("-").append(executionType);
-        }
-        if (!roofSize.isEmpty()) {
-            fullMarking.append("-").append(roofSize);
-        }
-        if (!climateType.isEmpty()) {
-            fullMarking.append("-").append(climateType);
-        }
+        if (!seriesName.isEmpty()) fullMarking.append(seriesName);
+        if (!executionType.isEmpty()) fullMarking.append("-").append(executionType);
+        if (!roofSize.isEmpty()) fullMarking.append("-").append(roofSize);
+        if (!climateType.isEmpty()) fullMarking.append("-").append(climateType);
 
         String newMarking = fullMarking.toString();
         String currentMarking = fullMarkingField.getText();

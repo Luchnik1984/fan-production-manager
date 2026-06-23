@@ -31,6 +31,9 @@ public class MaterialEntity {
     @Column(name = "name", nullable = false, length = 200)
     private String name;
 
+    @Column(name = "designation", nullable = false, length = 100)
+    private String designation;
+
     @Column(name = "standard", length = 100)
     private String standard;
 

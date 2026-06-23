@@ -1,5 +1,6 @@
 package com.fanproduction.gui.client;
 
+import com.fanproduction.gui.dto.response.UnitOfMeasureDto;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fanproduction.gui.dto.request.CreateMaterialRequest;
 import com.fanproduction.gui.dto.response.ApiResponse;
@@ -67,5 +68,17 @@ public class MaterialClient {
             return response.getData();
         }
         throw new RuntimeException("Failed to search materials: " + response.getMessage());
+    }
+
+    /**
+     * Получить все единицы измерения (для материалов)
+     */
+    public static List<UnitOfMeasureDto> getAllUnits() throws Exception {
+        TypeReference<ApiResponse<List<UnitOfMeasureDto>>> typeRef = new TypeReference<>() {};
+        ApiResponse<List<UnitOfMeasureDto>> response = ApiClient.get("/materials/units", typeRef);
+        if (response.isSuccess() && response.getData() != null) {
+            return response.getData();
+        }
+        throw new RuntimeException("Failed to load units: " + response.getMessage());
     }
 }

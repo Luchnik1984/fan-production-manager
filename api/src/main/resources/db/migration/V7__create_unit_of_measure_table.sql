@@ -1,4 +1,4 @@
--- V19__create_unit_of_measure_table.sql
+-- V7__create_unit_of_measure_table.sql
 -- Создание справочника единиц измерения
 
 CREATE TABLE IF NOT EXISTS unit_of_measure (

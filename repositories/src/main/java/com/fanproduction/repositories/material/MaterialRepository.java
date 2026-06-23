@@ -35,4 +35,10 @@ public interface MaterialRepository extends JpaRepository<MaterialEntity, Long> 
 
     Optional<MaterialEntity> findByClassIdAndNameAndStandardAndSpecification(
             Long classId, String name, String standard, String specification);
+
+    Optional<MaterialEntity> findByDesignation(String designation);
+
+    Optional<MaterialEntity> findByVendorCode(String vendorCode);
+
+    Optional<MaterialEntity> findByClassIdAndDesignationAndStandardAndSpecification(Long classId, String designation, String standard, String specification);
 }

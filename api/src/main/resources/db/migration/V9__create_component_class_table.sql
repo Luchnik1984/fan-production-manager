@@ -1,4 +1,4 @@
--- V21__create_component_class_table.sql
+-- V9__create_component_class_table.sql
 CREATE TABLE IF NOT EXISTS component_class (
                                                id BIGSERIAL PRIMARY KEY,
                                                category_id BIGINT NOT NULL REFERENCES component_category(id) ON DELETE CASCADE,

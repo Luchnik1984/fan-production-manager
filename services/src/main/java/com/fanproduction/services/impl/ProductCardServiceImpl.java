@@ -127,7 +127,6 @@ public class ProductCardServiceImpl implements ProductCardService {
 
     @Override
     public String generateCode(BaseProductCard card) {
-        // Базовый код: тип_времямяти_уникальныйID
         // TODO: Здесь будет более сложная логика в зависимости от типа вентилятора
         String timestamp = String.valueOf(System.currentTimeMillis()).substring(8);
         String uniqueId = UUID.randomUUID().toString().substring(0, 8);

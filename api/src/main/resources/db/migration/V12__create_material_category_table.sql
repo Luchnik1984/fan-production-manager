@@ -1,4 +1,4 @@
--- V24__create_material_category_table.sql
+-- V12__create_material_category_table.sql
 CREATE TABLE IF NOT EXISTS material_category (
                                                  id BIGSERIAL PRIMARY KEY,
                                                  parent_id BIGINT REFERENCES material_category(id) ON DELETE CASCADE,

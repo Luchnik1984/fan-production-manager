@@ -1,8 +1,9 @@
--- V26__create_material_table.sql
+-- V14__create_material_table.sql
 CREATE TABLE IF NOT EXISTS material (
                                         id BIGSERIAL PRIMARY KEY,
                                         class_id BIGINT NOT NULL REFERENCES material_class(id) ON DELETE CASCADE,
     name VARCHAR(200) NOT NULL,
+    designation VARCHAR(100) NOT NULL,
     standard VARCHAR(100),
     specification VARCHAR(200),
     material_type VARCHAR(50),
@@ -18,9 +19,9 @@ CREATE TABLE IF NOT EXISTS material (
 
 CREATE INDEX IF NOT EXISTS idx_material_class_id ON material(class_id);
 CREATE INDEX IF NOT EXISTS idx_material_name ON material(name);
+CREATE INDEX IF NOT EXISTS idx_material_designation ON material(designation);
 CREATE INDEX IF NOT EXISTS idx_material_standard ON material(standard);
 CREATE INDEX IF NOT EXISTS idx_material_unit_id ON material(unit_id);
 CREATE INDEX IF NOT EXISTS idx_material_type ON material(material_type);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_material_vendor_code_unique ON material(vendor_code);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_material_unique
-    ON material(class_id, name, standard, specification);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_material_unique ON material(class_id, name, standard, specification);

@@ -1,7 +1,6 @@
 package com.fanproduction.gui.configurator;
 
 import javafx.scene.Node;
-import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -18,14 +17,25 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
                             Map<String, Label> fieldHints,
                             boolean existingCardExists) {
 
-        setupTypeSelection(fieldControls, fieldLabels);
-        setupFullMarkingGeneration(fieldControls);
-        setupExclusiveSelection(fieldControls);
+        // Условная видимость (огнестойкость/взрывозащита) — с fieldHints
+        setupConditionalVisibility(fieldControls, fieldLabels, fieldHints, () -> updateFullMarking(fieldControls));
 
+        // Взаимоисключающие галочки
+        setupExclusiveSelection(fieldControls, () -> updateFullMarking(fieldControls));
+
+        // Настройка выбора типа колеса
+        setupTypeSelection(fieldControls, fieldLabels, fieldHints);
+
+        // Настройка автоматического формирования полной маркировки
+        setupFullMarkingGeneration(fieldControls);
+
+        // Автоматическое заполнение наименования
         autoFillName(fieldControls, "Вентилятор канальный", existingCardExists);
     }
 
-    private void setupTypeSelection(Map<String, Node> fieldControls, Map<String, Label> fieldLabels) {
+    private void setupTypeSelection(Map<String, Node> fieldControls,
+                                    Map<String, Label> fieldLabels,
+                                    Map<String, Label> fieldHints) {
         ComboBox<String> typeCombo = getComboBox(fieldControls, "ductFanType");
         if (typeCombo == null) return;
 
@@ -36,20 +46,20 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
 
         if ("MOTOR_WHEEL".equals(savedType)) {
             typeCombo.setValue("Мотор-колесо");
-            updateFieldsVisibility(fieldControls, fieldLabels, true, false);
+            updateFieldsVisibility(fieldControls, fieldLabels, fieldHints, true, false);
         } else if ("RADIAL_WHEEL".equals(savedType)) {
             typeCombo.setValue("Радиальное колесо");
-            updateFieldsVisibility(fieldControls, fieldLabels, false, true);
+            updateFieldsVisibility(fieldControls, fieldLabels, fieldHints, false, true);
         } else {
             typeCombo.setValue("Мотор-колесо");
-            updateFieldsVisibility(fieldControls, fieldLabels, true, false);
+            updateFieldsVisibility(fieldControls, fieldLabels, fieldHints, true, false);
         }
 
         typeCombo.valueProperty().addListener((obs, old, newVal) -> {
             if (newVal != null) {
                 boolean isMotorWheel = "Мотор-колесо".equals(newVal);
                 boolean isRadialWheel = "Радиальное колесо".equals(newVal);
-                updateFieldsVisibility(fieldControls, fieldLabels, isMotorWheel, isRadialWheel);
+                updateFieldsVisibility(fieldControls, fieldLabels, fieldHints, isMotorWheel, isRadialWheel);
                 updateFullMarking(fieldControls);
             }
         });
@@ -57,12 +67,13 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
 
     private void updateFieldsVisibility(Map<String, Node> fieldControls,
                                         Map<String, Label> fieldLabels,
+                                        Map<String, Label> fieldHints,
                                         boolean isMotorWheel,
                                         boolean isRadialWheel) {
-        setVisible(fieldControls, fieldLabels, "motorWheelId", isMotorWheel);
-        setVisible(fieldControls, fieldLabels, "radialWheelId", isRadialWheel);
-        setVisible(fieldControls, fieldLabels, "motorId", isRadialWheel);
-        setVisible(fieldControls, fieldLabels, "wheelSize", isRadialWheel);
+        setVisible(fieldControls, fieldLabels, fieldHints, "motorWheelId", isMotorWheel);
+        setVisible(fieldControls, fieldLabels, fieldHints, "radialWheelId", isRadialWheel);
+        setVisible(fieldControls, fieldLabels, fieldHints, "motorId", isRadialWheel);
+        setVisible(fieldControls, fieldLabels, fieldHints, "wheelSize", isRadialWheel);
     }
 
     private void setupFullMarkingGeneration(Map<String, Node> fieldControls) {
@@ -76,7 +87,6 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
         addTextFieldListener(fieldControls, "voltage", () -> updateFullMarking(fieldControls));
         addTextFieldListener(fieldControls, "wheelSize", () -> updateFullMarking(fieldControls));
         addComboBoxListener(fieldControls, "ductFanType", () -> updateFullMarking(fieldControls));
-
         addCheckBoxListener(fieldControls, "generalPurpose", () -> updateFullMarking(fieldControls));
         addCheckBoxListener(fieldControls, "fireproof", () -> updateFullMarking(fieldControls));
         addCheckBoxListener(fieldControls, "explosionProof", () -> updateFullMarking(fieldControls));
@@ -117,27 +127,15 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
 
         StringBuilder fullMarking = new StringBuilder();
 
-        if (!seriesName.isEmpty()) {
-            fullMarking.append(seriesName);
-        }
-        if (!executionType.isEmpty()) {
-            fullMarking.append("-").append(executionType);
-        }
+        if (!seriesName.isEmpty()) fullMarking.append(seriesName);
+        if (!executionType.isEmpty()) fullMarking.append("-").append(executionType);
 
         if ("MOTOR_WHEEL".equals(ductFanType)) {
-            if (!ductSize.isEmpty()) {
-                fullMarking.append("-").append(ductSize);
-            }
-            if (!poles.isEmpty()) {
-                fullMarking.append("-").append(poles);
-            }
-            if (!voltage.isEmpty()) {
-                fullMarking.append("-").append(voltage);
-            }
+            if (!ductSize.isEmpty()) fullMarking.append("-").append(ductSize);
+            if (!poles.isEmpty()) fullMarking.append("-").append(poles);
+            if (!voltage.isEmpty()) fullMarking.append("-").append(voltage);
         } else if ("RADIAL_WHEEL".equals(ductFanType)) {
-            if (!ductSize.isEmpty()) {
-                fullMarking.append("-").append(ductSize);
-            }
+            if (!ductSize.isEmpty()) fullMarking.append("-").append(ductSize);
             if (!wheelSize.isEmpty()) {
                 try {
                     double ws = Double.parseDouble(wheelSize);
@@ -146,13 +144,9 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
                     fullMarking.append("/").append(wheelSize);
                 }
             }
-            if (!poles.isEmpty()) {
-                fullMarking.append(".").append(poles);
-            }
+            if (!poles.isEmpty()) fullMarking.append(".").append(poles);
             String voltageCode = getVoltageCode(voltage);
-            if (!voltageCode.isEmpty()) {
-                fullMarking.append(voltageCode);
-            }
+            if (!voltageCode.isEmpty()) fullMarking.append(voltageCode);
         }
 
         if (!isGeneralPurpose && !purposeMarking.isEmpty()) {
@@ -173,41 +167,5 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
         if (voltage.equals("220")) return "E";
         if (voltage.equals("380")) return "D";
         return "";
-    }
-
-    private void setupExclusiveSelection(Map<String, Node> fieldControls) {
-        CheckBox generalPurposeCheck = getCheckBox(fieldControls, "generalPurpose");
-        CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
-        CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
-
-        if (generalPurposeCheck != null) {
-            generalPurposeCheck.selectedProperty().addListener((obs, old, val) -> {
-                if (val) {
-                    if (fireproofCheck != null) fireproofCheck.setSelected(false);
-                    if (explosionCheck != null) explosionCheck.setSelected(false);
-                }
-                updateFullMarking(fieldControls);
-            });
-        }
-
-        if (fireproofCheck != null) {
-            fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
-                if (val) {
-                    if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
-                    if (explosionCheck != null) explosionCheck.setSelected(false);
-                }
-                updateFullMarking(fieldControls);
-            });
-        }
-
-        if (explosionCheck != null) {
-            explosionCheck.selectedProperty().addListener((obs, old, val) -> {
-                if (val) {
-                    if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
-                    if (fireproofCheck != null) fireproofCheck.setSelected(false);
-                }
-                updateFullMarking(fieldControls);
-            });
-        }
     }
 }

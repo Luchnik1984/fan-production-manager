@@ -1,4 +1,4 @@
--- V11__create_axial_fan_card_table.sql
+-- V22__create_axial_fan_card_table.sql
 -- Создание таблицы для осевых вентиляторов
 
 CREATE TABLE IF NOT EXISTS axial_fan_card (

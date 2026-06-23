@@ -1,4 +1,4 @@
--- V12__create_duct_fan_card_table.sql
+-- V23__create_duct_fan_card_table.sql
 -- Создание таблицы для канальных вентиляторов
 
 CREATE TABLE IF NOT EXISTS duct_fan_card (

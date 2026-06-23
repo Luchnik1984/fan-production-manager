@@ -50,6 +50,13 @@ public class IconFactory {
         return icon;
     }
 
+    public static Node createWarningIcon() {
+        FontIcon icon = new FontIcon(FontAwesome.EXCLAMATION_TRIANGLE);
+        icon.setIconSize(DEFAULT_SIZE);
+        icon.setIconColor(Color.web("#f44336"));  // красный цвет
+        return icon;
+    }
+
     public static Node createAddIcon() {
         FontIcon icon = new FontIcon(FontAwesome.PLUS_SQUARE_O);
         icon.setIconSize(DEFAULT_SIZE);

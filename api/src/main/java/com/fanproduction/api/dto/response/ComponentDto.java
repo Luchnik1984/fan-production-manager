@@ -17,6 +17,7 @@ public class ComponentDto {
     private Long classId;
     private String className;
     private String name;
+    private String designation;
     private String vendorCode;
     private Long unitId;
     private String unitCode;

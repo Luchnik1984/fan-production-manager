@@ -1,10 +1,8 @@
 package com.fanproduction.gui.client;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fanproduction.gui.dto.request.CreateComponentClassRequest;
 import com.fanproduction.gui.dto.request.CreateComponentRequest;
 import com.fanproduction.gui.dto.response.ApiResponse;
-import com.fanproduction.gui.dto.response.ComponentClassDto;
 import com.fanproduction.gui.dto.response.ComponentDto;
 import com.fanproduction.gui.dto.response.UnitOfMeasureDto;
 
@@ -28,37 +26,19 @@ public class ComponentClient {
         throw new RuntimeException("Failed to load units: " + response.getMessage());
     }
 
-    // ========== Component Classes ==========
-
-    public static List<ComponentClassDto> getAllClasses() throws Exception {
-        TypeReference<ApiResponse<List<ComponentClassDto>>> typeRef = new TypeReference<>() {};
-        ApiResponse<List<ComponentClassDto>> response = ApiClient.get(BASE_PATH + "/classes", typeRef);
-        if (response.isSuccess() && response.getData() != null) {
-            return response.getData();
-        }
-        throw new RuntimeException("Failed to load component classes: " + response.getMessage());
-    }
-
-    public static ComponentClassDto createClass(String name, String description) throws Exception {
-        CreateComponentClassRequest request = new CreateComponentClassRequest(name, description);
-        TypeReference<ApiResponse<ComponentClassDto>> typeRef = new TypeReference<>() {};
-        ApiResponse<ComponentClassDto> response = ApiClient.post(BASE_PATH + "/classes", request, typeRef);
-        if (response.isSuccess() && response.getData() != null) {
-            return response.getData();
-        }
-        throw new RuntimeException("Failed to create class: " + response.getMessage());
-    }
-
-    public static void deleteClass(Long id) throws Exception {
-        ApiClient.delete(BASE_PATH + "/classes/" + id);
-    }
 
     // ========== Components ==========
 
     public static List<ComponentDto> getAllComponents() throws Exception {
+        System.out.println("=== ComponentClient.getAllComponents() called ===");
         TypeReference<ApiResponse<List<ComponentDto>>> typeRef = new TypeReference<>() {};
         ApiResponse<List<ComponentDto>> response = ApiClient.get(BASE_PATH, typeRef);
         if (response.isSuccess() && response.getData() != null) {
+            for (ComponentDto dto : response.getData()) {
+                System.out.println("=== DEBUG ComponentDto from API ===");
+                System.out.println("name: " + dto.getName());
+                System.out.println("designation: " + dto.getDesignation());
+            }
             return response.getData();
         }
         throw new RuntimeException("Failed to load components: " + response.getMessage());
@@ -71,6 +51,15 @@ public class ComponentClient {
             return response.getData();
         }
         throw new RuntimeException("Failed to load components for class: " + response.getMessage());
+    }
+
+    public static ComponentDto getComponentById(Long id) throws Exception {
+        TypeReference<ApiResponse<ComponentDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ComponentDto> response = ApiClient.get(BASE_PATH + "/" + id, typeRef);
+        if (response.isSuccess() && response.getData() != null) {
+            return response.getData();
+        }
+        throw new RuntimeException("Failed to load component: " + response.getMessage());
     }
 
     public static ComponentDto createComponent(CreateComponentRequest request) throws Exception {

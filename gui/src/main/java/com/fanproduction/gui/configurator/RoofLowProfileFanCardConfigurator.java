@@ -47,24 +47,12 @@ public class RoofLowProfileFanCardConfigurator implements CardFieldConfigurator 
 
         StringBuilder fullMarking = new StringBuilder();
 
-        if (!seriesName.isEmpty()) {
-            fullMarking.append(seriesName);
-        }
-        if (!executionType.isEmpty()) {
-            fullMarking.append("-").append(executionType);
-        }
-        if (!roofSize.isEmpty()) {
-            fullMarking.append("-").append(roofSize);
-        }
-        if (!poles.isEmpty()) {
-            fullMarking.append("-").append(poles);
-        }
-        if (!climateType.isEmpty()) {
-            fullMarking.append("-").append(climateType);
-        }
-        if (!voltage.isEmpty()) {
-            fullMarking.append("-").append(voltage);
-        }
+        if (!seriesName.isEmpty()) fullMarking.append(seriesName);
+        if (!executionType.isEmpty()) fullMarking.append("-").append(executionType);
+        if (!roofSize.isEmpty()) fullMarking.append("-").append(roofSize);
+        if (!poles.isEmpty()) fullMarking.append("-").append(poles);
+        if (!climateType.isEmpty()) fullMarking.append("-").append(climateType);
+        if (!voltage.isEmpty()) fullMarking.append("-").append(voltage);
 
         String newMarking = fullMarking.toString();
         String currentMarking = fullMarkingField.getText();
