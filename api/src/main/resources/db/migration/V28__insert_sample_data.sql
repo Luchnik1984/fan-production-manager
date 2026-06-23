@@ -24,7 +24,7 @@ WHERE cl.name = 'Клеммные коробки универсальные' AND
 -- ============================================
 
 INSERT INTO material (class_id, name, designation, standard, specification, material_type, unit_id, description, created_at, created_by)
-SELECT cl.id, 'Болт с шестигранной головкой', 'M6-6gx12', 'ГОСТ 7798-70', 'M6-6gx12', 'крепёж', u.id, 'Болт с шестигранной головкой, класс точности B', NOW(), 'system'
+SELECT cl.id, 'Болт с шестигранной головкой', 'M6', 'ГОСТ 7798-70', '6gx12', 'крепёж', u.id, 'Болт с шестигранной головкой, класс точности B', NOW(), 'system'
 FROM material_class cl, unit_of_measure u
 WHERE cl.name = 'Болты с шестигранной головкой' AND u.code = 'шт';
 

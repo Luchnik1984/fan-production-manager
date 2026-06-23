@@ -42,6 +42,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
     @FXML private Button exportButton;
     @FXML private TreeView<CategoryTreeItem> categoryTreeView;
 
+
     // ========== RECORD ДЛЯ ПОЛЕЙ ФОРМЫ ==========
     private record ComponentFormFields(
             TextField name,
@@ -325,6 +326,10 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         String title = existing == null ? "Создание компонента" : "Редактирование компонента";
         Dialog<ButtonType> dialog = createBaseDialog(title);
 
+        // ========== ЛОКАЛЬНАЯ ПЕРЕМЕННАЯ ДЛЯ СОСТОЯНИЯ ==========
+        final Long[] currentComponentId = {existing != null ? existing.getId() : null};
+        final boolean[] isEditingMode = {existing != null};
+
         TabPane tabPane = createBaseTabPane();
 
         GridPane grid = new GridPane();
@@ -332,7 +337,14 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         grid.setVgap(10);
         grid.setPadding(new Insets(20));
 
-        Tab mainTab = createMainTab("Основные поля", grid);
+        // ========== СОЗДАЁМ ВКЛАДКУ "ОСНОВНЫЕ ПОЛЯ" ==========
+        Tab mainTab = new Tab("Основные поля");
+        mainTab.setClosable(false);
+        ScrollPane scrollPane = new ScrollPane(grid);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefHeight(450);
+        mainTab.setContent(scrollPane);
+        tabPane.getTabs().add(mainTab);
 
         // Выбор категории
         ComboBox<String> categoryCombo = createCategoryCombo();
@@ -347,6 +359,15 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         Map<String, ComponentClassDto> classMap = this.classMap;
         if (existing != null) {
             loadExistingComponentData(existing, formFields, categoryCombo, classCombo, classMap);
+        } else if (currentComponentId[0] != null) {
+            // Если диалог переключился в режим редактирования (после создания)
+            try {
+                ComponentDto loaded = ComponentClient.getComponentById(currentComponentId[0]);
+                loadExistingComponentData(loaded, formFields, categoryCombo, classCombo, classMap);
+                dialog.setTitle("Редактирование компонента - " + loaded.getName());
+            } catch (Exception e) {
+                System.err.println("Failed to load component for editing: " + e.getMessage());
+            }
         }
 
         // Настраиваем зависимость категория → класс
@@ -374,18 +395,58 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         grid.add(new Label("Описание:"), 0, row);
         grid.add(formFields.description(), 1, row);
 
+        // ========== СОЗДАЁМ ВКЛАДКУ "ТЕХНИЧЕСКИЕ ХАРАКТЕРИСТИКИ" ==========
         TechnicalSpecsEditor technicalSpecsEditor = new TechnicalSpecsEditor(allUnits);
         if (existing != null && existing.getTechnicalSpecs() != null) {
             technicalSpecsEditor.setTechnicalSpecs(existing.getTechnicalSpecs());
+        } else if (currentComponentId[0] != null) {
+            try {
+                ComponentDto loaded = ComponentClient.getComponentById(currentComponentId[0]);
+                if (loaded.getTechnicalSpecs() != null) {
+                    technicalSpecsEditor.setTechnicalSpecs(loaded.getTechnicalSpecs());
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to load technical specs: " + e.getMessage());
+            }
         }
 
-        setupDialogWithTabs(dialog, tabPane, mainTab, grid, technicalSpecsEditor,
-                () -> collectAndSaveComponent(existing, formFields, classCombo, classMap, technicalSpecsEditor)
-        );
+        Tab technicalTab = new Tab("Технические характеристики");
+        technicalTab.setClosable(false);
+        technicalTab.setContent(technicalSpecsEditor);
+        tabPane.getTabs().add(technicalTab);
 
+        // Кнопки
+        ButtonType saveButtonType = new ButtonType("Сохранить", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelButtonType = new ButtonType("Отмена", ButtonBar.ButtonData.CANCEL_CLOSE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, cancelButtonType);
+
+        // Настройка диалога
         dialog.getDialogPane().setContent(tabPane);
+
+        // Обработка кнопки "Сохранить"
+        Button saveButton = (Button) dialog.getDialogPane().lookupButton(saveButtonType);
+        saveButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            event.consume();
+            collectAndSaveComponent(
+                    existing,
+                    formFields,
+                    classCombo,
+                    classMap,
+                    technicalSpecsEditor,
+                    dialog,
+                    currentComponentId,
+                    isEditingMode
+            );
+        });
+
+        // Обработка закрытия диалога
+        dialog.setOnCloseRequest(e -> {
+            loadData();
+        });
+
         dialog.showAndWait();
     }
+
 
     // ========== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
 
@@ -532,16 +593,21 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                                          ComponentFormFields formFields,
                                          ComboBox<String> classCombo,
                                          Map<String, ComponentClassDto> classMap,
-                                         TechnicalSpecsEditor technicalSpecsEditor) {
+                                         TechnicalSpecsEditor technicalSpecsEditor,
+                                         Dialog<ButtonType> dialog,
+                                         Long[] currentComponentId,
+                                         boolean[] isEditingMode) {
 
         System.out.println("=== collectAndSaveComponent START ===");
         System.out.println("existing: " + (existing != null ? "not null, id=" + existing.getId() : "null"));
+        System.out.println("currentComponentId[0]: " + currentComponentId[0]);
 
         // ========== СБОР ДАННЫХ ИЗ ФОРМЫ ==========
         String selectedClass = classCombo.getValue();
         String name = formFields.name().getText().trim();
         String designation = formFields.designation().getText().trim();
         String vendorCode = formFields.vendorCode().getText().trim();
+        if (vendorCode.isEmpty()) {vendorCode = null;}
         UnitOfMeasureDto selectedUnit = formFields.unit().getValue();
         String description = formFields.description().getText().trim();
         Double weightKg = parseDouble(formFields.weightKg().getText().trim());
@@ -549,14 +615,10 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         if (material.isEmpty()) material = null;
         Map<String, Object> technicalSpecs = technicalSpecsEditor.getTechnicalSpecs();
 
-        // Если характеристик нет, отправляем пустой объект (а не null)
+        // Если характеристик нет, отправляем пустой объект
         if (technicalSpecs == null) {
             technicalSpecs = new HashMap<>();
         }
-
-        System.out.println("selectedClass: '" + selectedClass + "'");
-        System.out.println("classMap size: " + classMap.size());
-        System.out.println("classMap keys: " + classMap.keySet());
 
         // ========== ВАЛИДАЦИЯ ==========
         if (selectedClass == null || selectedClass.isEmpty()) {
@@ -579,29 +641,20 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         ComponentClassDto selectedClassDto = classMap.get(selectedClass);
         if (selectedClassDto == null) {
             System.err.println("❌ Class not found for: " + selectedClass);
-            System.err.println("Available classes: " + classMap.keySet());
-            showAlert("Ошибка", "Класс не найден" + selectedClass);
+            showAlert("Ошибка", "Класс не найден: " + selectedClass);
             return;
         }
 
-        // ========== ФОРМИРУЕМ ПОЛНОЕ ИМЯ ==========
-        // При создании нового компонента: name + " " + designation
-        // При редактировании: оставляем существующее имя
-        String fullName;
-        if (existing == null) {
-            // Новый компонент — формируем полное имя
-            fullName = name + " " + designation;
-            System.out.println(" Creating new component with fullName: '" + fullName + "'");
-        } else {
-            // Редактирование — оставляем существующее имя
-            fullName = existing.getName();
-            System.out.println(" Editing existing component, keeping name: '" + fullName + "'");
-        }
+        // ========== ОПРЕДЕЛЯЕМ РЕЖИМ РАБОТЫ ==========
+        Long componentId = existing != null ? existing.getId() :  currentComponentId[0];
+        boolean isNew = componentId == null;
+
+        System.out.println("isNew: " + isNew);
 
         // ========== СОЗДАНИЕ ЗАПРОСА ==========
         CreateComponentRequest request = new CreateComponentRequest(
                 selectedClassDto.getId(),
-                fullName,
+                name,
                 designation,
                 vendorCode,
                 selectedUnit.getId(),
@@ -609,29 +662,64 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 material,
                 description,
                 technicalSpecs
-                );
+        );
 
         // ========== ОТПРАВКА НА СЕРВЕР ==========
+        final boolean finalIsNew = isNew;
+        final Long finalComponentId = componentId;
+
+        Button saveButton = (Button) dialog.getDialogPane().lookupButton(
+                new ButtonType("Сохранить", ButtonBar.ButtonData.OK_DONE));
+        if (saveButton != null) {
+            saveButton.setDisable(true);
+            saveButton.setText("Сохранение...");
+        }
+
         new Thread(() -> {
             try {
-                if (existing == null) {
-                    ComponentClient.createComponent(request);
-                    System.out.println("✅ Component created with name: " + fullName);
+                ComponentDto savedComponent;
+
+                if (finalIsNew) {
+                    savedComponent = ComponentClient.createComponent(request);
+                    System.out.println("✅ Component created with name: " + name);
                 } else {
-                    ComponentClient.updateComponent(existing.getId(), request);
-                    System.out.println("✅ Component updated, name: " + fullName);
+                    savedComponent = ComponentClient.updateComponent(finalComponentId, request);
+                    System.out.println("✅ Component updated, name: " + name);
                 }
 
+                final ComponentDto finalSavedComponent = savedComponent;
+
                 Platform.runLater(() -> {
-                    showAlert("Успешно", "Компонент " + (existing == null ? "создан" : "обновлён"),
+                    // Если был создан новый компонент — сохраняем его ID для этого диалога
+                    if (finalIsNew) {
+                        currentComponentId[0] = finalSavedComponent.getId();
+                        isEditingMode[0] = true;
+                        dialog.setTitle("Редактирование компонента - " + finalSavedComponent.getName());
+                    }
+
+                    if (saveButton != null) {
+                        saveButton.setDisable(false);
+                        saveButton.setText("Сохранить");
+                    }
+
+                    showAlert("Успешно", "Компонент " + (finalIsNew ? "создан" : "обновлён"),
                             Alert.AlertType.INFORMATION);
                     loadData();
                 });
             } catch (Exception e) {
-                Platform.runLater(() -> showAlert("Ошибка", "Не удалось сохранить: " + e.getMessage()));
+                Platform.runLater(() -> {
+                    if (saveButton != null) {
+                        saveButton.setDisable(false);
+                        saveButton.setText("Сохранить");
+                    }
+                    showAlert("Ошибка", "Не удалось сохранить: " + e.getMessage());
+                    System.err.println("Error saving: " + e.getMessage());
+                });
+                e.printStackTrace();
             }
         }).start();
     }
+
 
     // ==========================================
     // ОБРАБОТЧИКИ СОБЫТИЙ

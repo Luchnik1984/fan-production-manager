@@ -33,9 +33,11 @@ public class ComponentDto implements Displayable {
     @Override
     public String getDisplayName() {
         String display = name;
+
         if (designation != null && !designation.isEmpty()) {
-            display += " " + designation;
+            display += " (" + designation.trim() + ")";
         }
+
         return display;
     }
 

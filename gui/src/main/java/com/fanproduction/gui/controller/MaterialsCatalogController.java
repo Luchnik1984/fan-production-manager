@@ -40,6 +40,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
     @FXML private Button exportButton;
     @FXML private TreeView<CategoryTreeItem> categoryTreeView;
 
+
     // ========== RECORD ДЛЯ ПОЛЕЙ ФОРМЫ ==========
     private record MaterialFormFields(
             TextField name,
@@ -331,8 +332,12 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
 
     // ========== ОСНОВНОЙ МЕТОД ==========
     private void showMaterialDialog(MaterialDto existing) {
-        String title = existing == null ? "Создание компонента" : "Редактирование компонента";
+        String title = existing == null ? "Создание материала" : "Редактирование материала";
         Dialog<ButtonType> dialog = createBaseDialog(title);
+
+        // ========== ЛОКАЛЬНАЯ ПЕРЕМЕННАЯ ДЛЯ СОСТОЯНИЯ ==========
+        final Long[] currentMaterialId = {existing != null ? existing.getId() : null};
+        final boolean[] isEditingMode = {existing != null};
 
         TabPane tabPane = createBaseTabPane();
 
@@ -341,8 +346,16 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         grid.setVgap(10);
         grid.setPadding(new Insets(20));
 
-        Tab mainTab = createMainTab("Основные поля", grid);
+        // ========== СОЗДАЁМ ВКЛАДКУ "ОСНОВНЫЕ ПОЛЯ" ==========
+        Tab mainTab = new Tab("Основные поля");
+        mainTab.setClosable(false);
+        ScrollPane scrollPane = new ScrollPane(grid);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefHeight(450);
+        mainTab.setContent(scrollPane);
+        tabPane.getTabs().add(mainTab);
 
+        // ========== ПОЛЯ ФОРМЫ ==========
         ComboBox<String> categoryCombo = createCategoryCombo();
         ComboBox<String> classCombo = createClassCombo();
         MaterialFormFields formFields = createMaterialFormFields();
@@ -351,13 +364,25 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         warningLabel.setStyle("-fx-text-fill: red; -fx-font-size: 11px;");
         warningLabel.setVisible(false);
 
-        setupCategoryClassDependency(categoryCombo, classCombo, warningLabel);
-
-        Map<String, MaterialClassDto> classMap = new HashMap<>();
+        // ========== ЗАГРУЗКА ДАННЫХ ПРИ РЕДАКТИРОВАНИИ ==========
+        Map<String, MaterialClassDto> classMap = this.classMap;
         if (existing != null) {
             loadExistingMaterialData(existing, formFields, categoryCombo, classCombo, classMap);
+        } else if (currentMaterialId[0] != null) {
+            // Если диалог переключился в режим редактирования (после создания)
+            try {
+                MaterialDto loaded = MaterialClient.getMaterialById(currentMaterialId[0]);
+                loadExistingMaterialData(loaded, formFields, categoryCombo, classCombo, classMap);
+                dialog.setTitle("Редактирование материала - " + loaded.getName());
+            } catch (Exception e) {
+                System.err.println("Failed to load material for editing: " + e.getMessage());
+            }
         }
 
+        // ========== НАСТРОЙКА ЗАВИСИМОСТИ КАТЕГОРИЯ → КЛАСС ==========
+        setupCategoryClassDependency(categoryCombo, classCombo, warningLabel);
+
+        // ========== СБОРКА ФОРМЫ ==========
         int row = 0;
         grid.add(new Label("Категория:*"), 0, row);
         grid.add(categoryCombo, 1, row++);
@@ -383,16 +408,53 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         grid.add(new Label("Описание:"), 0, row);
         grid.add(formFields.description(), 1, row);
 
+        // ========== ВКЛАДКА "ТЕХНИЧЕСКИЕ ХАРАКТЕРИСТИКИ" ==========
         TechnicalSpecsEditor technicalSpecsEditor = new TechnicalSpecsEditor(allUnits);
         if (existing != null && existing.getTechnicalSpecs() != null) {
             technicalSpecsEditor.setTechnicalSpecs(existing.getTechnicalSpecs());
+        } else if (currentMaterialId[0] != null) {
+            try {
+                MaterialDto loaded = MaterialClient.getMaterialById(currentMaterialId[0]);
+                if (loaded.getTechnicalSpecs() != null) {
+                    technicalSpecsEditor.setTechnicalSpecs(loaded.getTechnicalSpecs());
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to load technical specs: " + e.getMessage());
+            }
         }
 
-        setupDialogWithTabs(dialog, tabPane, mainTab, grid, technicalSpecsEditor,
-                () -> collectAndSaveMaterial(existing, formFields, classCombo, classMap, technicalSpecsEditor)
-        );
+        Tab technicalTab = new Tab("Технические характеристики");
+        technicalTab.setClosable(false);
+        technicalTab.setContent(technicalSpecsEditor);
+        tabPane.getTabs().add(technicalTab);
+
+        // ========== КНОПКИ ==========
+        ButtonType saveButtonType = new ButtonType("Сохранить", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelButtonType = new ButtonType("Отмена", ButtonBar.ButtonData.CANCEL_CLOSE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, cancelButtonType);
 
         dialog.getDialogPane().setContent(tabPane);
+
+        // ========== ОБРАБОТКА КНОПКИ "СОХРАНИТЬ" ==========
+        Button saveButton = (Button) dialog.getDialogPane().lookupButton(saveButtonType);
+        saveButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            event.consume();
+            collectAndSaveMaterial(
+                    existing,
+                    formFields,
+                    classCombo,
+                    classMap,
+                    technicalSpecsEditor,
+                    dialog,
+                    currentMaterialId,
+                    isEditingMode
+            );
+        });
+
+        dialog.setOnCloseRequest(e -> {
+            loadData();
+        });
+
         dialog.showAndWait();
     }
 
@@ -531,7 +593,15 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
                                         MaterialFormFields formFields,
                                         ComboBox<String> classCombo,
                                         Map<String, MaterialClassDto> classMap,
-                                        TechnicalSpecsEditor technicalSpecsEditor) {
+                                        TechnicalSpecsEditor technicalSpecsEditor,
+                                        Dialog<ButtonType> dialog,
+                                        Long[] currentMaterialId,
+                                        boolean[] isEditingMode) {
+        System.out.println("=== collectAndSaveMaterial START ===");
+        System.out.println("existing: " + (existing != null ? "not null, id=" + existing.getId() : "null"));
+        System.out.println("currentMaterialId[0]: " + currentMaterialId[0]);
+
+        // ========== СБОР ДАННЫХ ==========
         String selectedClass = classCombo.getValue();
         String name = formFields.name().getText().trim();
         String designation = formFields.designation().getText().trim();
@@ -539,6 +609,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         String specification = formFields.specification().getText().trim();
         String materialType = formFields.materialType().getText().trim();
         String vendorCode = formFields.vendorCode().getText().trim();
+        if (vendorCode.isEmpty()) {vendorCode = null;}
         Double density = parseDouble(formFields.density().getText().trim());
         UnitOfMeasureDto selectedUnit = formFields.unit().getValue();
         String description = formFields.description().getText().trim();
@@ -575,6 +646,12 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
             return;
         }
 
+        // ========== ОПРЕДЕЛЯЕМ РЕЖИМ ==========
+        Long materialId = existing != null ? existing.getId() : currentMaterialId[0];
+        boolean isNew = materialId == null;
+
+        System.out.println("isNew: " + isNew);
+
         // ========== СОЗДАНИЕ ЗАПРОСА ==========
         CreateMaterialRequest request = new CreateMaterialRequest(
                 selectedClassDto.getId(),
@@ -592,20 +669,56 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         );
 
         // ========== ОТПРАВКА НА СЕРВЕР ==========
+        final boolean finalIsNew = isNew;
+        final Long finalMaterialId = materialId;
+
+        Button saveButton = (Button) dialog.getDialogPane().lookupButton(
+                new ButtonType("Сохранить", ButtonBar.ButtonData.OK_DONE));
+        if (saveButton != null) {
+            saveButton.setDisable(true);
+            saveButton.setText("Сохранение...");
+        }
+
         new Thread(() -> {
             try {
-                if (existing == null) {
-                    MaterialClient.createMaterial(request);
+                MaterialDto savedMaterial;
+
+                if (finalIsNew) {
+                    savedMaterial = MaterialClient.createMaterial(request);
+                    System.out.println("✅ Material created with name: " + name);
                 } else {
-                    MaterialClient.updateMaterial(existing.getId(), request);
+                    savedMaterial = MaterialClient.updateMaterial(finalMaterialId, request);
+                    System.out.println("✅ Material updated, name: " + name);
                 }
+
+                final MaterialDto finalSavedMaterial = savedMaterial;
+
                 Platform.runLater(() -> {
-                    showAlert("Успешно", "Материал " + (existing == null ? "создан" : "обновлён"),
+                    if (finalIsNew) {
+                        currentMaterialId[0] = finalSavedMaterial.getId();
+                        isEditingMode[0] = true;
+                        dialog.setTitle("Редактирование материала - " + finalSavedMaterial.getName());
+                    }
+
+                    if (saveButton != null) {
+                        saveButton.setDisable(false);
+                        saveButton.setText("Сохранить");
+                    }
+
+                    showAlert("Успешно", "Материал " + (finalIsNew ? "создан" : "обновлён"),
                             Alert.AlertType.INFORMATION);
                     loadData();
                 });
             } catch (Exception e) {
-                Platform.runLater(() -> showAlert("Ошибка", "Не удалось сохранить: " + e.getMessage()));
+                Platform.runLater(() -> {
+                    if (saveButton != null) {
+                        saveButton.setDisable(false);
+                        saveButton.setText("Сохранить");
+                    }
+                    showAlert("Ошибка", "Не удалось сохранить: " + e.getMessage());
+                    System.err.println("Error saving: " + e.getMessage());
+                });
+                e.printStackTrace();
             }
         }).start();
     }
@@ -681,7 +794,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
 
     @Override
     protected List<UnitOfMeasureDto> fetchUnits() throws Exception {
-        return ComponentClient.getAllUnits();  // или MaterialClient.getAllUnits()
+        return MaterialClient.getAllUnits();
     }
 
 }

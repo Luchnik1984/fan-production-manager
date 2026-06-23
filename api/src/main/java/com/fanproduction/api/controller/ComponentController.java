@@ -295,7 +295,14 @@ public class ComponentController extends BaseController {
         entity.setClassId(dto.getClassId());
         entity.setName(dto.getName().trim());
         entity.setDesignation(dto.getDesignation().trim());
-        entity.setVendorCode(dto.getVendorCode());
+
+        // Обработка vendorCode — пустую строку превращаем в null
+        String vendorCode = dto.getVendorCode();
+        if (vendorCode != null && vendorCode.trim().isEmpty()) {
+            vendorCode = null;
+        }
+        entity.setVendorCode(vendorCode);
+
         entity.setUnitId(dto.getUnitId());
         entity.setDescription(dto.getDescription());
         entity.setTechnicalSpecs(dto.getTechnicalSpecs());
@@ -320,9 +327,6 @@ public class ComponentController extends BaseController {
     }
 
     private ComponentDto toDto(ComponentEntity entity) {
-        System.out.println("=== DEBUG ComponentEntity ===");
-        System.out.println("name: " + entity.getName());
-        System.out.println("designation: " + entity.getDesignation());
         ComponentDto.ComponentDtoBuilder builder = ComponentDto.builder()
                 .id(entity.getId())
                 .classId(entity.getClassId())

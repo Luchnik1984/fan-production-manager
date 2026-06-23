@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS material (
 CREATE INDEX IF NOT EXISTS idx_material_class_id ON material(class_id);
 CREATE INDEX IF NOT EXISTS idx_material_name ON material(name);
 CREATE INDEX IF NOT EXISTS idx_material_designation ON material(designation);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_material_designation_unique ON material(designation);
 CREATE INDEX IF NOT EXISTS idx_material_standard ON material(standard);
 CREATE INDEX IF NOT EXISTS idx_material_unit_id ON material(unit_id);
 CREATE INDEX IF NOT EXISTS idx_material_type ON material(material_type);

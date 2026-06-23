@@ -306,12 +306,21 @@ public class MaterialController extends BaseController {
         entity.setMaterialType(dto.getMaterialType());
         entity.setUnitId(dto.getUnitId());
         entity.setDensity(dto.getDensity());
-        entity.setVendorCode(dto.getVendorCode());
+
+        // Обработка vendorCode — пустую строку превращаем в null
+        String vendorCode = dto.getVendorCode();
+        if (vendorCode != null && vendorCode.trim().isEmpty()) {
+            vendorCode = null;
+        }
+        entity.setVendorCode(vendorCode);
+
         entity.setMinOrder(dto.getMinOrder());
         entity.setDescription(dto.getDescription());
         entity.setTechnicalSpecs(dto.getTechnicalSpecs());
         return entity;
     }
+
+
 
     // ========== Mappers ==========
 
@@ -369,6 +378,7 @@ public class MaterialController extends BaseController {
                 .id(entity.getId())
                 .classId(entity.getClassId())
                 .name(entity.getName())
+                .designation(entity.getDesignation())
                 .standard(entity.getStandard())
                 .specification(entity.getSpecification())
                 .materialType(entity.getMaterialType())

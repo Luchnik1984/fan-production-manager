@@ -35,11 +35,36 @@ public class MaterialDto implements Displayable {
 
     @Override
     public String getDisplayName() {
-        String display = name;
-        if (designation != null && !designation.isEmpty()) {
-            display += " (" + designation + ")";
+        String display = name != null ? name : "";
+
+        String fullDesignation = buildFullDesignation(designation, specification);
+
+        if (!fullDesignation.isEmpty()) {
+            display += " (" + fullDesignation + ")";
         }
+
         return display;
+    }
+
+    private String buildFullDesignation(String designation, String specification) {
+        // designation всегда not null в БД, но может быть пустой строкой
+        if (designation == null || designation.trim().isEmpty()) {
+            return specification != null ? specification.trim() : "";
+        }
+
+        if (specification == null || specification.trim().isEmpty()) {
+            return designation.trim();
+        }
+
+        String d = designation.trim();
+        String s = specification.trim();
+
+        // Если одно содержит другое — возвращаем более полное
+        if (s.contains(d)) return s;
+        if (d.contains(s)) return d;
+
+        // Иначе — объединяем через дефис
+        return d + "-" + s;
     }
 
     @Override
