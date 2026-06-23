@@ -440,9 +440,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         });
 
         // Обработка закрытия диалога
-        dialog.setOnCloseRequest(e -> {
-            loadData();
-        });
+        dialog.setOnCloseRequest(e -> loadData());
 
         dialog.showAndWait();
     }

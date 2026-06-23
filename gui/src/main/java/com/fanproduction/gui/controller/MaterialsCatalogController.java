@@ -451,9 +451,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
             );
         });
 
-        dialog.setOnCloseRequest(e -> {
-            loadData();
-        });
+        dialog.setOnCloseRequest(e -> loadData());
 
         dialog.showAndWait();
     }
