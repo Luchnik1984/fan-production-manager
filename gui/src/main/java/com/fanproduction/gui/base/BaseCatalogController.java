@@ -1,5 +1,6 @@
 package com.fanproduction.gui.base;
 
+import com.fanproduction.core.dto.Displayable;
 import com.fanproduction.core.dto.TechnicalSpec;
 import com.fanproduction.gui.component.IconFactory;
 import com.fanproduction.gui.component.TechnicalSpecsEditor;
@@ -9,6 +10,7 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
@@ -251,7 +253,6 @@ public abstract class BaseCatalogController<T, C, CL> {
     }
 
     // ДИАЛОГИ РЕДАКТИРОВАНИЯ (через dialogHelper)
-
     protected void showEditCategoryDialog(C category) {
         dialogHelper.showEditCategoryDialog(category, result -> new Thread(() -> {
             try {
@@ -281,7 +282,6 @@ public abstract class BaseCatalogController<T, C, CL> {
     }
 
     // УДАЛЕНИЕ С ПРОВЕРКАМИ
-
     protected void deleteCategory(Long id, String name) {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Подтверждение удаления");
@@ -377,7 +377,6 @@ public abstract class BaseCatalogController<T, C, CL> {
     }
 
     // УТИЛИТЫ
-
     protected void showAlert(String title, String message) {
         showAlert(title, message, Alert.AlertType.ERROR);
     }
@@ -574,16 +573,11 @@ public abstract class BaseCatalogController<T, C, CL> {
                                        Runnable saveAction,
                                        Runnable exportAction) {
         // Создаём вкладку "Основные поля"
-        Tab mainTab = new Tab("Основные поля");
-        mainTab.setClosable(false);
-        ScrollPane scrollPane = new ScrollPane(mainGrid);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setPrefHeight(450);
-        mainTab.setContent(scrollPane);
+        Tab mainTab = createMainTab("Основные поля", mainGrid);
         tabPane.getTabs().add(mainTab);
 
         // Создаём вкладку "Технические характеристики"
-        Tab technicalTab = new Tab("Технические характеристики");
+        Tab technicalTab = new Tab("Тех. характеристики");
         technicalTab.setClosable(false);
         technicalTab.setContent(technicalSpecsEditor);
         tabPane.getTabs().add(technicalTab);
@@ -661,6 +655,17 @@ public abstract class BaseCatalogController<T, C, CL> {
     }
 
     /**
+     * Создаёт и настраивает базовый GridPane для формы
+     */
+    protected GridPane createBaseGrid() {
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20));
+        return grid;
+    }
+
+    /**
      * Экспортирует данные из диалога в Excel
      *
      * @param formFields           поля формы (Object, чтобы подходило для любого типа)
@@ -684,7 +689,7 @@ public abstract class BaseCatalogController<T, C, CL> {
             for (Map.Entry<String, Object> entry : techSpecsMap.entrySet()) {
                 String key = entry.getKey();
                 Object value = entry.getValue();
-                String valueStr = "";
+                String valueStr;
                 Long unitId = null;
                 String unitCode = null;
 
@@ -713,8 +718,8 @@ public abstract class BaseCatalogController<T, C, CL> {
         }
 
         // ========== 4. ПОЛУЧАЕМ ИМЯ ДЛЯ ФАЙЛА ==========
-        String name = extractNameFromForm(formFields);
-        String fileNamePrefix = (name == null || name.isEmpty()) ? itemTypeName : name;
+        String displayName = getDisplayNameFromObject(existing);
+        String fileNamePrefix = (displayName == null || displayName.isEmpty()) ? itemTypeName : displayName;
 
         // ========== 5. ЭКСПОРТ ==========
         ExcelExportUtil.exportToExcel(
@@ -722,7 +727,7 @@ public abstract class BaseCatalogController<T, C, CL> {
                 fileNamePrefix,
                 "Основные поля",
                 mainSheetData,
-                "Технические характеристики",
+                "Тех. характеристики",
                 techSpecs
         );
     }
@@ -748,6 +753,51 @@ public abstract class BaseCatalogController<T, C, CL> {
             }
         } catch (Exception e) {
             // Игнорируем — возвращаем null
+        }
+        return null;
+    }
+
+    /**
+     * Проверяет обязательные поля формы
+     *
+     * @param selectedClass  выбранный класс
+     * @param name           наименование
+     * @param designation    обозначение
+     * @param selectedUnit   выбранная единица измерения
+     * @return true если валидация пройдена, false если есть ошибки
+     */
+    protected boolean hasValidationErrors(String selectedClass,
+                                          String name,
+                                          String designation,
+                                          Object selectedUnit) {
+        if (selectedClass == null || selectedClass.isEmpty()) {
+            showAlert("Ошибка", "Выберите класс");
+            return true;
+        }
+        if (name == null || name.trim().isEmpty()) {
+            showAlert("Ошибка", "Введите наименование");
+            return true;
+        }
+        if (designation == null || designation.trim().isEmpty()) {
+            showAlert("Ошибка", "Введите обозначение");
+            return true;
+        }
+        if (selectedUnit == null) {
+            showAlert("Ошибка", "Выберите единицу измерения");
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Получает displayName из объекта (если он реализует Displayable)
+     */
+    private String getDisplayNameFromObject(Object obj) {
+        if (obj instanceof Displayable) {
+            String displayName = ((Displayable) obj).getDisplayName();
+            if (displayName != null && !displayName.isEmpty()) {
+                return displayName;
+            }
         }
         return null;
     }

@@ -1,6 +1,11 @@
 package com.fanproduction.gui.util;
 
 import com.fanproduction.core.dto.TechnicalSpec;
+import javafx.application.Platform;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.DialogPane;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import org.apache.poi.ss.usermodel.*;
@@ -29,20 +34,19 @@ public class ExcelExportUtil {
     /**
      * Экспортирует данные в Excel с двумя листами
      *
-     * @param owner             родительское окно для диалога сохранения
-     * @param fileNamePrefix    префикс имени файла (например, "компонент" или "материал")
-     * @param mainSheetName     название первого листа (основные поля)
-     * @param mainSheetData     данные для первого листа (заголовок + значение)
-     * @param specsSheetName    название второго листа (технические характеристики)
-     * @param specsSheetData    данные для второго листа (технические характеристики)
-     * @return true если экспорт успешен, false если отменён
+     * @param owner          родительское окно для диалога сохранения
+     * @param fileNamePrefix префикс имени файла (например, "компонент" или "материал")
+     * @param mainSheetName  название первого листа (основные поля)
+     * @param mainSheetData  данные для первого листа (заголовок + значение)
+     * @param specsSheetName название второго листа (технические характеристики)
+     * @param specsSheetData данные для второго листа (технические характеристики)
      */
-    public static boolean exportToExcel(Window owner,
-                                        String fileNamePrefix,
-                                        String mainSheetName,
-                                        List<ExcelRowData> mainSheetData,
-                                        String specsSheetName,
-                                        List<TechnicalSpec> specsSheetData) {
+    public static void exportToExcel(Window owner,
+                                     String fileNamePrefix,
+                                     String mainSheetName,
+                                     List<ExcelRowData> mainSheetData,
+                                     String specsSheetName,
+                                     List<TechnicalSpec> specsSheetData) {
 
         // Если fileNamePrefix содержит недопустимые символы, заменяем их
         String safePrefix = fileNamePrefix.replaceAll("[\\\\/:*?\"<>|]", "_");
@@ -61,7 +65,7 @@ public class ExcelExportUtil {
 
         File file = fileChooser.showSaveDialog(owner);
         if (file == null) {
-            return false;
+            return;
         }
 
         try (Workbook workbook = new XSSFWorkbook()) {
@@ -82,12 +86,10 @@ public class ExcelExportUtil {
             }
 
             showSuccess("Экспорт " + safePrefix + " завершён");
-            return true;
 
         } catch (IOException e) {
             showError("Ошибка экспорта: " + e.getMessage());
             e.printStackTrace();
-            return false;
         }
     }
 
@@ -141,7 +143,7 @@ public class ExcelExportUtil {
         Row headerRow = sheet.createRow(0);
         createCell(headerRow, 0, "Характеристика", headerStyle);
         createCell(headerRow, 1, "Значение", headerStyle);
-        createCell(headerRow, 2, "Единица измерения", headerStyle);
+        createCell(headerRow, 2, "Ед. изм.", headerStyle);
 
         // Данные
         int rowNum = 1;
@@ -176,21 +178,32 @@ public class ExcelExportUtil {
         }
     }
 
+    private static void showDialog(String title, String message, Alert.AlertType type) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(type);
+            alert.setTitle(title);
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+
+            DialogPane dialogPane = alert.getDialogPane();
+            dialogPane.setMinWidth(350);
+            dialogPane.setMinHeight(150);
+
+            Button okButton = (Button) dialogPane.lookupButton(ButtonType.OK);
+            if (okButton != null) {
+                okButton.setPrefWidth(80);
+                okButton.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
+            }
+
+            alert.showAndWait();
+        });
+    }
+
     private static void showSuccess(String message) {
-        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
-                javafx.scene.control.Alert.AlertType.INFORMATION);
-        alert.setTitle("Успешно");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        showDialog("Успешно", message, Alert.AlertType.INFORMATION);
     }
 
     private static void showError(String message) {
-        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
-                javafx.scene.control.Alert.AlertType.ERROR);
-        alert.setTitle("Ошибка");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        showDialog("Ошибка", message, Alert.AlertType.ERROR);
     }
 }

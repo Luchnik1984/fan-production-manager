@@ -15,7 +15,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
-import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 
@@ -192,7 +191,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
 
     @Override
     protected String[] getExportHeaders() {
-        return new String[]{"Наименование", "Класс", "Артикул", "Ед. измер. ","Масса (кг)", "Материал", "Описание"};
+        return new String[]{"Наименование", "Класс", "Артикул", "Ед. изм. ","Масса (кг)", "Материал", "Описание"};
     }
 
     @Override
@@ -214,7 +213,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 {"Обозначение", designation},
                 {"Артикул", vendorCode},
                 {"Класс", className},
-                {"Единица измерения", unitCode},
+                {"Ед. измерения", unitCode},
                 {"Масса (кг)", weight},
                 {"Материал", material},
                 {"Описание", description}
@@ -330,23 +329,9 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         final Long[] currentComponentId = {existing != null ? existing.getId() : null};
         final boolean[] isEditingMode = {existing != null};
 
+        // ========== СОЗДАЁМ КОМПОНЕНТЫ ==========
         TabPane tabPane = createBaseTabPane();
 
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(20));
-
-        // ========== СОЗДАЁМ ВКЛАДКУ "ОСНОВНЫЕ ПОЛЯ" ==========
-        Tab mainTab = new Tab("Основные поля");
-        mainTab.setClosable(false);
-        ScrollPane scrollPane = new ScrollPane(grid);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setPrefHeight(450);
-        mainTab.setContent(scrollPane);
-        tabPane.getTabs().add(mainTab);
-
-        // Выбор категории
         ComboBox<String> categoryCombo = createCategoryCombo();
         ComboBox<String> classCombo = createClassCombo();
         ComponentFormFields formFields = createComponentFormFields();
@@ -355,101 +340,39 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         warningLabel.setStyle("-fx-text-fill: red; -fx-font-size: 11px;");
         warningLabel.setVisible(false);
 
-        // Заполняем поля при редактировании
         Map<String, ComponentClassDto> classMap = this.classMap;
-        if (existing != null) {
-            loadExistingComponentData(existing, formFields, categoryCombo, classCombo, classMap);
-        } else if (currentComponentId[0] != null) {
-            // Если диалог переключился в режим редактирования (после создания)
-            try {
-                ComponentDto loaded = ComponentClient.getComponentById(currentComponentId[0]);
-                loadExistingComponentData(loaded, formFields, categoryCombo, classCombo, classMap);
-                dialog.setTitle("Редактирование компонента - " + loaded.getName());
-            } catch (Exception e) {
-                System.err.println("Failed to load component for editing: " + e.getMessage());
-            }
-        }
 
         // Настраиваем зависимость категория → класс
         setupCategoryClassDependency(categoryCombo, classCombo, warningLabel);
 
-        // Сборка формы (основные поля)
-        int row = 0;
-        grid.add(new Label("Категория:*"), 0, row);
-        grid.add(categoryCombo, 1, row++);
-        grid.add(new Label("Класс:*"), 0, row);
-        grid.add(classCombo, 1, row++);
-        grid.add(warningLabel, 1, row++);
-        grid.add(new Label("Наименование:*"), 0, row);
-        grid.add(formFields.name(), 1, row++);
-        grid.add(new Label("Обозначение:"), 0, row);
-        grid.add(formFields.designation(), 1, row++);
-        grid.add(new Label("Артикул:"), 0, row);
-        grid.add(formFields.vendorCode(), 1, row++);
-        grid.add(new Label("Единица измерения:*"), 0, row);
-        grid.add(formFields.unit(), 1, row++);
-        grid.add(new Label("Масса (кг):"), 0, row);
-        grid.add(formFields.weightKg(), 1, row++);
-        grid.add(new Label("Материал:"), 0, row);
-        grid.add(formFields.material(), 1, row++);
-        grid.add(new Label("Описание:"), 0, row);
-        grid.add(formFields.description(), 1, row);
+        // Создаём GridPane с полями
+        GridPane grid = createComponentFormGrid(existing, currentComponentId, categoryCombo, classCombo,
+                formFields, warningLabel, classMap);
 
-        // ========== СОЗДАЁМ ВКЛАДКУ "ТЕХНИЧЕСКИЕ ХАРАКТЕРИСТИКИ" ==========
-        TechnicalSpecsEditor technicalSpecsEditor = new TechnicalSpecsEditor(allUnits);
-        if (existing != null && existing.getTechnicalSpecs() != null) {
-            technicalSpecsEditor.setTechnicalSpecs(existing.getTechnicalSpecs());
-        } else if (currentComponentId[0] != null) {
-            try {
-                ComponentDto loaded = ComponentClient.getComponentById(currentComponentId[0]);
-                if (loaded.getTechnicalSpecs() != null) {
-                    technicalSpecsEditor.setTechnicalSpecs(loaded.getTechnicalSpecs());
-                }
-            } catch (Exception e) {
-                System.err.println("Failed to load technical specs: " + e.getMessage());
-            }
-        }
+        // Создаём редактор технических характеристик
+        TechnicalSpecsEditor technicalSpecsEditor = createTechnicalSpecsEditor(existing, currentComponentId);
 
-        Tab technicalTab = new Tab("Технические характеристики");
-        technicalTab.setClosable(false);
-        technicalTab.setContent(technicalSpecsEditor);
-        tabPane.getTabs().add(technicalTab);
+        // ========== СОХРАНЕНИЕ ==========
+        Runnable saveAction = () -> collectAndSaveComponent(
+                existing,
+                formFields,
+                classCombo,
+                classMap,
+                technicalSpecsEditor,
+                dialog,
+                currentComponentId,
+                isEditingMode
+        );
 
-        // ========== КНОПКИ ==========
-        ButtonType saveButtonType = new ButtonType("Сохранить", ButtonBar.ButtonData.OK_DONE);
-        ButtonType cancelButtonType = new ButtonType("Отмена", ButtonBar.ButtonData.CANCEL_CLOSE);
-        ButtonType exportButtonType = new ButtonType("📎 Экспорт в Excel", ButtonBar.ButtonData.OTHER);
+        // ========== ЭКСПОРТ ==========
+        Runnable exportAction = () -> exportFromDialog(formFields, technicalSpecsEditor, dialog, existing, "компонент");
 
-        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, cancelButtonType, exportButtonType);
+        // ========== НАСТРАИВАЕМ ДИАЛОГ ==========
+        setupDialogWithTabs(dialog, tabPane, grid, technicalSpecsEditor, saveAction, exportAction);
 
-        // Настраиваем кнопку "Сохранить"
-        Button saveButton = (Button) dialog.getDialogPane().lookupButton(saveButtonType);
-        saveButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;");
-        saveButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
-            event.consume();
-            collectAndSaveComponent(
-                    existing,
-                    formFields,
-                    classCombo,
-                    classMap,
-                    technicalSpecsEditor,
-                    dialog,
-                    currentComponentId,
-                    isEditingMode
-            );
-        });
-
-        // Настраиваем кнопку "Экспорт в Excel"
-        Button exportButton = (Button) dialog.getDialogPane().lookupButton(exportButtonType);
-        exportButton.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-weight: bold;");
-        exportButton.setOnAction(e -> exportFromDialog(formFields, technicalSpecsEditor, dialog, existing, "компонент"));
-
-        // Кнопка "Отмена" — работает по умолчанию, ничего делать не нужно
-
-        dialog.getDialogPane().setContent(tabPane);
+        dialog.setOnCloseRequest(e -> loadData());
         dialog.showAndWait();
     }
-
 
     // ========== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
 
@@ -486,6 +409,74 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
                 weightKgField,
                 materialField,
                 technicalSpecsEditor);
+    }
+
+    /**
+     * Создаёт GridPane с полями для компонента
+     */
+    private GridPane createComponentFormGrid(ComponentDto existing,
+                                             Long[] currentComponentId,
+                                             ComboBox<String> categoryCombo,
+                                             ComboBox<String> classCombo,
+                                             ComponentFormFields formFields,
+                                             Label warningLabel,
+                                             Map<String, ComponentClassDto> classMap) {
+        GridPane grid = createBaseGrid();
+
+        // Заполняем поля при редактировании
+        if (existing != null) {
+            loadExistingComponentData(existing, formFields, categoryCombo, classCombo, classMap);
+        } else if (currentComponentId[0] != null) {
+            try {
+                ComponentDto loaded = ComponentClient.getComponentById(currentComponentId[0]);
+                loadExistingComponentData(loaded, formFields, categoryCombo, classCombo, classMap);
+            } catch (Exception e) {
+                System.err.println("Failed to load component for editing: " + e.getMessage());
+            }
+        }
+
+        int row = 0;
+        grid.add(new Label("Категория:*"), 0, row);
+        grid.add(categoryCombo, 1, row++);
+        grid.add(new Label("Класс:*"), 0, row);
+        grid.add(classCombo, 1, row++);
+        grid.add(warningLabel, 1, row++);
+        grid.add(new Label("Наименование:*"), 0, row);
+        grid.add(formFields.name(), 1, row++);
+        grid.add(new Label("Обозначение:"), 0, row);
+        grid.add(formFields.designation(), 1, row++);
+        grid.add(new Label("Артикул:"), 0, row);
+        grid.add(formFields.vendorCode(), 1, row++);
+        grid.add(new Label("Единица измерения:*"), 0, row);
+        grid.add(formFields.unit(), 1, row++);
+        grid.add(new Label("Масса (кг):"), 0, row);
+        grid.add(formFields.weightKg(), 1, row++);
+        grid.add(new Label("Материал:"), 0, row);
+        grid.add(formFields.material(), 1, row++);
+        grid.add(new Label("Описание:"), 0, row);
+        grid.add(formFields.description(), 1, row);
+
+        return grid;
+    }
+
+    /**
+     * Создаёт редактор технических характеристик
+     */
+    private TechnicalSpecsEditor createTechnicalSpecsEditor(ComponentDto existing, Long[] currentComponentId) {
+        TechnicalSpecsEditor editor = new TechnicalSpecsEditor(allUnits);
+        if (existing != null && existing.getTechnicalSpecs() != null) {
+            editor.setTechnicalSpecs(existing.getTechnicalSpecs());
+        } else if (currentComponentId[0] != null) {
+            try {
+                ComponentDto loaded = ComponentClient.getComponentById(currentComponentId[0]);
+                if (loaded.getTechnicalSpecs() != null) {
+                    editor.setTechnicalSpecs(loaded.getTechnicalSpecs());
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to load technical specs: " + e.getMessage());
+            }
+        }
+        return editor;
     }
 
 
@@ -624,20 +615,7 @@ public class ComponentsCatalogController extends BaseCatalogController<Component
         }
 
         // ========== ВАЛИДАЦИЯ ==========
-        if (selectedClass == null || selectedClass.isEmpty()) {
-            showAlert("Ошибка", "Выберите класс");
-            return;
-        }
-        if (name.isEmpty()) {
-            showAlert("Ошибка", "Введите наименование");
-            return;
-        }
-        if (designation.isEmpty()) {
-            showAlert("Ошибка", "Введите обозначение");
-            return;
-        }
-        if (selectedUnit == null) {
-            showAlert("Ошибка", "Выберите единицу измерения");
+        if (hasValidationErrors(selectedClass, name, designation, selectedUnit)) {
             return;
         }
 

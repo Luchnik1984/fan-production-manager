@@ -81,7 +81,7 @@ public class TechnicalSpecsEditor extends VBox {
         valueCol.setPrefWidth(150);
 
         // ========== КОЛОНКА "ЕДИНИЦА ИЗМЕРЕНИЯ" ==========
-        TableColumn<TechnicalSpec, UnitOfMeasureDto> unitCol = new TableColumn<>("Единица измерения");
+        TableColumn<TechnicalSpec, UnitOfMeasureDto> unitCol = new TableColumn<>("Ед. измерения");
         unitCol.setCellValueFactory(cellData -> {
             Long unitId = cellData.getValue().unitId();
             if (unitId != null && unitsById.containsKey(unitId)) {
