@@ -3,6 +3,7 @@ package com.fanproduction.services.impl;
 import com.fanproduction.core.entity.product.*;
 import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.core.enums.AuditAction;
+import com.fanproduction.core.enums.AssemblyUnitFieldType;
 import com.fanproduction.core.event.AuditEvent;
 import com.fanproduction.core.security.CurrentUserProvider;
 import com.fanproduction.repositories.product.*;
@@ -113,10 +114,21 @@ public class ProductCardServiceImpl implements ProductCardService {
         BaseProductCard card = productCardRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Карточка не найдена: " + id));
 
+        String cardType = card.getCardType();
+        if (AssemblyUnitFieldType.fromUnitType(cardType) != null) {
+            if (isAssemblyUnitUsedInFanCards(id)) {
+                List<String> usageList = getAssemblyUnitUsageInfo(id);
+                String usageMessage = String.join("\n- ", usageList);
+                throw new IllegalStateException(
+                        String.format("Невозможно удалить сборочный узел '%s' — он используется в следующих карточках продукции:\n- %s",
+                                card.getName(), usageMessage)
+                );
+            }
+        }
+
         String cardName = card.getName();
         productCardRepository.deleteById(id);
 
-        // Публикуем событие аудита
         eventPublisher.publishEvent(new AuditEvent(
                 this,
                 getCurrentUser(),
@@ -124,6 +136,7 @@ public class ProductCardServiceImpl implements ProductCardService {
                 "Удалена карточка: " + cardName
         ));
     }
+
 
     @Override
     public String generateCode(BaseProductCard card) {
@@ -136,21 +149,6 @@ public class ProductCardServiceImpl implements ProductCardService {
     @Override
     public boolean isCodeUnique(String code) {
         return !productCardRepository.existsByCode(code);
-    }
-
-    @Override
-    public Optional<MotorCardEntity> getMotorById(Long id) {
-        return motorCardRepository.findById(id);
-    }
-
-    @Override
-    public Optional<MotorWheelCardEntity> getMotorWheelById(Long id) {
-        return motorWheelCardRepository.findById(id);
-    }
-
-    @Override
-    public Optional<RadialWheelCardEntity> getRadialWheelById(Long id) {
-        return radialWheelCardRepository.findById(id);
     }
 
     /**
@@ -174,10 +172,11 @@ public class ProductCardServiceImpl implements ProductCardService {
     @Override
     public List<BaseProductCard> searchByFields(String query) {
         String likePattern = "%" + query.toLowerCase() + "%";
+        List<BaseProductCard> results = new ArrayList<>();
 
         // Поиск по электродвигателям
         List<MotorCardEntity> motors = motorCardRepository.searchByFields(likePattern);
-        List<BaseProductCard> results = new ArrayList<>(motors);
+        results.addAll(motors);
 
         // Поиск по мотор-колёсам
         List<MotorWheelCardEntity> motorWheels = motorWheelCardRepository.searchByFields(likePattern);
@@ -187,8 +186,73 @@ public class ProductCardServiceImpl implements ProductCardService {
         List<RadialWheelCardEntity> radialWheels = radialWheelCardRepository.searchByFields(likePattern);
         results.addAll(radialWheels);
 
-        // TODO: добавить поиск по другим типам карточек
+        // Поиск по осевым колёсам
+        List<AxialWheelCardEntity> axialWheels = axialWheelCardRepository.searchByFields(likePattern);
+        results.addAll(axialWheels);
 
         return results;
     }
+
+    // ==========================================================
+    // ПРОВЕРКА ИСПОЛЬЗОВАНИЯ СБОРОЧНОГО УЗЛА В ВЕНТИЛЯТОРАХ
+    // ==========================================================
+
+    @Override
+    public boolean isAssemblyUnitUsedInFanCards(Long cardId) {
+        BaseProductCard card = productCardRepository.findById(cardId)
+                .orElseThrow(() -> new IllegalArgumentException("Карточка не найдена: " + cardId));
+
+        String cardType = card.getCardType();
+        AssemblyUnitFieldType fieldType = AssemblyUnitFieldType.fromUnitType(cardType);
+        if (fieldType == null) {
+            return false;
+        }
+
+        List<String> fanCardTypes = AssemblyUnitFieldType.getFanCardTypesForUnit(cardType);
+        if (fanCardTypes.isEmpty()) {
+            return false;
+        }
+
+        // Используем ProductCardRepository для поиска вентиляторов
+        long count = productCardRepository.countFanCardsUsingUnit(
+                cardId,
+                fieldType.getFieldName(),
+                fanCardTypes
+        );
+
+        return count > 0;
+    }
+
+    @Override
+    public List<String> getAssemblyUnitUsageInfo(Long cardId) {
+        List<String> usage = new ArrayList<>();
+
+        BaseProductCard card = productCardRepository.findById(cardId)
+                .orElseThrow(() -> new IllegalArgumentException("Карточка не найдена: " + cardId));
+
+        String cardType = card.getCardType();
+        AssemblyUnitFieldType fieldType = AssemblyUnitFieldType.fromUnitType(cardType);
+        if (fieldType == null) {
+            return usage;
+        }
+
+        List<String> fanCardTypes = AssemblyUnitFieldType.getFanCardTypesForUnit(cardType);
+        if (fanCardTypes.isEmpty()) {
+            return usage;
+        }
+
+        // Используем ProductCardRepository для поиска вентиляторов
+        List<BaseProductCard> fanCards = productCardRepository.findFanCardsUsingUnit(
+                cardId,
+                fieldType.getFieldName(),
+                fanCardTypes
+        );
+
+        for (BaseProductCard fanCard : fanCards) {
+            usage.add(String.format("%s (ID: %d)", fanCard.getName(), fanCard.getId()));
+        }
+
+        return usage;
+    }
+
 }

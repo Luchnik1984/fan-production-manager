@@ -87,6 +87,9 @@ public class FieldMetadataService {
         // Производитель
         motorWheelFields.add(createField("manufacturer", "Производитель", "text", false, null, null, null, "Например: Siemens, ABB"));
 
+        // Маркировка производителя
+        motorWheelFields.add(createField("manufacturerMarking","Маркировка производителя","text",true,null,null,null,"Например: RE-280F-AC0E или DYF4D-280-QW1a"));
+
         // Тип лопаток (выпадающий список)
         motorWheelFields.add(createField("bladeType", "Тип лопаток", "combobox", true, "впередзагнутые",
                 new String[]{"впередзагнутые", "назадзагнутые"}, null, "впередзагнутые / назадзагнутые"));

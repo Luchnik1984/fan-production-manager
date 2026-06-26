@@ -54,6 +54,38 @@ public interface ProductCardRepository extends JpaRepository<BaseProductCard, Lo
      * Поиск временных карточек
      */
     List<BaseProductCard> findByIsTemporaryTrue();
+
+
+    /**
+     * Найти все вентиляторы, использующие данный сборочный узел
+     */
+    @Query(value = """
+        SELECT b.* FROM base_product_card b
+        INNER JOIN fan_card f ON b.id = f.id
+        WHERE b.card_type IN (:fanCardTypes)
+        AND f.:fieldName = :unitId
+    """, nativeQuery = true)
+    List<BaseProductCard> findFanCardsUsingUnit(
+            @Param("unitId") Long unitId,
+            @Param("fieldName") String fieldName,
+            @Param("fanCardTypes") List<String> fanCardTypes
+    );
+
+    /**
+     * Подсчитать количество вентиляторов, использующих данный сборочный узел
+     */
+    @Query(value = """
+        SELECT COUNT(*) FROM base_product_card b
+        INNER JOIN fan_card f ON b.id = f.id
+        WHERE b.card_type IN (:fanCardTypes)
+        AND f.:fieldName = :unitId
+    """, nativeQuery = true)
+    long countFanCardsUsingUnit(
+            @Param("unitId") Long unitId,
+            @Param("fieldName") String fieldName,
+            @Param("fanCardTypes") List<String> fanCardTypes
+    );
 }
+
 
 

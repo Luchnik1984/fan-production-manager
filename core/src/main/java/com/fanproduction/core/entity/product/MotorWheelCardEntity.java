@@ -10,13 +10,14 @@ import lombok.NoArgsConstructor;
 /**
  * Карточка мотор-колеса.
  * Используется в канальных вентиляторах с вперед-загнутыми лопатками.
- * Пример: RO310F-4D
+ * Пример: RE280F-4D-AC0E
  * Расшифровка:
- * - RO: тип лопаток (впередзагнутые)
+ * - RE: тип лопаток (впередзагнутые)
  * - 310: размер
  * - F: серия
  * - 4: количество полюсов
  * - D: рабочее напряжение (380В)
+ * - AC0E: код двигателя
  */
 @Data
 @NoArgsConstructor
@@ -30,6 +31,14 @@ public class MotorWheelCardEntity extends BaseProductCard {
      */
     @Column(name = "manufacturer", length = 100)
     private String manufacturer;
+
+    /**
+     * Маркировка производителя (уникальное поле)
+     * Пример: RE-280F-AC0E или DYF4D-280-QW1a
+     * Обязательное поле
+     */
+    @Column(name = "manufacturer_marking", nullable = false, length = 100, unique = true)
+    private String manufacturerMarking;
 
     /**
      * Тип лопаток
