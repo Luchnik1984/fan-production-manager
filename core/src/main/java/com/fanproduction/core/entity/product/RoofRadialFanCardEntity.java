@@ -21,6 +21,4 @@ public class RoofRadialFanCardEntity extends FanCardEntity {
     @Column(name = "roof_size", length = 50)
     private String roofSize;
 
-    @Column(name = "radial_wheel_id")
-    private Long radialWheelId;
 }

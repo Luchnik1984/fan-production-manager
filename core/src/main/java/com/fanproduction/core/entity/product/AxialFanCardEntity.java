@@ -25,6 +25,4 @@ public class AxialFanCardEntity extends FanCardEntity {
     @Column(name = "position", length = 10)
     private String position;
 
-    @Column(name = "axial_wheel_id")
-    private Long axialWheelId;
 }

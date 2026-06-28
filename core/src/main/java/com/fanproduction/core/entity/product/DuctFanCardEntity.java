@@ -24,12 +24,6 @@ public class DuctFanCardEntity extends FanCardEntity {
     @Column(name = "duct_fan_type", length = 20)
     private String ductFanType;
 
-    @Column(name = "motor_wheel_id")
-    private Long motorWheelId;
-
-    @Column(name = "radial_wheel_id")
-    private Long radialWheelId;
-
     @Column(name = "wheel_size")
     private Integer wheelSize;
 }

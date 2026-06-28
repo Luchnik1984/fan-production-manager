@@ -34,7 +34,7 @@ public class MotorWheelCardEntity extends BaseProductCard {
 
     /**
      * Маркировка производителя (уникальное поле)
-     * Пример: RE-280F-AC0E или DYF4D-280-QW1a
+     * Пример: RE280F-4D-AC0E или DYF4D-280-QW1a
      * Обязательное поле
      */
     @Column(name = "manufacturer_marking", nullable = false, length = 100, unique = true)

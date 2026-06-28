@@ -22,6 +22,5 @@ CREATE TABLE IF NOT EXISTS motor_wheel_card (
 CREATE INDEX IF NOT EXISTS idx_motor_wheel_size ON motor_wheel_card(size);
 CREATE INDEX IF NOT EXISTS idx_motor_wheel_poles ON motor_wheel_card(poles);
 CREATE INDEX IF NOT EXISTS idx_motor_wheel_blade_type ON motor_wheel_card(blade_type);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_motor_wheel_full_marking ON motor_wheel_card(full_marking);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_motor_wheel_manufacturer_marking
-    ON motor_wheel_card(manufacturer_marking) WHERE manufacturer_marking IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_motor_wheel_full_marking ON motor_wheel_card(LOWER(full_marking)) WHERE full_marking IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_motor_wheel_manufacturer_marking ON motor_wheel_card(LOWER(manufacturer_marking)) WHERE manufacturer_marking IS NOT NULL;

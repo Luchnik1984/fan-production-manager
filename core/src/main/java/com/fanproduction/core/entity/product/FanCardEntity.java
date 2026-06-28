@@ -29,6 +29,15 @@ public abstract class FanCardEntity extends BaseProductCard {
     @Column(name = "motor_id")
     private Long motorId;
 
+    @Column(name = "motor_wheel_id")
+    private Long motorWheelId;
+
+    @Column(name = "radial_wheel_id")
+    private Long radialWheelId;
+
+    @Column(name = "axial_wheel_id")
+    private Long axialWheelId;
+
     @Column(name = "hub_type", length = 50)
     private String hubType;
 

@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS fan_card (
     trim_coefficient DOUBLE PRECISION,
     climate_type VARCHAR(10),
     motor_id BIGINT,
+    motor_wheel_id BIGINT,
+    radial_wheel_id BIGINT,
+    axial_wheel_id BIGINT,
     hub_type VARCHAR(50),
     wheel_formula VARCHAR(100),
     wheel_diameter DOUBLE PRECISION,
@@ -51,6 +54,10 @@ CREATE TABLE IF NOT EXISTS fan_card (
 -- Индексы
 CREATE INDEX IF NOT EXISTS idx_fan_card_size ON fan_card(size);
 CREATE INDEX IF NOT EXISTS idx_fan_card_motor_id ON fan_card(motor_id);
+CREATE INDEX IF NOT EXISTS idx_fan_card_motor_wheel ON fan_card(motor_wheel_id);
+CREATE INDEX IF NOT EXISTS idx_fan_card_radial_wheel ON fan_card(radial_wheel_id);
+CREATE INDEX IF NOT EXISTS idx_fan_card_axial_wheel ON fan_card(axial_wheel_id);
 CREATE INDEX IF NOT EXISTS idx_fan_card_type ON fan_card(fan_type);
 CREATE INDEX IF NOT EXISTS idx_fan_card_class ON fan_card(fan_class);
 CREATE INDEX IF NOT EXISTS idx_fan_card_poles ON fan_card(poles);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fan_card_full_marking ON fan_card(LOWER(full_marking)) WHERE full_marking IS NOT NULL;

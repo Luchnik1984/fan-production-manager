@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS radial_wheel_card (
     explosion_marking VARCHAR(100),
 
     -- ========== ПОЛНАЯ МАРКИРОВКА ==========
-    full_marking VARCHAR(500),
+    full_marking VARCHAR(200),
 
     -- ========== ВНЕШНИЕ КЛЮЧИ ==========
     FOREIGN KEY (id) REFERENCES base_product_card(id) ON DELETE CASCADE,
@@ -47,3 +47,4 @@ CREATE INDEX IF NOT EXISTS idx_radial_wheel_series ON radial_wheel_card(series);
 CREATE INDEX IF NOT EXISTS idx_radial_wheel_marking ON radial_wheel_card(marking);
 CREATE INDEX IF NOT EXISTS idx_radial_wheel_size ON radial_wheel_card(size);
 CREATE INDEX IF NOT EXISTS idx_radial_wheel_blade_type ON radial_wheel_card(blade_type);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_radial_wheel_full_marking ON radial_wheel_card(LOWER(full_marking)) WHERE full_marking IS NOT NULL;

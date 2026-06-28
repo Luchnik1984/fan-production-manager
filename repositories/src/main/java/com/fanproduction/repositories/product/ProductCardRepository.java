@@ -1,6 +1,7 @@
 package com.fanproduction.repositories.product;
 
 import com.fanproduction.core.entity.product.BaseProductCard;
+import com.fanproduction.core.entity.product.FanCardEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -56,36 +57,51 @@ public interface ProductCardRepository extends JpaRepository<BaseProductCard, Lo
     List<BaseProductCard> findByIsTemporaryTrue();
 
 
-    /**
-     * Найти все вентиляторы, использующие данный сборочный узел
-     */
-    @Query(value = """
-        SELECT b.* FROM base_product_card b
-        INNER JOIN fan_card f ON b.id = f.id
-        WHERE b.card_type IN (:fanCardTypes)
-        AND f.:fieldName = :unitId
-    """, nativeQuery = true)
-    List<BaseProductCard> findFanCardsUsingUnit(
-            @Param("unitId") Long unitId,
-            @Param("fieldName") String fieldName,
-            @Param("fanCardTypes") List<String> fanCardTypes
-    );
+    // ==========================================================
+    // МЕТОДЫ ДЛЯ ПРОВЕРКИ ИСПОЛЬЗОВАНИЯ СБОРОЧНЫХ УЗЛОВ
+    // ==========================================================
 
     /**
-     * Подсчитать количество вентиляторов, использующих данный сборочный узел
+     * Подсчитать количество вентиляторов, использующих электродвигатель
      */
-    @Query(value = """
-        SELECT COUNT(*) FROM base_product_card b
-        INNER JOIN fan_card f ON b.id = f.id
-        WHERE b.card_type IN (:fanCardTypes)
-        AND f.:fieldName = :unitId
-    """, nativeQuery = true)
-    long countFanCardsUsingUnit(
-            @Param("unitId") Long unitId,
-            @Param("fieldName") String fieldName,
-            @Param("fanCardTypes") List<String> fanCardTypes
-    );
+    @Query("SELECT COUNT(f) FROM FanCardEntity f WHERE f.motorId = :motorId")
+    long countFanCardsUsingMotor(@Param("motorId") Long motorId);
+
+    /**
+     * Подсчитать количество вентиляторов, использующих мотор-колесо
+     */
+    @Query("SELECT COUNT(f) FROM FanCardEntity f WHERE f.motorWheelId = :motorWheelId")
+    long countFanCardsUsingMotorWheel(@Param("motorWheelId") Long motorWheelId);
+
+    /**
+     * Подсчитать количество вентиляторов, использующих радиальное колесо
+     */
+    @Query("SELECT COUNT(f) FROM FanCardEntity f WHERE f.radialWheelId = :radialWheelId")
+    long countFanCardsUsingRadialWheel(@Param("radialWheelId") Long radialWheelId);
+
+    /**
+     * Подсчитать количество вентиляторов, использующих осевое колесо
+     */
+    @Query("SELECT COUNT(f) FROM FanCardEntity f WHERE f.axialWheelId = :axialWheelId")
+    long countFanCardsUsingAxialWheel(@Param("axialWheelId") Long axialWheelId);
+
+    /**
+     * Найти все вентиляторы, использующие данный сборочный узел
+     * (для получения списка использования)
+     */
+    @Query("SELECT f FROM FanCardEntity f WHERE f.motorId = :unitId")
+    List<FanCardEntity> findFanCardsByMotorId(@Param("unitId") Long unitId);
+
+    @Query("SELECT f FROM FanCardEntity f WHERE f.motorWheelId = :unitId")
+    List<FanCardEntity> findFanCardsByMotorWheelId(@Param("unitId") Long unitId);
+
+    @Query("SELECT f FROM FanCardEntity f WHERE f.radialWheelId = :unitId")
+    List<FanCardEntity> findFanCardsByRadialWheelId(@Param("unitId") Long unitId);
+
+    @Query("SELECT f FROM FanCardEntity f WHERE f.axialWheelId = :unitId")
+    List<FanCardEntity> findFanCardsByAxialWheelId(@Param("unitId") Long unitId);
 }
+
 
 
 

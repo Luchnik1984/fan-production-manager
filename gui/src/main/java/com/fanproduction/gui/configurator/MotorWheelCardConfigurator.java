@@ -28,6 +28,15 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
 
         // 4. Автоматическое заполнение наименования для новых карточек
         autoFillName(fieldControls, "Мотор-колесо", existingCardExists);
+
+        // 5. ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ ПРИ ЗАГРУЗКЕ ДАННЫХ
+        if (existingCardExists) {
+            TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
+            if (fullMarkingField != null && !fullMarkingField.getText().isEmpty()) {
+                lastAutoMarking = fullMarkingField.getText();
+            }
+            updateFullMarking(fieldControls);
+        }
     }
 
     /**
@@ -74,14 +83,12 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
         String manufacturerMarking = getFieldValue(fieldControls, "manufacturerMarking");
         String currentMarking = fullMarkingField.getText();
 
-        // Формируем новую маркировку (она равна маркировке производителя)
-        String newMarking = manufacturerMarking;
-
-        // Обновляем только если поле ещё не редактировалось вручную
-        if (currentMarking == null || currentMarking.isEmpty() ||
-                currentMarking.equals(lastAutoMarking)) {
-            fullMarkingField.setText(newMarking);
-            lastAutoMarking = newMarking;
+        // Обновляем только если:
+        // 1. Поле пустое
+        // 2. ИЛИ поле содержит последнее автоматическое значение (не было отредактировано вручную)
+        if (currentMarking == null || currentMarking.isEmpty() || currentMarking.equals(lastAutoMarking)) {
+            fullMarkingField.setText(manufacturerMarking);
+            lastAutoMarking = manufacturerMarking;
         }
     }
-    }
+}

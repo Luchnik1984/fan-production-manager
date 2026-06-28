@@ -88,7 +88,7 @@ public class FieldMetadataService {
         motorWheelFields.add(createField("manufacturer", "Производитель", "text", false, null, null, null, "Например: Siemens, ABB"));
 
         // Маркировка производителя
-        motorWheelFields.add(createField("manufacturerMarking","Маркировка производителя","text",true,null,null,null,"Например: RE-280F-AC0E или DYF4D-280-QW1a"));
+        motorWheelFields.add(createField("manufacturerMarking","Маркировка производителя","text",true,null,null,null,"Например: RE280F-4D-AC0E или DYF4D-280-QW1a"));
 
         // Тип лопаток (выпадающий список)
         motorWheelFields.add(createField("bladeType", "Тип лопаток", "combobox", true, "впередзагнутые",
@@ -136,7 +136,7 @@ public class FieldMetadataService {
         radialWheelFields.add(createField("manufacturer", "Производитель", "text", false, null, null, null, "Введите название, например НПО Промпат"));
         radialWheelFields.add(createField("series", "Серия колеса", "text", true, null, null, null, "Введите серию, например КЦ, РК"));
         radialWheelFields.add(createField("size", "Размер колеса", "double", true, null, null, null, "Введите число, например 280"));
-        radialWheelFields.add(createField("marking", "Маркировка колеса", "text", true, null, null, null, "формируется автоматически: Серия-Размер", true));
+        radialWheelFields.add(createField("marking", "Маркировка колеса", "text", true, null, null, null, "формируется автоматически: Серия-Размер. Или укажите маркировку производителя.", true));
 
         // Раздел 2: Характеристики колеса
         radialWheelFields.add(createField("maxSpeedRpm", "Максимальная скорость (об/мин)", "number", false, null, null, null, "Введите число"));
