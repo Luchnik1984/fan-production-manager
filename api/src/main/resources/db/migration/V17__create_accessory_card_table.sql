@@ -19,4 +19,4 @@ CREATE TABLE IF NOT EXISTS accessory_card (
     );
 
 CREATE INDEX IF NOT EXISTS idx_accessory_type ON accessory_card(accessory_type);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_accessory_full_marking ON accessory_card(full_marking);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_accessory_full_marking ON accessory_card(LOWER(full_marking)) WHERE full_marking IS NOT NULL;

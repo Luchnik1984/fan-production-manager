@@ -12,7 +12,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
-import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 
@@ -232,7 +231,6 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
     }
 
 
-
     @Override
     protected String getItemTypeName() {
         return "материалы";
@@ -341,21 +339,6 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
 
         TabPane tabPane = createBaseTabPane();
 
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(20));
-
-        // ========== СОЗДАЁМ ВКЛАДКУ "ОСНОВНЫЕ ПОЛЯ" ==========
-        Tab mainTab = new Tab("Основные поля");
-        mainTab.setClosable(false);
-        ScrollPane scrollPane = new ScrollPane(grid);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setPrefHeight(450);
-        mainTab.setContent(scrollPane);
-        tabPane.getTabs().add(mainTab);
-
-        // ========== ПОЛЯ ФОРМЫ ==========
         ComboBox<String> categoryCombo = createCategoryCombo();
         ComboBox<String> classCombo = createClassCombo();
         MaterialFormFields formFields = createMaterialFormFields();
@@ -364,95 +347,31 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         warningLabel.setStyle("-fx-text-fill: red; -fx-font-size: 11px;");
         warningLabel.setVisible(false);
 
-        // ========== ЗАГРУЗКА ДАННЫХ ПРИ РЕДАКТИРОВАНИИ ==========
         Map<String, MaterialClassDto> classMap = this.classMap;
-        if (existing != null) {
-            loadExistingMaterialData(existing, formFields, categoryCombo, classCombo, classMap);
-        } else if (currentMaterialId[0] != null) {
-            // Если диалог переключился в режим редактирования (после создания)
-            try {
-                MaterialDto loaded = MaterialClient.getMaterialById(currentMaterialId[0]);
-                loadExistingMaterialData(loaded, formFields, categoryCombo, classCombo, classMap);
-                dialog.setTitle("Редактирование материала - " + loaded.getName());
-            } catch (Exception e) {
-                System.err.println("Failed to load material for editing: " + e.getMessage());
-            }
-        }
 
-        // ========== НАСТРОЙКА ЗАВИСИМОСТИ КАТЕГОРИЯ → КЛАСС ==========
         setupCategoryClassDependency(categoryCombo, classCombo, warningLabel);
 
-        // ========== СБОРКА ФОРМЫ ==========
-        int row = 0;
-        grid.add(new Label("Категория:*"), 0, row);
-        grid.add(categoryCombo, 1, row++);
-        grid.add(new Label("Класс:*"), 0, row);
-        grid.add(classCombo, 1, row++);
-        grid.add(warningLabel, 1, row++);
-        grid.add(new Label("Наименование:*"), 0, row);
-        grid.add(formFields.name(), 1, row++);
-        grid.add(new Label("Обозначение:"), 0, row);
-        grid.add(formFields.designation(), 1, row++);
-        grid.add(new Label("ГОСТ/ТУ:"), 0, row);
-        grid.add(formFields.standard(), 1, row++);
-        grid.add(new Label("Тех. параметры:"), 0, row);
-        grid.add(formFields.specification(), 1, row++);
-        grid.add(new Label("Тип материала:"), 0, row);
-        grid.add(formFields.materialType(), 1, row++);
-        grid.add(new Label("Артикул:"), 0, row);
-        grid.add(formFields.vendorCode(), 1, row++);
-        grid.add(new Label("Единица измерения:*"), 0, row);
-        grid.add(formFields.unit(), 1, row++);
-        grid.add(new Label("Плотность (кг/м³):"), 0, row);
-        grid.add(formFields.density(), 1, row++);
-        grid.add(new Label("Описание:"), 0, row);
-        grid.add(formFields.description(), 1, row);
+        GridPane grid = createMaterialFormGrid(existing, currentMaterialId, categoryCombo, classCombo,
+                formFields, warningLabel, classMap);
 
-        // ========== ВКЛАДКА "ТЕХНИЧЕСКИЕ ХАРАКТЕРИСТИКИ" ==========
-        TechnicalSpecsEditor technicalSpecsEditor = new TechnicalSpecsEditor(allUnits);
-        if (existing != null && existing.getTechnicalSpecs() != null) {
-            technicalSpecsEditor.setTechnicalSpecs(existing.getTechnicalSpecs());
-        } else if (currentMaterialId[0] != null) {
-            try {
-                MaterialDto loaded = MaterialClient.getMaterialById(currentMaterialId[0]);
-                if (loaded.getTechnicalSpecs() != null) {
-                    technicalSpecsEditor.setTechnicalSpecs(loaded.getTechnicalSpecs());
-                }
-            } catch (Exception e) {
-                System.err.println("Failed to load technical specs: " + e.getMessage());
-            }
-        }
+        TechnicalSpecsEditor technicalSpecsEditor = createTechnicalSpecsEditor(existing, currentMaterialId);
 
-        Tab technicalTab = new Tab("Технические характеристики");
-        technicalTab.setClosable(false);
-        technicalTab.setContent(technicalSpecsEditor);
-        tabPane.getTabs().add(technicalTab);
+        Runnable saveAction = () -> collectAndSaveMaterial(
+                existing,
+                formFields,
+                classCombo,
+                classMap,
+                technicalSpecsEditor,
+                dialog,
+                currentMaterialId,
+                isEditingMode
+        );
 
-        // ========== КНОПКИ ==========
-        ButtonType saveButtonType = new ButtonType("Сохранить", ButtonBar.ButtonData.OK_DONE);
-        ButtonType cancelButtonType = new ButtonType("Отмена", ButtonBar.ButtonData.CANCEL_CLOSE);
-        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, cancelButtonType);
+        Runnable exportAction = () -> exportFromDialog(formFields, technicalSpecsEditor, dialog, existing, "материал");
 
-        dialog.getDialogPane().setContent(tabPane);
-
-        // ========== ОБРАБОТКА КНОПКИ "СОХРАНИТЬ" ==========
-        Button saveButton = (Button) dialog.getDialogPane().lookupButton(saveButtonType);
-        saveButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
-            event.consume();
-            collectAndSaveMaterial(
-                    existing,
-                    formFields,
-                    classCombo,
-                    classMap,
-                    technicalSpecsEditor,
-                    dialog,
-                    currentMaterialId,
-                    isEditingMode
-            );
-        });
+        setupDialogWithTabs(dialog, tabPane, grid, technicalSpecsEditor, saveAction, exportAction);
 
         dialog.setOnCloseRequest(e -> loadData());
-
         dialog.showAndWait();
     }
 
@@ -499,6 +418,77 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
                 descriptionField,
                 technicalSpecsEditor
         );
+    }
+
+    /**
+     * Создаёт GridPane с полями для материала
+     */
+    private GridPane createMaterialFormGrid(MaterialDto existing,
+                                            Long[] currentMaterialId,
+                                            ComboBox<String> categoryCombo,
+                                            ComboBox<String> classCombo,
+                                            MaterialFormFields formFields,
+                                            Label warningLabel,
+                                            Map<String, MaterialClassDto> classMap) {
+        GridPane grid = createBaseGrid();
+
+        if (existing != null) {
+            loadExistingMaterialData(existing, formFields, categoryCombo, classCombo, classMap);
+        } else if (currentMaterialId[0] != null) {
+            try {
+                MaterialDto loaded = MaterialClient.getMaterialById(currentMaterialId[0]);
+                loadExistingMaterialData(loaded, formFields, categoryCombo, classCombo, classMap);
+            } catch (Exception e) {
+                System.err.println("Failed to load material for editing: " + e.getMessage());
+            }
+        }
+
+        int row = 0;
+        grid.add(new Label("Категория:*"), 0, row);
+        grid.add(categoryCombo, 1, row++);
+        grid.add(new Label("Класс:*"), 0, row);
+        grid.add(classCombo, 1, row++);
+        grid.add(warningLabel, 1, row++);
+        grid.add(new Label("Наименование:*"), 0, row);
+        grid.add(formFields.name(), 1, row++);
+        grid.add(new Label("Обозначение:"), 0, row);
+        grid.add(formFields.designation(), 1, row++);
+        grid.add(new Label("ГОСТ/ТУ:"), 0, row);
+        grid.add(formFields.standard(), 1, row++);
+        grid.add(new Label("Тех. параметры:"), 0, row);
+        grid.add(formFields.specification(), 1, row++);
+        grid.add(new Label("Тип материала:"), 0, row);
+        grid.add(formFields.materialType(), 1, row++);
+        grid.add(new Label("Артикул:"), 0, row);
+        grid.add(formFields.vendorCode(), 1, row++);
+        grid.add(new Label("Единица измерения:*"), 0, row);
+        grid.add(formFields.unit(), 1, row++);
+        grid.add(new Label("Плотность (кг/м³):"), 0, row);
+        grid.add(formFields.density(), 1, row++);
+        grid.add(new Label("Описание:"), 0, row);
+        grid.add(formFields.description(), 1, row);
+
+        return grid;
+    }
+
+    /**
+     * Создаёт редактор технических характеристик
+     */
+    private TechnicalSpecsEditor createTechnicalSpecsEditor(MaterialDto existing, Long[] currentMaterialId) {
+        TechnicalSpecsEditor editor = new TechnicalSpecsEditor(allUnits);
+        if (existing != null && existing.getTechnicalSpecs() != null) {
+            editor.setTechnicalSpecs(existing.getTechnicalSpecs());
+        } else if (currentMaterialId[0] != null) {
+            try {
+                MaterialDto loaded = MaterialClient.getMaterialById(currentMaterialId[0]);
+                if (loaded.getTechnicalSpecs() != null) {
+                    editor.setTechnicalSpecs(loaded.getTechnicalSpecs());
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to load technical specs: " + e.getMessage());
+            }
+        }
+        return editor;
     }
 
     @Override
@@ -619,22 +609,7 @@ public class MaterialsCatalogController extends BaseCatalogController<MaterialDt
         }
 
         // ========== ВАЛИДАЦИЯ ==========
-        if (selectedClass == null || selectedClass.isEmpty()) {
-            showAlert("Ошибка", "Выберите класс");
-            return;
-        }
-        if (name.isEmpty()) {
-            showAlert("Ошибка", "Введите наименование");
-            return;
-        }
-
-        if (designation.isEmpty()) {
-            showAlert("Ошибка", "Введите обозначение");
-            return;
-        }
-
-        if (selectedUnit == null) {
-            showAlert("Ошибка", "Выберите единицу измерения");
+        if (hasValidationErrors(selectedClass, name, designation, selectedUnit)) {
             return;
         }
 

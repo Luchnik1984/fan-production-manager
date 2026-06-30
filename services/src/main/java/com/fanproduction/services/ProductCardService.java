@@ -73,20 +73,6 @@ public interface ProductCardService {
      */
     boolean isCodeUnique(String code);
 
-    /**
-     * Получение электродвигателя по ID (если карточка — двигатель)
-     */
-    Optional<MotorCardEntity> getMotorById(Long id);
-
-    /**
-     * Получение мотор-колеса по ID
-     */
-    Optional<MotorWheelCardEntity> getMotorWheelById(Long id);
-
-    /**
-     * Получение радиального колеса по ID
-     */
-    Optional<RadialWheelCardEntity> getRadialWheelById(Long id);
 
     /**
      * Снять флаг временной карточки
@@ -95,4 +81,17 @@ public interface ProductCardService {
 
     List<BaseProductCard> searchByFields(String query);
 
+    /**
+     * Проверяет, используется ли сборочный узел в других карточках продукции
+     * @param cardId ID карточки
+     * @return true если используется
+     */
+    boolean isAssemblyUnitUsedInFanCards(Long cardId);
+
+    /**
+     * Получает информацию об использовании карточки
+     * @param cardId сборочного узла
+     * @return список строк с описанием использования
+     */
+    List<String> getAssemblyUnitUsageInfo(Long cardId);
 }

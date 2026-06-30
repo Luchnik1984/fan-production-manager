@@ -4,6 +4,7 @@ import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.gui.client.ComponentClient;
 import com.fanproduction.gui.dto.response.ComponentDto;
 import com.fanproduction.gui.dto.response.ProductCardDto;
+import com.fanproduction.gui.util.NumberFormatter;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -206,9 +207,8 @@ public class CardViewController {
                 Object hubComponentId = fields.get("hubComponentId");
                 if (hubComponentId instanceof Number) {
                     Long componentId = ((Number) hubComponentId).longValue();
-                    String componentName = getComponentName(componentId);
-                    addInfoRow(grid, row++, "Ступица:", componentName != null ? componentName : "—");
-                    // Помечаем, что это поле уже обработано
+                    String componentDisplayName = getComponentDisplayName(componentId);
+                    addInfoRow(grid, row++, "Ступица:", componentDisplayName != null ? componentDisplayName : "—");
                     fields.put("hubComponentId_processed", true);
                 }
             }
@@ -270,6 +270,20 @@ public class CardViewController {
         }
 
         return grid;
+    }
+
+    /**
+     * Получает displayName = name+" "+"("+designation+")" компонента по его ID через API
+     */
+    private static String getComponentDisplayName(Long componentId) {
+        if (componentId == null) return null;
+        try {
+            ComponentDto component = ComponentClient.getComponentById(componentId);
+            return component != null ? component.getDisplayName() : "Компонент #" + componentId;
+        } catch (Exception e) {
+            System.err.println("Failed to load component: " + e.getMessage());
+            return "Компонент #" + componentId;
+        }
     }
 
     /**
@@ -462,29 +476,10 @@ public class CardViewController {
         if (value instanceof Boolean) {
             return (Boolean) value ? "Да" : "Нет";
         }
-        if (value instanceof Double) {
-            // Форматирование с одной десятой
-            return String.format("%.1f", (Double) value);
+        if (value instanceof Number) {
+            return NumberFormatter.formatNumber(value);
         }
         return value.toString();
     }
 
-    /**
-     * Получает название компонента по его ID через API
-     *
-     * @param componentId ID компонента
-     * @return название компонента или null, если не найден
-     */
-    private static String getComponentName(Long componentId) {
-        if (componentId == null) return null;
-
-        try {
-            ComponentDto component = ComponentClient.getComponentById(componentId);
-            return component.getName();
-        } catch (Exception e) {
-            System.err.println("Failed to load component name for ID: " + componentId);
-            e.printStackTrace();
-            return "Компонент #" + componentId;  // fallback
-        }
-    }
 }

@@ -1,6 +1,7 @@
 package com.fanproduction.gui.configurator;
 
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -54,21 +55,6 @@ public interface CardFieldConfigurator {
         return checkBox != null && checkBox.isSelected();
     }
 
-    // ========== МЕТОДЫ ДЛЯ УСТАНОВКИ ЗНАЧЕНИЙ ==========
-
-    default void setFieldValue(Map<String, Node> fieldControls, String fieldName, String value) {
-        TextField textField = getTextField(fieldControls, fieldName);
-        if (textField != null && value != null) {
-            textField.setText(value);
-        }
-    }
-
-    default void setFieldValue(Map<String, Node> fieldControls, String fieldName, Number value) {
-        if (value != null) {
-            setFieldValue(fieldControls, fieldName, value.toString());
-        }
-    }
-
     // ========== УПРАВЛЕНИЕ ВИДИМОСТЬЮ (С ПОДСКАЗКАМИ) ==========
 
     default void setVisible(Map<String, Node> fieldControls,
@@ -77,12 +63,20 @@ public interface CardFieldConfigurator {
                             String fieldName,
                             boolean visible) {
         Node control = fieldControls.get(fieldName);
-        Label label = fieldLabels.get(fieldName);
-        Label hint = fieldHints.get(fieldName);
+        Label label = fieldLabels != null ? fieldLabels.get(fieldName) : null;
+        Label hint = fieldHints != null ? fieldHints.get(fieldName) : null;
 
         if (control != null) {
+            // Устанавливаем видимость у самого контрола
             control.setVisible(visible);
             control.setManaged(visible);
+
+            // Ищем родительский контейнер (VBox) и устанавливаем видимость у него
+            Parent parent = control.getParent();
+            if (parent != null) {
+                parent.setVisible(visible);
+                parent.setManaged(visible);
+            }
         }
         if (label != null) {
             label.setVisible(visible);
@@ -135,35 +129,44 @@ public interface CardFieldConfigurator {
         CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
         CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
 
-        if (generalPurposeCheck != null) {
-            generalPurposeCheck.selectedProperty().addListener((obs, old, val) -> {
-                if (val) {
-                    if (fireproofCheck != null) fireproofCheck.setSelected(false);
-                    if (explosionCheck != null) explosionCheck.setSelected(false);
-                }
-                if (callback != null) callback.run();
-            });
+        // Настраиваем взаимное исключение для всех пар
+        setupMutualExclusiveCheckboxes(generalPurposeCheck, fireproofCheck, callback);
+        setupMutualExclusiveCheckboxes(generalPurposeCheck, explosionCheck, callback);
+        setupMutualExclusiveCheckboxes(fireproofCheck, explosionCheck, callback);
+    }
+
+    /**
+     * Настраивает взаимное исключение для двух галочек.
+     * Если одна из них становится выбранной, другая снимается.
+     *
+     * @param checkbox1 первая галочка
+     * @param checkbox2 вторая галочка
+     * @param callback  действие после изменения
+     */
+    default void setupMutualExclusiveCheckboxes(CheckBox checkbox1, CheckBox checkbox2, Runnable callback) {
+        if (checkbox1 == null || checkbox2 == null) {
+            return;
         }
 
-        if (fireproofCheck != null) {
-            fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
-                if (val) {
-                    if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
-                    if (explosionCheck != null) explosionCheck.setSelected(false);
-                }
-                if (callback != null) callback.run();
-            });
-        }
+        // Слушатель для первой галочки
+        checkbox1.selectedProperty().addListener((obs, old, val) -> {
+            if (val) {
+                checkbox2.setSelected(false);
+            }
+            if (callback != null) {
+                callback.run();
+            }
+        });
 
-        if (explosionCheck != null) {
-            explosionCheck.selectedProperty().addListener((obs, old, val) -> {
-                if (val) {
-                    if (generalPurposeCheck != null) generalPurposeCheck.setSelected(false);
-                    if (fireproofCheck != null) fireproofCheck.setSelected(false);
-                }
-                if (callback != null) callback.run();
-            });
-        }
+        // Слушатель для второй галочки
+        checkbox2.selectedProperty().addListener((obs, old, val) -> {
+            if (val) {
+                checkbox1.setSelected(false);
+            }
+            if (callback != null) {
+                callback.run();
+            }
+        });
     }
 
     // ========== РАСЧЁТ СКОРОСТИ ==========
@@ -227,4 +230,26 @@ public interface CardFieldConfigurator {
             comboBox.valueProperty().addListener((obs, old, val) -> callback.run());
         }
     }
+
+    /**
+     * Проверяет, изменились ли указанные поля по сравнению с начальными значениями
+     */
+    default boolean hasAnyFieldChanged(Map<String, Node> fieldControls,
+                                       Map<String, String> initialValues,
+                                       String... fieldNames) {
+        for (String fieldName : fieldNames) {
+            String currentValue = getFieldValue(fieldControls, fieldName);
+            String initialValue = initialValues.getOrDefault(fieldName, "");
+            if (currentValue == null && initialValue.isEmpty()) continue;
+            if (currentValue == null || !currentValue.equals(initialValue)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    default boolean validate(Map<String, Node> fieldControls, Map<String, Object> fields, Map<String, Label> fieldLabels) {
+        return true; // По умолчанию — всегда валидно
+    }
+
 }

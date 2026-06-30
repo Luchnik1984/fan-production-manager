@@ -44,4 +44,4 @@ CREATE TABLE IF NOT EXISTS axial_wheel_card (
 CREATE INDEX IF NOT EXISTS idx_axial_wheel_size ON axial_wheel_card(size);
 CREATE INDEX IF NOT EXISTS idx_axial_wheel_marking ON axial_wheel_card(marking);
 CREATE INDEX IF NOT EXISTS idx_axial_wheel_blade_type ON axial_wheel_card(blade_type);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_axial_wheel_full_marking ON axial_wheel_card(full_marking);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_axial_wheel_full_marking ON axial_wheel_card(LOWER(full_marking)) WHERE full_marking IS NOT NULL;

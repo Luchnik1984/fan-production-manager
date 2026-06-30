@@ -87,6 +87,9 @@ public class FieldMetadataService {
         // Производитель
         motorWheelFields.add(createField("manufacturer", "Производитель", "text", false, null, null, null, "Например: Siemens, ABB"));
 
+        // Маркировка производителя
+        motorWheelFields.add(createField("manufacturerMarking","Маркировка производителя","text",true,null,null,null,"Например: RE280F-4D-AC0E или DYF4D-280-QW1a"));
+
         // Тип лопаток (выпадающий список)
         motorWheelFields.add(createField("bladeType", "Тип лопаток", "combobox", true, "впередзагнутые",
                 new String[]{"впередзагнутые", "назадзагнутые"}, null, "впередзагнутые / назадзагнутые"));
@@ -130,53 +133,123 @@ public class FieldMetadataService {
         List<FieldMetadataDto> radialWheelFields = new ArrayList<>();
 
         // Раздел 1: Основная информация
-        radialWheelFields.add(createField("manufacturer", "Производитель", "text", false, null, null, null, "Введите название, например НПО Промпат"));
-        radialWheelFields.add(createField("series", "Серия колеса", "text", true, null, null, null, "Введите серию, например КЦ, РК"));
+        // Производитель
+        radialWheelFields.add(createField("manufacturer", "Производитель", "text", false, null, null, null));
+
+        // Размер колеса
         radialWheelFields.add(createField("size", "Размер колеса", "double", true, null, null, null, "Введите число, например 280"));
-        radialWheelFields.add(createField("marking", "Маркировка колеса", "text", true, null, null, null, "формируется автоматически: Серия-Размер", true));
 
-        // Раздел 2: Характеристики колеса
-        radialWheelFields.add(createField("maxSpeedRpm", "Максимальная скорость (об/мин)", "number", false, null, null, null, "Введите число"));
-        radialWheelFields.add(createField("weightKg", "Масса (кг)", "double", false, null, null, null, "Введите число"));
+        // РАЗДЕЛ 2: ТИП КОЛЕСА (ВЗАИМОИСКЛЮЧАЮЩИЕ ГАЛОЧКИ)
+        // Галочка "Партнёрское рабочее колесо"
+        radialWheelFields.add(createField("isPartnerWheel", "Партнёрское рабочее колесо", "boolean", false, "false", null, null));
 
-        // Галочка "Собственного производства"
-        radialWheelFields.add(createField("isOwnProduction", "Собственного производства", "boolean", false, "false", null, null, "Отметьте, если колесо производим сами"));
+        // Скрытое поле "Маркировка производителя" (видно только при isPartnerWheel = true)
+        radialWheelFields.add(createField(
+                "marking",
+                "Маркировка производителя",
+                "text",
+                true,  // обязательно при включённой галочке
+                null,
+                null,
+                null,
+                "Например: КЦ-280-1610х28"
+        ));
+        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
 
-        // ========== РАЗДЕЛИТЕЛЬ ==========
-        radialWheelFields.add(createSeparator("Дополнительные параметры (только для колёс своего производства)"));
+        // Галочка "Фирменное рабочее колесо"
+        radialWheelFields.add(createField("isOwnProduction", "Фирменное рабочее колесо", "boolean", false, "false", null, null));
 
-        // Раздел 3: Дополнительные параметры (только для колёс своего производства), видимые только при isOwnProduction = true
-        radialWheelFields.add(createField("bladeType", "Тип лопаток", "combobox", false, null,
-                new String[]{"","V", "N", "RO"}, null,
+        // РАЗДЕЛ 3: ФИРМЕННОЕ КОЛЕСО (видно только при isOwnProduction = true)
+
+        // Серия колеса
+        radialWheelFields.add(createField("series", "Серия колеса", "text", true, null, null, null, "Введите серию, например КЦ, РК"));
+        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
+
+        // Тип лопаток
+        radialWheelFields.add(createField("bladeType", "Тип лопаток", "combobox", true, null,
+                new String[]{"V", "N", "RO"}, null,
                 "V - впередзагнутые / N - назадзагнутые / RO - радиальнооканчивающиеся"));
+        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
+
+        // Ступица
         radialWheelFields.add(createField("hubComponentId", "Ступица", "selectable", false,
                 null, null, "COMPONENT", "Выберите ступицу из базы компонентов"));
-        radialWheelFields.add(createField("hubName", "", "text", false, null, null, null, ""));
+        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
 
+        // Поле для отображения обозначения ступицы (скрытое, заполняется автоматически)
+        FieldMetadataDto hubNameField = createField("hubName", "", "text", false, "", null, null, "");
+        hubNameField.setReadOnly(true);
+        hubNameField.setVisible(false);
+        radialWheelFields.add(hubNameField);
+
+        // Модификация лопатки
         radialWheelFields.add(createField("bladeMod", "Модификация лопатки", "text", false, null, null, null, "Например 14; 12U"));
+        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
+
+        // Модификация переднего диска
         radialWheelFields.add(createField("frontDiskMod", "Модификация переднего диска", "text", false, null, null, null, "Например А; В"));
+        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
+
+        // Ширина колеса
         radialWheelFields.add(createField("wheelWidth", "Ширина колеса", "double", false, null, null, null, "Введите коэффициент, например 0.27"));
+        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
+
+        // Количество лопаток
         radialWheelFields.add(createField("bladeCount", "Количество лопаток", "number", false, null, null, null, "Введите число лопаток, например 6"));
+        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
+
+        // Коэффициент длины лопатки
         radialWheelFields.add(createField("bladeLengthCoeff", "Коэффициент длины лопатки", "double", false, null, null, null, "Введите коэффициент, например 1.05"));
+        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
 
-        radialWheelFields.add(createField("wheelCode", "Код колеса", "text", false, null, null, null, "формируется автоматически из модификации лопатки", true));
+        // Код колеса (формируется автоматически из bladeMod)
+        radialWheelFields.add(createField("wheelCode", "Код колеса", "text", false, null, null, null, "формируется автоматически из модификации лопатки"));
+        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
+
+        // Формула колеса (формируется автоматически)
         radialWheelFields.add(createField("wheelFormula", "Формула колеса", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
+        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
 
 
-        // ========== РАЗДЕЛИТЕЛЬ ==========
+        // РАЗДЕЛ 4: ОБЩИЕ ПОЛЯ (видны всегда)
+        // Максимальная скорость вращения
+        radialWheelFields.add(createField("maxSpeedRpm", "Максимальная скорость (об/мин)", "number", false, null, null, null, "Введите число"));
+
+        // Масса
+        radialWheelFields.add(createField("weightKg", "Масса (кг)", "double", false, null, null, null, "Введите число"));
+
+        // РАЗДЕЛ 5: ИСПОЛНЕНИЕ (ВЗАИМОИСКЛЮЧАЮЩИЕ ГАЛОЧКИ)
         radialWheelFields.add(createSeparator("Исполнение"));
 
-        // Раздел 4: Исполнение
-        radialWheelFields.add(createSeparator("Исполнение"));
-
+        // Общего применения
         radialWheelFields.add(createField("generalPurpose", "Общего применения", "boolean", false, "true", null, null));
+
+        // Огнестойкость
         radialWheelFields.add(createField("fireproof", "Огнестойкость", "boolean", false, "false", null, null));
+
+        // Время огнестойкости (видно при fireproof = true)
         radialWheelFields.add(createField("fireproofTime", "Время огнестойкости (часы)", "number", false, null, null, null, "Укажите кол-во часов (необязательное поле)"));
+        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
+
+        // Предельная температура (видно при fireproof = true)
         radialWheelFields.add(createField("maxTemperature", "Предельная температура (°C)", "number", false, "400", null, null, "Введите температуру"));
-        radialWheelFields.add(createField("fireproofMarking", "Маркировка огнестойкости", "text", false, "F/400", null, null, "формируется автоматически"));
+        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
+
+        // Маркировка огнестойкости (формируется автоматически)
+        radialWheelFields.add(createField("fireproofMarking", "Маркировка огнестойкости", "text", false, null, null, null, "формируется автоматически"));
+        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
+
+        // Взрывозащита
         radialWheelFields.add(createField("explosionProof", "Взрывозащита", "boolean", false, "false", null, null));
+
+        // Маркировка взрывозащиты (видно при explosionProof = true)
         radialWheelFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex d IIC T4 Gb", null, null, "можно редактировать"));
-        radialWheelFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически"));
+        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
+
+        // РАЗДЕЛ 6: ПОЛНАЯ МАРКИРОВКА
+
+        // Полная маркировка (формируется автоматически)
+        radialWheelFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
 
         metadataMap.put("RADIAL_WHEEL", radialWheelFields);
 
@@ -379,4 +452,5 @@ public class FieldMetadataService {
         field.setVisible(true);
         return field;
     }
+
 }

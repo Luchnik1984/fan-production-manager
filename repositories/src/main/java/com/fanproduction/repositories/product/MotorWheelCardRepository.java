@@ -11,8 +11,19 @@ import java.util.List;
 @Repository
 public interface MotorWheelCardRepository extends JpaRepository<MotorWheelCardEntity, Long> {
 
+    /**
+     * Поиск по размеру
+     */
     List<MotorWheelCardEntity> findBySize(Integer size);
+
+    /**
+     * Поиск по типу лопаток
+     */
     List<MotorWheelCardEntity> findByBladeType(String bladeType);
+
+    /**
+     * Поиск по количеству полюсов
+     */
     List<MotorWheelCardEntity> findByPoles(Integer poles);
 
     /**

@@ -3,12 +3,14 @@ package com.fanproduction.services.impl;
 import com.fanproduction.core.entity.product.*;
 import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.core.enums.AuditAction;
+import com.fanproduction.core.enums.AssemblyUnitFieldType;
 import com.fanproduction.core.event.AuditEvent;
 import com.fanproduction.core.security.CurrentUserProvider;
 import com.fanproduction.repositories.product.*;
 import com.fanproduction.services.ProductCardService;
 import com.fanproduction.services.factory.ProductCardFactory;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProductCardServiceImpl implements ProductCardService {
@@ -29,6 +32,7 @@ public class ProductCardServiceImpl implements ProductCardService {
     private final ProductCardFactory cardFactory;
     private final ApplicationEventPublisher eventPublisher;
     private final CurrentUserProvider currentUserProvider;
+
 
     @Override
     @Transactional
@@ -113,17 +117,36 @@ public class ProductCardServiceImpl implements ProductCardService {
         BaseProductCard card = productCardRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Карточка не найдена: " + id));
 
-        String cardName = card.getName();
+        // Если карточка временная — удаляем без проверок
+        if (card.isTemporary()) {
+            productCardRepository.deleteById(id);
+            return;
+        }
+
+        String cardType = card.getCardType();
+
+        // Проверяем только для сборочных узлов (используем AssemblyUnitFieldType)
+        if (AssemblyUnitFieldType.fromUnitType(cardType) != null) {
+            if (isAssemblyUnitUsedInFanCards(id)) {
+                List<String> usageList = getAssemblyUnitUsageInfo(id);
+                String usageMessage = String.join("\n- ", usageList);
+                throw new IllegalStateException(
+                        String.format("Невозможно удалить сборочный узел '%s' — он используется в следующих карточках продукции:\n- %s",
+                                card.getName(), usageMessage)
+                );
+            }
+        }
+
         productCardRepository.deleteById(id);
 
-        // Публикуем событие аудита
         eventPublisher.publishEvent(new AuditEvent(
                 this,
                 getCurrentUser(),
                 AuditAction.DELETE_CARD,
-                "Удалена карточка: " + cardName
+                "Удалена карточка: " + card.getName()
         ));
     }
+
 
     @Override
     public String generateCode(BaseProductCard card) {
@@ -136,21 +159,6 @@ public class ProductCardServiceImpl implements ProductCardService {
     @Override
     public boolean isCodeUnique(String code) {
         return !productCardRepository.existsByCode(code);
-    }
-
-    @Override
-    public Optional<MotorCardEntity> getMotorById(Long id) {
-        return motorCardRepository.findById(id);
-    }
-
-    @Override
-    public Optional<MotorWheelCardEntity> getMotorWheelById(Long id) {
-        return motorWheelCardRepository.findById(id);
-    }
-
-    @Override
-    public Optional<RadialWheelCardEntity> getRadialWheelById(Long id) {
-        return radialWheelCardRepository.findById(id);
     }
 
     /**
@@ -187,8 +195,86 @@ public class ProductCardServiceImpl implements ProductCardService {
         List<RadialWheelCardEntity> radialWheels = radialWheelCardRepository.searchByFields(likePattern);
         results.addAll(radialWheels);
 
-        // TODO: добавить поиск по другим типам карточек
+        // Поиск по осевым колёсам
+        List<AxialWheelCardEntity> axialWheels = axialWheelCardRepository.searchByFields(likePattern);
+        results.addAll(axialWheels);
 
         return results;
     }
+
+    // ==========================================================
+    // ПРОВЕРКА ИСПОЛЬЗОВАНИЯ СБОРОЧНОГО УЗЛА В ВЕНТИЛЯТОРАХ
+    // ==========================================================
+
+    @Override
+    public boolean isAssemblyUnitUsedInFanCards(Long cardId) {
+        try {
+            BaseProductCard card = productCardRepository.findById(cardId)
+                    .orElseThrow(() -> new IllegalArgumentException("Карточка не найдена: " + cardId));
+
+            String cardType = card.getCardType();
+            long count;
+
+            switch (cardType) {
+                case "MOTOR":
+                    count = productCardRepository.countFanCardsUsingMotor(cardId);
+                    break;
+                case "MOTOR_WHEEL":
+                    count = productCardRepository.countFanCardsUsingMotorWheel(cardId);
+                    break;
+                case "RADIAL_WHEEL":
+                    count = productCardRepository.countFanCardsUsingRadialWheel(cardId);
+                    break;
+                case "AXIAL_WHEEL":
+                    count = productCardRepository.countFanCardsUsingAxialWheel(cardId);
+                    break;
+                default:
+                    return false;
+            }
+
+            return count > 0;
+        } catch (Exception e) {
+            log.error("Error in isAssemblyUnitUsedInFanCards: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+
+    @Override
+    public List<String> getAssemblyUnitUsageInfo(Long cardId) {
+        List<String> usage = new ArrayList<>();
+
+        try {
+            BaseProductCard card = productCardRepository.findById(cardId)
+                    .orElseThrow(() -> new IllegalArgumentException("Карточка не найдена: " + cardId));
+
+            String cardType = card.getCardType();
+            List<FanCardEntity> fanCards;
+
+            switch (cardType) {
+                case "MOTOR":
+                    fanCards = productCardRepository.findFanCardsByMotorId(cardId);
+                    break;
+                case "MOTOR_WHEEL":
+                    fanCards = productCardRepository.findFanCardsByMotorWheelId(cardId);
+                    break;
+                case "RADIAL_WHEEL":
+                    fanCards = productCardRepository.findFanCardsByRadialWheelId(cardId);
+                    break;
+                case "AXIAL_WHEEL":
+                    fanCards = productCardRepository.findFanCardsByAxialWheelId(cardId);
+                    break;
+                default:
+                    return usage;
+            }
+
+            for (FanCardEntity fanCard : fanCards) {
+                usage.add(String.format("%s (ID: %d)", fanCard.getName(), fanCard.getId()));
+            }
+        } catch (Exception e) {
+            log.error("Error in getAssemblyUnitUsageInfo: {}", e.getMessage(), e);
+        }
+
+        return usage;
+    }
+
 }

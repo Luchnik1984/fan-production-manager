@@ -26,6 +26,9 @@ public class RadialWheelCardEntity extends BaseProductCard {
     @Column(name = "marking", length = 100)
     private String marking;                    // маркировка колеса (КЦ-220) - ОБЯЗАТЕЛЬНОЕ
 
+    @Column(name = "is_own_production")
+    private Boolean isOwnProduction = false;  // true - фирменное, false - партнёрское
+
     // ========== РАЗДЕЛ 2: ХАРАКТЕРИСТИКИ КОЛЕСА ==========
 
     /**
@@ -73,7 +76,7 @@ public class RadialWheelCardEntity extends BaseProductCard {
     private Integer bladeCount;
 
     @Column(name = "diameter")
-    private Integer diameter;                  // максимальный диаметр колеса (справочно)
+    private Integer diameter;
 
     // ========== РАЗДЕЛ 4: ИСПОЛНЕНИЕ ==========
 

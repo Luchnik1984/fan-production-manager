@@ -41,4 +41,11 @@ public class CardFormConfigurator {
             configurator.setupFields(fieldControls, fieldLabels, fieldHints, existingCardExists);
         }
     }
+
+    /**
+     * Возвращает конфигуратор для указанного типа карточки
+     */
+    public static CardFieldConfigurator getConfigurator(String cardType) {
+        return configurators.get(cardType);
+    }
 }

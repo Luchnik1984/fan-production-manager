@@ -26,10 +26,6 @@ public interface FanCardRepository extends JpaRepository<FanCardEntity, Long> {
      */
     List<FanCardEntity> findByFanType(String fanType);
 
-    /**
-     * Поиск по установленному электродвигателю
-     */
-    List<FanCardEntity> findByMotorId(Long motorId);
 
     /**
      * Поиск по диапазону типоразмеров

@@ -15,9 +15,6 @@ public class RadialFanCardEntity extends FanCardEntity {
     @Column(name = "series_name", length = 100)
     private String seriesName;
 
-    @Column(name = "radial_wheel_id")
-    private Long radialWheelId;
-
     @Column(name = "housing_angle")
     private Integer housingAngle;
 

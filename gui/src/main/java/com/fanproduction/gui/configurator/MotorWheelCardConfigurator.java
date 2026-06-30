@@ -17,16 +17,32 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
                             Map<String, Label> fieldHints,
                             boolean existingCardExists) {
 
+        // 1. Автозаполнение напряжения из кода напряжения
         setupVoltageAutoFill(fieldControls);
 
-        // Используем общий метод для расчёта скорости
-        setupRatedSpeedCalculation(fieldControls, () -> updateFullMarking(fieldControls));
+        // 2. Расчёт номинальной скорости из полюсов
+        setupRatedSpeedCalculation(fieldControls, () -> {});
 
+        // 3. Формирование полной маркировки из маркировки производителя
         setupFullMarkingGeneration(fieldControls);
 
+        // 4. Автоматическое заполнение наименования для новых карточек
         autoFillName(fieldControls, "Мотор-колесо", existingCardExists);
+
+        // 5. ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ ПРИ ЗАГРУЗКЕ ДАННЫХ
+        if (existingCardExists) {
+            TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
+            if (fullMarkingField != null && !fullMarkingField.getText().isEmpty()) {
+                lastAutoMarking = fullMarkingField.getText();
+            }
+            updateFullMarking(fieldControls);
+        }
     }
 
+    /**
+     * Автозаполнение напряжения из кода напряжения
+     * E → 220В, D → 380В
+     */
     private void setupVoltageAutoFill(Map<String, Node> fieldControls) {
         ComboBox<String> voltageCodeCombo = getComboBox(fieldControls, "voltageCode");
         TextField voltageField = getTextField(fieldControls, "voltage");
@@ -55,10 +71,7 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
         TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
 
-        addTextFieldListener(fieldControls, "name", () -> updateFullMarking(fieldControls));
-        addComboBoxListener(fieldControls, "poles", () -> updateFullMarking(fieldControls));
-        addComboBoxListener(fieldControls, "voltageCode", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "motorCode", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "manufacturerMarking", () -> updateFullMarking(fieldControls));
 
         updateFullMarking(fieldControls);
     }
@@ -67,32 +80,15 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
         TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
 
-        String name = getFieldValue(fieldControls, "name");
-        String poles = getFieldValue(fieldControls, "poles");
-        String voltageCode = getFieldValue(fieldControls, "voltageCode");
-        String motorCode = getFieldValue(fieldControls, "motorCode");
-
-        StringBuilder fullMarking = new StringBuilder();
-
-        if (!name.isEmpty()) {
-            fullMarking.append(name);
-        }
-        if (!poles.isEmpty()) {
-            fullMarking.append("-").append(poles);
-        }
-        if (!voltageCode.isEmpty()) {
-            fullMarking.append(voltageCode);
-        }
-        if (!motorCode.isEmpty()) {
-            fullMarking.append("-").append(motorCode);
-        }
-
-        String newMarking = fullMarking.toString();
+        String manufacturerMarking = getFieldValue(fieldControls, "manufacturerMarking");
         String currentMarking = fullMarkingField.getText();
 
+        // Обновляем только если:
+        // 1. Поле пустое
+        // 2. ИЛИ поле содержит последнее автоматическое значение (не было отредактировано вручную)
         if (currentMarking == null || currentMarking.isEmpty() || currentMarking.equals(lastAutoMarking)) {
-            fullMarkingField.setText(newMarking);
-            lastAutoMarking = newMarking;
+            fullMarkingField.setText(manufacturerMarking);
+            lastAutoMarking = manufacturerMarking;
         }
     }
 }

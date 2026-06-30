@@ -7,6 +7,7 @@ import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
 import com.fanproduction.gui.dto.response.ComponentDto;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fanproduction.gui.client.ProductCardClient;
+import com.fanproduction.gui.util.NumberFormatter;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
@@ -55,44 +56,58 @@ public class FieldControlFactory {
 
     private Node createTextField(FieldMetadataDto field, Object existingValue) {
         TextField textField = new TextField();
-        if (existingValue != null) textField.setText(String.valueOf(existingValue));
-        if (field.getDefaultValue() != null && existingValue == null) textField.setText(field.getDefaultValue());
+        if (existingValue != null) {
+            textField.setText(String.valueOf(existingValue));
+        }
+        if (field.getDefaultValue() != null && existingValue == null) {
+            textField.setText(field.getDefaultValue());
+        }
         textField.setPromptText(field.getHint());
+
+        // Если поле только для чтения
+        if (field.isReadOnly()) {
+            textField.setEditable(false);
+            textField.setStyle("-fx-background-color: #f0f0f0; -fx-text-fill: #555;");
+        }
+
         return textField;
     }
 
+
     private Node createNumberField(FieldMetadataDto field, Object existingValue) {
         TextField numberField = new TextField();
-        if (existingValue != null) numberField.setText(String.valueOf(existingValue));
-        if (field.getDefaultValue() != null && existingValue == null) numberField.setText(field.getDefaultValue());
+        if (existingValue != null) {
+            numberField.setText(NumberFormatter.formatNumber(existingValue));
+        }
+        if (field.getDefaultValue() != null && existingValue == null) {
+            numberField.setText(field.getDefaultValue());
+        }
         numberField.setPromptText("Введите число");
-
         numberField.textProperty().addListener((obs, old, newVal) -> {
             if (newVal != null && !newVal.matches("\\d*")) {
                 numberField.setText(old);
             }
         });
-
         return numberField;
     }
 
     private Node createDoubleField(FieldMetadataDto field, Object existingValue) {
         TextField doubleField = new TextField();
-        if (existingValue != null) doubleField.setText(String.valueOf(existingValue));
-        if (field.getDefaultValue() != null && existingValue == null) doubleField.setText(field.getDefaultValue());
-
-        // Используем hint из метаданных, если он есть
-        String hint = field.getHint() != null ? field.getHint() : "Введите число (например: 5,5)";
-        doubleField.setPromptText(hint);
-
+        if (existingValue != null) {
+            doubleField.setText(NumberFormatter.formatNumber(existingValue));
+        }
+        if (field.getDefaultValue() != null && existingValue == null) {
+            doubleField.setText(field.getDefaultValue());
+        }
+        doubleField.setPromptText(field.getHint() != null ? field.getHint() : "Введите число (например: 5,5)");
         doubleField.textProperty().addListener((obs, old, newVal) -> {
             if (newVal != null && !newVal.matches("\\d*([,.]\\d*)?")) {
                 doubleField.setText(old);
             }
         });
-
         return doubleField;
     }
+
 
     private Node createComboBox(FieldMetadataDto field, Object existingValue) {
         String refType = field.getReferenceType();
@@ -269,4 +284,5 @@ public class FieldControlFactory {
         }
         return result;
     }
+
 }

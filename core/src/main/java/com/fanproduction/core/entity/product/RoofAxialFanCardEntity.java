@@ -24,9 +24,6 @@ public class RoofAxialFanCardEntity extends FanCardEntity {
     @Column(name = "climate_type", length = 10)
     private String climateType = "У1";
 
-    @Column(name = "axial_wheel_id")
-    private Long axialWheelId;
-
     @Column(name = "axial_wheel_full_marking", length = 200)
     private String axialWheelFullMarking;
 }
