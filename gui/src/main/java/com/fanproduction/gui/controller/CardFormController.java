@@ -4,6 +4,7 @@ import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.gui.client.ApiClient;
 import com.fanproduction.gui.client.ComponentClient;
 import com.fanproduction.gui.client.ProductCardClient;
+import com.fanproduction.gui.configurator.CardFieldConfigurator;
 import com.fanproduction.gui.configurator.CardFormConfigurator;
 import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
 import com.fanproduction.gui.dto.response.ApiResponse;
@@ -11,6 +12,7 @@ import com.fanproduction.gui.dto.response.ComponentDto;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fanproduction.gui.factory.FieldControlFactory;
 import com.fanproduction.gui.service.FieldMetadataService;
+import com.fanproduction.gui.util.NumberFormatter;
 import com.fasterxml.jackson.core.type.TypeReference;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -292,10 +294,13 @@ public class CardFormController {
         }).start();
     }
 
-    private void setFieldValue(String fieldName, Object value) {
+    public void setFieldValue(String fieldName, Object value) {
         Node control = fieldControls.get(fieldName);
-        if (control instanceof TextField && value != null) {
-            ((TextField) control).setText(value.toString());
+        if (control == null) return;
+
+        if (control instanceof TextField) {
+            String textValue = NumberFormatter.formatNumber(value);
+            ((TextField) control).setText(textValue);
         }
     }
 
@@ -339,6 +344,7 @@ public class CardFormController {
     }
 
     private void saveCard(Button saveButton) {
+        // СБОР ДАННЫХ ИЗ ФОРМЫ
         Map<String, Object> fields = new HashMap<>();
 
         for (Map.Entry<String, Node> entry : fieldControls.entrySet()) {
@@ -347,7 +353,6 @@ public class CardFormController {
             FieldMetadataDto metadata = fieldMetadata.get(fieldName);
 
             Object value = getControlValue(control, fieldName, metadata);
-
             if (value != null) {
                 fields.put(fieldName, value);
             }
@@ -362,6 +367,7 @@ public class CardFormController {
             }
         }
 
+        // ПОЛУЧАЕМ НАИМЕНОВАНИЕ
         String name = "";
         Node nameControl = fieldControls.get("name");
         if (nameControl instanceof TextField) {
@@ -374,14 +380,20 @@ public class CardFormController {
         final boolean isNewCard = (existingCard == null);
         final Long existingCardId = getCurrentCardId();
 
+        // ВАЛИДАЦИЯ
         if (finalName.isEmpty()) {
             showAlert("Ошибка", "Наименование обязательно для заполнения", Alert.AlertType.ERROR);
             return;
         }
 
+        // Проверяем обязательные поля (только видимые)
         for (Map.Entry<String, FieldMetadataDto> entry : fieldMetadata.entrySet()) {
             FieldMetadataDto field = entry.getValue();
             if (field.isRequired()) {
+                Node control = fieldControls.get(field.getName());
+                if (control != null && !control.isVisible()) {
+                    continue;
+                }
                 Object value = finalFields.get(field.getName());
                 if (value == null || (value instanceof String && ((String) value).isEmpty())) {
                     showAlert("Ошибка", "Поле '" + field.getLabel() + "' обязательно для заполнения", Alert.AlertType.ERROR);
@@ -390,6 +402,17 @@ public class CardFormController {
             }
         }
 
+        // Получаем конфигуратор для данного типа карточки
+        CardFieldConfigurator configurator = CardFormConfigurator.getConfigurator(cardType);
+        if (configurator != null) {
+            // Передаём fieldControls, finalFields, fieldLabels
+            if (!configurator.validate(fieldControls, finalFields, fieldLabels)) {
+                return; // Ошибка уже показана в конфигураторе
+            }
+        }
+
+
+        // СОХРАНЕНИЕ
         saveButton.setDisable(true);
         saveButton.setText("Сохранение...");
 
@@ -399,7 +422,6 @@ public class CardFormController {
                 if (isNewCard && existingCardId != null) {
                     // Обновляем временную карточку
                     response = ProductCardClient.updateCard(existingCardId, finalName, finalFields);
-                    // Снимаем флаг временной
                     if (response.isSuccess()) {
                         removeTemporaryFlag(existingCardId);
                     }
@@ -704,39 +726,41 @@ public class CardFormController {
     }
 
     /**
-     * Загружает имя компонента по ID и сохраняет в скрытое поле hubName
-     */
-    private void loadComponentName(Long componentId) {
-        new Thread(() -> {
-            try {
-                ComponentDto component = ComponentClient.getComponentById(componentId);
-                Platform.runLater(() -> setFieldValue("hubName", component.getName()));
-            } catch (Exception e) {
-                System.err.println("Failed to load component name for ID: " + componentId);
-                e.printStackTrace();
-                Platform.runLater(() -> setFieldValue("hubName", "Компонент #" + componentId));
-            }
-        }).start();
-    }
-
-    /**
      * Загружает дополнительные данные для редактирования карточки
      * (например, имя компонента ступицы для радиального колеса)
      */
     private void loadAdditionalData() {
-        // Только для редактирования существующей карточки
         if (existingCard == null) return;
 
         String cardType = existingCard.getCardType();
         Map<String, Object> fields = existingCard.getFields();
 
-        // Для радиального колеса: загружаем имя ступицы
         if ("RADIAL_WHEEL".equals(cardType)) {
             Object hubComponentId = fields.get("hubComponentId");
             if (hubComponentId instanceof Number) {
                 Long componentId = ((Number) hubComponentId).longValue();
-                loadComponentName(componentId);
+                loadComponentDesignation(componentId);  // ← посмотри, что здесь!
             }
         }
     }
+
+    private void loadComponentDesignation(Long componentId) {
+        new Thread(() -> {
+            try {
+                ComponentDto component = ComponentClient.getComponentById(componentId);
+                Platform.runLater(() -> {
+                    if (component != null) {
+                        String designation = component.getDesignation();
+                        if (designation == null || designation.isEmpty()) {
+                            designation = component.getName();
+                        }
+                        setFieldValue("hubName", designation);
+                    }
+                });
+            } catch (Exception e) {
+                System.err.println("Failed to load component designation: " + e.getMessage());
+            }
+        }).start();
+    }
+
 }

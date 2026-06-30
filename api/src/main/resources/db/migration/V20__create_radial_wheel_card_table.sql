@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS radial_wheel_card (
     series VARCHAR(50),                 -- Серия колеса (КЦ, РК) - НОВОЕ ПОЛЕ
     size DOUBLE PRECISION,              -- Размер колеса (220, 560)
     marking VARCHAR(100),               -- Маркировка колеса (КЦ-220) - ОБЯЗАТЕЛЬНОЕ
+    is_own_production BOOLEAN DEFAULT FALSE, -- Колесо собственного/чужого производства
 
 -- ========== РАЗДЕЛ 2: ХАРАКТЕРИСТИКИ КОЛЕСА ==========
     blade_type VARCHAR(30),             -- Тип лопаток (V, N, RO)
