@@ -2,10 +2,7 @@ package com.fanproduction.gui.configurator;
 
 import javafx.scene.Node;
 import javafx.scene.Parent;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 
 import java.util.Map;
 
@@ -250,6 +247,30 @@ public interface CardFieldConfigurator {
 
     default boolean validate(Map<String, Node> fieldControls, Map<String, Object> fields, Map<String, Label> fieldLabels) {
         return true; // По умолчанию — всегда валидно
+    }
+
+    /**
+     * Проверяет, что полная маркировка не пустая
+     * @return true если валидация пройдена, false если есть ошибка
+     */
+    default boolean validateFullMarking(Map<String, Object> fields) {
+        String fullMarking = (String) fields.get("fullMarking");
+        if (fullMarking == null || fullMarking.isEmpty()) {
+            showValidationError("Полная маркировка не может быть пустой. Проверьте заполнение полей, влияющих на маркировку.");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Показывает сообщение об ошибке валидации
+     */
+    default void showValidationError(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Ошибка");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
 }
