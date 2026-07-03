@@ -10,6 +10,27 @@ import java.util.Map;
 public class MotorWheelCardConfigurator implements CardFieldConfigurator {
 
     private String lastAutoMarking = "";
+    private String initialManufacturerMarking = "";
+
+    /**
+     * Проверяет, заполнены ли обязательные поля для мотор-колеса
+     */
+    @Override
+    public boolean validate(Map<String, Node> fieldControls,
+                            Map<String, Object> fields,
+                            Map<String, Label> fieldLabels) {
+
+        // Проверяем, что маркировка производителя не пустая
+        String manufacturerMarking = (String) fields.get("manufacturerMarking");
+        if (manufacturerMarking == null || manufacturerMarking.isEmpty()) {
+            showValidationError("""
+                    Поле 'Маркировка производителя' обязательно для заполнения.
+                    Пример: RE-280F-AC0E или DYF4D-280-QW1a""");
+            return false;
+        }
+        // Проверяем fullMarking через общий метод
+        return validateFullMarking(fields);
+    }
 
     @Override
     public void setupFields(Map<String, Node> fieldControls,
@@ -24,18 +45,20 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
         setupRatedSpeedCalculation(fieldControls, () -> {});
 
         // 3. Формирование полной маркировки из маркировки производителя
-        setupFullMarkingGeneration(fieldControls);
+        setupFullMarkingGeneration(fieldControls, existingCardExists);
 
         // 4. Автоматическое заполнение наименования для новых карточек
         autoFillName(fieldControls, "Мотор-колесо", existingCardExists);
 
         // 5. ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ ПРИ ЗАГРУЗКЕ ДАННЫХ
         if (existingCardExists) {
+            // Запоминаем начальное значение manufacturerMarking
+            initialManufacturerMarking = getFieldValue(fieldControls, "manufacturerMarking");
+
             TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
             if (fullMarkingField != null && !fullMarkingField.getText().isEmpty()) {
                 lastAutoMarking = fullMarkingField.getText();
             }
-            updateFullMarking(fieldControls);
         }
     }
 
@@ -67,13 +90,17 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
-    private void setupFullMarkingGeneration(Map<String, Node> fieldControls) {
+    private void setupFullMarkingGeneration(Map<String, Node> fieldControls, boolean existingCardExists) {
         TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
 
+        // Слушаем изменение маркировки производителя
         addTextFieldListener(fieldControls, "manufacturerMarking", () -> updateFullMarking(fieldControls));
 
-        updateFullMarking(fieldControls);
+        // Вызываем updateFullMarking() только для новой карточки
+        if (!existingCardExists) {
+            updateFullMarking(fieldControls);
+        }
     }
 
     private void updateFullMarking(Map<String, Node> fieldControls) {
@@ -83,12 +110,19 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
         String manufacturerMarking = getFieldValue(fieldControls, "manufacturerMarking");
         String currentMarking = fullMarkingField.getText();
 
-        // Обновляем только если:
-        // 1. Поле пустое
-        // 2. ИЛИ поле содержит последнее автоматическое значение (не было отредактировано вручную)
-        if (currentMarking == null || currentMarking.isEmpty() || currentMarking.equals(lastAutoMarking)) {
+        // Если manufacturerMarking не изменился — не обновляем
+        if (manufacturerMarking.equals(initialManufacturerMarking) &&
+                currentMarking != null && !currentMarking.isEmpty()) {
+            return;
+        }
+
+        // Обновляем только если поле пустое ИЛИ содержит последнее автоматическое значение
+        if (currentMarking == null || currentMarking.isEmpty() ||
+                currentMarking.equals(lastAutoMarking)) {
             fullMarkingField.setText(manufacturerMarking);
             lastAutoMarking = manufacturerMarking;
+            // Обновляем начальное значение после изменения
+            initialManufacturerMarking = manufacturerMarking;
         }
     }
 }

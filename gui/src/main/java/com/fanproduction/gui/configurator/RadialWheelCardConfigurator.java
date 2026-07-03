@@ -30,32 +30,14 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         boolean isOwn = Boolean.TRUE.equals(fields.get("isOwnProduction"));
 
         if (!isPartner && !isOwn) {
-            // Показываем предупреждение
-            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
-                    javafx.scene.control.Alert.AlertType.ERROR);
-            alert.setTitle("Ошибка");
-            alert.setHeaderText(null);
-            alert.setContentText("""
+            showValidationError("""
                     Необходимо выбрать тип колеса:
                     - Фирменное рабочее колесо
                     - Партнёрское рабочее колесо""");
-            alert.showAndWait();
             return false;
         }
-
-        // Проверяем fullMarking
-        String fullMarking = (String) fields.get("fullMarking");
-        if (fullMarking == null || fullMarking.isEmpty()) {
-            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
-                    javafx.scene.control.Alert.AlertType.ERROR);
-            alert.setTitle("Ошибка");
-            alert.setHeaderText(null);
-            alert.setContentText("Полная маркировка не может быть пустой. Проверьте заполнение полей, влияющих на маркировку.");
-            alert.showAndWait();
-            return false;
-        }
-
-        return true;
+        // Проверяем fullMarking через общий метод
+        return validateFullMarking(fields);
     }
 
     @Override
