@@ -85,37 +85,27 @@ public interface CardFieldConfigurator {
         }
     }
 
-    // ========== УСЛОВНАЯ ВИДИМОСТЬ (ОГНЕСТОЙКОСТЬ/ВЗРЫВОЗАЩИТА) ==========
 
-    default void setupConditionalVisibility(Map<String, Node> fieldControls,
-                                            Map<String, Label> fieldLabels,
-                                            Map<String, Label> fieldHints,
-                                            Runnable updateCallback) {
-        // Огнестойкость
-        CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
-        if (fireproofCheck != null) { String[] fireproofFields = {"fireproofMarking", "fireproofTime", "maxTemperature"};
-            boolean isFireproof = fireproofCheck.isSelected();
-            for (String fieldName : fireproofFields) {
-                setVisible(fieldControls, fieldLabels, fieldHints, fieldName, isFireproof);
-            }
+    // ========== СЛУШАТЕЛИ ==========
 
-            fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
-                for (String fieldName : fireproofFields) {
-                    setVisible(fieldControls, fieldLabels, fieldHints, fieldName, val);
-                }
-                if (updateCallback != null) updateCallback.run();
-            });
+    default void addTextFieldListener(Map<String, Node> fieldControls, String fieldName, Runnable callback) {
+        TextField textField = getTextField(fieldControls, fieldName);
+        if (textField != null) {
+            textField.textProperty().addListener((obs, old, val) -> callback.run());
         }
+    }
 
-        // Взрывозащита
-        CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
-        if (explosionCheck != null) {
-            setVisible(fieldControls, fieldLabels, fieldHints, "explosionMarking", explosionCheck.isSelected());
+    default void addCheckBoxListener(Map<String, Node> fieldControls, String fieldName, Runnable callback) {
+        CheckBox checkBox = getCheckBox(fieldControls, fieldName);
+        if (checkBox != null) {
+            checkBox.selectedProperty().addListener((obs, old, val) -> callback.run());
+        }
+    }
 
-            explosionCheck.selectedProperty().addListener((obs, old, val) -> {
-                setVisible(fieldControls, fieldLabels, fieldHints, "explosionMarking", val);
-                if (updateCallback != null) updateCallback.run();
-            });
+    default void addComboBoxListener(Map<String, Node> fieldControls, String fieldName, Runnable callback) {
+        ComboBox<String> comboBox = getComboBox(fieldControls, fieldName);
+        if (comboBox != null) {
+            comboBox.valueProperty().addListener((obs, old, val) -> callback.run());
         }
     }
 
@@ -131,6 +121,7 @@ public interface CardFieldConfigurator {
         setupMutualExclusiveCheckboxes(generalPurposeCheck, explosionCheck, callback);
         setupMutualExclusiveCheckboxes(fireproofCheck, explosionCheck, callback);
     }
+
 
     /**
      * Настраивает взаимное исключение для двух галочек.
@@ -166,7 +157,41 @@ public interface CardFieldConfigurator {
         });
     }
 
-    // ========== РАСЧЁТ СКОРОСТИ ==========
+    // ========== УСЛОВНАЯ ВИДИМОСТЬ (ОГНЕСТОЙКОСТЬ/ВЗРЫВОЗАЩИТА) ==========
+
+    default void setupConditionalVisibility(Map<String, Node> fieldControls,
+                                            Map<String, Label> fieldLabels,
+                                            Map<String, Label> fieldHints,
+                                            Runnable updateCallback) {
+        // Огнестойкость
+        CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
+        if (fireproofCheck != null) { String[] fireproofFields = {"fireproofMarking", "fireproofTime", "maxTemperature"};
+            boolean isFireproof = fireproofCheck.isSelected();
+            for (String fieldName : fireproofFields) {
+                setVisible(fieldControls, fieldLabels, fieldHints, fieldName, isFireproof);
+            }
+
+            fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
+                for (String fieldName : fireproofFields) {
+                    setVisible(fieldControls, fieldLabels, fieldHints, fieldName, val);
+                }
+                if (updateCallback != null) updateCallback.run();
+            });
+        }
+
+        // Взрывозащита
+        CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
+        if (explosionCheck != null) {
+            setVisible(fieldControls, fieldLabels, fieldHints, "explosionMarking", explosionCheck.isSelected());
+
+            explosionCheck.selectedProperty().addListener((obs, old, val) -> {
+                setVisible(fieldControls, fieldLabels, fieldHints, "explosionMarking", val);
+                if (updateCallback != null) updateCallback.run();
+            });
+        }
+    }
+
+    // ========== РАСЧЁТ НОМИНАЛЬНОЙ СКОРОСТИ ==========
 
     default void updateRatedSpeed(ComboBox<String> polesCombo, TextField ratedSpeedField) {
         String value = polesCombo.getValue();
@@ -196,36 +221,26 @@ public interface CardFieldConfigurator {
         }
     }
 
-    // ========== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
 
-    default void autoFillName(Map<String, Node> fieldControls, String defaultName, boolean existingCardExists) {
-        if (!existingCardExists) {
-            TextField nameField = getTextField(fieldControls, "name");
-            if (nameField != null && nameField.getText().isEmpty()) {
-                nameField.setText(defaultName);
-            }
-        }
-    }
+    /**
+     * Возвращает маркировку исполнения (C, F/xxx, или Ex-маркировку)
+     * на основе состояния галочек и соответствующих полей.
+     */
+    default String getExecutionMarking(Map<String, Node> fieldControls) {
+        boolean isGeneralPurpose = isSelected(fieldControls, "generalPurpose");
+        boolean isFireproof = isSelected(fieldControls, "fireproof");
+        boolean isExplosionProof = isSelected(fieldControls, "explosionProof");
 
-    default void addTextFieldListener(Map<String, Node> fieldControls, String fieldName, Runnable callback) {
-        TextField textField = getTextField(fieldControls, fieldName);
-        if (textField != null) {
-            textField.textProperty().addListener((obs, old, val) -> callback.run());
+        if (isGeneralPurpose) return "C";
+        if (isFireproof) {
+            String fireproofMarking = getFieldValue(fieldControls, "fireproofMarking");
+            return !fireproofMarking.isEmpty() ? fireproofMarking : "F/400";
         }
-    }
-
-    default void addCheckBoxListener(Map<String, Node> fieldControls, String fieldName, Runnable callback) {
-        CheckBox checkBox = getCheckBox(fieldControls, fieldName);
-        if (checkBox != null) {
-            checkBox.selectedProperty().addListener((obs, old, val) -> callback.run());
+        if (isExplosionProof) {
+            String explosionMarking = getFieldValue(fieldControls, "explosionMarking");
+            return !explosionMarking.isEmpty() ? explosionMarking : "1Ex d IIC T4 Gb";
         }
-    }
-
-    default void addComboBoxListener(Map<String, Node> fieldControls, String fieldName, Runnable callback) {
-        ComboBox<String> comboBox = getComboBox(fieldControls, fieldName);
-        if (comboBox != null) {
-            comboBox.valueProperty().addListener((obs, old, val) -> callback.run());
-        }
+        return "";
     }
 
     /**
@@ -245,6 +260,48 @@ public interface CardFieldConfigurator {
         return false;
     }
 
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ДЛЯ ФОРМИРОВАНИЯ СТРОК
+
+    default void appendIfNotEmpty(StringBuilder sb, String value) {
+        if (value != null && !value.isEmpty()) {
+            sb.append(value);
+        }
+    }
+
+    default void appendWithSeparator(StringBuilder sb, String value) {
+        if (value != null && !value.isEmpty()) {
+            if (!sb.isEmpty()) {
+                sb.append("-");
+            }
+            sb.append(value);
+        }
+    }
+
+    /**
+     * Форматирует размер: убирает .0 если число целое
+     */
+    default String formatSize(String sizeStr) {
+        if (sizeStr == null || sizeStr.isEmpty()) return "";
+        try {
+            double size = Double.parseDouble(sizeStr.replace(',', '.'));
+            if (size == Math.floor(size)) {
+                return String.valueOf((int) size);
+            }
+            return String.valueOf(size);
+        } catch (NumberFormatException e) {
+            return sizeStr;
+        }
+    }
+
+    default String formatSize(Double size) {
+        if (size == null) return "";
+        if (size == Math.floor(size)) {
+            return String.valueOf(size.intValue());
+        }
+        return String.valueOf(size);
+    }
+
+
     default boolean validate(Map<String, Node> fieldControls, Map<String, Object> fields, Map<String, Label> fieldLabels) {
         return true; // По умолчанию — всегда валидно
     }
@@ -256,7 +313,8 @@ public interface CardFieldConfigurator {
     default boolean validateFullMarking(Map<String, Object> fields) {
         String fullMarking = (String) fields.get("fullMarking");
         if (fullMarking == null || fullMarking.isEmpty()) {
-            showValidationError("Полная маркировка не может быть пустой. Проверьте заполнение полей, влияющих на маркировку.");
+            showValidationError("""
+                    Полная маркировка не может быть пустой. Проверьте заполнение полей, влияющих на маркировку.""");
             return false;
         }
         return true;
@@ -271,6 +329,18 @@ public interface CardFieldConfigurator {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    /**
+     * АВТОЗАПОЛНЕНИЕ НАИМЕНОВАНИЯ
+     */
+    default void autoFillName(Map<String, Node> fieldControls, String defaultName, boolean existingCardExists) {
+        if (!existingCardExists) {
+            TextField nameField = getTextField(fieldControls, "name");
+            if (nameField != null && nameField.getText().isEmpty()) {
+                nameField.setText(defaultName);
+            }
+        }
     }
 
 }

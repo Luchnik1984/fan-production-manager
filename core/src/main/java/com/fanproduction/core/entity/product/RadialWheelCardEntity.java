@@ -100,6 +100,6 @@ public class RadialWheelCardEntity extends BaseProductCard {
 
     // ========== ПОЛНАЯ МАРКИРОВКА ==========
 
-    @Column(name = "full_marking", length = 500)
+    @Column(name = "full_marking", length = 200)
     private String fullMarking;
 }

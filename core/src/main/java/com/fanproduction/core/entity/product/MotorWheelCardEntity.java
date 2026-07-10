@@ -105,7 +105,7 @@ public class MotorWheelCardEntity extends BaseProductCard {
     @Column(name = "motor_code", length = 50)
     private String motorCode;
 
-      @Column(name = "full_marking", length = 500)
+      @Column(name = "full_marking", length = 200)
     private String fullMarking;
 
 }
