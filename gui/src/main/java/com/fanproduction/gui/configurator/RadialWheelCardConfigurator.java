@@ -1,19 +1,13 @@
 package com.fanproduction.gui.configurator;
 
 import javafx.scene.Node;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-
-import java.util.HashMap;
 import java.util.Map;
 
 public class RadialWheelCardConfigurator extends BaseWheelCardConfigurator {
 
-    private String lastAutoWheelCode = "";
-    private String lastAutoWheelFormula = "";
-//    private String lastAutoFullMarking = "";
+  protected String lastAutoWheelCode = "";
 
     @Override
     protected String[] getPartnerFields() {
@@ -43,6 +37,16 @@ public class RadialWheelCardConfigurator extends BaseWheelCardConfigurator {
     }
 
     @Override
+    protected String[] getWheelFormulaFields() {
+        return new String[]{"bladeMod", "frontDiskMod", "wheelWidth", "bladeCount", "bladeLengthCoeff", "bladeType"};
+    }
+
+    @Override
+    protected String[] getFullMarkingFields() {
+        return new String[]{"marking", "series", "size", "wheelFormula", "hubName", "fireproofMarking", "explosionMarking", "generalPurpose", "fireproof", "explosionProof", "isPartnerWheel", "isOwnProduction"};
+    }
+
+    @Override
     protected String buildOwnFullMarking(Map<String, Node> fieldControls) {
         String series = getFieldValue(fieldControls, "series");
         String size = getFieldValue(fieldControls, "size");
@@ -57,6 +61,8 @@ public class RadialWheelCardConfigurator extends BaseWheelCardConfigurator {
         appendWithSeparator(sb, wheelFormula);
         appendWithSeparator(sb, hubName);
         return sb.toString();
+//        // Вызываем вспомогательный метод с 5 параметрами
+//        return buildOwnFullMarking(series, size, executionMarking, wheelFormula, hubName);
     }
 
     @Override
@@ -128,12 +134,6 @@ public class RadialWheelCardConfigurator extends BaseWheelCardConfigurator {
     protected void setupSpecificListeners(Map<String, Node> fieldControls, boolean existingCardExists) {
         // Специфичные слушатели для радиального колеса
         addTextFieldListener(fieldControls, "bladeMod", () -> updateWheelCode(fieldControls));
-        addTextFieldListener(fieldControls, "frontDiskMod", () -> updateWheelFormula(fieldControls));
-        addTextFieldListener(fieldControls, "wheelWidth", () -> updateWheelFormula(fieldControls));
-        addTextFieldListener(fieldControls, "bladeLengthCoeff", () -> updateWheelFormula(fieldControls));
-        addTextFieldListener(fieldControls, "bladeCount", () -> updateWheelFormula(fieldControls));
-        addComboBoxListener(fieldControls, "bladeType", () -> updateWheelFormula(fieldControls));
-
         // Синхронизация при загрузке
         if (existingCardExists) {
             TextField wheelCodeField = getTextField(fieldControls, "wheelCode");
@@ -147,6 +147,18 @@ public class RadialWheelCardConfigurator extends BaseWheelCardConfigurator {
         }
     }
 
+    /**
+     * КОД КОЛЕСА (из bladeMod)
+     */
+    private void setupWheelCodeGeneration(Map<String, Node> fieldControls) {
+        addTextFieldListener(fieldControls, "bladeMod", () -> updateWheelCode(fieldControls));
+        updateWheelCode(fieldControls);
+    }
+
+    /**
+     * Метод для обновления кода колеса.
+     * Специфичный для радиального колеса.
+     */
     private void updateWheelCode(Map<String, Node> fieldControls) {
         TextField wheelCodeField = getTextField(fieldControls, "wheelCode");
         if (wheelCodeField == null) return;
@@ -200,9 +212,13 @@ public class RadialWheelCardConfigurator extends BaseWheelCardConfigurator {
         setupExclusiveSelection(fieldControls, () -> updateFullMarking(fieldControls));
 
         setupWheelCodeGeneration(fieldControls);
-        setupWheelFormulaGeneration(fieldControls);
-        setupFireproofMarkingGeneration(fieldControls);
-        setupFullMarkingGeneration(fieldControls, existingCardExists);
+
+        setupFireproofGeneration(fieldControls, fieldLabels, fieldHints);
+
+        super.setupWheelFormulaGeneration(fieldControls);
+        super.setupFullMarkingGeneration(fieldControls, existingCardExists);
+
+        setupSpecificListeners(fieldControls, existingCardExists);
 
         autoFillName(fieldControls, "Колесо радиальное", existingCardExists);
 
@@ -242,97 +258,6 @@ public class RadialWheelCardConfigurator extends BaseWheelCardConfigurator {
 
     // =============== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ===============
 
-    /**
-     * КОД КОЛЕСА (из bladeMod)
-     */
-    private void setupWheelCodeGeneration(Map<String, Node> fieldControls) {
-        addTextFieldListener(fieldControls, "bladeMod", () -> updateWheelCode(fieldControls));
-        updateWheelCode(fieldControls);
-    }
-
-    /**
-     * ФОРМУЛА КОЛЕСА
-     */
-    private void setupWheelFormulaGeneration(Map<String, Node> fieldControls) {
-        addTextFieldListener(fieldControls, "bladeMod", () -> updateWheelFormula(fieldControls));
-        addTextFieldListener(fieldControls, "frontDiskMod", () -> updateWheelFormula(fieldControls));
-        addTextFieldListener(fieldControls, "wheelWidth", () -> updateWheelFormula(fieldControls));
-        addTextFieldListener(fieldControls, "bladeLengthCoeff", () -> updateWheelFormula(fieldControls));
-        addTextFieldListener(fieldControls, "bladeCount", () -> updateWheelFormula(fieldControls));
-        addComboBoxListener(fieldControls, "bladeType", () -> updateWheelFormula(fieldControls));
-    }
-
-    /**
-     * МАРКИРОВКА ОГНЕСТОЙКОСТИ (с автосбросом при снятии галочки)
-     */
-    private void setupFireproofMarkingGeneration(Map<String, Node> fieldControls) {
-        // При изменении fireproofTime обновляем fireproofMarking
-        addTextFieldListener(fieldControls, "fireproofTime", () -> updateFireproofMarking(fieldControls));
-        // При изменении maxTemperature обновляем fireproofMarking
-        addTextFieldListener(fieldControls, "maxTemperature", () -> updateFireproofMarking(fieldControls));
-        // При изменении fireproof обновляем fireproofMarking
-        addCheckBoxListener(fieldControls, "fireproof", () -> updateFireproofMarking(fieldControls));
-        // При изменении fireproofMarking обновляем fullMarking
-        addTextFieldListener(fieldControls, "fireproofMarking", () -> updateFullMarking(fieldControls));
-
-        updateFireproofMarking(fieldControls);
-    }
-
-    private void updateFireproofMarking(Map<String, Node> fieldControls) {
-        TextField fireproofMarkingField = getTextField(fieldControls, "fireproofMarking");
-        if (fireproofMarkingField == null) return;
-
-        boolean isFireproof = isSelected(fieldControls, "fireproof");
-
-        if (!isFireproof) {
-            fireproofMarkingField.setText("");  // ← Очищаем при снятии галочки
-            return;
-        }
-
-        // Если галочка установлена — формируем маркировку
-        String fireproofTime = getFieldValue(fieldControls, "fireproofTime");
-        String maxTemperature = getFieldValue(fieldControls, "maxTemperature");
-
-        StringBuilder marking = new StringBuilder("F");
-
-        if (!fireproofTime.isEmpty()) {
-            marking.append("-").append(fireproofTime);
-        }
-
-        String temp = maxTemperature.isEmpty() ? "400" : maxTemperature;
-        marking.append("/").append(temp);
-
-        fireproofMarkingField.setText(marking.toString());
-    }
-
-    /**
-     * ПОЛНАЯ МАРКИРОВКА
-     */
-
-    private void setupFullMarkingGeneration(Map<String, Node> fieldControls, boolean existingCardExists) {
-        // Партнёрское колесо
-        addTextFieldListener(fieldControls, "marking", () -> updateFullMarking(fieldControls));
-
-        // Фирменное колесо
-        addTextFieldListener(fieldControls, "series", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "size", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "wheelFormula", () -> updateFullMarking(fieldControls));
-
-        // Исполнение
-        addTextFieldListener(fieldControls, "fireproofMarking", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "explosionMarking", () -> updateFullMarking(fieldControls));
-
-        addCheckBoxListener(fieldControls, "generalPurpose", () -> updateFullMarking(fieldControls));
-        addCheckBoxListener(fieldControls, "fireproof", () -> updateFullMarking(fieldControls));
-        addCheckBoxListener(fieldControls, "explosionProof", () -> updateFullMarking(fieldControls));
-        addCheckBoxListener(fieldControls, "isPartnerWheel", () -> updateFullMarking(fieldControls));
-        addCheckBoxListener(fieldControls, "isOwnProduction", () -> updateFullMarking(fieldControls));
-
-        if (!existingCardExists) {
-            updateFullMarking(fieldControls);
-        }
-    }
-
 
     @Override
     public boolean validate(Map<String, Node> fieldControls,
@@ -370,6 +295,9 @@ public class RadialWheelCardConfigurator extends BaseWheelCardConfigurator {
         return "";
     }
 
+    /**
+     * Вспомогательный метод для построения fullMarking для фирменного колеса
+     */
     private String buildOwnFullMarking(String series, String sizeStr, String executionMarking,
                                        String wheelFormula, String hubName) {
         StringBuilder sb = new StringBuilder();

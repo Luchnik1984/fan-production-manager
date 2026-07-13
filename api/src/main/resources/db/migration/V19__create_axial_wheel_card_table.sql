@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS axial_wheel_card (
                                                 manufacturer VARCHAR(100),
     size DOUBLE PRECISION,
     trim_coefficient DOUBLE PRECISION,
+    marking VARCHAR(100),
 
     -- ========== ТИП КОЛЕСА ==========
     is_partner_wheel BOOLEAN DEFAULT FALSE,

@@ -14,13 +14,18 @@ import java.util.Map;
  * Содержит общую логику для управления видимостью, очистки полей и обновления fullMarking.
  */
 public abstract class BaseWheelCardConfigurator implements CardFieldConfigurator {
-
     protected String lastAutoFullMarking = "";
     protected String lastAutoWheelFormula = "";
     protected Map<String, String> initialValues = new HashMap<>();
     protected boolean initialIsPartner = false;
     protected boolean initialIsOwn = false;
     protected String initialExecutionMarking = "";
+
+    protected final FireproofConfigurator fireproofConfigurator;
+
+    public BaseWheelCardConfigurator() {
+        this.fireproofConfigurator = new FireproofConfigurator(this);
+    }
 
     // ==========================================================
     // АБСТРАКТНЫЕ МЕТОДЫ ДЛЯ ДОЧЕРНИХ КЛАССОВ
@@ -60,6 +65,23 @@ public abstract class BaseWheelCardConfigurator implements CardFieldConfigurator
      * Настраивает специфичные для дочернего класса слушатели
      */
     protected abstract void setupSpecificListeners(Map<String, Node> fieldControls, boolean existingCardExists);
+
+    /**
+     * Возвращает список полей, влияющих на формулу колеса.
+     * Дочерние классы должны переопределить этот метод.
+     */
+    protected abstract String[] getWheelFormulaFields();
+
+    /**
+     * Возвращает список полей, влияющих на полную маркировку.
+     * Дочерние классы должны переопределить этот метод.
+     */
+    protected abstract String[] getFullMarkingFields();
+
+    /**
+     * Обновляет полную маркировку (общая логика)
+     */
+    protected abstract void updateFullMarking(Map<String, Node> fieldControls);
 
     // ==========================================================
     // ОБЩИЕ МЕТОДЫ ДЛЯ ВСЕХ КОЛЁС
@@ -166,61 +188,111 @@ public abstract class BaseWheelCardConfigurator implements CardFieldConfigurator
             setVisible(fieldControls, fieldLabels, fieldHints, fieldName, isOwn);
         }
     }
+    // ==========================================================
+    // ОБЩИЕ МЕТОДЫ ГЕНЕРАЦИИ
+    // ==========================================================
 
     /**
-     * Обновляет полную маркировку (общая логика)
+     * Настраивает слушатели для огнестойкости (через FireproofConfigurator)
      */
-    protected void updateFullMarking(Map<String, Node> fieldControls) {
-        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
-        if (fullMarkingField == null) return;
+    protected void setupFireproofGeneration(Map<String, Node> fieldControls,
+                                            Map<String, Label> fieldLabels,
+                                            Map<String, Label> fieldHints) {
+        fireproofConfigurator.setup(fieldControls, fieldLabels, fieldHints, () -> updateFullMarking(fieldControls));
+    }
 
-        boolean isPartner = isSelected(fieldControls, "isPartnerWheel");
-        boolean isOwn = isSelected(fieldControls, "isOwnProduction");
 
-        if (!isPartner && !isOwn) {
-            return;
+    /**
+     * Настраивает слушатели для формулы колеса (общий метод)
+     */
+    protected void setupWheelFormulaGeneration(Map<String, Node> fieldControls) {
+        for (String fieldName : getWheelFormulaFields()) {
+            addListener(fieldControls, fieldName, () -> updateWheelFormula(fieldControls));
         }
+        updateWheelFormula(fieldControls);
+    }
 
-        // Получаем текущие значения
-        String currentMarkingValue = getFieldValue(fieldControls, "marking");
-        String currentExecutionMarking = getExecutionMarking(fieldControls);
-
-        // Проверяем изменения
-        boolean fieldsChanged = false;
-
-        if (isPartner) {
-            String initialMarking = initialValues.getOrDefault("marking", "");
-            if (!currentMarkingValue.equals(initialMarking)) {
-                fieldsChanged = true;
-            }
-        } else if (isOwn) {
-            String[] fieldsToCheck = getFieldsToCheckForFullMarking(false);
-            fieldsChanged = hasAnyFieldChanged(fieldControls, initialValues, fieldsToCheck);
-            if (!fieldsChanged) {
-                String initialExecution = initialExecutionMarking != null ? initialExecutionMarking : "";
-                if (!currentExecutionMarking.equals(initialExecution)) {
-                    fieldsChanged = true;
-                }
-            }
+    /**
+     * Настраивает слушатели для полной маркировки (общий метод)
+     */
+    protected void setupFullMarkingGeneration(Map<String, Node> fieldControls, boolean existingCardExists) {
+        for (String fieldName : getFullMarkingFields()) {
+            addListener(fieldControls, fieldName, () -> updateFullMarking(fieldControls));
         }
-
-        if (!fieldsChanged) {
-            return;
-        }
-
-        String newFullMarking;
-        if (isPartner) {
-            newFullMarking = currentMarkingValue;
-        } else {
-            newFullMarking = buildOwnFullMarking(fieldControls);
-        }
-
-        String currentMarking = fullMarkingField.getText();
-        if (currentMarking == null || currentMarking.isEmpty() ||
-                currentMarking.equals(lastAutoFullMarking)) {
-            fullMarkingField.setText(newFullMarking);
-            lastAutoFullMarking = newFullMarking;
-            storeInitialValues(fieldControls);
+        if (!existingCardExists) {
+            updateFullMarking(fieldControls);
         }
     }
+
+    /**
+     * Универсальный метод добавления слушателя в зависимости от типа контрола
+     */
+    private void addListener(Map<String, Node> fieldControls, String fieldName, Runnable callback) {
+        Node control = fieldControls.get(fieldName);
+        if (control instanceof TextField) {
+            addTextFieldListener(fieldControls, fieldName, callback);
+        } else if (control instanceof ComboBox) {
+            addComboBoxListener(fieldControls, fieldName, callback);
+        } else if (control instanceof CheckBox) {
+            addCheckBoxListener(fieldControls, fieldName, callback);
+        }
+    }
+
+
+//    /**
+//     * Обновляет полную маркировку (общая логика)
+//     */
+//    protected void updateFullMarking(Map<String, Node> fieldControls) {
+//        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
+//        if (fullMarkingField == null) return;
+//
+//        boolean isPartner = isSelected(fieldControls, "isPartnerWheel");
+//        boolean isOwn = isSelected(fieldControls, "isOwnProduction");
+//
+//        if (!isPartner && !isOwn) {
+//            return;
+//        }
+//
+//        // Получаем текущие значения
+//        String currentMarkingValue = getFieldValue(fieldControls, "marking");
+//        String currentExecutionMarking = getExecutionMarking(fieldControls);
+//
+//        // Проверяем изменения
+//        boolean fieldsChanged = false;
+//
+//        if (isPartner) {
+//            String initialMarking = initialValues.getOrDefault("marking", "");
+//            if (!currentMarkingValue.equals(initialMarking)) {
+//                fieldsChanged = true;
+//            }
+//        } else if (isOwn) {
+//            String[] fieldsToCheck = getFieldsToCheckForFullMarking(false);
+//            fieldsChanged = hasAnyFieldChanged(fieldControls, initialValues, fieldsToCheck);
+//            if (!fieldsChanged) {
+//                String initialExecution = initialExecutionMarking != null ? initialExecutionMarking : "";
+//                if (!currentExecutionMarking.equals(initialExecution)) {
+//                    fieldsChanged = true;
+//                }
+//            }
+//        }
+//
+//        if (!fieldsChanged) {
+//            return;
+//        }
+//
+//        String newFullMarking;
+//        if (isPartner) {
+//            newFullMarking = currentMarkingValue;
+//        } else {
+//            newFullMarking = buildOwnFullMarking(fieldControls);
+//        }
+//
+//        String currentMarking = fullMarkingField.getText();
+//        if (currentMarking == null || currentMarking.isEmpty() ||
+//                currentMarking.equals(lastAutoFullMarking)) {
+//            fullMarkingField.setText(newFullMarking);
+//            lastAutoFullMarking = newFullMarking;
+//            storeInitialValues(fieldControls);
+//        }
+//    }
 }

@@ -236,7 +236,6 @@ public class FieldMetadataService {
         List<FieldMetadataDto> fields = new ArrayList<>();
 
         // Основная информация
-        fields.add(createField("name", "Наименование", "text", true, "Колесо осевое", null, null, "Можно изменить при необходимости"));
         fields.add(createField("manufacturer", "Производитель", "text", false, null, null, null, "Например: Промпат, FogStream"));
         fields.add(createField("size", "Типоразмер", "double", true, null, null, null, "Например: 5,6; 6,3"));
         fields.add(createField("trimCoefficient", "Коэффициент подрезки (%)", "double", false, null, null, null, "Например: 1,00"));
