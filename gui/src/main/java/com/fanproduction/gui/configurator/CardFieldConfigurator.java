@@ -273,4 +273,25 @@ public interface CardFieldConfigurator {
         alert.showAndWait();
     }
 
+    /**
+     * Возвращает маркировку исполнения (C, F/xxx, или Ex-маркировку)
+     * на основе состояния галочек и соответствующих полей.
+     */
+    default String getExecutionMarking(Map<String, Node> fieldControls) {
+        boolean isGeneralPurpose = isSelected(fieldControls, "generalPurpose");
+        boolean isFireproof = isSelected(fieldControls, "fireproof");
+        boolean isExplosionProof = isSelected(fieldControls, "explosionProof");
+
+        if (isGeneralPurpose) return "C";
+        if (isFireproof) {
+            String fireproofMarking = getFieldValue(fieldControls, "fireproofMarking");
+            return !fireproofMarking.isEmpty() ? fireproofMarking : "F/400";
+        }
+        if (isExplosionProof) {
+            String explosionMarking = getFieldValue(fieldControls, "explosionMarking");
+            return !explosionMarking.isEmpty() ? explosionMarking : "1Ex d IIC T4 Gb";
+        }
+        return "";
+    }
+
 }

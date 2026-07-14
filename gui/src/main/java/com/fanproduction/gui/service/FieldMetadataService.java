@@ -77,7 +77,7 @@ public class FieldMetadataService {
         motorFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex d IIC T4 Gb", null, null, "1Ex d IIC T4 Gb", false));
 
         // Полная маркировка (редактируемое поле, формируется автоматически)
-        motorFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
+        motorFields.addAll(createFullMarkingField());
 
         metadataMap.put("MOTOR", motorFields);
 
@@ -124,7 +124,7 @@ public class FieldMetadataService {
         motorWheelFields.add(createField("motorCode", "Код двигателя", "text", false, null, null, null, "AC0E, QW1a"));
 
         // Полная маркировка (формируется автоматически)
-        motorWheelFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
+        motorWheelFields.addAll(createFullMarkingField());
 
         metadataMap.put("MOTOR_WHEEL", motorWheelFields);
 
@@ -212,75 +212,78 @@ public class FieldMetadataService {
 
 
         // РАЗДЕЛ 4: ОБЩИЕ ПОЛЯ (видны всегда)
-        // Максимальная скорость вращения
-        radialWheelFields.add(createField("maxSpeedRpm", "Максимальная скорость (об/мин)", "number", false, null, null, null, "Введите число"));
-
-        // Масса
-        radialWheelFields.add(createField("weightKg", "Масса (кг)", "double", false, null, null, null, "Введите число"));
+        radialWheelFields.addAll(createCommonFields());
 
         // РАЗДЕЛ 5: ИСПОЛНЕНИЕ (ВЗАИМОИСКЛЮЧАЮЩИЕ ГАЛОЧКИ)
-        radialWheelFields.add(createSeparator("Исполнение"));
+        radialWheelFields.addAll(createExecutionFields());
 
-        // Общего применения
-        radialWheelFields.add(createField("generalPurpose", "Общего применения", "boolean", false, "true", null, null));
-
-        // Огнестойкость
-        radialWheelFields.add(createField("fireproof", "Огнестойкость", "boolean", false, "false", null, null));
-
-        // Время огнестойкости (видно при fireproof = true)
-        radialWheelFields.add(createField("fireproofTime", "Время огнестойкости (часы)", "number", false, null, null, null, "Укажите кол-во часов (необязательное поле)"));
-        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
-
-        // Предельная температура (видно при fireproof = true)
-        radialWheelFields.add(createField("maxTemperature", "Предельная температура (°C)", "number", false, "400", null, null, "Введите температуру"));
-        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
-
-        // Маркировка огнестойкости (формируется автоматически)
-        radialWheelFields.add(createField("fireproofMarking", "Маркировка огнестойкости", "text", false, null, null, null, "формируется автоматически"));
-        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
-
-        // Взрывозащита
-        radialWheelFields.add(createField("explosionProof", "Взрывозащита", "boolean", false, "false", null, null));
-
-        // Маркировка взрывозащиты (видно при explosionProof = true)
-        radialWheelFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex d IIC T4 Gb", null, null, "можно редактировать"));
-        radialWheelFields.get(radialWheelFields.size() - 1).setVisible(false);
-
-        // РАЗДЕЛ 6: ПОЛНАЯ МАРКИРОВКА
-
-        // Полная маркировка (формируется автоматически)
-        radialWheelFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
+        // РАЗДЕЛ 6: ПОЛНАЯ МАРКИРОВКА (формируется автоматически)
+        radialWheelFields.addAll(createFullMarkingField());
 
         metadataMap.put("RADIAL_WHEEL", radialWheelFields);
 
         // ========== Осевое колесо (AXIAL_WHEEL) ==========
         List<FieldMetadataDto> axialWheelFields = new ArrayList<>();
 
-        axialWheelFields.add(createField("manufacturer", "Производитель", "text", false, null, null, null));
-        axialWheelFields.add(createField("marking", "Маркировка колеса", "text", false, null, null, null, "Заполняется только для покупного колеса"));
+        axialWheelFields.add(createField("manufacturer", "Производитель", "text", false, null, null, null, "Например: Промпат, FogStream"));
+        axialWheelFields.add(createField("size", "Типоразмер", "double", true, null, null, null, "Например: 5,6; 6,3"));
+        axialWheelFields.add(createField("trimCoefficient", "Коэффициент подрезки (%)", "double", false, null, null, null, "Например: 1,00"));
+        axialWheelFields.add(createReadOnlyField("wheelDiameter", "Диаметр колеса (мм)", "number", null, "Рассчитывается автоматически: Типоразмер × (100 - Коэф. подрезки)"));
 
-        axialWheelFields.add(createField("bladeType", "Тип лопаток", "text", true, null, null, null, "4Z, 5Z, 109_50, 76_14"));
-        axialWheelFields.add(createField("size", "Типоразмер", "double", true, null, null, null, "6,3"));
-        axialWheelFields.add(createField("trimCoefficient", "Коэффициент подрезки (%)", "double", false, "0", null, null, "1,00"));
+        // 2. ТИП КОЛЕСА
+        axialWheelFields.add(createSeparator("Тип рабочего колеса"));
+        axialWheelFields.add(createField("isPartnerWheel", "Партнёрское рабочее колесо", "boolean", false, "false", null, null, null));
+        axialWheelFields.add(createHiddenField("marking", "Маркировка производителя", "text", true, null, null, null, "Например: PAG.400.6-3.P3HR.30.30.41-3"));
+        axialWheelFields.add(createField("isOwnProduction", "Фирменное рабочее колесо", "boolean", false, "false", null, null, null));
 
-        axialWheelFields.add(createField("hubType", "Ступица", "text", false, null, null, null, "SM1610, BF2012"));
+        // 3. ФИРМЕННОЕ КОЛЕСО (скрыто)
+        axialWheelFields.add(createHiddenField("series", "Серия колеса", "text", true, null, null, null, "Например: AW, AWR"));
 
-        axialWheelFields.add(createField("bladeCount", "Количество лопаток", "number", true, null, null, null));
-        axialWheelFields.add(createField("bladeSlots", "Посадочных мест", "number", true, null, null, null));
-        axialWheelFields.add(createField("bladeAngle", "Угол установки", "number", true, null, null, null, "27"));
-        axialWheelFields.add(createField("bladeMaterial", "Материал лопатки", "combobox", true, "PAG", new String[]{"PAG", "ST"}, null));
+        axialWheelFields.add(createHiddenSeparator("Тип изготовления"));
+        axialWheelFields.add(createHiddenField("isAssembledFromComponents", "Колесо сборное из компонентов", "boolean", false, "false", null, null, null));
+        axialWheelFields.add(createHiddenField("isWeldedFromMaterials", "Колесо сварное из материалов", "boolean", false, "false", null, null, null));
 
-        axialWheelFields.add(createField("wheelDiameter", "Диаметр колеса (мм)", "number", false, null, null, null, "рассчитывается автоматически"));
-        axialWheelFields.add(createField("wheelFormula", "Формула колеса", "text", false, null, null, null, "формируется автоматически"));
+        // 3.1 ХАБ (сборный)
+        axialWheelFields.add(createHiddenField("wheelHubComponentId", "Ступица (Хаб) рабочего колеса", "selectable", true, null, null, "COMPONENT", "Выберите хаб из базы компонентов"));
+        axialWheelFields.add(createHiddenReadOnlyField("wheelHubName", "", "text", "", ""));
 
-        // Специальные поля
-        axialWheelFields.add(createField("generalPurpose", "Общего применения", "boolean", false, "true", null, null));
-        axialWheelFields.add(createField("fireproof", "Огнестойкость", "boolean", false, "false", null, null));
-        axialWheelFields.add(createField("fireproofMarking", "Маркировка огнестойкости", "text", false, "F400", null, null, "F400"));
-        axialWheelFields.add(createField("explosionProof", "Взрывозащита", "boolean", false, "false", null, null));
-        axialWheelFields.add(createField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex d IIC T4 Gb", null, null, "1Ex d IIC T4 Gb"));
-        axialWheelFields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
+        // 3.2 ХАБ (сварной)
+        axialWheelFields.add(createHiddenField("wheelHubType", "Ступица (Хаб) рабочего колеса", "text", true, null, null, null, "введите тип хаба, например 109_50/6-6"));
 
+        // 3.3 Макс. количество лопаток
+        axialWheelFields.add(createHiddenField("maxBladeCount", "Максимальное кол-во лопаток в данном Хабе", "number", true, null, null, null, "Например: 9, 12"));
+
+        // 3.4 Лопатка (сборный)
+        axialWheelFields.add(createHiddenField("bladeComponentId", "Лопатка рабочего колеса", "selectable", true, null, null, "COMPONENT", "Выберите лопатку из базы компонентов"));
+        axialWheelFields.add(createHiddenReadOnlyField("bladeName", "", "text", "", ""));
+
+        // 3.5 Лопатка (сварной)
+        axialWheelFields.add(createHiddenField("bladeType", "Лопатка рабочего колеса", "text", true, null, null, null, "введите тип лопатки, например 109_50"));
+
+        // 3.6 Материал лопатки
+        axialWheelFields.add(createHiddenField("bladeMaterial", "Материал лопатки", "text", true, null, null, null, "Укажите условный материал лопатки, например: St или AISI"));
+
+        // 3.7 Количество лопаток
+        axialWheelFields.add(createHiddenField("bladeCount", "Количество установленных лопаток", "number", true, null, null, null, "Должно быть больше 1 и не превышать максимальное количество для хаба"));
+
+        // 3.8 Угол установки
+        axialWheelFields.add(createHiddenField("bladeAngle", "Угол установки лопаток", "number", true, null, null, null, "Например: 27, 30, 43"));
+
+        // 3.9 Установочная ступица
+        axialWheelFields.add(createHiddenField("hubComponentId", "Установочная ступица", "selectable", true, null, null, "COMPONENT", "Выберите ступицу из базы компонентов"));
+        axialWheelFields.add(createHiddenReadOnlyField("hubName", "", "text", "", ""));
+
+        // 3.10 Формула колеса
+        axialWheelFields.add(createHiddenField("wheelFormula", "Формула колеса", "text", true, null, null, null, "формируется автоматически, можно редактировать"));
+
+        // 4. ОБЩИЕ ПОЛЯ
+        axialWheelFields.addAll(createCommonFields());
+
+        // 5. ИСПОЛНЕНИЕ
+        axialWheelFields.addAll(createExecutionFields());
+
+        // 6. ПОЛНАЯ МАРКИРОВКА
+        axialWheelFields.addAll(createFullMarkingField());
         metadataMap.put("AXIAL_WHEEL", axialWheelFields);
 
         // ========== Вентилятор канальный (DUCT_FAN) ==========
@@ -451,6 +454,81 @@ public class FieldMetadataService {
         field.setRequired(false);
         field.setVisible(true);
         return field;
+    }
+
+    /**
+     * Создаёт скрытый разделитель-заголовок
+     */
+    private FieldMetadataDto createHiddenSeparator(String title) {
+        FieldMetadataDto field = createSeparator(title);
+        field.setVisible(false);
+        return field;
+    }
+
+    /**
+     * Создаёт поле только для чтения
+     */
+    private FieldMetadataDto createReadOnlyField(String name, String label, String type,
+                                                 String defaultValue, String hint) {
+        FieldMetadataDto field = createField(name, label, type, false, defaultValue, null, null, hint);
+        field.setReadOnly(true);
+        return field;
+    }
+
+    /**
+     * Создаёт поле, которое по умолчанию скрыто
+     */
+    private FieldMetadataDto createHiddenField(String name, String label, String type, boolean required,
+                                               String defaultValue, String[] options, String referenceType,
+                                               String hint) {
+        FieldMetadataDto field = createField(name, label, type, required, defaultValue, options, referenceType, hint);
+        field.setVisible(false);
+        return field;
+    }
+
+    /**
+     * Создаёт поле только для чтения, которое по умолчанию скрыто
+     */
+    private FieldMetadataDto createHiddenReadOnlyField(String name, String label, String type,
+                                                       String defaultValue, String hint) {
+        FieldMetadataDto field = createReadOnlyField(name, label, type, defaultValue, hint);
+        field.setVisible(false);
+        return field;
+    }
+
+    /**
+     * Создаёт поля для секции "Исполнение" (общего применения, огнестойкость, взрывозащита)
+     */
+    private List<FieldMetadataDto> createExecutionFields() {
+        List<FieldMetadataDto> fields = new ArrayList<>();
+        fields.add(createSeparator("Исполнение"));
+        fields.add(createField("generalPurpose", "Общего применения", "boolean", false, "true", null, null));
+        fields.add(createField("fireproof", "Огнестойкость", "boolean", false, "false", null, null));
+        fields.add(createHiddenField("fireproofTime", "Время огнестойкости (часы)", "number", false, null, null, null, "Укажите кол-во часов (необязательное поле)"));
+        fields.add(createHiddenField("maxTemperature", "Предельная температура (°C)", "number", false, "400", null, null, "Введите температуру"));
+        fields.add(createHiddenField("fireproofMarking", "Маркировка огнестойкости", "text", false, null, null, null, "формируется автоматически"));
+        fields.add(createField("explosionProof", "Взрывозащита", "boolean", false, "false", null, null));
+        fields.add(createHiddenField("explosionMarking", "Маркировка взрывозащиты", "text", false, "1Ex d IIC T4 Gb", null, null, "можно редактировать"));
+        return fields;
+    }
+
+    /**
+     * Создаёт общие поля (масса, макс. скорость)
+     */
+    private List<FieldMetadataDto> createCommonFields() {
+        List<FieldMetadataDto> fields = new ArrayList<>();
+        fields.add(createField("maxSpeedRpm", "Максимальная скорость вращения (об/мин)", "number", false, null, null, null, "Введите число"));
+        fields.add(createField("weightKg", "Масса (кг)", "double", false, null, null, null, "Введите число"));
+        return fields;
+    }
+
+    /**
+     * Создаёт поля для полной маркировки
+     */
+    private List<FieldMetadataDto> createFullMarkingField() {
+        List<FieldMetadataDto> fields = new ArrayList<>();
+        fields.add(createField("fullMarking", "Полная маркировка", "text", false, null, null, null, "формируется автоматически, можно редактировать"));
+        return fields;
     }
 
 }
