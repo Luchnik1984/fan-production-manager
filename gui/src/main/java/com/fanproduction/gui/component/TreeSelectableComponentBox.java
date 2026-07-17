@@ -4,6 +4,7 @@ import com.fanproduction.gui.builder.*;
 import com.fanproduction.gui.client.*;
 import com.fanproduction.gui.controller.CardFormController;
 import com.fanproduction.gui.controller.ComponentsCatalogController;
+import com.fanproduction.gui.dto.config.SelectableFieldConfig;
 import com.fanproduction.gui.dto.response.*;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -28,15 +29,17 @@ public class TreeSelectableComponentBox {
     private final HBox container;
     private final Button selectButton;
     private final Label selectedLabel;
-    private final String referenceType;
+    private final SelectableFieldConfig config;
     private final Stage ownerStage;
     private final Consumer<Long> onSelect;
     @Getter
     private Long selectedId;
 
-    public TreeSelectableComponentBox(Stage ownerStage, String referenceType, Consumer<Long> onSelect) {
+    public TreeSelectableComponentBox(Stage ownerStage,
+                                      SelectableFieldConfig config,
+                                      Consumer<Long> onSelect) {
         this.ownerStage = ownerStage;
-        this.referenceType = referenceType;
+        this.config = config;
         this.onSelect = onSelect;
 
         this.selectButton = new Button("Выбрать");
@@ -50,20 +53,36 @@ public class TreeSelectableComponentBox {
         this.container.setPadding(new Insets(2, 0, 2, 0));
     }
 
+    // ========== КОНСТРУКТОР ДЛЯ ОБРАТНОЙ СОВМЕСТИМОСТИ ==========
+    public TreeSelectableComponentBox(Stage ownerStage,
+                                      String referenceType,
+                                      String targetFieldName,
+                                      Consumer<Long> onSelect) {
+        this(ownerStage,
+                SelectableFieldConfig.withProduct(targetFieldName, referenceType, targetFieldName, "Компонент"),
+                onSelect);
+    }
+
     public void setSelectedId(Long id) {
         this.selectedId = id;
         selectedLabel.setText("ID: " + id);
         selectedLabel.setUserData(id);
     }
 
+    public void setSelectedDisplayName(String displayName) {
+        selectedLabel.setText(displayName);
+        selectedLabel.setVisible(true);
+        selectedLabel.setManaged(true);
+    }
+
     private void openSelector() {
+        String referenceType = config.referenceType();
         System.out.println("=== openSelector() called, referenceType: " + referenceType);
+
         new Thread(() -> {
             try {
                 if ("MOTOR_WHEEL".equals(referenceType)) {
-                    System.out.println("Loading MOTOR_WHEEL...");
                     List<MotorWheelDto> items = MotorWheelClient.getAll();
-                    System.out.println("Loaded " + items.size() + " motor wheels");
                     Platform.runLater(() -> {
                         MotorWheelTreeBuilder builder = new MotorWheelTreeBuilder();
                         TreeSelectorDialog dialog = new TreeSelectorDialog(
@@ -81,9 +100,7 @@ public class TreeSelectableComponentBox {
                         dialog.show();
                     });
                 } else if ("RADIAL_WHEEL".equals(referenceType)) {
-                    System.out.println("Loading RADIAL_WHEEL...");
                     List<RadialWheelDto> items = RadialWheelClient.getAll();
-                    System.out.println("Loaded " + items.size() + " radial wheels");
                     Platform.runLater(() -> {
                         RadialWheelTreeBuilder builder = new RadialWheelTreeBuilder();
                         TreeSelectorDialog dialog = new TreeSelectorDialog(
@@ -101,9 +118,7 @@ public class TreeSelectableComponentBox {
                         dialog.show();
                     });
                 } else if ("MOTOR".equals(referenceType)) {
-                    System.out.println("Loading MOTOR...");
                     List<MotorDto> items = MotorClient.getAll();
-                    System.out.println("Loaded " + items.size() + " motors");
                     Platform.runLater(() -> {
                         MotorTreeBuilder builder = new MotorTreeBuilder();
                         TreeSelectorDialog dialog = new TreeSelectorDialog(
@@ -121,9 +136,7 @@ public class TreeSelectableComponentBox {
                         dialog.show();
                     });
                 } else if ("AXIAL_WHEEL".equals(referenceType)) {
-                    System.out.println("Loading AXIAL_WHEEL...");
                     List<AxialWheelDto> items = AxialWheelClient.getAll();
-                    System.out.println("Loaded " + items.size() + " axial wheels");
                     Platform.runLater(() -> {
                         AxialWheelTreeBuilder builder = new AxialWheelTreeBuilder();
                         TreeSelectorDialog dialog = new TreeSelectorDialog(
@@ -141,11 +154,9 @@ public class TreeSelectableComponentBox {
                         dialog.show();
                     });
                 } else if ("COMPONENT".equals(referenceType)) {
-                    System.out.println("Loading COMPONENT...");
                     List<ComponentDto> items = ComponentClient.getAllComponents();
                     List<ComponentCategoryDto> categories = ComponentCategoryClient.getAllCategories();
                     List<ComponentClassDto> classes = ComponentClassClient.getAllClasses();
-                    System.out.println("Loaded " + items.size() + " components");
 
                     Platform.runLater(() -> {
                         ComponentTreeBuilder builder = new ComponentTreeBuilder(categories, classes, items);
@@ -177,6 +188,7 @@ public class TreeSelectableComponentBox {
     }
 
     private void runDialog() {
+        String referenceType = config.referenceType();
         if ("COMPONENT".equals(referenceType)) {
             // Открываем существующее окно создания компонента
             openComponentCreationDialog();
@@ -197,7 +209,6 @@ public class TreeSelectableComponentBox {
         loadingDialog.show();
 
         loadingDialog.loadAsync(() -> {
-            // Загружаем все необходимые данные для ComponentsCatalogController
             List<ComponentCategoryDto> categories = ComponentCategoryClient.getAllCategories();
             List<ComponentClassDto> classes = ComponentClassClient.getAllClasses();
             List<ComponentDto> components = ComponentClient.getAllComponents();
@@ -223,7 +234,6 @@ public class TreeSelectableComponentBox {
             Parent root = loader.load();
 
             ComponentsCatalogController controller = loader.getController();
-            // Передаём предзагруженные данные, чтобы избежать повторной загрузки
             controller.setPreloadedData(categories, classes, components);
 
             Stage stage = new Stage();
@@ -232,11 +242,7 @@ public class TreeSelectableComponentBox {
             stage.initOwner(ownerStage);
             stage.setScene(new Scene(root, 900, 600));
 
-            // Ждём закрытия окна, чтобы обновить список компонентов
-            stage.setOnHidden(e -> {
-                // После закрытия обновляем список в основном окне выбора
-                openSelector();
-            });
+            stage.setOnHidden(e -> openSelector());
 
             stage.show();
         } catch (IOException e) {

@@ -18,4 +18,7 @@ public class FieldMetadataDto {
     private String hint;           // подсказка
     private boolean visible = true; // видимость поля
     private boolean readOnly = false; // флаг "только для чтения"
+    private String targetFieldName;      // куда сохранять отображаемое имя
+    private String role;                 // роль компонента
+    private boolean addToProduct = true; // добавлять ли в product_components
 }

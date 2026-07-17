@@ -3,11 +3,13 @@ package com.fanproduction.gui.factory;
 import com.fanproduction.gui.client.ComponentClient;
 import com.fanproduction.gui.component.TreeSelectableComponentBox;
 import com.fanproduction.gui.dto.SelectableItem;
+import com.fanproduction.gui.dto.config.SelectableFieldConfig;
 import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
 import com.fanproduction.gui.dto.response.ComponentDto;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fanproduction.gui.client.ProductCardClient;
 import com.fanproduction.gui.util.NumberFormatter;
+import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
@@ -24,11 +26,12 @@ import java.util.function.BiConsumer;
 public class FieldControlFactory {
 
     private final Stage ownerStage;
-    private final BiConsumer<String, Long> autoFillCallback;  // (referenceType, selectedId) -> авто-заполнение
+    private final BiConsumer<SelectableFieldConfig, Long> onSelectableSelected;
 
-    public FieldControlFactory(Stage ownerStage, BiConsumer<String, Long> autoFillCallback) {
+    public FieldControlFactory(Stage ownerStage,
+                               BiConsumer<SelectableFieldConfig, Long> onSelectableSelected) {
         this.ownerStage = ownerStage;
-        this.autoFillCallback = autoFillCallback;
+        this.onSelectableSelected = onSelectableSelected;
     }
 
     /**
@@ -108,7 +111,6 @@ public class FieldControlFactory {
         return doubleField;
     }
 
-
     private Node createComboBox(FieldMetadataDto field, Object existingValue) {
         String refType = field.getReferenceType();
         boolean isReference = refType != null && !refType.isEmpty();
@@ -129,15 +131,6 @@ public class FieldControlFactory {
             }
 
             loadReferenceData(refComboBox, refType, existingId);
-
-            refComboBox.valueProperty().addListener((obs, old, newVal) -> {
-                if (newVal != null && newVal.getId() != null) {
-                    if (autoFillCallback != null) {
-                        autoFillCallback.accept(refType, newVal.getId());
-                    }
-                }
-            });
-
             return refComboBox;
         } else {
             ComboBox<String> comboBox = new ComboBox<>();
@@ -159,21 +152,34 @@ public class FieldControlFactory {
 
     private Node createCheckBox(FieldMetadataDto field, Object existingValue) {
         CheckBox checkBox = new CheckBox();
-        if (existingValue instanceof Boolean) checkBox.setSelected((Boolean) existingValue);
+        if (existingValue instanceof Boolean) {
+            checkBox.setSelected((Boolean) existingValue);
+        }
         if (field.getDefaultValue() != null && existingValue == null) {
             checkBox.setSelected(Boolean.parseBoolean(field.getDefaultValue()));
         }
         return checkBox;
     }
 
-    private Node createSelectableComboBox(FieldMetadataDto field, Object existingValue, Map<String, Node> fieldControls) {
-        String refType = field.getReferenceType();
+    private Node createSelectableComboBox(FieldMetadataDto field,
+                                          Object existingValue,
+                                          Map<String, Node> fieldControls) {
 
+        SelectableFieldConfig config = new SelectableFieldConfig(
+                field.getName(),
+                field.getReferenceType(),
+                field.getTargetFieldName(),
+                field.getRole(),
+                field.isAddToProduct()
+        );
+
+        // ========== ПЕРЕДАЁМ Consumer, КОТОРЫЙ ЗАХВАТЫВАЕТ КОНФИГ ==========
         TreeSelectableComponentBox treeBox = new TreeSelectableComponentBox(
-                ownerStage, refType,
-                id -> {
-                    if (autoFillCallback != null) {
-                        autoFillCallback.accept(refType, id);
+                ownerStage,
+                config,
+                id -> {  // ← Consumer<Long>
+                    if (onSelectableSelected != null) {
+                        onSelectableSelected.accept(config, id);  // ← конфиг из замыкания
                     }
                 }
         );
@@ -197,7 +203,9 @@ public class FieldControlFactory {
 
     private Node createDefaultField(FieldMetadataDto field, Object existingValue) {
         TextField defaultField = new TextField();
-        if (existingValue != null) defaultField.setText(String.valueOf(existingValue));
+        if (existingValue != null) {
+            defaultField.setText(String.valueOf(existingValue));
+        }
         return defaultField;
     }
 
@@ -243,7 +251,7 @@ public class FieldControlFactory {
                 final SelectableItem finalPreselected = preselectedItem;
 
                 // Обновление UI
-                javafx.application.Platform.runLater(() -> {
+                Platform.runLater(() -> {
                     comboBox.getItems().clear();
                     if (!finalItems.isEmpty()) {
                         comboBox.getItems().addAll(finalItems);
@@ -256,7 +264,7 @@ public class FieldControlFactory {
                 });
 
             } catch (Exception e) {
-                javafx.application.Platform.runLater(() -> {
+                Platform.runLater(() -> {
                     comboBox.getItems().clear();
                     comboBox.getItems().add(new SelectableItem(null, "Ошибка загрузки"));
                 });

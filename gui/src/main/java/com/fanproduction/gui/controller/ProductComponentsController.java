@@ -489,4 +489,23 @@ public class ProductComponentsController {
         });
     }
 
+    /**
+     * Возвращает список компонентов для внешнего использования
+     */
+    public ObservableList<ProductComponentItemDto> getItems() {
+        return componentsList;
+    }
+
+    /**
+     * Удаляет компонент из списка
+     */
+    public void removeItem(ProductComponentItemDto item) {
+        if (item != null) {
+            componentsList.remove(item);
+        }
+    }
+
+
 }
+
+

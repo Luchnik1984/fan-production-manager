@@ -17,11 +17,8 @@ public class DuctFanCardConfigurator implements CardFieldConfigurator {
                             Map<String, Label> fieldHints,
                             boolean existingCardExists) {
 
-        // Условная видимость (огнестойкость/взрывозащита) — с fieldHints
-        setupConditionalVisibility(fieldControls, fieldLabels, fieldHints, () -> updateFullMarking(fieldControls));
-
-        // Взаимоисключающие галочки
-        setupExclusiveSelection(fieldControls, () -> updateFullMarking(fieldControls));
+        // ========== 1. НАСТРОЙКА ИСПОЛНЕНИЙ (ОГНЕСТОЙКОСТЬ/ВЗРЫВОЗАЩИТА) ==========
+        setupExecutionMarking(fieldControls, fieldLabels, fieldHints, () -> updateFullMarking(fieldControls));
 
         // Настройка выбора типа колеса
         setupTypeSelection(fieldControls, fieldLabels, fieldHints);

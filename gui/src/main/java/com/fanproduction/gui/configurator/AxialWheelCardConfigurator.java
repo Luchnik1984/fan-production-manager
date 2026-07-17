@@ -1,7 +1,5 @@
 package com.fanproduction.gui.configurator;
 
-import com.fanproduction.gui.client.ComponentClient;
-import com.fanproduction.gui.dto.response.ComponentDto;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 
@@ -24,7 +22,7 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
     private String lastAutoWheelFormula = "";
     private String lastAutoWheelDiameter = "";
 
-    // Начальные значения для сравнения
+    // Начальные значения для сравнения (ТОЛЬКО поля, влияющие на fullMarking)
     private Map<String, String> initialValues = new HashMap<>();
     private boolean initialIsPartner = false;
     private boolean initialIsOwn = false;
@@ -42,32 +40,34 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
                             Map<String, Label> fieldHints,
                             boolean existingCardExists) {
 
-        // 1. Настраиваем взаимоисключение галочек (Партнёрское/Фирменное)
+        // ========== 1. НАСТРОЙКА ИСПОЛНЕНИЙ (ОГНЕСТОЙКОСТЬ/ВЗРЫВОЗАЩИТА) ==========
+        setupExecutionMarking(fieldControls, fieldLabels, fieldHints, () -> updateFullMarking(fieldControls));
+
+        // ========== 2. ВЗАИМОИСКЛЮЧЕНИЕ ТИПА КОЛЕСА ==========
         setupWheelTypeExclusiveSelection(fieldControls, fieldLabels, fieldHints);
 
-        // 2. Настраиваем взаимоисключение галочек (Сборное/Сварное)
+        // ========== 3. ВЗАИМОИСКЛЮЧЕНИЕ ТИПА ИЗГОТОВЛЕНИЯ ==========
         setupAssemblyTypeExclusiveSelection(fieldControls, fieldLabels, fieldHints);
 
-        // 3. Управление видимостью полей
+        // ========== 4. УПРАВЛЕНИЕ ВИДИМОСТЬЮ ПОЛЕЙ ==========
         setupVisibilityLogic(fieldControls, fieldLabels, fieldHints);
 
-        // 4. Расчёт диаметра колеса
+        // ========== 5. РАСЧЁТ ДИАМЕТРА КОЛЕСА ==========
         setupWheelDiameterCalculation(fieldControls);
 
-        // 5. Формирование формулы колеса
+        // ========== 6. ФОРМИРОВАНИЕ ФОРМУЛЫ КОЛЕСА ==========
         setupWheelFormulaGeneration(fieldControls);
 
-        // 6. Формирование полной маркировки
+        // ========== 7. ФОРМИРОВАНИЕ ПОЛНОЙ МАРКИРОВКИ ==========
         setupFullMarkingGeneration(fieldControls, existingCardExists);
 
-        // 7. Автозаполнение наименования
+        // ========== 8. АВТОЗАПОЛНЕНИЕ НАИМЕНОВАНИЯ ==========
         autoFillName(fieldControls, "Колесо осевое", existingCardExists);
 
-        // 8. Синхронизация при загрузке данных (только для существующей карточки)
+        // ========== 9. СИНХРОНИЗАЦИЯ ПРИ ЗАГРУЗКЕ ДАННЫХ ==========
         if (existingCardExists) {
             storeInitialValues(fieldControls);
 
-            // Запоминаем текущие значения автоматических полей из БД
             TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
             if (fullMarkingField != null && !fullMarkingField.getText().isEmpty()) {
                 lastAutoFullMarking = fullMarkingField.getText();
@@ -266,10 +266,9 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         String bladeCount = getFieldValue(fieldControls, "bladeCount");
         String maxBladeCount = getFieldValue(fieldControls, "maxBladeCount");
         String bladeAngle = getFieldValue(fieldControls, "bladeAngle");
-
-        String bladeIdentifier;
         String bladeMaterial = getFieldValue(fieldControls, "bladeMaterial");
 
+        String bladeIdentifier;
         if (isAssembled) {
             // Для сборного — используем designation компонента
             bladeIdentifier = getFieldValue(fieldControls, "bladeName");
@@ -297,7 +296,7 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
     }
 
     // ==========================================================
-    // 6. ФОРМИРОВАНИЕ ПОЛНОЙ МАРКИРОВКИ
+    // 6. МЕТОДЫ ДЛЯ РАБОТЫ С ПОЛНОЙ МАРКИРОВКОЙ
     // ==========================================================
 
     private void setupFullMarkingGeneration(Map<String, Node> fieldControls, boolean existingCardExists) {
@@ -309,19 +308,35 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         addTextFieldListener(fieldControls, "size", () -> updateFullMarking(fieldControls));
         addTextFieldListener(fieldControls, "wheelFormula", () -> updateFullMarking(fieldControls));
         addTextFieldListener(fieldControls, "hubName", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "fireproofMarking", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "explosionMarking", () -> updateFullMarking(fieldControls));
 
+        // Исполнение
         addCheckBoxListener(fieldControls, "generalPurpose", () -> updateFullMarking(fieldControls));
         addCheckBoxListener(fieldControls, "fireproof", () -> updateFullMarking(fieldControls));
         addCheckBoxListener(fieldControls, "explosionProof", () -> updateFullMarking(fieldControls));
         addCheckBoxListener(fieldControls, "isPartnerWheel", () -> updateFullMarking(fieldControls));
         addCheckBoxListener(fieldControls, "isOwnProduction", () -> updateFullMarking(fieldControls));
 
+        // Маркировки исполнений (изменяются через helper)
+        addTextFieldListener(fieldControls, "fireproofMarking", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "explosionMarking", () -> updateFullMarking(fieldControls));
+
         // Вызываем updateFullMarking() только для новой карточки
         if (!existingCardExists) {
             updateFullMarking(fieldControls);
         }
+    }
+
+    @Override
+    public void refreshFullMarking(Map<String, Node> fieldControls) {
+        updateFullMarking(fieldControls);
+    }
+
+    @Override
+    public void forceSetFullMarking(Map<String, Node> fieldControls) {
+        // 1. Сбрасываем защиту
+        lastAutoFullMarking = "";
+        // 2. Обновляем маркировку
+        updateFullMarking(fieldControls);
     }
 
     private void updateFullMarking(Map<String, Node> fieldControls) {
@@ -336,78 +351,123 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
             return;
         }
 
-        String newFullMarking;
+        // Получаем текущие значения
+        String currentSeries = getFieldValue(fieldControls, "series");
+        String currentSize = getFieldValue(fieldControls, "size");
+        String currentWheelFormula = getFieldValue(fieldControls, "wheelFormula");
+        String currentHubName = getFieldValue(fieldControls, "hubName");
+        String currentMarkingValue = getFieldValue(fieldControls, "marking");
+        String currentExecutionMarking = getExecutionMarking(fieldControls);
 
-        if (isPartner) {
-            // Партнёрское колесо: fullMarking = Маркировка производителя
-            newFullMarking = getFieldValue(fieldControls, "marking");
-        } else {
-            // Фирменное колесо
-            String series = getFieldValue(fieldControls, "series");
-            String size = getFieldValue(fieldControls, "size");
-            String executionMarking = getExecutionMarking(fieldControls);
-            String wheelFormula = getFieldValue(fieldControls, "wheelFormula");
-            String hubName = getFieldValue(fieldControls, "hubName");
+        // ========== ПРОВЕРКА ИЗМЕНЕНИЙ ==========
+        String[] fieldsToCheck = getFieldsToCheckForFullMarking(isPartner);
+        boolean fieldsChanged = hasAnyFieldChanged(fieldControls, initialValues, fieldsToCheck);
 
-            // Форматируем размер (убираем .0 если целое)
-            String formattedSize = formatSize(size);
-
-            StringBuilder sb = new StringBuilder();
-            if (!series.isEmpty()) sb.append(series);
-            if (!formattedSize.isEmpty()) {
-                if (!sb.isEmpty()) sb.append("(");
-                sb.append(formattedSize);
-                if (!series.isEmpty()) sb.append(")");
+        // Дополнительно проверяем executionMarking
+        if (!fieldsChanged && isOwn) {
+            String initialExecution = initialExecutionMarking != null ? initialExecutionMarking : "";
+            if (!currentExecutionMarking.equals(initialExecution)) {
+                fieldsChanged = true;
             }
-            if (!executionMarking.isEmpty()) {
-                if (!sb.isEmpty()) sb.append("-");
-                sb.append(executionMarking);
-            }
-            if (!wheelFormula.isEmpty()) {
-                if (!sb.isEmpty()) sb.append("-");
-                sb.append(wheelFormula);
-            }
-            if (!hubName.isEmpty()) {
-                if (!sb.isEmpty()) sb.append("-");
-                sb.append(hubName);
-            }
-            newFullMarking = sb.toString();
         }
 
-        String currentMarking = fullMarkingField.getText();
+        if (!fieldsChanged) {
+            return;  // Ничего не изменилось
+        }
+
+        // Формируем новую полную маркировку
+        String newFullMarking = buildFullMarking(isPartner, isOwn,
+                currentSeries, currentSize, currentExecutionMarking,
+                currentWheelFormula, currentHubName, currentMarkingValue);
+
+        String existingFullMarking = fullMarkingField.getText();
 
         // Обновляем только если поле пустое ИЛИ содержит последнее автоматическое значение
-        if (currentMarking == null || currentMarking.isEmpty() ||
-                currentMarking.equals(lastAutoFullMarking)) {
+        if (existingFullMarking == null || existingFullMarking.isEmpty() ||
+                existingFullMarking.equals(lastAutoFullMarking)) {
             fullMarkingField.setText(newFullMarking);
             lastAutoFullMarking = newFullMarking;
+
+            // Обновляем начальные значения после пересчёта
             storeInitialValues(fieldControls);
         }
     }
 
-    // ==========================================================
-    // 7. ХРАНЕНИЕ НАЧАЛЬНЫХ ЗНАЧЕНИЙ
-    // ==========================================================
-
-    private void storeInitialValues(Map<String, Node> fieldControls) {
-        String[] fieldNames = {"series", "size", "wheelFormula", "hubName", "marking",
-                "wheelDiameter", "maxBladeCount", "bladeCount", "bladeAngle",
-                "bladeMaterial", "bladeType", "wheelHubType", "wheelHubName",
-                "bladeName", "hubComponentId", "bladeComponentId", "wheelHubComponentId"};
-        initialValues = new HashMap<>();
-        for (String fieldName : fieldNames) {
-            initialValues.put(fieldName, getFieldValue(fieldControls, fieldName));
+    private String buildFullMarking(boolean isPartner, boolean isOwn,
+                                    String currentSeries, String currentSize,
+                                    String currentExecutionMarking, String currentWheelFormula,
+                                    String currentHubName, String currentMarkingValue) {
+        if (isPartner) {
+            return currentMarkingValue;
         }
-        initialIsPartner = isSelected(fieldControls, "isPartnerWheel");
-        initialIsOwn = isSelected(fieldControls, "isOwnProduction");
-        initialIsAssembled = isSelected(fieldControls, "isAssembledFromComponents");
-        initialIsWelded = isSelected(fieldControls, "isWeldedFromMaterials");
-        initialExecutionMarking = getExecutionMarking(fieldControls);
+
+        if (isOwn) {
+            return buildOwnFullMarking(currentSeries, currentSize, currentExecutionMarking,
+                    currentWheelFormula, currentHubName);
+        }
+
+        return "";
+    }
+
+    private String buildOwnFullMarking(String series, String sizeStr, String executionMarking,
+                                       String wheelFormula, String hubName) {
+        StringBuilder sb = new StringBuilder();
+
+        // Парсим размер
+        Double size = null;
+        try {
+            if (sizeStr != null && !sizeStr.isEmpty()) {
+                size = Double.parseDouble(sizeStr.replace(',', '.'));
+            }
+        } catch (NumberFormatException ignored) {
+        }
+
+        String formattedSize = formatSize(size);
+
+        if (!series.isEmpty()) sb.append(series);
+        if (!formattedSize.isEmpty()) {
+            if (!sb.isEmpty()) sb.append("(");
+            sb.append(formattedSize);
+            if (!series.isEmpty()) sb.append(")");
+        }
+        if (!executionMarking.isEmpty()) {
+            if (!sb.isEmpty()) sb.append("-");
+            sb.append(executionMarking);
+        }
+        if (!wheelFormula.isEmpty()) {
+            if (!sb.isEmpty()) sb.append("-");
+            sb.append(wheelFormula);
+        }
+        if (!hubName.isEmpty()) {
+            if (!sb.isEmpty()) sb.append("-");
+            sb.append(hubName);
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * Возвращает список полей для проверки изменения fullMarking
+     */
+    private String[] getFieldsToCheckForFullMarking(boolean isPartner) {
+        if (isPartner) {
+            return new String[]{"marking", "fullMarking"};
+        } else {
+            return new String[]{"series", "size", "wheelFormula", "hubName", "executionMarking", "fullMarking"};
+        }
     }
 
     // ==========================================================
-    // 8. ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // 7. РАБОТА С ФОРМАТОМ РАЗМЕРА
     // ==========================================================
+
+    private String formatSize(Double size) {
+        if (size == null) return "";
+        if (size == Math.floor(size)) {
+            return String.valueOf(size.intValue());
+        }
+        return String.valueOf(size);
+    }
 
     private String formatSize(String sizeStr) {
         if (sizeStr == null || sizeStr.isEmpty()) return "";
@@ -422,22 +482,8 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
-    private String getComponentDesignation(Long componentId) {
-        if (componentId == null) return "";
-        try {
-            ComponentDto component = ComponentClient.getComponentById(componentId);
-            if (component != null) {
-                String designation = component.getDesignation();
-                return designation != null && !designation.isEmpty() ? designation : component.getName();
-            }
-            return "";
-        } catch (Exception e) {
-            return "";
-        }
-    }
-
     // ==========================================================
-    // 9. ВАЛИДАЦИЯ
+    // 8. ВАЛИДАЦИЯ
     // ==========================================================
 
     @Override
@@ -448,14 +494,16 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         boolean isPartner = Boolean.TRUE.equals(fields.get("isPartnerWheel"));
         boolean isOwn = Boolean.TRUE.equals(fields.get("isOwnProduction"));
 
+        // ========== 1. ПРОВЕРКА: ВЫБРАН ТИП КОЛЕСА ==========
         if (!isPartner && !isOwn) {
             showValidationError("""
-                    Необходимо выбрать тип колеса:
-                    - Партнёрское рабочее колесо
-                    - Фирменное рабочее колесо""");
+                Необходимо выбрать тип колеса:
+                - Партнёрское рабочее колесо
+                - Фирменное рабочее колесо""");
             return false;
         }
 
+        // ========== 2. ПРОВЕРКА: ПАРТНЁРСКОЕ КОЛЕСО ==========
         if (isPartner) {
             String marking = (String) fields.get("marking");
             if (marking == null || marking.isEmpty()) {
@@ -464,75 +512,47 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
             }
         }
 
+        // ========== 3. ПРОВЕРКА: ФИРМЕННОЕ КОЛЕСО ==========
         if (isOwn) {
             boolean isAssembled = Boolean.TRUE.equals(fields.get("isAssembledFromComponents"));
             boolean isWelded = Boolean.TRUE.equals(fields.get("isWeldedFromMaterials"));
 
             if (!isAssembled && !isWelded) {
                 showValidationError("""
-                        Для фирменного колеса необходимо выбрать тип изготовления:
-                        - Сборное из компонентов
-                        - Сварное из материалов""");
+                    Для фирменного колеса необходимо выбрать тип изготовления:
+                    - Сборное из компонентов
+                    - Сварное из материалов""");
                 return false;
             }
 
-            if (isAssembled) {
-                Long wheelHubId = (Long) fields.get("wheelHubComponentId");
-                Long bladeId = (Long) fields.get("bladeComponentId");
-                Long hubId = (Long) fields.get("hubComponentId");
-
-                if (wheelHubId == null || bladeId == null || hubId == null) {
-                    showValidationError("""
-                            Для сборного колеса необходимо выбрать:
-                            - Хаб (Ступица)
-                            - Лопатку
-                            - Установочную ступицу""");
-                    return false;
-                }
-            }
-
-            if (isWelded) {
-                String hubType = (String) fields.get("wheelHubType");
-                String bladeType = (String) fields.get("bladeType");
-                String bladeMaterial = (String) fields.get("bladeMaterial");
-                Long hubId = (Long) fields.get("hubComponentId");
-
-                if (hubType == null || hubType.isEmpty() ||
-                        bladeType == null || bladeType.isEmpty() ||
-                        bladeMaterial == null || bladeMaterial.isEmpty() ||
-                        hubId == null) {
-                    showValidationError("""
-                            Для сварного колеса необходимо заполнить:
-                            - Тип хаба
-                            - Тип лопатки
-                            - Материал лопатки
-                            - Установочную ступицу""");
-                    return false;
-                }
-            }
-
-            // Проверка количества лопаток
-            Integer bladeCount = (Integer) fields.get("bladeCount");
-            Integer maxBladeCount = (Integer) fields.get("maxBladeCount");
-
-            if (bladeCount == null) {
-                showValidationError("Необходимо указать количество установленных лопаток.");
-                return false;
-            }
-
-            if (bladeCount < 2) {
-                showValidationError("Количество лопаток не может быть меньше двух.");
-                return false;
-            }
-
-            if (maxBladeCount != null && bladeCount > maxBladeCount) {
-                showValidationError("Количество лопаток не может превышать максимальное количество для данного хаба (" + maxBladeCount + ").");
+            // ========== ПРОВЕРКА ПОЛЕЙ ДЛЯ ФОРМУЛЫ ОСЕВОГО КОЛЕСА ==========
+            if (!WheelFormulaValidator.validateAxialWheelFormula(fields, true)) {
                 return false;
             }
         }
 
-        // Проверка fullMarking через общий метод
+        // ========== 4. ПРОВЕРКА FULL_MARKING ==========
         return validateFullMarking(fields);
+    }
+
+    // ==========================================================
+    // 9. ХРАНЕНИЕ НАЧАЛЬНЫХ ЗНАЧЕНИЙ
+    // ==========================================================
+
+    public void storeInitialValues(Map<String, Node> fieldControls) {
+        // ========== ТОЛЬКО ПОЛЯ, ВЛИЯЮЩИЕ НА FULL_MARKING ==========
+        String[] fieldNames = {"series", "size", "wheelFormula", "hubName", "marking", "fullMarking"};
+
+        initialValues = new HashMap<>();
+        for (String fieldName : fieldNames) {
+            initialValues.put(fieldName, getFieldValue(fieldControls, fieldName));
+        }
+
+        initialIsPartner = isSelected(fieldControls, "isPartnerWheel");
+        initialIsOwn = isSelected(fieldControls, "isOwnProduction");
+        initialIsAssembled = isSelected(fieldControls, "isAssembledFromComponents");
+        initialIsWelded = isSelected(fieldControls, "isWeldedFromMaterials");
+        initialExecutionMarking = getExecutionMarking(fieldControls);
     }
 
 }

@@ -11,6 +11,7 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
 
     private String lastAutoMarking = "";
     private String initialManufacturerMarking = "";
+    private String initialFullMarking = "";
 
     /**
      * Проверяет, заполнены ли обязательные поля для мотор-колеса
@@ -54,6 +55,7 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
         if (existingCardExists) {
             // Запоминаем начальное значение manufacturerMarking
             initialManufacturerMarking = getFieldValue(fieldControls, "manufacturerMarking");
+            initialFullMarking = getFieldValue(fieldControls, "fullMarking");
 
             TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
             if (fullMarkingField != null && !fullMarkingField.getText().isEmpty()) {
@@ -90,7 +92,12 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
+    // ==========================================================
+    //  МЕТОДЫ ДЛЯ РАБОТЫ С FULL_MARKING
+    // ==========================================================
+
     private void setupFullMarkingGeneration(Map<String, Node> fieldControls, boolean existingCardExists) {
+
         TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
 
@@ -101,6 +108,22 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
         if (!existingCardExists) {
             updateFullMarking(fieldControls);
         }
+    }
+
+    @Override
+    public void refreshFullMarking(Map<String, Node> fieldControls) {
+        updateFullMarking(fieldControls);
+    }
+
+    /**
+     * Обновляет полную маркировку с защитой от перезаписи
+     */
+    @Override
+    public void forceSetFullMarking(Map<String, Node> fieldControls) {
+        // 1. Сбрасываем защиту
+        lastAutoMarking = "";
+        // 2. Обновляем маркировку
+        updateFullMarking(fieldControls);
     }
 
     private void updateFullMarking(Map<String, Node> fieldControls) {
@@ -123,6 +146,8 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
             lastAutoMarking = manufacturerMarking;
             // Обновляем начальное значение после изменения
             initialManufacturerMarking = manufacturerMarking;
+            initialFullMarking = manufacturerMarking;
         }
     }
+
 }

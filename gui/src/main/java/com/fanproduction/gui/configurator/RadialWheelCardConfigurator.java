@@ -29,14 +29,51 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         boolean isPartner = Boolean.TRUE.equals(fields.get("isPartnerWheel"));
         boolean isOwn = Boolean.TRUE.equals(fields.get("isOwnProduction"));
 
+        // ========== 1. ПРОВЕРКА: ВЫБРАН ТИП КОЛЕСА ==========
         if (!isPartner && !isOwn) {
             showValidationError("""
-                    Необходимо выбрать тип колеса:
-                    - Фирменное рабочее колесо
-                    - Партнёрское рабочее колесо""");
+                Необходимо выбрать тип колеса:
+                - Фирменное рабочее колесо
+                - Партнёрское рабочее колесо""");
             return false;
         }
-        // Проверяем fullMarking через общий метод
+
+        // ========== 2. ПРОВЕРКА: ПАРТНЁРСКОЕ КОЛЕСО ==========
+        if (isPartner) {
+            String marking = (String) fields.get("marking");
+            if (marking == null || marking.isEmpty()) {
+                showValidationError("Для партнёрского колеса необходимо заполнить поле 'Маркировка производителя'.");
+                return false;
+            }
+        }
+
+        // ========== 3. ПРОВЕРКА: ФИРМЕННОЕ КОЛЕСО ==========
+        if (isOwn) {
+            // Проверяем основные обязательные поля
+            String series = (String) fields.get("series");
+            String bladeType = (String) fields.get("bladeType");
+            Long hubComponentId = (Long) fields.get("hubComponentId");
+
+            if (series == null || series.isEmpty()) {
+                showValidationError("Для фирменного колеса необходимо заполнить поле 'Серия колеса'.");
+                return false;
+            }
+            if (bladeType == null || bladeType.isEmpty()) {
+                showValidationError("Для фирменного колеса необходимо выбрать 'Тип лопаток'.");
+                return false;
+            }
+            if (hubComponentId == null) {
+                showValidationError("Для фирменного колеса необходимо выбрать 'Ступицу'.");
+                return false;
+            }
+
+            // ========== ПРОВЕРКА ПОЛЕЙ ДЛЯ ФОРМУЛЫ КОЛЕСА ==========
+            if (!WheelFormulaValidator.validateRadialWheelFormula(fields, true)) {
+                return false;
+            }
+        }
+
+        // ========== 4. ПРОВЕРКА FULL_MARKING ==========
         return validateFullMarking(fields);
     }
 
@@ -46,53 +83,53 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
                             Map<String, Label> fieldHints,
                             boolean existingCardExists) {
 
-        // 1. Сначала настраиваем слушатели на галочки
+        // 1. Настройка исполнений (ОГНЕСТОЙКОСТЬ/ВЗРЫВОЗАЩИТА)
+        setupExecutionMarking(fieldControls, fieldLabels, fieldHints, () -> updateFullMarking(fieldControls));
+
+        // 2. Взаимоисключение типа колеса (партнёрское/фирменное)
         setupWheelTypeExclusiveSelection(fieldControls, fieldLabels, fieldHints);
 
-        // 2. Потом применяем начальную видимость
+        // 3. Управление видимостью полей
         setupVisibilityLogic(fieldControls, fieldLabels, fieldHints);
 
-        // 3. Остальная логика
-        setupConditionalVisibility(fieldControls, fieldLabels, fieldHints, () -> updateFullMarking(fieldControls));
-        setupExclusiveSelection(fieldControls, () -> updateFullMarking(fieldControls));
-
+        // 4. Генерация кода колеса
         setupWheelCodeGeneration(fieldControls);
+
+        // 5. Генерация формулы колеса
         setupWheelFormulaGeneration(fieldControls);
-        setupFireproofMarkingGeneration(fieldControls);
+
+        // 6. Генерация полной маркировки
         setupFullMarkingGeneration(fieldControls, existingCardExists);
 
+        // 7. Автозаполнение наименования
         autoFillName(fieldControls, "Колесо радиальное", existingCardExists);
 
-        // 4. Синхронизация при загрузке данных (только для существующей карточки)
-        if (!existingCardExists) {
-            return;
-        }
+        // 8. Синхронизация при загрузке данных (только для существующей карточки)
+        if (existingCardExists) {
+            storeInitialValues(fieldControls);
 
-        // Запоминаем начальные значения всех полей
-        storeInitialValues(fieldControls);
-
-        // Запоминаем текущие значения автоматических полей из БД
-        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
-        if (fullMarkingField != null) {
-            String currentMarking = fullMarkingField.getText();
-            if (currentMarking != null && !currentMarking.isEmpty()) {
-                lastAutoFullMarking = currentMarking;
+            TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
+            if (fullMarkingField != null) {
+                String currentMarking = fullMarkingField.getText();
+                if (currentMarking != null && !currentMarking.isEmpty()) {
+                    lastAutoFullMarking = currentMarking;
+                }
             }
-        }
 
-        TextField wheelCodeField = getTextField(fieldControls, "wheelCode");
-        if (wheelCodeField != null) {
-            String currentWheelCode = wheelCodeField.getText();
-            if (currentWheelCode != null && !currentWheelCode.isEmpty()) {
-                lastAutoWheelCode = currentWheelCode;
+            TextField wheelCodeField = getTextField(fieldControls, "wheelCode");
+            if (wheelCodeField != null) {
+                String currentWheelCode = wheelCodeField.getText();
+                if (currentWheelCode != null && !currentWheelCode.isEmpty()) {
+                    lastAutoWheelCode = currentWheelCode;
+                }
             }
-        }
 
-        TextField wheelFormulaField = getTextField(fieldControls, "wheelFormula");
-        if (wheelFormulaField != null) {
-            String currentWheelFormula = wheelFormulaField.getText();
-            if (currentWheelFormula != null && !currentWheelFormula.isEmpty()) {
-                lastAutoWheelFormula = currentWheelFormula;
+            TextField wheelFormulaField = getTextField(fieldControls, "wheelFormula");
+            if (wheelFormulaField != null) {
+                String currentWheelFormula = wheelFormulaField.getText();
+                if (currentWheelFormula != null && !currentWheelFormula.isEmpty()) {
+                    lastAutoWheelFormula = currentWheelFormula;
+                }
             }
         }
     }
@@ -120,7 +157,6 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
             setVisible(fieldControls, fieldLabels, fieldHints, fieldName, isOwn);
         }
     }
-
 
     /**
      * ВЗАИМОИСКЛЮЧАЮЩИЕ ГАЛОЧКИ ДЛЯ ТИПА КОЛЕСА
@@ -302,48 +338,9 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
-    /**
-    * МАРКИРОВКА ОГНЕСТОЙКОСТИ (с автосбросом при снятии галочки)
-    */
-    private void setupFireproofMarkingGeneration(Map<String, Node> fieldControls) {
-        // При изменении fireproofTime обновляем fireproofMarking
-        addTextFieldListener(fieldControls, "fireproofTime", () -> updateFireproofMarking(fieldControls));
-        // При изменении maxTemperature обновляем fireproofMarking
-        addTextFieldListener(fieldControls, "maxTemperature", () -> updateFireproofMarking(fieldControls));
-        // При изменении fireproof обновляем fireproofMarking
-        addCheckBoxListener(fieldControls, "fireproof", () -> updateFireproofMarking(fieldControls));
-        // При изменении fireproofMarking обновляем fullMarking
-        addTextFieldListener(fieldControls, "fireproofMarking", () -> updateFullMarking(fieldControls));
-
-        updateFireproofMarking(fieldControls);
-    }
-
-    private void updateFireproofMarking(Map<String, Node> fieldControls) {
-        TextField fireproofMarkingField = getTextField(fieldControls, "fireproofMarking");
-        if (fireproofMarkingField == null) return;
-
-        boolean isFireproof = isSelected(fieldControls, "fireproof");
-
-        if (!isFireproof) {
-            fireproofMarkingField.setText("");  // ← Очищаем при снятии галочки
-            return;
-        }
-
-        // Если галочка установлена — формируем маркировку
-        String fireproofTime = getFieldValue(fieldControls, "fireproofTime");
-        String maxTemperature = getFieldValue(fieldControls, "maxTemperature");
-
-        StringBuilder marking = new StringBuilder("F");
-
-        if (!fireproofTime.isEmpty()) {
-            marking.append("-").append(fireproofTime);
-        }
-
-        String temp = maxTemperature.isEmpty() ? "400" : maxTemperature;
-        marking.append("/").append(temp);
-
-        fireproofMarkingField.setText(marking.toString());
-    }
+    // ==========================================================
+    // МЕТОДЫ ДЛЯ РАБОТЫ С FULL_MARKING
+    // ==========================================================
 
     /**
     * ПОЛНАЯ МАРКИРОВКА
@@ -427,33 +424,47 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
-    private void updateFullMarking(Map<String, Node> fieldControls) {
+    @Override
+    public void refreshFullMarking(Map<String, Node> fieldControls) {
+        updateFullMarking(fieldControls);
+    }
 
+    /**
+     * Обновляет полную маркировку с защитой от перезаписи
+     */
+    @Override
+    public void forceSetFullMarking(Map<String, Node> fieldControls) {
+        // 1. Сбрасываем защиту
+        lastAutoFullMarking = "";
+        // 2. Обновляем маркировку
+        updateFullMarking(fieldControls);
+    }
+
+    private void updateFullMarking(Map<String, Node> fieldControls) {
         TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
 
         boolean isPartner = isSelected(fieldControls, "isPartnerWheel");
         boolean isOwn = isSelected(fieldControls, "isOwnProduction");
 
-        // Если ни одна галочка не выбрана — не трогаем fullMarking
         if (!isPartner && !isOwn) {
             return;
         }
 
-        // Получаем текущие значения
         String currentSeries = getFieldValue(fieldControls, "series");
         String currentSize = getFieldValue(fieldControls, "size");
         String currentWheelFormula = getFieldValue(fieldControls, "wheelFormula");
         String currentHubName = getFieldValue(fieldControls, "hubName");
         String currentMarkingValue = getFieldValue(fieldControls, "marking");
+
+        // ========== ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД ИЗ ИНТЕРФЕЙСА ==========
         String currentExecutionMarking = getExecutionMarking(fieldControls);
 
-        // Проверяем, изменились ли поля, определяющие fullMarking
+        // Проверяем, изменились ли поля
         String[] fieldsToCheck = getFieldsToCheckForFullMarking(isPartner);
-        // Проверяем стандартные поля
         boolean fieldsChanged = hasAnyFieldChanged(fieldControls, initialValues, fieldsToCheck);
 
-        // Дополнительно проверяем executionMarking (если оно входит в fieldsToCheck)
+        // Дополнительно проверяем executionMarking
         if (!fieldsChanged && isOwn) {
             String initialExecution = initialExecutionMarking != null ? initialExecutionMarking : "";
             if (!currentExecutionMarking.equals(initialExecution)) {
@@ -465,20 +476,16 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
             return;
         }
 
-        // Формируем новую полную маркировку
         String newFullMarking = buildFullMarking(isPartner, isOwn,
                 currentSeries, currentSize, currentExecutionMarking,
                 currentWheelFormula, currentHubName, currentMarkingValue);
 
         String existingFullMarking = fullMarkingField.getText();
 
-        // Обновляем только если поле пустое ИЛИ содержит последнее автоматическое значение
         if (existingFullMarking == null || existingFullMarking.isEmpty() ||
                 existingFullMarking.equals(lastAutoFullMarking)) {
             fullMarkingField.setText(newFullMarking);
             lastAutoFullMarking = newFullMarking;
-
-            // Обновляем начальные значения после пересчёта
             storeInitialValues(fieldControls);
         }
     }
@@ -490,18 +497,18 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
     private String[] getFieldsToCheckForFullMarking(boolean isPartner) {
         if (isPartner) {
             // Для партнёрского колеса: только marking
-            return new String[]{"marking"};
+            return new String[]{"marking", "fullMarking"};
         } else {
             // Для фирменного колеса: series, size, wheelFormula, executionMarking
-            return new String[]{"series", "size", "wheelFormula", "executionMarking"};
+            return new String[]{"series", "size", "wheelFormula","hubName", "executionMarking", "fullMarking"};
         }
     }
 
     /**
      * Запоминает начальные значения всех полей
      */
-    private void storeInitialValues(Map<String, Node> fieldControls) {
-        String[] fieldNames = {"series", "size", "wheelFormula", "hubName", "marking"};
+   public void storeInitialValues(Map<String, Node> fieldControls) {
+        String[] fieldNames = {"series", "size", "wheelFormula", "hubName", "marking",  "fullMarking"};
         initialValues = new HashMap<>();
         for (String fieldName : fieldNames) {
             initialValues.put(fieldName, getFieldValue(fieldControls, fieldName));
