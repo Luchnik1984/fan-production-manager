@@ -240,4 +240,5 @@ public interface CardFieldConfigurator {
         alert.setContentText(message);
         alert.showAndWait();
     }
+
 }

@@ -3,7 +3,9 @@ package com.fanproduction.gui.configurator;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -119,16 +121,13 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
      */
     @Override
     public void forceSetFullMarking(Map<String, Node> fieldControls) {
-        // 1. Сбрасываем защиту
-        lastAutoMarking = "";
-        // 2. Обновляем маркировку
-        updateFullMarking(fieldControls);
+        updateFullMarking(fieldControls, true);
     }
 
     /**
      * Обновляет полную маркировку на основе заполненных полей
      */
-    private void updateFullMarking(Map<String, Node> fieldControls) {
+    private void updateFullMarking(Map<String, Node> fieldControls, boolean force) {
         TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
 
@@ -145,16 +144,18 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         boolean isFireproof = isSelected(fieldControls, "fireproof");
         boolean isExplosionProof = isSelected(fieldControls, "explosionProof");
 
-        // ПРОВЕРЯЕМ, ИЗМЕНИЛОСЬ ЛИ ЧТО-ТО
-        String[] fieldsToCheck = getFieldsToCheckForFullMarking();
-        boolean fieldsChanged = hasAnyFieldChanged(fieldControls, initialValues, fieldsToCheck);
+        // ========== ПРОВЕРКА ИЗМЕНЕНИЙ (ТОЛЬКО ЕСЛИ НЕ force) ==========
+        if (!force) {
+            String[] fieldsToCheck = getFieldsToCheckForFullMarking();
+            boolean fieldsChanged = hasAnyFieldChanged(fieldControls, initialValues, fieldsToCheck);
 
-        // Дополнительно проверяем галочки исполнений
-        if (!fieldsChanged) {
-            if (initialGeneralPurpose == isGeneralPurpose &&
+            // Дополнительно проверяем галочки исполнений
+            if (!fieldsChanged) {
+                if (initialGeneralPurpose == isGeneralPurpose &&
                     initialFireproof == isFireproof &&
                     initialExplosionProof == isExplosionProof) {
-                return; // Ничего не изменилось
+                    return; // Ничего не изменилось
+                }
             }
         }
 
@@ -173,12 +174,18 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         // ОБНОВЛЯЕМ ПОЛЕ (ТОЛЬКО ЕСЛИ ОНО НЕ БЫЛО ИЗМЕНЕНО ВРУЧНУЮ)
         String currentMarking = fullMarkingField.getText();
 
-        if (currentMarking == null || currentMarking.isEmpty() ||
+        // ========== ЗАЩИТА (ТОЛЬКО ЕСЛИ НЕ force) ==========
+        if (force || currentMarking == null || currentMarking.isEmpty() ||
                 currentMarking.equals(lastAutoMarking)) {
             fullMarkingField.setText(newMarking);
             lastAutoMarking = newMarking;
             storeInitialValues(fieldControls);
         }
+    }
+
+    // Старый метод для обратной совместимости
+    private void updateFullMarking(Map<String, Node> fieldControls) {
+        updateFullMarking(fieldControls, false);
     }
 
     private String buildFullMarking(String series, String motorType, String poles,
@@ -228,7 +235,7 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
      */
     private String[] getFieldsToCheckForFullMarking() {
         return new String[]{"series", "motorType", "poles", "mountingType",
-                "climateType", "fireproofMarking", "explosionMarking", "fullMarking"};
+                "climateType", "fireproofMarking", "explosionMarking"};
     }
 
 
@@ -237,7 +244,7 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
      */
     public void storeInitialValues(Map<String, Node> fieldControls) {
         String[] fieldNames = {"series", "motorType", "climateType", "mountingType",
-                "fireproofMarking", "explosionMarking", "fullMarking"};
+                "fireproofMarking", "explosionMarking"};
         initialValues = new HashMap<>();
         for (String fieldName : fieldNames) {
             initialValues.put(fieldName, getFieldValue(fieldControls, fieldName));

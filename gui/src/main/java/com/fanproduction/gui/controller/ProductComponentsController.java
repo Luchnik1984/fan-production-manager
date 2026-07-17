@@ -506,6 +506,21 @@ public class ProductComponentsController {
     }
 
 
+    public void addItem(ProductComponentItemDto item) {
+        if (item != null) {
+            componentsList.add(item);
+        }
+    }
+
+    public void refreshItem(ProductComponentItemDto item) {
+        int index = componentsList.indexOf(item);
+        if (index >= 0) {
+            componentsList.set(index, item);
+        } else {
+            componentsList.add(item);
+        }
+        componentsTable.refresh();
+    }
 }
 
 

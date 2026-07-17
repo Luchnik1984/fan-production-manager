@@ -3,7 +3,9 @@ package com.fanproduction.gui.configurator;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -301,7 +303,10 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
 
     private void setupFullMarkingGeneration(Map<String, Node> fieldControls, boolean existingCardExists) {
         // Партнёрское колесо
-        addTextFieldListener(fieldControls, "marking", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "marking", () -> {
+            System.out.println("=== size listener triggered ===");
+            updateFullMarking(fieldControls);
+        });
 
         // Фирменное колесо
         addTextFieldListener(fieldControls, "series", () -> updateFullMarking(fieldControls));
@@ -333,13 +338,10 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
 
     @Override
     public void forceSetFullMarking(Map<String, Node> fieldControls) {
-        // 1. Сбрасываем защиту
-        lastAutoFullMarking = "";
-        // 2. Обновляем маркировку
-        updateFullMarking(fieldControls);
+        updateFullMarking(fieldControls, true);
     }
 
-    private void updateFullMarking(Map<String, Node> fieldControls) {
+    private void updateFullMarking(Map<String, Node> fieldControls,boolean force) {
         TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
 
@@ -359,20 +361,22 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         String currentMarkingValue = getFieldValue(fieldControls, "marking");
         String currentExecutionMarking = getExecutionMarking(fieldControls);
 
-        // ========== ПРОВЕРКА ИЗМЕНЕНИЙ ==========
-        String[] fieldsToCheck = getFieldsToCheckForFullMarking(isPartner);
-        boolean fieldsChanged = hasAnyFieldChanged(fieldControls, initialValues, fieldsToCheck);
+        // ========== ПРОВЕРКА ИЗМЕНЕНИЙ (ТОЛЬКО ЕСЛИ НЕ force) ==========
+        if (!force) {
+            String[] fieldsToCheck = getFieldsToCheckForFullMarking(isPartner);
+            boolean fieldsChanged = hasAnyFieldChanged(fieldControls, initialValues, fieldsToCheck);
 
-        // Дополнительно проверяем executionMarking
-        if (!fieldsChanged && isOwn) {
-            String initialExecution = initialExecutionMarking != null ? initialExecutionMarking : "";
-            if (!currentExecutionMarking.equals(initialExecution)) {
-                fieldsChanged = true;
+            if (!fieldsChanged && isOwn) {
+                String initialExecution = initialExecutionMarking != null ? initialExecutionMarking : "";
+                if (!currentExecutionMarking.equals(initialExecution)) {
+                    fieldsChanged = true;
+                }
             }
-        }
 
-        if (!fieldsChanged) {
-            return;  // Ничего не изменилось
+            if (!fieldsChanged) {
+                System.out.println("updateFullMarking: fieldsChanged = false, exiting");
+                return;
+            }
         }
 
         // Формируем новую полную маркировку
@@ -380,17 +384,34 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
                 currentSeries, currentSize, currentExecutionMarking,
                 currentWheelFormula, currentHubName, currentMarkingValue);
 
-        String existingFullMarking = fullMarkingField.getText();
+        if (newFullMarking == null) {
+            System.out.println("updateFullMarking: newFullMarking is null");
+            return;
+        }
 
-        // Обновляем только если поле пустое ИЛИ содержит последнее автоматическое значение
-        if (existingFullMarking == null || existingFullMarking.isEmpty() ||
-                existingFullMarking.equals(lastAutoFullMarking)) {
+        String existingFullMarking = fullMarkingField.getText();
+        System.out.println("updateFullMarking: existingFullMarking = '" + existingFullMarking + "'");
+        System.out.println("updateFullMarking: lastAutoFullMarking = '" + lastAutoFullMarking + "'");
+
+        // ========== СРАВНЕНИЕ С trim() ==========
+        boolean shouldUpdate = force ||
+                               existingFullMarking == null ||
+                               existingFullMarking.isEmpty() ||
+                               existingFullMarking.trim().equals(lastAutoFullMarking.trim());
+
+        if (shouldUpdate) {
             fullMarkingField.setText(newFullMarking);
             lastAutoFullMarking = newFullMarking;
-
-            // Обновляем начальные значения после пересчёта
             storeInitialValues(fieldControls);
+            System.out.println("updateFullMarking: updated to '" + newFullMarking + "'");
+        } else {
+            System.out.println("updateFullMarking: protection blocked update");
         }
+    }
+
+    // Старый метод для обратной совместимости
+    private void updateFullMarking(Map<String, Node> fieldControls) {
+        updateFullMarking(fieldControls, false);
     }
 
     private String buildFullMarking(boolean isPartner, boolean isOwn,
@@ -446,14 +467,15 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         return sb.toString();
     }
 
+
     /**
      * Возвращает список полей для проверки изменения fullMarking
      */
     private String[] getFieldsToCheckForFullMarking(boolean isPartner) {
         if (isPartner) {
-            return new String[]{"marking", "fullMarking"};
+            return new String[]{"marking"};
         } else {
-            return new String[]{"series", "size", "wheelFormula", "hubName", "executionMarking", "fullMarking"};
+            return new String[]{"series", "size", "wheelFormula", "hubName", "executionMarking"};
         }
     }
 
@@ -541,7 +563,7 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
 
     public void storeInitialValues(Map<String, Node> fieldControls) {
         // ========== ТОЛЬКО ПОЛЯ, ВЛИЯЮЩИЕ НА FULL_MARKING ==========
-        String[] fieldNames = {"series", "size", "wheelFormula", "hubName", "marking", "fullMarking"};
+        String[] fieldNames = {"series", "size", "wheelFormula", "hubName", "marking"};
 
         initialValues = new HashMap<>();
         for (String fieldName : fieldNames) {

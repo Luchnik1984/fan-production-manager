@@ -5,6 +5,8 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 public class MotorWheelCardConfigurator implements CardFieldConfigurator {
@@ -120,34 +122,42 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
      */
     @Override
     public void forceSetFullMarking(Map<String, Node> fieldControls) {
-        // 1. Сбрасываем защиту
-        lastAutoMarking = "";
-        // 2. Обновляем маркировку
-        updateFullMarking(fieldControls);
+        updateFullMarking(fieldControls, true);
     }
 
-    private void updateFullMarking(Map<String, Node> fieldControls) {
+    private void updateFullMarking(Map<String, Node> fieldControls, boolean force) {
         TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
 
         String manufacturerMarking = getFieldValue(fieldControls, "manufacturerMarking");
         String currentMarking = fullMarkingField.getText();
 
-        // Если manufacturerMarking не изменился — не обновляем
-        if (manufacturerMarking.equals(initialManufacturerMarking) &&
-                currentMarking != null && !currentMarking.isEmpty()) {
+        // Если не принудительно, проверяем, изменилось ли что-то
+        if (!force) {
+            boolean markingChanged = !manufacturerMarking.equals(initialManufacturerMarking);
+            boolean fullMarkingChanged = !currentMarking.equals(initialFullMarking);
+            if (!markingChanged && !fullMarkingChanged) {
+                return; // ничего не изменилось
+            }
+        }
+
+        // Если маркировка производителя пустая — не обновляем
+        if (manufacturerMarking == null || manufacturerMarking.isEmpty()) {
             return;
         }
 
-        // Обновляем только если поле пустое ИЛИ содержит последнее автоматическое значение
-        if (currentMarking == null || currentMarking.isEmpty() ||
-                currentMarking.equals(lastAutoMarking)) {
+        // Проверяем защиту (только если не force)
+        if (force || currentMarking == null || currentMarking.isEmpty() ||
+            currentMarking.equals(lastAutoMarking)) {
             fullMarkingField.setText(manufacturerMarking);
             lastAutoMarking = manufacturerMarking;
-            // Обновляем начальное значение после изменения
             initialManufacturerMarking = manufacturerMarking;
             initialFullMarking = manufacturerMarking;
         }
+    }
+
+    private void updateFullMarking(Map<String, Node> fieldControls) {
+        updateFullMarking(fieldControls, false);
     }
 
 }
