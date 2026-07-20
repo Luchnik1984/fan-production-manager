@@ -5,10 +5,12 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 
+/**
+ * Конфигуратор для карточки мотор-колеса.
+ * Полная маркировка равна маркировке производителя.
+ */
 public class MotorWheelCardConfigurator implements CardFieldConfigurator {
 
     private String lastAutoMarking = "";
@@ -66,63 +68,19 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
-    /**
-     * Автозаполнение напряжения из кода напряжения
-     * E → 220В, D → 380В
-     */
-    private void setupVoltageAutoFill(Map<String, Node> fieldControls) {
-        ComboBox<String> voltageCodeCombo = getComboBox(fieldControls, "voltageCode");
-        TextField voltageField = getTextField(fieldControls, "voltage");
-
-        if (voltageCodeCombo != null && voltageField != null) {
-            voltageCodeCombo.valueProperty().addListener((obs, old, val) -> {
-                if ("E".equals(val)) {
-                    voltageField.setText("220");
-                } else if ("D".equals(val)) {
-                    voltageField.setText("380");
-                } else {
-                    voltageField.setText("");
-                }
-            });
-
-            String initialCode = voltageCodeCombo.getValue();
-            if ("E".equals(initialCode)) {
-                voltageField.setText("220");
-            } else if ("D".equals(initialCode)) {
-                voltageField.setText("380");
-            }
-        }
-    }
-
     // ==========================================================
     //  МЕТОДЫ ДЛЯ РАБОТЫ С FULL_MARKING
     // ==========================================================
 
     private void setupFullMarkingGeneration(Map<String, Node> fieldControls, boolean existingCardExists) {
 
-        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
-        if (fullMarkingField == null) return;
-
         // Слушаем изменение маркировки производителя
-        addTextFieldListener(fieldControls, "manufacturerMarking", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "manufacturerMarking", () -> updateFullMarking(fieldControls, false));
 
         // Вызываем updateFullMarking() только для новой карточки
         if (!existingCardExists) {
-            updateFullMarking(fieldControls);
+            updateFullMarking(fieldControls, false);
         }
-    }
-
-    @Override
-    public void refreshFullMarking(Map<String, Node> fieldControls) {
-        updateFullMarking(fieldControls);
-    }
-
-    /**
-     * Обновляет полную маркировку с защитой от перезаписи
-     */
-    @Override
-    public void forceSetFullMarking(Map<String, Node> fieldControls) {
-        updateFullMarking(fieldControls, true);
     }
 
     private void updateFullMarking(Map<String, Node> fieldControls, boolean force) {
@@ -156,8 +114,45 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
-    private void updateFullMarking(Map<String, Node> fieldControls) {
+    @Override
+    public void refreshFullMarking(Map<String, Node> fieldControls) {
         updateFullMarking(fieldControls, false);
+    }
+
+    /**
+     * Обновляет полную маркировку с защитой от перезаписи
+     */
+    @Override
+    public void forceSetFullMarking(Map<String, Node> fieldControls) {
+        updateFullMarking(fieldControls, true);
+    }
+
+    /**
+     * Автозаполнение напряжения из кода напряжения
+     * E → 220В, D → 380В
+     */
+    private void setupVoltageAutoFill(Map<String, Node> fieldControls) {
+        ComboBox<String> voltageCodeCombo = getComboBox(fieldControls, "voltageCode");
+        TextField voltageField = getTextField(fieldControls, "voltage");
+
+        if (voltageCodeCombo != null && voltageField != null) {
+            voltageCodeCombo.valueProperty().addListener((obs, old, val) -> {
+                if ("E".equals(val)) {
+                    voltageField.setText("220");
+                } else if ("D".equals(val)) {
+                    voltageField.setText("380");
+                } else {
+                    voltageField.setText("");
+                }
+            });
+
+            String initialCode = voltageCodeCombo.getValue();
+            if ("E".equals(initialCode)) {
+                voltageField.setText("220");
+            } else if ("D".equals(initialCode)) {
+                voltageField.setText("380");
+            }
+        }
     }
 
 }

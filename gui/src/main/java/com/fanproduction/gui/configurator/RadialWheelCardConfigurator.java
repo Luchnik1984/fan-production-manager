@@ -99,7 +99,7 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
                             boolean existingCardExists) {
 
         // 1. Настройка исполнений (ОГНЕСТОЙКОСТЬ/ВЗРЫВОЗАЩИТА)
-        setupExecutionMarking(fieldControls, fieldLabels, fieldHints, () -> updateFullMarking(fieldControls));
+        setupExecutionMarking(fieldControls, fieldLabels, fieldHints, () -> updateFullMarking(fieldControls, false));
 
         // 2. Взаимоисключение типа колеса (партнёрское/фирменное)
         setupWheelTypeExclusiveSelection(fieldControls, fieldLabels, fieldHints);
@@ -167,7 +167,7 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
                     clearPartnerFields(fieldControls);
                 }
                 setupVisibilityLogic(fieldControls, fieldLabels, fieldHints);
-                updateFullMarking(fieldControls);
+                updateFullMarking(fieldControls,false);
             });
         }
 
@@ -180,7 +180,7 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
                     clearOwnFields(fieldControls);
                 }
                 setupVisibilityLogic(fieldControls, fieldLabels, fieldHints);
-                updateFullMarking(fieldControls);
+                updateFullMarking(fieldControls,false);
             });
         }
     }
@@ -342,25 +342,25 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
     */
     private void setupFullMarkingGeneration(Map<String, Node> fieldControls, boolean existingCardExists) {
         // Партнёрское колесо
-        addTextFieldListener(fieldControls, "marking", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "marking", () -> updateFullMarking(fieldControls, false));
 
         // Фирменное колесо
-        addTextFieldListener(fieldControls, "series", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "size", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "wheelFormula", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "series", () -> updateFullMarking(fieldControls, false));
+        addTextFieldListener(fieldControls, "size", () -> updateFullMarking(fieldControls, false));
+        addTextFieldListener(fieldControls, "wheelFormula", () -> updateFullMarking(fieldControls, false));
 
         // Исполнение
-        addTextFieldListener(fieldControls, "fireproofMarking", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "explosionMarking", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "fireproofMarking", () -> updateFullMarking(fieldControls, false));
+        addTextFieldListener(fieldControls, "explosionMarking", () -> updateFullMarking(fieldControls, false));
 
-        addCheckBoxListener(fieldControls, "generalPurpose", () -> updateFullMarking(fieldControls));
-        addCheckBoxListener(fieldControls, "fireproof", () -> updateFullMarking(fieldControls));
-        addCheckBoxListener(fieldControls, "explosionProof", () -> updateFullMarking(fieldControls));
-        addCheckBoxListener(fieldControls, "isPartnerWheel", () -> updateFullMarking(fieldControls));
-        addCheckBoxListener(fieldControls, "isOwnProduction", () -> updateFullMarking(fieldControls));
+        addCheckBoxListener(fieldControls, "generalPurpose", () -> updateFullMarking(fieldControls, false));
+        addCheckBoxListener(fieldControls, "fireproof", () -> updateFullMarking(fieldControls, false));
+        addCheckBoxListener(fieldControls, "explosionProof", () -> updateFullMarking(fieldControls, false));
+        addCheckBoxListener(fieldControls, "isPartnerWheel", () -> updateFullMarking(fieldControls, false));
+        addCheckBoxListener(fieldControls, "isOwnProduction", () -> updateFullMarking(fieldControls, false));
 
         if (!existingCardExists) {
-            updateFullMarking(fieldControls);
+            updateFullMarking(fieldControls, false);
         }
     }
 
@@ -420,18 +420,13 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
-    // Перегрузка для обратной совместимости (используется в слушателях)
-    private void updateFullMarking(Map<String, Node> fieldControls) {
-        updateFullMarking(fieldControls, false);
-    }
-
     /**
      * Публичный метод обновления маркировки с защитой – вызывается из CardFormController
      * при изменении полей (через notifyFieldChanged).
      */
     @Override
     public void refreshFullMarking(Map<String, Node> fieldControls) {
-        updateFullMarking(fieldControls);
+        updateFullMarking(fieldControls, false);
     }
 
     /**

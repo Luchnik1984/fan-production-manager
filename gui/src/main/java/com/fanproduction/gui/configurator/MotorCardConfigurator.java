@@ -3,14 +3,14 @@ package com.fanproduction.gui.configurator;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
- * Настройка специальных полей для карточки электродвигателя.
+ * Конфигуратор для карточки электродвигателя.
+ * Отвечает за формирование полной маркировки на основе серии, типа, полюсов и исполнений.
  */
+
 public class MotorCardConfigurator implements CardFieldConfigurator {
 
     private String lastAutoMarking = "";
@@ -55,10 +55,10 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
                             boolean existingCardExists) {
 
         // ========== 1. НАСТРОЙКА ИСПОЛНЕНИЙ (ОГНЕСТОЙКОСТЬ/ВЗРЫВОЗАЩИТА) ==========
-        setupExecutionMarking(fieldControls, fieldLabels, fieldHints, () -> updateFullMarking(fieldControls));
+        setupExecutionMarking(fieldControls, fieldLabels, fieldHints, () -> updateFullMarking(fieldControls, false));
 
         // ========== 2. НАСТРОЙКА РАСЧЁТА НОМИНАЛЬНОЙ СКОРОСТИ ==========
-        setupRatedSpeedCalculation(fieldControls, () -> updateFullMarking(fieldControls));
+        setupRatedSpeedCalculation(fieldControls, () -> updateFullMarking(fieldControls, false));
 
         // ========== 3. НАСТРОЙКА ФОРМИРОВАНИЯ ПОЛНОЙ МАРКИРОВКИ ==========
         setupFullMarkingGeneration(fieldControls, existingCardExists);
@@ -85,43 +85,28 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
      * Настройка автоматического формирования полной маркировки
      */
     private void setupFullMarkingGeneration(Map<String, Node> fieldControls,boolean existingCardExists) {
-        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
-        if (fullMarkingField == null) return;
 
         // Добавляем слушатели на поля, влияющие на маркировку
-        addTextFieldListener(fieldControls, "series", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "motorType", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "climateType", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "mountingType", () -> updateFullMarking(fieldControls));
-        addComboBoxListener(fieldControls, "poles", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "series", () -> updateFullMarking(fieldControls, false));
+        addTextFieldListener(fieldControls, "motorType", () -> updateFullMarking(fieldControls, false));
+        addTextFieldListener(fieldControls, "climateType", () -> updateFullMarking(fieldControls, false));
+        addTextFieldListener(fieldControls, "mountingType", () -> updateFullMarking(fieldControls, false));
+        addComboBoxListener(fieldControls, "poles", () -> updateFullMarking(fieldControls, false));
 
         // Слушатели на поля исполнений
-        addTextFieldListener(fieldControls, "fireproofMarking", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "explosionMarking", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "fireproofMarking", () -> updateFullMarking(fieldControls, false));
+        addTextFieldListener(fieldControls, "explosionMarking", () -> updateFullMarking(fieldControls, false));
 
         // Слушатели на галочки исполнений
-        addCheckBoxListener(fieldControls, "generalPurpose", () -> updateFullMarking(fieldControls));
-        addCheckBoxListener(fieldControls, "fireproof", () -> updateFullMarking(fieldControls));
-        addCheckBoxListener(fieldControls, "explosionProof", () -> updateFullMarking(fieldControls));
+        addCheckBoxListener(fieldControls, "generalPurpose", () -> updateFullMarking(fieldControls, false));
+        addCheckBoxListener(fieldControls, "fireproof", () -> updateFullMarking(fieldControls, false));
+        addCheckBoxListener(fieldControls, "explosionProof", () -> updateFullMarking(fieldControls, false));
 
 
         // Вызываем updateFullMarking() только для новой карточки
         if (!existingCardExists) {
-            updateFullMarking(fieldControls);
+            updateFullMarking(fieldControls, false);
         }
-    }
-
-    @Override
-    public void refreshFullMarking(Map<String, Node> fieldControls) {
-        updateFullMarking(fieldControls);
-    }
-
-    /**
-     * Обновляет полную маркировку с защитой от перезаписи
-     */
-    @Override
-    public void forceSetFullMarking(Map<String, Node> fieldControls) {
-        updateFullMarking(fieldControls, true);
     }
 
     /**
@@ -183,9 +168,17 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         }
     }
 
-    // Старый метод для обратной совместимости
-    private void updateFullMarking(Map<String, Node> fieldControls) {
+    @Override
+    public void refreshFullMarking(Map<String, Node> fieldControls) {
         updateFullMarking(fieldControls, false);
+    }
+
+    /**
+     * Обновляет полную маркировку с защитой от перезаписи
+     */
+    @Override
+    public void forceSetFullMarking(Map<String, Node> fieldControls) {
+        updateFullMarking(fieldControls, true);
     }
 
     private String buildFullMarking(String series, String motorType, String poles,
@@ -237,7 +230,6 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         return new String[]{"series", "motorType", "poles", "mountingType",
                 "climateType", "fireproofMarking", "explosionMarking"};
     }
-
 
     /**
      * Запоминает начальные значения всех полей
