@@ -6,17 +6,20 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
+/**
+ * Конфигуратор для карточки радиального колеса.
+ * Отвечает за настройку полей формы, вычисление и обновление полной маркировки,
+ * а также защиту от перезаписи вручную отредактированных полей.
+ */
 public class RadialWheelCardConfigurator implements CardFieldConfigurator {
 
+    // Последние автоматически сгенерированные значения (для защиты от перезаписи)
     private String lastAutoWheelCode = "";
     private String lastAutoWheelFormula = "";
     private String lastAutoFullMarking = "";
-    private String currentDisplayedMarking = "";
 
     // Храним начальные значения полей при загрузке
     private Map<String, String> initialValues = new HashMap<>();
@@ -111,19 +114,19 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         if (existingCardExists) {
             storeInitialValues(fieldControls);
 
-//            TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
-//            if (fullMarkingField != null) {
-//                String currentMarking = fullMarkingField.getText();
-//                if (currentMarking != null && !currentMarking.isEmpty()) {
-//                    lastAutoFullMarking = currentMarking;
-//                }
-//            }
-
             TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
             if (fullMarkingField != null) {
-                currentDisplayedMarking = fullMarkingField.getText();
-                lastAutoFullMarking = currentDisplayedMarking;
+                String currentMarking = fullMarkingField.getText();
+                if (currentMarking != null && !currentMarking.isEmpty()) {
+                    lastAutoFullMarking = currentMarking;
+                }
             }
+
+//            TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
+//            if (fullMarkingField != null) {
+//                currentDisplayedMarking = fullMarkingField.getText();
+//                lastAutoFullMarking = currentDisplayedMarking;
+//            }
 
             TextField wheelCodeField = getTextField(fieldControls, "wheelCode");
             if (wheelCodeField != null) {
@@ -144,30 +147,6 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
     }
 
     /**
-    * УПРАВЛЕНИЕ ВИДИМОСТЬЮ
-    */
-    private void setupVisibilityLogic(Map<String, Node> fieldControls,
-                                      Map<String, Label> fieldLabels,
-                                      Map<String, Label> fieldHints) {
-
-        boolean isPartner = isSelected(fieldControls, "isPartnerWheel");
-        boolean isOwn = isSelected(fieldControls, "isOwnProduction");
-
-        // Поля для партнёрского колеса
-        setVisible(fieldControls, fieldLabels, fieldHints, "marking", isPartner);
-
-        // Поля для фирменного колеса
-        String[] ownFields = {
-                "series", "bladeType", "hubComponentId", "hubName",
-                "bladeMod", "frontDiskMod", "wheelWidth", "bladeCount",
-                "bladeLengthCoeff", "wheelCode", "wheelFormula"
-        };
-        for (String fieldName : ownFields) {
-            setVisible(fieldControls, fieldLabels, fieldHints, fieldName, isOwn);
-        }
-    }
-
-    /**
      * ВЗАИМОИСКЛЮЧАЮЩИЕ ГАЛОЧКИ ДЛЯ ТИПА КОЛЕСА
      */
     private void setupWheelTypeExclusiveSelection(Map<String, Node> fieldControls,
@@ -181,7 +160,6 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
                 if (val && ownCheck != null) {
                     ownCheck.setSelected(false);
                 }
-                // Если партнёрское снято — очищаем поля
                 if (!val) {
                     clearPartnerFields(fieldControls);
                 }
@@ -195,7 +173,6 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
                 if (val && partnerCheck != null) {
                     partnerCheck.setSelected(false);
                 }
-                // Если фирменное снято — очищаем поля
                 if (!val) {
                     clearOwnFields(fieldControls);
                 }
@@ -228,6 +205,30 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
             } else if (control instanceof ComboBox) {
                 ((ComboBox<?>) control).setValue(null);
             }
+        }
+    }
+
+    /**
+     * УПРАВЛЕНИЕ ВИДИМОСТЬЮ
+     */
+    private void setupVisibilityLogic(Map<String, Node> fieldControls,
+                                      Map<String, Label> fieldLabels,
+                                      Map<String, Label> fieldHints) {
+
+        boolean isPartner = isSelected(fieldControls, "isPartnerWheel");
+        boolean isOwn = isSelected(fieldControls, "isOwnProduction");
+
+        // Поля для партнёрского колеса
+        setVisible(fieldControls, fieldLabels, fieldHints, "marking", isPartner);
+
+        // Поля для фирменного колеса
+        String[] ownFields = {
+                "series", "bladeType", "hubComponentId", "hubName",
+                "bladeMod", "frontDiskMod", "wheelWidth", "bladeCount",
+                "bladeLengthCoeff", "wheelCode", "wheelFormula"
+        };
+        for (String fieldName : ownFields) {
+            setVisible(fieldControls, fieldLabels, fieldHints, fieldName, isOwn);
         }
     }
 
@@ -308,9 +309,8 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
             if (!wheelWidthStr.isEmpty()) {
                 wheelWidth = Double.parseDouble(wheelWidthStr.replace(',', '.'));
             }
-        } catch (NumberFormatException e) {
-            // ignore
-        }
+        } catch (NumberFormatException ignored) {}
+
         String formattedWheelWidth = formatWheelWidth(wheelWidth);
 
         StringBuilder formula = new StringBuilder();
@@ -379,11 +379,87 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
-    // Старый метод для обратной совместимости
+    /**
+     * Обновляет полную маркировку с учётом защиты от перезаписи.
+     *
+     * @param fieldControls карта контролов
+     * @param force если true – игнорировать защиту и принудительно обновить
+     */
+    private void updateFullMarking(Map<String, Node> fieldControls, boolean force) {
+        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
+        if (fullMarkingField == null) return;
+
+        boolean isPartner = isSelected(fieldControls, "isPartnerWheel");
+        boolean isOwn = isSelected(fieldControls, "isOwnProduction");
+        if (!isPartner && !isOwn) return;
+
+        String currentSeries = getFieldValue(fieldControls, "series");
+        String currentSize = getFieldValue(fieldControls, "size");
+        String currentWheelFormula = getFieldValue(fieldControls, "wheelFormula");
+        String currentHubName = getFieldValue(fieldControls, "hubName");
+        String currentMarkingValue = getFieldValue(fieldControls, "marking");
+        String currentExecutionMarking = getExecutionMarking(fieldControls);
+
+        // Если это фирменное колесо и hubName пуст – обновление пропускаем (чтобы не потерять суффикс)
+        if (isOwn && (currentHubName == null || currentHubName.isEmpty())) {
+            return;
+        }
+
+        if (!force) {
+            String[] fieldsToCheck = getFieldsToCheckForFullMarking(isPartner);
+            boolean fieldsChanged = hasAnyFieldChanged(fieldControls, initialValues, fieldsToCheck);
+
+            if (!fieldsChanged && isOwn) {
+                String initialExecution = initialExecutionMarking != null ? initialExecutionMarking : "";
+                if (!currentExecutionMarking.equals(initialExecution)) {
+                    fieldsChanged = true;
+                }
+            }
+
+            if (!fieldsChanged) {
+                return;
+            }
+        }
+
+        String newFullMarking = buildFullMarking(isPartner, isOwn,
+                currentSeries, currentSize, currentExecutionMarking,
+                currentWheelFormula, currentHubName, currentMarkingValue);
+
+        String existingFullMarking = fullMarkingField.getText();
+
+        if (force || existingFullMarking == null || existingFullMarking.isEmpty() ||
+                existingFullMarking.trim().equals(lastAutoFullMarking.trim())) {
+            fullMarkingField.setText(newFullMarking);
+            lastAutoFullMarking = newFullMarking;
+            storeInitialValues(fieldControls);
+        }
+    }
+
+    // Перегрузка для обратной совместимости (используется в слушателях)
     private void updateFullMarking(Map<String, Node> fieldControls) {
         updateFullMarking(fieldControls, false);
     }
 
+    /**
+     * Публичный метод обновления маркировки с защитой – вызывается из CardFormController
+     * при изменении полей (через notifyFieldChanged).
+     */
+    @Override
+    public void refreshFullMarking(Map<String, Node> fieldControls) {
+        updateFullMarking(fieldControls);
+    }
+
+    /**
+     * Принудительное обновление маркировки (без защиты) – для кнопки "Восстановить маркировку".
+     */
+    @Override
+    public void forceSetFullMarking(Map<String, Node> fieldControls) {
+        updateFullMarking(fieldControls, true);
+    }
+
+    /**
+     * Формирование строки маркировки.
+     */
     private String buildFullMarking(boolean isPartner, boolean isOwn,
                                     String currentSeries, String currentSize,
                                     String currentExecutionMarking, String currentWheelFormula,
@@ -404,7 +480,6 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
     private String buildOwnFullMarking(String series, String sizeStr, String executionMarking,
                                        String wheelFormula, String hubName) {
         StringBuilder sb = new StringBuilder();
-
         // Парсим размер
         Double size = null;
         try {
@@ -418,7 +493,10 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         appendWithSeparator(sb, formatSize(size));
         appendWithSeparator(sb, executionMarking);
         appendWithSeparator(sb, wheelFormula);
-        appendWithSeparator(sb, hubName);
+        // Добавляем hubName только если он не пустой
+        if (hubName != null && !hubName.isEmpty()) {
+            appendWithSeparator(sb, hubName);
+        }
 
         return sb.toString();
     }
@@ -438,99 +516,13 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
-    @Override
-    public void refreshFullMarking(Map<String, Node> fieldControls) {
-        updateFullMarking(fieldControls);
-    }
-
     /**
-     * Обновляет полную маркировку с защитой от перезаписи
+     * Форматирует размер: убирает .0 если число целое
      */
-    @Override
-    public void forceSetFullMarking(Map<String, Node> fieldControls) {
-        updateFullMarking(fieldControls, true);
+    private String formatSize(Double size) {
+        if (size == null) return "";
+        return size == Math.floor(size) ? String.valueOf(size.intValue()) : String.valueOf(size);
     }
-
-    private void updateFullMarking(Map<String, Node> fieldControls, boolean force) {
-        System.out.println("=== updateFullMarking called, force=" + force);
-        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
-        if (fullMarkingField == null) {
-            System.out.println("fullMarkingField is null");
-            return;
-        }
-
-        boolean isPartner = isSelected(fieldControls, "isPartnerWheel");
-        boolean isOwn = isSelected(fieldControls, "isOwnProduction");
-        System.out.println("isPartner=" + isPartner + ", isOwn=" + isOwn);
-
-        if (!isPartner && !isOwn) {
-            System.out.println("No wheel type selected, exiting");
-            return;
-        }
-
-        String currentSeries = getFieldValue(fieldControls, "series");
-        String currentSize = getFieldValue(fieldControls, "size");
-        String currentWheelFormula = getFieldValue(fieldControls, "wheelFormula");
-        String currentHubName = getFieldValue(fieldControls, "hubName");
-        if (isOwn && (currentHubName == null || currentHubName.isEmpty())) {
-            System.out.println("hubName is empty, but isOwn=true, skipping update to avoid losing suffix");
-            return;
-        }
-        String currentMarkingValue = getFieldValue(fieldControls, "marking");
-        String currentExecutionMarking = getExecutionMarking(fieldControls);
-
-        System.out.println("currentSize=" + currentSize);
-        System.out.println("initial size=" + initialValues.get("size"));
-
-        // ========== ЕСЛИ force = true, ПРОПУСКАЕМ ПРОВЕРКУ ==========
-        if (!force) {
-            String[] fieldsToCheck = getFieldsToCheckForFullMarking(isPartner);
-            System.out.println("fieldsToCheck=" + Arrays.toString(fieldsToCheck));
-            boolean fieldsChanged = hasAnyFieldChanged(fieldControls, initialValues, fieldsToCheck);
-            System.out.println("fieldsChanged=" + fieldsChanged);
-
-            if (!fieldsChanged && isOwn) {
-                String initialExecution = initialExecutionMarking != null ? initialExecutionMarking : "";
-                if (!currentExecutionMarking.equals(initialExecution)) {
-                    fieldsChanged = true;
-                    System.out.println("fieldsChanged set to true because execution changed");
-                }
-            }
-
-            if (!fieldsChanged) {
-                System.out.println("fieldsChanged is false, exiting");
-                return;
-            }
-        }
-
-        String newFullMarking = buildFullMarking(isPartner, isOwn,
-                currentSeries, currentSize, currentExecutionMarking,
-                currentWheelFormula, currentHubName, currentMarkingValue);
-        System.out.println("newFullMarking=" + newFullMarking);
-
-        String existingFullMarking = currentDisplayedMarking;
-        System.out.println("existingFullMarking='" + existingFullMarking + "'");
-        System.out.println("lastAutoFullMarking='" + lastAutoFullMarking + "'");
-
-        // ========== ИСПРАВЛЕНИЕ: используем trim() ==========
-        boolean shouldUpdate = force ||
-                               existingFullMarking == null ||
-                               existingFullMarking.isEmpty() ||
-                               existingFullMarking.trim().equals(lastAutoFullMarking.trim());
-
-        System.out.println("shouldUpdate=" + shouldUpdate);
-
-        if (shouldUpdate) {
-            fullMarkingField.setText(newFullMarking);
-            currentDisplayedMarking = newFullMarking;
-            lastAutoFullMarking = newFullMarking;
-            storeInitialValues(fieldControls);
-            System.out.println("updated to: " + newFullMarking);
-        } else {
-            System.out.println("protection blocked update");
-        }
-    }
-
 
     /**
      * Возвращает список полей, которые нужно проверить для определения,
@@ -547,7 +539,8 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
     }
 
     /**
-     * Запоминает начальные значения всех полей
+     * Сохраняет текущие значения полей как начальные (для отслеживания изменений).
+     * Должен быть публичным, чтобы CardFormController мог обновить их при необходимости.
      */
    public void storeInitialValues(Map<String, Node> fieldControls) {
         String[] fieldNames = {"series", "size", "wheelFormula", "hubName", "marking"};
@@ -558,18 +551,6 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         initialIsPartner = isSelected(fieldControls, "isPartnerWheel");
         initialIsOwn = isSelected(fieldControls, "isOwnProduction");
         initialExecutionMarking = getExecutionMarking(fieldControls);
-    }
-
-
-    /**
-     * Форматирует размер: убирает .0 если число целое
-     */
-    private String formatSize(Double size) {
-        if (size == null) return "";
-        if (size == Math.floor(size)) {
-            return String.valueOf(size.intValue());
-        }
-        return String.valueOf(size);
     }
 
 }

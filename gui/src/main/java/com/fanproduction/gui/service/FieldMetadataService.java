@@ -198,7 +198,9 @@ public class FieldMetadataService {
 
         // ========== ПОЛЯ ДЛЯ ФИРМЕННОГО КОЛЕСА (скрыты по умолчанию) ==========
         radialWheelFields.add(createHiddenField("series", "Серия колеса", "text", true, null, null, null, "Например: КЦ, РК"));
-        radialWheelFields.add(createHiddenField("bladeType", "Тип лопаток", "combobox", true, null, new String[]{"V", "N", "RO"}, null, "V / N / RO"));
+        radialWheelFields.add(createHiddenField("bladeType", "Тип лопаток", "combobox", true, null,
+                new String[]{"V", "N", "RO"}, null,
+                "V - впередзагнутые / N - назадзагнутые / RO - радиальнооканчивающиеся"));
 
         // ========== ВЫБОР КОМПОНЕНТА "СТУПИЦА" ==========
         // ВОТ ЗДЕСЬ МЫ МЕНЯЕМ ОБЫЧНОЕ ПОЛЕ НА SELECTABLE!
@@ -569,10 +571,10 @@ public class FieldMetadataService {
         field.setLabel(label);
         field.setType("selectable");
         field.setReferenceType(referenceType);
-        field.setTargetFieldName(targetFieldName);  // ← НОВОЕ ПОЛЕ
-        field.setRole(role);                         // ← НОВОЕ ПОЛЕ
-        field.setAddToProduct(true);                 // ← НОВОЕ ПОЛЕ
-        field.setVisible(false);                     // по умолчанию скрыто
+        field.setTargetFieldName(targetFieldName);
+        field.setRole(role);
+        field.setAddToProduct(true);
+        field.setVisible(false);
         return field;
     }
 
