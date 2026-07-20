@@ -6,7 +6,9 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -26,6 +28,13 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
     private boolean initialIsPartner = false;
     private boolean initialIsOwn = false;
     private String initialExecutionMarking = "";
+
+    // Поля, относящиеся к фирменному колесу (используются для очистки и управления видимостью)
+    private static final List<String> OWN_FIELDS = Arrays.asList(
+            "series", "bladeType", "hubComponentId", "hubName",
+            "bladeMod", "frontDiskMod", "wheelWidth", "bladeCount",
+            "bladeLengthCoeff", "wheelCode", "wheelFormula"
+    );
 
     @Override
     public boolean validate(Map<String, Node> fieldControls,
@@ -122,12 +131,6 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
                 }
             }
 
-//            TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
-//            if (fullMarkingField != null) {
-//                currentDisplayedMarking = fullMarkingField.getText();
-//                lastAutoFullMarking = currentDisplayedMarking;
-//            }
-
             TextField wheelCodeField = getTextField(fieldControls, "wheelCode");
             if (wheelCodeField != null) {
                 String currentWheelCode = wheelCodeField.getText();
@@ -193,18 +196,10 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
     }
 
     private void clearOwnFields(Map<String, Node> fieldControls) {
-        String[] fields = {
-                "series", "bladeType", "hubComponentId", "hubName",
-                "bladeMod", "frontDiskMod", "wheelWidth", "bladeCount",
-                "bladeLengthCoeff", "wheelCode", "wheelFormula"
-        };
-        for (String fieldName : fields) {
+        for (String fieldName : OWN_FIELDS) {
             Node control = fieldControls.get(fieldName);
-            if (control instanceof TextField) {
-                ((TextField) control).clear();
-            } else if (control instanceof ComboBox) {
-                ((ComboBox<?>) control).setValue(null);
-            }
+            if (control instanceof TextField) ((TextField) control).clear();
+            else if (control instanceof ComboBox) ((ComboBox<?>) control).setValue(null);
         }
     }
 
@@ -222,12 +217,7 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         setVisible(fieldControls, fieldLabels, fieldHints, "marking", isPartner);
 
         // Поля для фирменного колеса
-        String[] ownFields = {
-                "series", "bladeType", "hubComponentId", "hubName",
-                "bladeMod", "frontDiskMod", "wheelWidth", "bladeCount",
-                "bladeLengthCoeff", "wheelCode", "wheelFormula"
-        };
-        for (String fieldName : ownFields) {
+        for (String fieldName : OWN_FIELDS) {
             setVisible(fieldControls, fieldLabels, fieldHints, fieldName, isOwn);
         }
     }
@@ -347,14 +337,9 @@ public class RadialWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
-    // ==========================================================
-    // МЕТОДЫ ДЛЯ РАБОТЫ С FULL_MARKING
-    // ==========================================================
-
     /**
     * ПОЛНАЯ МАРКИРОВКА
     */
-
     private void setupFullMarkingGeneration(Map<String, Node> fieldControls, boolean existingCardExists) {
         // Партнёрское колесо
         addTextFieldListener(fieldControls, "marking", () -> updateFullMarking(fieldControls));
