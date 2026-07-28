@@ -265,7 +265,7 @@ public class FieldMetadataService {
         axialWheelFields.add(createHiddenField("wheelHubType", "Ступица (Хаб) рабочего колеса", "text", true, null, null, null, "введите тип хаба, например 109_50/6-6"));
 
         // 3.3 Максимальное количество лопаток
-        axialWheelFields.add(createHiddenField("maxBladeCount", "Максимальное кол-во лопаток в данном Хабе", "number", true, null, null, null, "Например: 9, 12"));
+        axialWheelFields.add(createHiddenField("maxBladeCount", "Макс. кол-во лопаток в Хабе", "number", true, null, null, null, "Например: 9, 12"));
 
         // 3.4 Лопатка (сборный)
         axialWheelFields.add(createSelectableField(
