@@ -191,7 +191,7 @@ public class FieldMetadataService {
         radialWheelFields.add(createField("isPartnerWheel", "Партнёрское рабочее колесо", "boolean", false, "false", null, null));
 
         // Поле "Маркировка производителя" (скрыто по умолчанию)
-        radialWheelFields.add(createField("marking", "Маркировка производителя", "text", true, null, null, null, "Например: КЦ-280-1610х28", false));
+        radialWheelFields.add(createField("marking", "Маркировка производителя", "text", true, null, null, null, "Например: КЦ-280-1210", false));
 
         // Галочка "Фирменное рабочее колесо"
         radialWheelFields.add(createField("isOwnProduction", "Фирменное рабочее колесо", "boolean", false, "false", null, null));
