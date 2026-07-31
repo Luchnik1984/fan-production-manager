@@ -1,12 +1,9 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.gui.client.ApiClient;
 import com.fanproduction.gui.client.ProductMaterialClient;
 import com.fanproduction.gui.dto.ProductMaterialItemDto;
-import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.MaterialDto;
 import com.fanproduction.gui.util.TooltipUtil;
-import com.fasterxml.jackson.core.type.TypeReference;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -32,22 +29,16 @@ public class ProductMaterialsController {
 
     @FXML
     private Button selectMaterialButton;
-
     @FXML
     private Label selectedMaterialLabel;
-
     @FXML
     private TextField quantityField;
-
     @FXML
     private Button addButton;
-
     @FXML
     private Button deleteButton;
-
     @FXML
     private TableView<ProductMaterialItemDto> materialsTable;
-
     @FXML
     private TableColumn<ProductMaterialItemDto, String> nameColumn;
     @FXML
@@ -66,9 +57,9 @@ public class ProductMaterialsController {
     private TableColumn<ProductMaterialItemDto, Double> quantityColumn;
     @FXML
     private TableColumn<ProductMaterialItemDto, String> noteColumn;
-
     @FXML
     private Label statusLabel;
+
 
     private final ObservableList<ProductMaterialItemDto> materialsList = FXCollections.observableArrayList();
     @Setter
@@ -76,6 +67,8 @@ public class ProductMaterialsController {
     private Long selectedMaterialId;
     private String selectedMaterialName;
     private String selectedMaterialUnitCode;
+    @Setter
+    private CardFormController parentController;
 
     public void refresh(Long productCardId) {
         this.productCardId = productCardId;
@@ -103,7 +96,7 @@ public class ProductMaterialsController {
 
     private void setupTable() {
         // Наименование (с подсказкой)
-        nameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getName()));
+        nameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getDisplayName()));
         nameColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
 
         // Класс (с подсказкой)
@@ -130,10 +123,6 @@ public class ProductMaterialsController {
                 cellData.getValue().getVendorCode() != null ? cellData.getValue().getVendorCode() : ""));
         vendorCodeColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
 
-        // Ед. изм.
-        unitColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
-                cellData.getValue().getUnitCode() != null ? cellData.getValue().getUnitCode() : ""));
-
         // Количество (редактируемое)
         quantityColumn.setCellValueFactory(cellData -> new SimpleDoubleProperty(cellData.getValue().getQuantityPerUnit()).asObject());
         quantityColumn.setCellFactory(TextFieldTableCell.forTableColumn(new DoubleStringConverter()));
@@ -147,6 +136,10 @@ public class ProductMaterialsController {
                 showAlert("Ошибка", "Количество должно быть больше 0", Alert.AlertType.ERROR);
             }
         });
+
+        // Ед. изм.
+        unitColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
+                cellData.getValue().getUnitCode() != null ? cellData.getValue().getUnitCode() : ""));
 
         // Примечание (редактируемое, с подсказкой)
         noteColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getNote()));
@@ -262,6 +255,11 @@ public class ProductMaterialsController {
             return;
         }
 
+        if (parentController == null || parentController.getMaterialManager() == null) {
+            showAlert("Ошибка", "Менеджер материалов не инициализирован", Alert.AlertType.ERROR);
+            return;
+        }
+
         Long materialId = selectedMaterialId;
         String quantityText = quantityField.getText().trim();
         Double quantityPerUnit;
@@ -273,9 +271,6 @@ public class ProductMaterialsController {
             return;
         }
 
-        String note = null;
-
-        // Проверяем, не добавлен ли уже этот материал
         boolean alreadyExists = materialsList.stream()
                 .anyMatch(m -> m.getMaterialId().equals(materialId));
         if (alreadyExists) {
@@ -289,59 +284,19 @@ public class ProductMaterialsController {
 
         new Thread(() -> {
             try {
-                Map<String, Object> request = new HashMap<>();
-                request.put("materialId", materialId);
-                request.put("quantityPerUnit", quantityPerUnit);
-                if (note != null && !note.isEmpty()) {
-                    request.put("note", note);
-                }
-
-                TypeReference<ApiResponse<Map<String, Object>>> typeRef = new TypeReference<>() {};
-                ApiResponse<Map<String, Object>> response = ApiClient.post(
-                        "/materials/product/" + productCardId, request, typeRef);
-
+                parentController.getMaterialManager().addLocal(materialId, quantityPerUnit, null);
                 Platform.runLater(() -> {
                     addButton.setDisable(false);
                     addButton.setText("➕ Добавить");
-                    if (response.isSuccess()) {
-                        quantityField.setText("1.0");
-                        clearSelectedMaterial();
-                        loadMaterials();
-                    } else {
-                        showAlert("Ошибка", "Не удалось добавить материал: " + response.getMessage(),
-                                Alert.AlertType.ERROR);
-                    }
+                    quantityField.setText("1.0");
+                    clearSelectedMaterial();
+                    statusLabel.setText("Материал добавлен (будет сохранён при сохранении карточки)");
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     addButton.setDisable(false);
                     addButton.setText("➕ Добавить");
-                    showAlert("Ошибка", "Ошибка: " + e.getMessage(), Alert.AlertType.ERROR);
-                });
-                e.printStackTrace();
-            }
-        }).start();
-    }
-
-    private void updateQuantity(ProductMaterialItemDto item, Double newQuantity) {
-        new Thread(() -> {
-            try {
-                Map<String, Double> request = new HashMap<>();
-                request.put("quantityPerUnit", newQuantity);
-
-                ApiClient.put("/materials/product/" + productCardId + "/" + item.getMaterialId() + "/quantity",
-                        request, new TypeReference<ApiResponse<Void>>() {});
-
-                Platform.runLater(() -> {
-                    item.setQuantityPerUnit(newQuantity);
-                    materialsTable.refresh();
-                    statusLabel.setText("Количество обновлено");
-                });
-            } catch (Exception e) {
-                Platform.runLater(() -> {
-                    showAlert("Ошибка", "Не удалось обновить количество: " + e.getMessage(),
-                            Alert.AlertType.ERROR);
-                    loadMaterials();
+                    showAlert("Ошибка", "Не удалось добавить материал: " + e.getMessage(), Alert.AlertType.ERROR);
                 });
                 e.printStackTrace();
             }
@@ -356,6 +311,11 @@ public class ProductMaterialsController {
             return;
         }
 
+        if (parentController == null || parentController.getMaterialManager() == null) {
+            showAlert("Ошибка", "Менеджер материалов не инициализирован", Alert.AlertType.ERROR);
+            return;
+        }
+
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Подтверждение");
         confirm.setHeaderText("Удаление материала");
@@ -364,16 +324,10 @@ public class ProductMaterialsController {
             if (response == ButtonType.OK) {
                 new Thread(() -> {
                     try {
-                        ApiClient.delete("/materials/product/" + productCardId + "/" + selected.getMaterialId(),
-                                new TypeReference<ApiResponse<Void>>() {});
-
-                        Platform.runLater(() -> {
-                            materialsList.remove(selected);
-                            statusLabel.setText("Материал удалён");
-                        });
+                        parentController.getMaterialManager().removeLocal(selected.getMaterialId());
+                        Platform.runLater(() -> statusLabel.setText("Материал удалён (изменение будет сохранено при сохранении карточки)"));
                     } catch (Exception e) {
-                        Platform.runLater(() -> showAlert("Ошибка", "Не удалось удалить: " + e.getMessage(),
-                                Alert.AlertType.ERROR));
+                        Platform.runLater(() -> showAlert("Ошибка", "Не удалось удалить материал: " + e.getMessage(), Alert.AlertType.ERROR));
                         e.printStackTrace();
                     }
                 }).start();
@@ -381,29 +335,42 @@ public class ProductMaterialsController {
         });
     }
 
+    /**
+     * Обновляет количество материала (локально, без отправки на сервер).
+     * Изменение будет сохранено при сохранении карточки.
+     */
+    private void updateQuantity(ProductMaterialItemDto item, Double newQuantity) {
+        if (parentController == null || parentController.getMaterialManager() == null) {
+            showAlert("Ошибка", "Менеджер материалов не инициализирован", Alert.AlertType.ERROR);
+            return;
+        }
+
+        try {
+            parentController.getMaterialManager().updateQuantityLocal(item.getMaterialId(), newQuantity);
+            statusLabel.setText("Количество обновлено (будет сохранено при сохранении карточки)");
+        } catch (Exception e) {
+            showAlert("Ошибка", "Не удалось обновить количество: " + e.getMessage(), Alert.AlertType.ERROR);
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Обновляет примечание материала (локально, без отправки на сервер).
+     * Изменение будет сохранено при сохранении карточки.
+     */
     private void updateNote(ProductMaterialItemDto item, String newNote) {
-        new Thread(() -> {
-            try {
-                Map<String, String> request = new HashMap<>();
-                request.put("note", newNote != null ? newNote : "");
+        if (parentController == null || parentController.getMaterialManager() == null) {
+            showAlert("Ошибка", "Менеджер материалов не инициализирован", Alert.AlertType.ERROR);
+            return;
+        }
 
-                ApiClient.put("/materials/product/" + productCardId + "/" + item.getMaterialId() + "/note",
-                        request, new TypeReference<ApiResponse<Void>>() {});
-
-                Platform.runLater(() -> {
-                    item.setNote(newNote);
-                    materialsTable.refresh();
-                    statusLabel.setText("Примечание обновлено");
-                });
-            } catch (Exception e) {
-                Platform.runLater(() -> {
-                    showAlert("Ошибка", "Не удалось обновить примечание: " + e.getMessage(),
-                            Alert.AlertType.ERROR);
-                    loadMaterials();
-                });
-                e.printStackTrace();
-            }
-        }).start();
+        try {
+            parentController.getMaterialManager().updateNoteLocal(item.getMaterialId(), newNote);
+            statusLabel.setText("Примечание обновлено (будет сохранено при сохранении карточки)");
+        } catch (Exception e) {
+            showAlert("Ошибка", "Не удалось обновить примечание: " + e.getMessage(), Alert.AlertType.ERROR);
+            e.printStackTrace();
+        }
     }
 
     private void showAlert(String title, String message, Alert.AlertType type) {
@@ -428,5 +395,37 @@ public class ProductMaterialsController {
             addButton.setDisable(false);
             selectMaterialButton.setDisable(false);
         });
+    }
+
+    /**
+     * Возвращает список материалов для внешнего использования
+     */
+    public ObservableList<ProductMaterialItemDto> getItems() {
+        return materialsList;
+    }
+
+    /**
+     * Удаляет материал из списка
+     */
+    public void removeItem(ProductMaterialItemDto item) {
+        if (item != null) {
+            materialsList.remove(item);
+        }
+    }
+
+    public void addItem(ProductMaterialItemDto item) {
+        if (item != null) {
+            materialsList.add(item);
+        }
+    }
+
+    public void refreshItem(ProductMaterialItemDto item) {
+        int index = materialsList.indexOf(item);
+        if (index >= 0) {
+            materialsList.set(index, item);
+        } else {
+            materialsList.add(item);
+        }
+        materialsTable.refresh();
     }
 }

@@ -22,7 +22,6 @@ import javafx.util.Duration;
 import lombok.Setter;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -61,8 +60,6 @@ public class ProductComponentsController {
     private TableColumn<ProductComponentItemDto, String> unitCodeColumn;
     @FXML
     private TableColumn<ProductComponentItemDto, String> descriptionColumn;
-
-
     @FXML
     private Label statusLabel;
 
@@ -72,6 +69,8 @@ public class ProductComponentsController {
     private Long selectedComponentId;
     private String selectedComponentName;
     private String selectedComponentUnitCode;
+    @Setter
+    private CardFormController parentController;
 
     public void refresh(Long productCardId) {
         this.productCardId = productCardId;
@@ -97,7 +96,7 @@ public class ProductComponentsController {
 
     private void setupTable() {
         // Наименование (только чтение, с подсказкой)
-        nameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getName()));
+        nameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getDisplayName()));
         nameColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
 
         // Класс (только чтение, с подсказкой)
@@ -259,6 +258,11 @@ public class ProductComponentsController {
             return;
         }
 
+        if (parentController == null || parentController.getComponentManager() == null) {
+            showAlert("Ошибка", "Менеджер компонентов не инициализирован", Alert.AlertType.ERROR);
+            return;
+        }
+
         Long componentId = selectedComponentId;
         String quantityText = quantityField.getText().trim();
         Double quantity;
@@ -269,11 +273,6 @@ public class ProductComponentsController {
             showAlert("Ошибка", "Введите корректное количество (больше 0)", Alert.AlertType.ERROR);
             return;
         }
-
-        // Позиция и примечание — не обязательные поля
-        // Они будут заполняться в таблице после добавления, поэтому не отправляем их при создании
-        String position = null;
-        String note = null;
 
         // Проверяем, не добавлен ли уже этот компонент
         boolean alreadyExists = componentsList.stream()
@@ -287,40 +286,24 @@ public class ProductComponentsController {
         addButton.setDisable(true);
         addButton.setText("Сохранение...");
 
+        // Выполняем в отдельном потоке (как было раньше)
         new Thread(() -> {
             try {
-                Map<String, Object> request = new HashMap<>();
-                request.put("componentId", componentId);
-                request.put("quantity", quantity);
-                // Добавляем position и note только если они не null и не пустые
-                if (position != null && !position.isEmpty()) {
-                    request.put("position", position);
-                }
-                if (note != null && !note.isEmpty()) {
-                    request.put("note", note);
-                }
-
-                TypeReference<ApiResponse<Map<String, Object>>> typeRef = new TypeReference<>() {};
-                ApiResponse<Map<String, Object>> response = ApiClient.post(
-                        "/components/product/" + productCardId, request, typeRef);
+                // ========== ВЫЗЫВАЕМ МЕНЕДЖЕР ==========
+                parentController.getComponentManager().addLocal(componentId, quantity, null, null);
 
                 Platform.runLater(() -> {
                     addButton.setDisable(false);
                     addButton.setText("➕ Добавить");
-                    if (response.isSuccess()) {
-                        quantityField.setText("1.0");
-                        clearSelectedComponent();
-                        loadComponents();
-                    } else {
-                        showAlert("Ошибка", "Не удалось добавить компонент: " + response.getMessage(),
-                                Alert.AlertType.ERROR);
-                    }
+                    quantityField.setText("1.0");
+                    clearSelectedComponent();
+                    statusLabel.setText("Компонент добавлен (будет сохранён при сохранении карточки)");
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     addButton.setDisable(false);
                     addButton.setText("➕ Добавить");
-                    showAlert("Ошибка", "Ошибка: " + e.getMessage(), Alert.AlertType.ERROR);
+                    showAlert("Ошибка", "Не удалось добавить компонент: " + e.getMessage(), Alert.AlertType.ERROR);
                 });
                 e.printStackTrace();
             }
@@ -334,108 +317,99 @@ public class ProductComponentsController {
             showAlert("Внимание", "Выберите компонент для удаления", Alert.AlertType.WARNING);
             return;
         }
-        deleteComponent(selected);
-    }
 
-    private void updateQuantity(ProductComponentItemDto item, Double newQuantity) {
-        new Thread(() -> {
-            try {
-                Map<String, Double> request = new HashMap<>();
-                request.put("quantity", newQuantity);
+        if (parentController == null || parentController.getComponentManager() == null) {
+            showAlert("Ошибка", "Менеджер компонентов не инициализирован", Alert.AlertType.ERROR);
+            return;
+        }
 
-                ApiClient.put("/components/product/" + productCardId + "/" + item.getComponentId() + "/quantity",
-                        request, new TypeReference<ApiResponse<Void>>() {});
-
-                Platform.runLater(() -> {
-                    item.setQuantity(newQuantity);
-                    componentsTable.refresh();
-                    statusLabel.setText("Количество обновлено");
-                });
-            } catch (Exception e) {
-                Platform.runLater(() -> {
-                    showAlert("Ошибка", "Не удалось обновить количество: " + e.getMessage(),
-                            Alert.AlertType.ERROR);
-                    loadComponents();
-                });
-                e.printStackTrace();
-            }
-        }).start();
-    }
-
-    private void updatePosition(ProductComponentItemDto item, String newPosition) {
-        new Thread(() -> {
-            try {
-                Map<String, String> request = new HashMap<>();
-                request.put("position", newPosition != null ? newPosition : "");
-
-                ApiClient.put("/components/product/" + productCardId + "/" + item.getComponentId() + "/position",
-                        request, new TypeReference<ApiResponse<Void>>() {});
-
-                Platform.runLater(() -> {
-                    item.setPosition(newPosition);
-                    componentsTable.refresh();
-                    statusLabel.setText("Позиция обновлена");
-                });
-            } catch (Exception e) {
-                Platform.runLater(() -> {
-                    showAlert("Ошибка", "Не удалось обновить позицию: " + e.getMessage(),
-                            Alert.AlertType.ERROR);
-                    loadComponents();
-                });
-                e.printStackTrace();
-            }
-        }).start();
-    }
-
-    private void updateNote(ProductComponentItemDto item, String newNote) {
-        new Thread(() -> {
-            try {
-                Map<String, String> request = new HashMap<>();
-                request.put("note", newNote != null ? newNote : "");
-
-                ApiClient.put("/components/product/" + productCardId + "/" + item.getComponentId() + "/note",
-                        request, new TypeReference<ApiResponse<Void>>() {});
-
-                Platform.runLater(() -> {
-                    item.setNote(newNote);
-                    componentsTable.refresh();
-                    statusLabel.setText("Примечание обновлено");
-                });
-            } catch (Exception e) {
-                Platform.runLater(() -> {
-                    showAlert("Ошибка", "Не удалось обновить примечание: " + e.getMessage(),
-                            Alert.AlertType.ERROR);
-                    loadComponents();
-                });
-                e.printStackTrace();
-            }
-        }).start();
-    }
-
-    private void deleteComponent(ProductComponentItemDto item) {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Подтверждение");
         confirm.setHeaderText("Удаление компонента");
-        confirm.setContentText("Удалить компонент \"" + item.getName() + "\"?");
+        confirm.setContentText("Удалить компонент \"" + selected.getName() + "\"?");
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 new Thread(() -> {
                     try {
-                        ApiClient.delete("/components/product/" + productCardId + "/" + item.getComponentId(),
-                                new TypeReference<ApiResponse<Void>>() {});
-
-                        Platform.runLater(() -> {
-                            componentsList.remove(item);
-                            statusLabel.setText("Компонент удалён");
-                        });
+                        // ========== ВЫЗЫВАЕМ МЕНЕДЖЕР ==========
+                        parentController.getComponentManager().removeLocal(selected.getComponentId());
+                        Platform.runLater(() -> statusLabel.setText("Компонент удалён (изменение будет сохранено при сохранении карточки)"));
                     } catch (Exception e) {
-                        Platform.runLater(() -> showAlert("Ошибка", "Не удалось удалить: " + e.getMessage(),
-                                Alert.AlertType.ERROR));
+                        Platform.runLater(() -> showAlert("Ошибка", "Не удалось удалить компонент: " + e.getMessage(), Alert.AlertType.ERROR));
                         e.printStackTrace();
                     }
                 }).start();
             }
         });
+    }
+
+    /**
+     * Обновляет количество компонента (локально, без отправки на сервер).
+     * Изменение будет сохранено при сохранении карточки.
+     */
+    private void updateQuantity(ProductComponentItemDto item, Double newQuantity) {
+        // Проверяем, что менеджер доступен
+        if (parentController == null || parentController.getComponentManager() == null) {
+            showAlert("Ошибка", "Менеджер компонентов не инициализирован", Alert.AlertType.ERROR);
+            return;
+        }
+
+        try {
+            // Вызываем менеджер для локального обновления количества
+            parentController.getComponentManager().updateQuantityLocal(item.getComponentId(), newQuantity);
+            // Обновляем статус
+            statusLabel.setText("Количество обновлено (будет сохранено при сохранении карточки)");
+        } catch (Exception e) {
+            // Показываем ошибку, если что-то пошло не так
+            showAlert("Ошибка", "Не удалось обновить количество: " + e.getMessage(), Alert.AlertType.ERROR);
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Обновляет позицию компонента (локально, без отправки на сервер).
+     * Изменение будет сохранено при сохранении карточки.
+     */
+    private void updatePosition(ProductComponentItemDto item, String newPosition) {
+        // Проверяем, что менеджер доступен
+        if (parentController == null || parentController.getComponentManager() == null) {
+            showAlert("Ошибка", "Менеджер компонентов не инициализирован", Alert.AlertType.ERROR);
+            return;
+        }
+
+        try {
+            // Вызываем менеджер для локального обновления позиции
+            parentController.getComponentManager().updatePositionLocal(item.getComponentId(), newPosition);
+            // Обновляем статус
+            statusLabel.setText("Позиция обновлена (будет сохранена при сохранении карточки)");
+        } catch (Exception e) {
+            // Показываем ошибку, если что-то пошло не так
+            showAlert("Ошибка", "Не удалось обновить позицию: " + e.getMessage(), Alert.AlertType.ERROR);
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Обновляет примечание компонента (локально, без отправки на сервер).
+     * Изменение будет сохранено при сохранении карточки.
+     */
+    private void updateNote(ProductComponentItemDto item, String newNote) {
+        // Проверяем, что менеджер доступен
+        if (parentController == null || parentController.getComponentManager() == null) {
+            showAlert("Ошибка", "Менеджер компонентов не инициализирован", Alert.AlertType.ERROR);
+            return;
+        }
+
+        try {
+            // Вызываем менеджер для локального обновления примечания
+            parentController.getComponentManager().updateNoteLocal(item.getComponentId(), newNote);
+            // Обновляем статус
+            statusLabel.setText("Примечание обновлено (будет сохранено при сохранении карточки)");
+        } catch (Exception e) {
+            // Показываем ошибку, если что-то пошло не так
+            showAlert("Ошибка", "Не удалось обновить примечание: " + e.getMessage(), Alert.AlertType.ERROR);
+            e.printStackTrace();
+        }
     }
 
     private void showAlert(String title, String message, Alert.AlertType type) {
@@ -504,7 +478,6 @@ public class ProductComponentsController {
             componentsList.remove(item);
         }
     }
-
 
     public void addItem(ProductComponentItemDto item) {
         if (item != null) {

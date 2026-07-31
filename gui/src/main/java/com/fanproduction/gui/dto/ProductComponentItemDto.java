@@ -11,6 +11,7 @@ public class ProductComponentItemDto {
     private Long productComponentId;
     private Long componentId;
     private String name;
+    private String designation;
     private String className;
     private String vendorCode;
     private String unitCode;
@@ -18,4 +19,12 @@ public class ProductComponentItemDto {
     private String description;
     private String position;
     private String note;
+
+    public String getDisplayName() {
+        String display = name != null ? name : "";
+        if (designation != null && !designation.isEmpty() && !designation.equals(name)) {
+            display += " (" + designation + ")";
+        }
+        return display;
+    }
 }

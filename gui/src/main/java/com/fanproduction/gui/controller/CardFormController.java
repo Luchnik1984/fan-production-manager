@@ -3,16 +3,21 @@ package com.fanproduction.gui.controller;
 import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.gui.client.ApiClient;
 import com.fanproduction.gui.client.ComponentClient;
+import com.fanproduction.gui.client.MaterialClient;
 import com.fanproduction.gui.client.ProductCardClient;
 import com.fanproduction.gui.configurator.CardFieldConfigurator;
 import com.fanproduction.gui.configurator.CardFormConfigurator;
 import com.fanproduction.gui.dto.ProductComponentItemDto;
+import com.fanproduction.gui.dto.ProductMaterialItemDto;
 import com.fanproduction.gui.dto.config.SelectableFieldConfig;
 import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
 import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.ComponentDto;
+import com.fanproduction.gui.dto.response.MaterialDto;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fanproduction.gui.factory.FieldControlFactory;
+import com.fanproduction.gui.manager.ComponentChangeManager;
+import com.fanproduction.gui.manager.MaterialChangeManager;
 import com.fanproduction.gui.service.FieldMetadataService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import javafx.application.Platform;
@@ -25,6 +30,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import lombok.Getter;
 
 import java.io.IOException;
 import java.util.*;
@@ -41,10 +47,17 @@ public class CardFormController {
     // Контроллеры вкладок
     private ProductComponentsController componentsTabController;
     private ProductMaterialsController materialsTabController;
+
     // Для временных карточек
     private final Map<String, Long> temporaryCardIds = new HashMap<>();
     private Long currentTemporaryCardId;
     private CompletableFuture<Long> temporaryCardFuture = null;
+
+    // Менеджеры изменений
+    @Getter
+    private ComponentChangeManager componentManager;
+    @Getter
+    private MaterialChangeManager materialManager;
 
     private final Map<String, Node> fieldControls = new HashMap<>();
     private final Map<String, FieldMetadataDto> fieldMetadata = new HashMap<>();
@@ -52,7 +65,6 @@ public class CardFormController {
     private final Map<String, Label> fieldLabels = new HashMap<>();
     private final Map<String, Label> fieldHints = new HashMap<>();
 
-    private final List<ComponentChange> pendingComponentChanges = new ArrayList<>();
 
     public CardFormController(Stage owner, String cardType, ProductCardDto existingCard, Runnable onSaveCallback) {
         this.stage = new Stage();
@@ -111,14 +123,16 @@ public class CardFormController {
 
         // ========== ОТМЕНА ==========
         cancelButton.setOnAction(e -> {
-            pendingComponentChanges.clear();
+            if (componentManager != null) componentManager.clear();
+            if (materialManager != null) materialManager.clear();
             deleteTemporaryCard();
             stage.close();
         });
 
         // ========== ЗАКРЫТИЕ ==========
         stage.setOnCloseRequest(event -> {
-            pendingComponentChanges.clear();
+            if (componentManager != null) componentManager.clear();
+            if (materialManager != null) materialManager.clear();
             deleteTemporaryCard();
         });
 
@@ -239,7 +253,6 @@ public class CardFormController {
         return controlFactory.createControl(field, existingValue, fieldControls);
     }
 
-
     /**
      * Устанавливает значение поля
      * @param fieldName имя поля
@@ -308,9 +321,7 @@ public class CardFormController {
         }
 
         try {
-
-
-            // 2. Принудительно обновляем
+            // Принудительно обновляем
             configurator.forceSetFullMarking(fieldControls);
 
             showAlert("Успешно", "Полная маркировка восстановлена до автоматического значения", Alert.AlertType.INFORMATION);
@@ -447,7 +458,8 @@ public class CardFormController {
                         // Получаем ID карточки из ответа
                         Long cardId = response.getData().getId();
                         // Применяем отложенные изменения компонентов
-                        applyComponentChanges(cardId);
+                        if (componentManager != null) componentManager.applyChanges(cardId);
+                        if (materialManager != null) materialManager.applyChanges(cardId);
 
                         removeTemporaryCardId();
                         showAlert("Успешно", "Карточка " + (isNewCard ? "создана" : "обновлена"),
@@ -473,7 +485,7 @@ public class CardFormController {
         }).start();
     }
 
-    private String getTypeDisplayName(String cardType) {
+    public String getTypeDisplayName(String cardType) {
         try {
             return CardTemplateType.valueOf(cardType).getDisplayName();
         } catch (IllegalArgumentException e) {
@@ -481,7 +493,7 @@ public class CardFormController {
         }
     }
 
-    private void showAlert(String title, String message, Alert.AlertType type) {
+    public void showAlert(String title, String message, Alert.AlertType type) {
         Alert alert = new Alert(type);
         alert.setTitle(title);
         alert.setHeaderText(null);
@@ -532,33 +544,31 @@ public class CardFormController {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));
             Parent content = loader.load();
-
             T controller = loader.getController();
-
-            // Сохраняем ссылку на контроллер в зависимости от типа
-            if (controller instanceof ProductComponentsController) {
-                this.componentsTabController = (ProductComponentsController) controller;
-            } else if (controller instanceof ProductMaterialsController) {
-                this.materialsTabController = (ProductMaterialsController) controller;
-            }
 
             Long cardId = getCurrentCardId();
 
-            if (cardId != null) {
-                // Вызываем метод refresh в зависимости от типа
-                if (controller instanceof ProductComponentsController) {
-                    ((ProductComponentsController) controller).refresh(cardId);
-                    ((ProductComponentsController) controller).enableControls();
-                } else if (controller instanceof ProductMaterialsController) {
-                    ((ProductMaterialsController) controller).refresh(cardId);
-                    ((ProductMaterialsController) controller).enableControls();
+            if (controller instanceof ProductComponentsController) {
+                this.componentsTabController = (ProductComponentsController) controller;
+                // ========== ПЕРЕДАЁМ РОДИТЕЛЬСКИЙ КОНТРОЛЛЕР ==========
+                componentsTabController.setParentController(this);
+                this.componentManager = new ComponentChangeManager(componentsTabController, this);
+                if (cardId != null) {
+                    componentsTabController.refresh(cardId);
+                    componentsTabController.enableControls();
+                } else {
+                    componentsTabController.showLoadingMessage();
                 }
-            } else {
-                // Показываем сообщение о загрузке
-                if (controller instanceof ProductComponentsController) {
-                    ((ProductComponentsController) controller).showLoadingMessage();
-                } else if (controller instanceof ProductMaterialsController) {
-                    ((ProductMaterialsController) controller).showLoadingMessage();
+            } else if (controller instanceof ProductMaterialsController) {
+                this.materialsTabController = (ProductMaterialsController) controller;
+                // ========== ПЕРЕДАЁМ РОДИТЕЛЬСКИЙ КОНТРОЛЛЕР ==========
+                materialsTabController.setParentController(this);
+                this.materialManager = new MaterialChangeManager(materialsTabController, this);
+                if (cardId != null) {
+                    materialsTabController.refresh(cardId);
+                    materialsTabController.enableControls();
+                } else {
+                    materialsTabController.showLoadingMessage();
                 }
             }
 
@@ -593,7 +603,8 @@ public class CardFormController {
         if (tempId != null) {
             try {
                 ProductCardClient.deleteCardWithCheck(tempId);
-                pendingComponentChanges.clear();
+                if (componentManager != null) componentManager.clear();
+                if (materialManager != null) materialManager.clear();
                 System.out.println("Temporary card deleted: " + cardType + ": " + tempId);
                 removeTemporaryCardId();
             } catch (Exception e) {
@@ -644,7 +655,6 @@ public class CardFormController {
             System.out.println("Temporary card creation already in progress, waiting...");
             return;
         }
-
         // Создаём CompletableFuture для асинхронного создания карточки
         temporaryCardFuture = CompletableFuture.supplyAsync(() -> {
             try {
@@ -700,61 +710,6 @@ public class CardFormController {
         }));
     }
 
-    private void addComponentToProduct(Long componentId, Double quantity, String role) {
-        Long cardId = getCurrentCardId();
-        if (cardId == null) {
-            System.out.println("Cannot add component: cardId is null");
-            return;
-        }
-
-        // Создаём временный объект для UI
-        ProductComponentItemDto newItem = new ProductComponentItemDto();
-        newItem.setComponentId(componentId);
-        newItem.setQuantity(quantity != null ? quantity : 1.0);
-        newItem.setPosition(role);
-        newItem.setName("Загрузка..."); // временное имя
-
-        // Добавляем в UI
-        componentsTabController.addItem(newItem);
-
-        // Добавляем в список изменений
-        pendingComponentChanges.add(new ComponentChange(
-                ComponentChange.Type.ADD,
-                componentId,
-                quantity,
-                role
-        ));
-
-        // Асинхронно загружаем реальное имя компонента и обновляем элемент
-        loadComponentNameAndUpdate(componentId, newItem);
-
-        System.out.println("Marked for addition: component " + componentId + " with role: " + role);
-    }
-
-    private void loadComponentNameAndUpdate(Long componentId, ProductComponentItemDto item) {
-        new Thread(() -> {
-            try {
-                ComponentDto component = ComponentClient.getComponentById(componentId);
-                String designation = component.getDesignation() != null && !component.getDesignation().isEmpty()
-                        ? component.getDesignation()
-                        : component.getName();
-                Platform.runLater(() -> {
-                    item.setName(designation);
-                    item.setVendorCode(component.getVendorCode());
-                    item.setUnitCode(component.getUnitCode());
-                    item.setClassName(component.getClassName());
-                    item.setDescription(component.getDescription());
-                    componentsTabController.refreshItem(item);
-                });
-            } catch (Exception e) {
-                Platform.runLater(() -> {
-                    item.setName("Ошибка загрузки");
-                    componentsTabController.refreshItem(item);
-                });
-            }
-        }).start();
-    }
-
     /**
      * Загружает дополнительные данные для редактирования карточки
      * (например, имя компонента ступицы для радиального колеса)
@@ -789,98 +744,6 @@ public class CardFormController {
         }
     }
 
-    private void removeComponentFromProductByRole(String role) {
-        if (role == null || role.isEmpty()) return;
-
-        Long cardId = getCurrentCardId();
-        if (cardId == null) return;
-
-        if (componentsTabController == null) return;
-
-        // Ищем компонент с такой ролью
-        ProductComponentItemDto itemToRemove = null;
-        for (ProductComponentItemDto item : componentsTabController.getItems()) {
-            if (role.equals(item.getPosition())) {
-                itemToRemove = item;
-                break;
-            }
-        }
-
-        if (itemToRemove == null) return;
-
-        // Удаляем через API
-        try {
-            // Удаляем из локального списка
-            componentsTabController.removeItem(itemToRemove);
-            System.out.println("Removed old component: " + itemToRemove.getName() + " with role: " + role);
-            // Добавляем в список изменений
-            pendingComponentChanges.add(new ComponentChange(
-                    ComponentChange.Type.REMOVE,
-                    itemToRemove.getComponentId(),
-                    null,
-                    role
-            ));
-        } catch (Exception e) {
-            System.err.println("Failed to remove old component: " + e.getMessage());
-        }
-    }
-
-    private void applyComponentChanges(Long cardId) {
-        if (pendingComponentChanges.isEmpty()) return;
-
-        // Копируем список и очищаем его
-        List<ComponentChange> changes = new ArrayList<>(pendingComponentChanges);
-        pendingComponentChanges.clear();
-
-        // Сортируем: сначала удаления, потом добавления
-        changes.sort((a, b) -> {
-            if (a.type == ComponentChange.Type.REMOVE && b.type == ComponentChange.Type.ADD) return -1;
-            if (a.type == ComponentChange.Type.ADD && b.type == ComponentChange.Type.REMOVE) return 1;
-            return 0;
-        });
-
-        for (ComponentChange change : changes) {
-            try {
-                if (change.type == ComponentChange.Type.REMOVE) {
-                    // Удаление
-                    TypeReference<ApiResponse<Void>> typeRef = new TypeReference<>() {};
-                    ApiClient.delete("/components/product/" + cardId + "/" + change.componentId, typeRef);
-                    System.out.println("Applied removal of component " + change.componentId);
-                } else if (change.type == ComponentChange.Type.ADD) {
-                    // Добавление
-                    Map<String, Object> request = new HashMap<>();
-                    request.put("componentId", change.componentId);
-                    request.put("quantity", change.quantity != null ? change.quantity : 1.0);
-                    request.put("position", change.role);
-                    TypeReference<ApiResponse<Map<String, Object>>> typeRef = new TypeReference<>() {};
-                    ApiClient.post("/components/product/" + cardId, request, typeRef);
-                    System.out.println("Applied addition of component " + change.componentId);
-                }
-            } catch (Exception e) {
-                System.err.println("Failed to apply component change: " + e.getMessage());
-            }
-        }
-    }
-
-//    private void loadComponentDesignation(Long componentId) {
-//        new Thread(() -> {
-//            try {
-//                ComponentDto component = ComponentClient.getComponentById(componentId);
-//                Platform.runLater(() -> {
-//                    if (component != null) {
-//                        String designation = component.getDesignation();
-//                        if (designation == null || designation.isEmpty()) {
-//                            designation = component.getName();
-//                        }
-//                        setFieldValue("hubName", designation);
-//                    }
-//                });
-//            } catch (Exception e) {
-//                System.err.println("Failed to load component designation: " + e.getMessage());
-//            }
-//        }).start();
-//    }
-
     /**
      * Загружает отображаемое имя компонента (designation, если есть, иначе name)
      * и устанавливает его в указанное поле.
@@ -903,6 +766,93 @@ public class CardFormController {
     }
 
     /**
+     * Загружает имя компонента и обновляет элемент в таблице компонентов.
+     * Используется менеджером компонентов.
+     */
+    public void loadComponentNameAndUpdate(Long componentId, ProductComponentItemDto item) {
+        new Thread(() -> {
+            try {
+                ComponentDto component = ComponentClient.getComponentById(componentId);
+                Platform.runLater(() -> {
+                    item.setName(component.getName());
+                    item.setDesignation(component.getDesignation());
+                    item.setVendorCode(component.getVendorCode());
+                    item.setUnitCode(component.getUnitCode());
+                    item.setClassName(component.getClassName());
+                    item.setDescription(component.getDescription());
+                    if (componentsTabController != null) {
+                        componentsTabController.refreshItem(item);
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    item.setName("Ошибка загрузки");
+                    if (componentsTabController != null) {
+                        componentsTabController.refreshItem(item);
+                    }
+                });
+            }
+        }).start();
+    }
+
+    /**
+     * Загружает имя материала и обновляет элемент в таблице материалов.
+     * Используется менеджером материалов.
+     */
+    public void loadMaterialNameAndUpdate(Long materialId, ProductMaterialItemDto item) {
+        new Thread(() -> {
+            try {
+                MaterialDto material = MaterialClient.getMaterialById(materialId);
+                Platform.runLater(() -> {
+                    item.setName(material.getName());
+                    item.setDesignation(material.getDesignation());
+                    item.setClassName(material.getClassName());
+                    item.setStandard(material.getStandard());
+                    item.setSpecification(material.getSpecification());
+                    item.setMaterialType(material.getMaterialType());
+                    item.setVendorCode(material.getVendorCode());
+                    item.setUnitCode(material.getUnitCode());
+                    if (materialsTabController != null) {
+                        materialsTabController.refreshItem(item);
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    item.setName("Ошибка загрузки");
+                    if (materialsTabController != null) {
+                        materialsTabController.refreshItem(item);
+                    }
+                });
+            }
+        }).start();
+    }
+
+
+    private void removeComponentFromProductByRole(String role) {
+        if (role == null || role.isEmpty()) return;
+
+        Long cardId = getCurrentCardId();
+        if (cardId == null) return;
+
+        if (componentsTabController == null) return;
+
+        // Ищем компонент с такой ролью
+        ProductComponentItemDto itemToRemove = null;
+        for (ProductComponentItemDto item : componentsTabController.getItems()) {
+            if (role.equals(item.getPosition())) {
+                itemToRemove = item;
+                break;
+            }
+        }
+
+        if (itemToRemove == null) return;
+
+        // Удаляем через менеджер (локально + добавляем в pendingChanges)
+        componentManager.removeLocal(itemToRemove.getComponentId());
+    }
+
+    /**
+     * Автозаполнение при выборе компонента.
      * Использует setFieldValue с silent=false
      */
     private void autoFillFromSelection(SelectableFieldConfig config, Long selectedId) {
@@ -921,20 +871,20 @@ public class CardFormController {
                         removeComponentFromProductByRole(config.role());
                     }
 
-                    // ========== 2. ЗАПОЛНЯЕМ ТАРГЕТ ПОЛЕ (НЕ silent, нужно обновить маркировку) ==========
+                    // ========== 2. ЗАПОЛНЯЕМ ТАРГЕТ ПОЛЕ ==========
                     String targetFieldName = config.targetFieldName();
                     if (targetFieldName != null && !targetFieldName.isEmpty()) {
-                        setFieldValue(targetFieldName, designation,true); // ← silent = true
+                        setFieldValue(targetFieldName, designation,true);
                     }
 
                     // ========== 3. СОХРАНЯЕМ ID В ПОЛЕ (НЕ silent) ==========
-                    setFieldValue(config.fieldName(), selectedId,true); // ← silent = true
+                    setFieldValue(config.fieldName(), selectedId,true);
 
 
                     // ========== 4. ДОБАВЛЯЕМ КОМПОНЕНТ В ПРОДУКТ ==========
                     if (config.addToProduct()) {
                         String role = config.role() != null ? config.role() : "Компонент";
-                        addComponentToProduct(selectedId, 1.0, role);
+                        componentManager.addLocal(selectedId, 1.0, role, null);
                     }
 
                     // ========== 5. ВЫЗЫВАЕМ ОБРАБОТЧИК КОНФИГУРАТОРА ==========
@@ -955,21 +905,6 @@ public class CardFormController {
                         Alert.AlertType.ERROR));
             }
         }).start();
-    }
-
-    private static class ComponentChange {
-        enum Type { ADD, REMOVE }
-        Type type;
-        Long componentId;
-        Double quantity;
-        String role;
-
-        ComponentChange(Type type, Long componentId, Double quantity, String role) {
-            this.type = type;
-            this.componentId = componentId;
-            this.quantity = quantity;
-            this.role = role;
-        }
     }
 
 }
