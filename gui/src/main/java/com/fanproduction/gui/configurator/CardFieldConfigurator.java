@@ -13,6 +13,29 @@ public interface CardFieldConfigurator {
                      Map<String, Label> fieldHints,
                      boolean existingCardExists);
 
+    // ========== МЕТОДЫ ДЛЯ РАБОТЫ С ИСПОЛНЕНИЯМИ ==========
+
+    /**
+     * Настраивает логику исполнений (огнестойкость, взрывозащита)
+     */
+    default void setupExecutionMarking(Map<String, Node> fieldControls,
+                                       Map<String, Label> fieldLabels,
+                                       Map<String, Label> fieldHints,
+                                       Runnable onUpdate) {
+        ExecutionMarkingHelper helper = new ExecutionMarkingHelper(
+                fieldControls, fieldLabels, fieldHints, onUpdate
+        );
+        helper.setup();
+    }
+
+    /**
+     * Возвращает маркировку исполнения
+     */
+    default String getExecutionMarking(Map<String, Node> fieldControls) {
+        ExecutionMarkingHelper helper = new ExecutionMarkingHelper(fieldControls);
+        return helper.getExecutionMarking();
+    }
+
     // ========== БАЗОВЫЕ МЕТОДЫ ДЛЯ ПОЛУЧЕНИЯ КОНТРОЛОВ ==========
 
     default TextField getTextField(Map<String, Node> fieldControls, String fieldName) {
@@ -85,87 +108,6 @@ public interface CardFieldConfigurator {
         }
     }
 
-    // ========== УСЛОВНАЯ ВИДИМОСТЬ (ОГНЕСТОЙКОСТЬ/ВЗРЫВОЗАЩИТА) ==========
-
-    default void setupConditionalVisibility(Map<String, Node> fieldControls,
-                                            Map<String, Label> fieldLabels,
-                                            Map<String, Label> fieldHints,
-                                            Runnable updateCallback) {
-        // Огнестойкость
-        CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
-        if (fireproofCheck != null) { String[] fireproofFields = {"fireproofMarking", "fireproofTime", "maxTemperature"};
-            boolean isFireproof = fireproofCheck.isSelected();
-            for (String fieldName : fireproofFields) {
-                setVisible(fieldControls, fieldLabels, fieldHints, fieldName, isFireproof);
-            }
-
-            fireproofCheck.selectedProperty().addListener((obs, old, val) -> {
-                for (String fieldName : fireproofFields) {
-                    setVisible(fieldControls, fieldLabels, fieldHints, fieldName, val);
-                }
-                if (updateCallback != null) updateCallback.run();
-            });
-        }
-
-        // Взрывозащита
-        CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
-        if (explosionCheck != null) {
-            setVisible(fieldControls, fieldLabels, fieldHints, "explosionMarking", explosionCheck.isSelected());
-
-            explosionCheck.selectedProperty().addListener((obs, old, val) -> {
-                setVisible(fieldControls, fieldLabels, fieldHints, "explosionMarking", val);
-                if (updateCallback != null) updateCallback.run();
-            });
-        }
-    }
-
-    // ========== ВЗАИМОИСКЛЮЧАЮЩИЕ ГАЛОЧКИ ==========
-
-    default void setupExclusiveSelection(Map<String, Node> fieldControls, Runnable callback) {
-        CheckBox generalPurposeCheck = getCheckBox(fieldControls, "generalPurpose");
-        CheckBox fireproofCheck = getCheckBox(fieldControls, "fireproof");
-        CheckBox explosionCheck = getCheckBox(fieldControls, "explosionProof");
-
-        // Настраиваем взаимное исключение для всех пар
-        setupMutualExclusiveCheckboxes(generalPurposeCheck, fireproofCheck, callback);
-        setupMutualExclusiveCheckboxes(generalPurposeCheck, explosionCheck, callback);
-        setupMutualExclusiveCheckboxes(fireproofCheck, explosionCheck, callback);
-    }
-
-    /**
-     * Настраивает взаимное исключение для двух галочек.
-     * Если одна из них становится выбранной, другая снимается.
-     *
-     * @param checkbox1 первая галочка
-     * @param checkbox2 вторая галочка
-     * @param callback  действие после изменения
-     */
-    default void setupMutualExclusiveCheckboxes(CheckBox checkbox1, CheckBox checkbox2, Runnable callback) {
-        if (checkbox1 == null || checkbox2 == null) {
-            return;
-        }
-
-        // Слушатель для первой галочки
-        checkbox1.selectedProperty().addListener((obs, old, val) -> {
-            if (val) {
-                checkbox2.setSelected(false);
-            }
-            if (callback != null) {
-                callback.run();
-            }
-        });
-
-        // Слушатель для второй галочки
-        checkbox2.selectedProperty().addListener((obs, old, val) -> {
-            if (val) {
-                checkbox1.setSelected(false);
-            }
-            if (callback != null) {
-                callback.run();
-            }
-        });
-    }
-
     // ========== РАСЧЁТ СКОРОСТИ ==========
 
     default void updateRatedSpeed(ComboBox<String> polesCombo, TextField ratedSpeedField) {
@@ -183,6 +125,9 @@ public interface CardFieldConfigurator {
         }
     }
 
+    /**
+     * Рассчёт номинальной скорости
+     */
     default void setupRatedSpeedCalculation(Map<String, Node> fieldControls, Runnable callback) {
         ComboBox<String> polesCombo = getComboBox(fieldControls, "poles");
         TextField ratedSpeedField = getTextField(fieldControls, "ratedSpeedRpm");
@@ -245,13 +190,36 @@ public interface CardFieldConfigurator {
         return false;
     }
 
-    default boolean validate(Map<String, Node> fieldControls, Map<String, Object> fields, Map<String, Label> fieldLabels) {
-        return true; // По умолчанию — всегда валидно
+    /**
+     * Валидация карточки (по умолчанию всегда валидна)
+     */
+    default boolean validate(Map<String, Node> fieldControls,
+                             Map<String, Object> fields,
+                             Map<String, Label> fieldLabels) {
+        return true;
+    }
+
+    // ========== МЕТОДЫ ДЛЯ РАБОТЫ С ПОЛНОЙ МАРКИРОВКОЙ ==========
+
+    /**
+     * Обновляет полную маркировку (с защитой от перезаписи вручную отредактированных полей)
+     * Обычно вызывается при изменении полей, влияющих на маркировку
+     */
+    default void refreshFullMarking(Map<String, Node> fieldControls) {
+        // По умолчанию ничего не делаем
+        // Каждый конфигуратор переопределяет этот метод
+    }
+
+    /**
+     * Принудительно вычисляет и устанавливает полную маркировку.
+     * Игнорирует защиту от перезаписи.
+     * Используется для кнопки "Восстановить маркировку"
+     */
+    default void forceSetFullMarking(Map<String, Node> fieldControls) {
     }
 
     /**
      * Проверяет, что полная маркировка не пустая
-     * @return true если валидация пройдена, false если есть ошибка
      */
     default boolean validateFullMarking(Map<String, Object> fields) {
         String fullMarking = (String) fields.get("fullMarking");
@@ -271,6 +239,18 @@ public interface CardFieldConfigurator {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    /**
+     * Вызывается после выбора компонента в поле типа "selectable".
+     * Позволяет конфигуратору выполнить дополнительную логику (например, обновить связанные поля).
+     *
+     * @param fieldName имя поля, для которого выбран компонент
+     * @param componentId ID выбранного компонента
+     * @param fieldControls карта контролов
+     */
+    default void onComponentSelected(String fieldName, Long componentId, Map<String, Node> fieldControls) {
+        // По умолчанию ничего не делаем
     }
 
 }

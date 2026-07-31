@@ -36,4 +36,4 @@ CREATE INDEX IF NOT EXISTS idx_motor_card_power ON motor_card(power_kw);
 CREATE INDEX IF NOT EXISTS idx_motor_card_series ON motor_card(series);
 CREATE INDEX IF NOT EXISTS idx_motor_card_poles ON motor_card(poles);
 CREATE INDEX IF NOT EXISTS idx_motor_card_voltage ON motor_card(voltage);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_motor_card_full_marking ON motor_card(LOWER(full_marking)) WHERE full_marking IS NOT NULL;;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_motor_card_full_marking ON motor_card(LOWER(full_marking)) WHERE full_marking IS NOT NULL;

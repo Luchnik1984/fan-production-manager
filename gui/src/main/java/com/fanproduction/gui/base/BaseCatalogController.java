@@ -407,7 +407,7 @@ public abstract class BaseCatalogController<T, C, CL> {
             try {
                 createCategory(result.name(), result.parentId(), result.description());
                 Platform.runLater(() -> {
-                    showAlert("Успешно", "Категория создана");
+                    showAlert("Успешно", "Категория создана",Alert.AlertType.INFORMATION);
                     loadData();
                 });
             } catch (Exception e) {
@@ -422,7 +422,7 @@ public abstract class BaseCatalogController<T, C, CL> {
             try {
                 createClass(result.categoryId(), result.name(), result.description(), null);
                 Platform.runLater(() -> {
-                    showAlert("Успешно", "Класс создан");
+                    showAlert("Успешно", "Класс создан",Alert.AlertType.INFORMATION);
                     loadData();
                 });
             } catch (Exception e) {

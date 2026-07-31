@@ -489,4 +489,38 @@ public class ProductComponentsController {
         });
     }
 
+    /**
+     * Возвращает список компонентов для внешнего использования
+     */
+    public ObservableList<ProductComponentItemDto> getItems() {
+        return componentsList;
+    }
+
+    /**
+     * Удаляет компонент из списка
+     */
+    public void removeItem(ProductComponentItemDto item) {
+        if (item != null) {
+            componentsList.remove(item);
+        }
+    }
+
+
+    public void addItem(ProductComponentItemDto item) {
+        if (item != null) {
+            componentsList.add(item);
+        }
+    }
+
+    public void refreshItem(ProductComponentItemDto item) {
+        int index = componentsList.indexOf(item);
+        if (index >= 0) {
+            componentsList.set(index, item);
+        } else {
+            componentsList.add(item);
+        }
+        componentsTable.refresh();
+    }
 }
+
+

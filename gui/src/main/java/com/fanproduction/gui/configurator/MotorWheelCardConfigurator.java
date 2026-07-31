@@ -7,10 +7,15 @@ import javafx.scene.control.TextField;
 
 import java.util.Map;
 
+/**
+ * Конфигуратор для карточки мотор-колеса.
+ * Полная маркировка равна маркировке производителя.
+ */
 public class MotorWheelCardConfigurator implements CardFieldConfigurator {
 
     private String lastAutoMarking = "";
     private String initialManufacturerMarking = "";
+    private String initialFullMarking = "";
 
     /**
      * Проверяет, заполнены ли обязательные поля для мотор-колеса
@@ -54,12 +59,72 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
         if (existingCardExists) {
             // Запоминаем начальное значение manufacturerMarking
             initialManufacturerMarking = getFieldValue(fieldControls, "manufacturerMarking");
+            initialFullMarking = getFieldValue(fieldControls, "fullMarking");
 
             TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
             if (fullMarkingField != null && !fullMarkingField.getText().isEmpty()) {
                 lastAutoMarking = fullMarkingField.getText();
             }
         }
+    }
+
+    // ==========================================================
+    //  МЕТОДЫ ДЛЯ РАБОТЫ С FULL_MARKING
+    // ==========================================================
+
+    private void setupFullMarkingGeneration(Map<String, Node> fieldControls, boolean existingCardExists) {
+
+        // Слушаем изменение маркировки производителя
+        addTextFieldListener(fieldControls, "manufacturerMarking", () -> updateFullMarking(fieldControls, false));
+
+        // Вызываем updateFullMarking() только для новой карточки
+        if (!existingCardExists) {
+            updateFullMarking(fieldControls, false);
+        }
+    }
+
+    private void updateFullMarking(Map<String, Node> fieldControls, boolean force) {
+        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
+        if (fullMarkingField == null) return;
+
+        String manufacturerMarking = getFieldValue(fieldControls, "manufacturerMarking");
+        String currentMarking = fullMarkingField.getText();
+
+        // Если не принудительно, проверяем, изменилось ли что-то
+        if (!force) {
+            boolean markingChanged = !manufacturerMarking.equals(initialManufacturerMarking);
+            boolean fullMarkingChanged = !currentMarking.equals(initialFullMarking);
+            if (!markingChanged && !fullMarkingChanged) {
+                return; // ничего не изменилось
+            }
+        }
+
+        // Если маркировка производителя пустая — не обновляем
+        if (manufacturerMarking == null || manufacturerMarking.isEmpty()) {
+            return;
+        }
+
+        // Проверяем защиту (только если не force)
+        if (force || currentMarking == null || currentMarking.isEmpty() ||
+            currentMarking.equals(lastAutoMarking)) {
+            fullMarkingField.setText(manufacturerMarking);
+            lastAutoMarking = manufacturerMarking;
+            initialManufacturerMarking = manufacturerMarking;
+            initialFullMarking = manufacturerMarking;
+        }
+    }
+
+    @Override
+    public void refreshFullMarking(Map<String, Node> fieldControls) {
+        updateFullMarking(fieldControls, false);
+    }
+
+    /**
+     * Обновляет полную маркировку с защитой от перезаписи
+     */
+    @Override
+    public void forceSetFullMarking(Map<String, Node> fieldControls) {
+        updateFullMarking(fieldControls, true);
     }
 
     /**
@@ -90,39 +155,4 @@ public class MotorWheelCardConfigurator implements CardFieldConfigurator {
         }
     }
 
-    private void setupFullMarkingGeneration(Map<String, Node> fieldControls, boolean existingCardExists) {
-        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
-        if (fullMarkingField == null) return;
-
-        // Слушаем изменение маркировки производителя
-        addTextFieldListener(fieldControls, "manufacturerMarking", () -> updateFullMarking(fieldControls));
-
-        // Вызываем updateFullMarking() только для новой карточки
-        if (!existingCardExists) {
-            updateFullMarking(fieldControls);
-        }
-    }
-
-    private void updateFullMarking(Map<String, Node> fieldControls) {
-        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
-        if (fullMarkingField == null) return;
-
-        String manufacturerMarking = getFieldValue(fieldControls, "manufacturerMarking");
-        String currentMarking = fullMarkingField.getText();
-
-        // Если manufacturerMarking не изменился — не обновляем
-        if (manufacturerMarking.equals(initialManufacturerMarking) &&
-                currentMarking != null && !currentMarking.isEmpty()) {
-            return;
-        }
-
-        // Обновляем только если поле пустое ИЛИ содержит последнее автоматическое значение
-        if (currentMarking == null || currentMarking.isEmpty() ||
-                currentMarking.equals(lastAutoMarking)) {
-            fullMarkingField.setText(manufacturerMarking);
-            lastAutoMarking = manufacturerMarking;
-            // Обновляем начальное значение после изменения
-            initialManufacturerMarking = manufacturerMarking;
-        }
-    }
 }

@@ -7,8 +7,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Настройка специальных полей для карточки электродвигателя.
+ * Конфигуратор для карточки электродвигателя.
+ * Отвечает за формирование полной маркировки на основе серии, типа, полюсов и исполнений.
  */
+
 public class MotorCardConfigurator implements CardFieldConfigurator {
 
     private String lastAutoMarking = "";
@@ -16,6 +18,7 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
     private boolean initialGeneralPurpose = true;
     private boolean initialFireproof = false;
     private boolean initialExplosionProof = false;
+    private String initialExecutionMarking = "";
 
     @Override
     public boolean validate(Map<String, Node> fieldControls,
@@ -41,7 +44,6 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
                             - Исполнение по монтажу""");
             return false;
         }
-
         // Проверяем fullMarking через общий метод
         return validateFullMarking(fields);
     }
@@ -52,22 +54,19 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
                             Map<String, Label> fieldHints,
                             boolean existingCardExists) {
 
-        // Условная видимость (огнестойкость/взрывозащита) — с fieldHints
-        setupConditionalVisibility(fieldControls, fieldLabels, fieldHints, () -> updateFullMarking(fieldControls));
+        // ========== 1. НАСТРОЙКА ИСПОЛНЕНИЙ (ОГНЕСТОЙКОСТЬ/ВЗРЫВОЗАЩИТА) ==========
+        setupExecutionMarking(fieldControls, fieldLabels, fieldHints, () -> updateFullMarking(fieldControls, false));
 
-        // Взаимоисключающие галочки
-        setupExclusiveSelection(fieldControls, () -> updateFullMarking(fieldControls));
+        // ========== 2. НАСТРОЙКА РАСЧЁТА НОМИНАЛЬНОЙ СКОРОСТИ ==========
+        setupRatedSpeedCalculation(fieldControls, () -> updateFullMarking(fieldControls, false));
 
-        // Настройка автоматического расчёта номинальной скорости
-        setupRatedSpeedCalculation(fieldControls, () -> updateFullMarking(fieldControls));
-
-        // Настройка автоматического формирования полной маркировки
+        // ========== 3. НАСТРОЙКА ФОРМИРОВАНИЯ ПОЛНОЙ МАРКИРОВКИ ==========
         setupFullMarkingGeneration(fieldControls, existingCardExists);
 
-        // Автоматическое заполнение наименования
+        // ========== 4. АВТОЗАПОЛНЕНИЕ НАИМЕНОВАНИЯ ==========
         autoFillName(fieldControls, "Электродвигатель", existingCardExists);
 
-        // Синхронизация при загрузке данных
+        // ========== 5. СИНХРОНИЗАЦИЯ ПРИ ЗАГРУЗКЕ ДАННЫХ ==========
         if (existingCardExists) {
             storeInitialValues(fieldControls);
 
@@ -78,41 +77,46 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         }
     }
 
+    // ==========================================================
+    // МЕТОДЫ ДЛЯ РАБОТЫ С FULL_MARKING
+    // ==========================================================
+
     /**
      * Настройка автоматического формирования полной маркировки
      */
     private void setupFullMarkingGeneration(Map<String, Node> fieldControls,boolean existingCardExists) {
-        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
-        if (fullMarkingField == null) return;
 
         // Добавляем слушатели на поля, влияющие на маркировку
-        addTextFieldListener(fieldControls, "series", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "motorType", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "climateType", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "fireproofMarking", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "explosionMarking", () -> updateFullMarking(fieldControls));
-        addTextFieldListener(fieldControls, "mountingType", () -> updateFullMarking(fieldControls));
+        addTextFieldListener(fieldControls, "series", () -> updateFullMarking(fieldControls, false));
+        addTextFieldListener(fieldControls, "motorType", () -> updateFullMarking(fieldControls, false));
+        addTextFieldListener(fieldControls, "climateType", () -> updateFullMarking(fieldControls, false));
+        addTextFieldListener(fieldControls, "mountingType", () -> updateFullMarking(fieldControls, false));
+        addComboBoxListener(fieldControls, "poles", () -> updateFullMarking(fieldControls, false));
 
-        addCheckBoxListener(fieldControls, "generalPurpose", () -> updateFullMarking(fieldControls));
-        addCheckBoxListener(fieldControls, "fireproof", () -> updateFullMarking(fieldControls));
-        addCheckBoxListener(fieldControls, "explosionProof", () -> updateFullMarking(fieldControls));
+        // Слушатели на поля исполнений
+        addTextFieldListener(fieldControls, "fireproofMarking", () -> updateFullMarking(fieldControls, false));
+        addTextFieldListener(fieldControls, "explosionMarking", () -> updateFullMarking(fieldControls, false));
 
-        addComboBoxListener(fieldControls, "poles", () -> updateFullMarking(fieldControls));
+        // Слушатели на галочки исполнений
+        addCheckBoxListener(fieldControls, "generalPurpose", () -> updateFullMarking(fieldControls, false));
+        addCheckBoxListener(fieldControls, "fireproof", () -> updateFullMarking(fieldControls, false));
+        addCheckBoxListener(fieldControls, "explosionProof", () -> updateFullMarking(fieldControls, false));
+
 
         // Вызываем updateFullMarking() только для новой карточки
         if (!existingCardExists) {
-            updateFullMarking(fieldControls);
+            updateFullMarking(fieldControls, false);
         }
     }
 
     /**
      * Обновляет полную маркировку на основе заполненных полей
      */
-    private void updateFullMarking(Map<String, Node> fieldControls) {
+    private void updateFullMarking(Map<String, Node> fieldControls, boolean force) {
         TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
         if (fullMarkingField == null) return;
 
-        // Проверяем, изменились ли поля
+        // ПОЛУЧАЕМ ТЕКУЩИЕ ЗНАЧЕНИЯ
         String currentSeries = getFieldValue(fieldControls, "series");
         String currentMotorType = getFieldValue(fieldControls, "motorType");
         String currentPoles = getFieldValue(fieldControls, "poles");
@@ -125,32 +129,56 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         boolean isFireproof = isSelected(fieldControls, "fireproof");
         boolean isExplosionProof = isSelected(fieldControls, "explosionProof");
 
-        // Проверяем, изменилось ли что-то
-        String[] fieldsToCheck = {"series", "motorType", "poles", "mountingType",
-                "climateType", "fireproofMarking", "explosionMarking"};
-        if (!hasAnyFieldChanged(fieldControls, initialValues, fieldsToCheck)) {
-            // Проверяем галочки
-            if (initialGeneralPurpose == isGeneralPurpose &&
+        // ========== ПРОВЕРКА ИЗМЕНЕНИЙ (ТОЛЬКО ЕСЛИ НЕ force) ==========
+        if (!force) {
+            String[] fieldsToCheck = getFieldsToCheckForFullMarking();
+            boolean fieldsChanged = hasAnyFieldChanged(fieldControls, initialValues, fieldsToCheck);
+
+            // Дополнительно проверяем галочки исполнений
+            if (!fieldsChanged) {
+                if (initialGeneralPurpose == isGeneralPurpose &&
                     initialFireproof == isFireproof &&
                     initialExplosionProof == isExplosionProof) {
-                return; // Ничего не изменилось
+                    return; // Ничего не изменилось
+                }
             }
         }
 
-        // Формируем новую маркировку
-        String newMarking = buildFullMarking(currentSeries, currentMotorType, currentPoles,
-                currentMountingType, currentClimateType,
-                isGeneralPurpose, isFireproof, isFireproof ? currentFireproofMarking : "",
+        // ФОРМИРУЕМ НОВУЮ МАРКИРОВКУ
+        String newMarking = buildFullMarking(
+                currentSeries,
+                currentMotorType,
+                currentPoles,
+                currentMountingType,
+                currentClimateType,
+                isGeneralPurpose,
+                isFireproof,
+                isFireproof ? currentFireproofMarking : "",
                 isExplosionProof ? currentExplosionMarking : "");
 
+        // ОБНОВЛЯЕМ ПОЛЕ (ТОЛЬКО ЕСЛИ ОНО НЕ БЫЛО ИЗМЕНЕНО ВРУЧНУЮ)
         String currentMarking = fullMarkingField.getText();
 
-        if (currentMarking == null || currentMarking.isEmpty() ||
+        // ========== ЗАЩИТА (ТОЛЬКО ЕСЛИ НЕ force) ==========
+        if (force || currentMarking == null || currentMarking.isEmpty() ||
                 currentMarking.equals(lastAutoMarking)) {
             fullMarkingField.setText(newMarking);
             lastAutoMarking = newMarking;
             storeInitialValues(fieldControls);
         }
+    }
+
+    @Override
+    public void refreshFullMarking(Map<String, Node> fieldControls) {
+        updateFullMarking(fieldControls, false);
+    }
+
+    /**
+     * Обновляет полную маркировку с защитой от перезаписи
+     */
+    @Override
+    public void forceSetFullMarking(Map<String, Node> fieldControls) {
+        updateFullMarking(fieldControls, true);
     }
 
     private String buildFullMarking(String series, String motorType, String poles,
@@ -160,16 +188,20 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         StringBuilder fullMarking = new StringBuilder();
 
         if (!series.isEmpty()) {
-            fullMarking.append(series).append(" ");
+            fullMarking.append(series);
         }
 
+        // Добавляем маркировку исполнения (если есть)
         if (isFireproof && !fireproofMarking.isEmpty()) {
-            fullMarking.append(fireproofMarking).append(" ");
+            if (!fullMarking.isEmpty()) fullMarking.append(" ");
+            fullMarking.append(fireproofMarking);
         } else if (!isGeneralPurpose && !explosionMarking.isEmpty()) {
-            fullMarking.append(explosionMarking).append(" ");
+            if (!fullMarking.isEmpty()) fullMarking.append(" ");
+            fullMarking.append(explosionMarking);
         }
 
         if (!motorType.isEmpty()) {
+            if (!fullMarking.isEmpty()) fullMarking.append(" ");
             fullMarking.append(motorType);
         }
 
@@ -178,20 +210,31 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         }
 
         if (!mountingType.isEmpty()) {
-            fullMarking.append(" ").append(mountingType);
+            if (!fullMarking.isEmpty()) fullMarking.append(" ");
+            fullMarking.append(mountingType);
         }
 
         if (!climateType.isEmpty()) {
-            fullMarking.append(" ").append(climateType);
+            if (!fullMarking.isEmpty()) fullMarking.append(" ");
+            fullMarking.append(climateType);
         }
 
         return fullMarking.toString().trim();
     }
 
     /**
+     * Возвращает список полей, которые нужно проверить для определения,
+     * изменился ли fullMarking
+     */
+    private String[] getFieldsToCheckForFullMarking() {
+        return new String[]{"series", "motorType", "poles", "mountingType",
+                "climateType", "fireproofMarking", "explosionMarking"};
+    }
+
+    /**
      * Запоминает начальные значения всех полей
      */
-    private void storeInitialValues(Map<String, Node> fieldControls) {
+    public void storeInitialValues(Map<String, Node> fieldControls) {
         String[] fieldNames = {"series", "motorType", "climateType", "mountingType",
                 "fireproofMarking", "explosionMarking"};
         initialValues = new HashMap<>();
@@ -206,5 +249,6 @@ public class MotorCardConfigurator implements CardFieldConfigurator {
         initialGeneralPurpose = isSelected(fieldControls, "generalPurpose");
         initialFireproof = isSelected(fieldControls, "fireproof");
         initialExplosionProof = isSelected(fieldControls, "explosionProof");
+        initialExecutionMarking = getExecutionMarking(fieldControls);
     }
 }
