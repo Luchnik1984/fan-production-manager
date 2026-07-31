@@ -239,20 +239,6 @@ public class CardFormController {
         return controlFactory.createControl(field, existingValue, fieldControls);
     }
 
-//    /**
-//     * УВЕДОМЛЕНИЕ ОБ ИЗМЕНЕНИИ ПОЛЯ
-//     */
-//
-//    private void notifyFieldChanged(String fieldName) {
-//        CardFieldConfigurator configurator = CardFormConfigurator.getConfigurator(cardType);
-//        if (configurator == null) return;
-//
-//        // ========== СПРАШИВАЕМ У КОНФИГУРАТОРА ==========
-//        List<String> markingFields = configurator.getMarkingAffectingFields();
-//        if (!markingFields.contains(fieldName)) return;
-//
-//        configurator.refreshFullMarking(fieldControls);
-//    }
 
     /**
      * Устанавливает значение поля
@@ -323,11 +309,6 @@ public class CardFormController {
 
         try {
 
-//            // 1. Очищаем поле
-//            Node control = fieldControls.get("fullMarking");
-//            if (control instanceof TextField) {
-//                ((TextField) control).setText("");
-//            }
 
             // 2. Принудительно обновляем
             configurator.forceSetFullMarking(fieldControls);
@@ -787,8 +768,23 @@ public class CardFormController {
         if ("RADIAL_WHEEL".equals(cardType)) {
             Object hubComponentId = fields.get("hubComponentId");
             if (hubComponentId instanceof Number) {
-                Long componentId = ((Number) hubComponentId).longValue();
-                loadComponentDesignation(componentId);  // ← посмотри, что здесь!
+                loadComponentDesignation(((Number) hubComponentId).longValue(), "hubName");
+            }
+        } else if ("AXIAL_WHEEL".equals(cardType)) {
+            // Лопатка
+            Object bladeId = fields.get("bladeComponentId");
+            if (bladeId instanceof Number) {
+                loadComponentDesignation(((Number) bladeId).longValue(), "bladeName");
+            }
+            // Хаб
+            Object hubId = fields.get("wheelHubComponentId");
+            if (hubId instanceof Number) {
+                loadComponentDesignation(((Number) hubId).longValue(), "wheelHubName");
+            }
+            // Установочная ступица
+            Object setupHubId = fields.get("hubComponentId");
+            if (setupHubId instanceof Number) {
+                loadComponentDesignation(((Number) setupHubId).longValue(), "hubName");
             }
         }
     }
@@ -866,21 +862,42 @@ public class CardFormController {
         }
     }
 
-    private void loadComponentDesignation(Long componentId) {
+//    private void loadComponentDesignation(Long componentId) {
+//        new Thread(() -> {
+//            try {
+//                ComponentDto component = ComponentClient.getComponentById(componentId);
+//                Platform.runLater(() -> {
+//                    if (component != null) {
+//                        String designation = component.getDesignation();
+//                        if (designation == null || designation.isEmpty()) {
+//                            designation = component.getName();
+//                        }
+//                        setFieldValue("hubName", designation);
+//                    }
+//                });
+//            } catch (Exception e) {
+//                System.err.println("Failed to load component designation: " + e.getMessage());
+//            }
+//        }).start();
+//    }
+
+    /**
+     * Загружает отображаемое имя компонента (designation, если есть, иначе name)
+     * и устанавливает его в указанное поле.
+     *
+     * @param componentId ID компонента
+     * @param targetField имя поля, в которое нужно установить значение
+     */
+    private void loadComponentDesignation(Long componentId, String targetField) {
         new Thread(() -> {
             try {
                 ComponentDto component = ComponentClient.getComponentById(componentId);
-                Platform.runLater(() -> {
-                    if (component != null) {
-                        String designation = component.getDesignation();
-                        if (designation == null || designation.isEmpty()) {
-                            designation = component.getName();
-                        }
-                        setFieldValue("hubName", designation);
-                    }
-                });
+                String displayName = component.getDesignation() != null && !component.getDesignation().isEmpty()
+                        ? component.getDesignation()
+                        : component.getName();
+                Platform.runLater(() -> setFieldValue(targetField, displayName, true));
             } catch (Exception e) {
-                System.err.println("Failed to load component designation: " + e.getMessage());
+                System.err.println("Failed to load component designation for " + targetField + ": " + e.getMessage());
             }
         }).start();
     }
@@ -913,15 +930,20 @@ public class CardFormController {
                     // ========== 3. СОХРАНЯЕМ ID В ПОЛЕ (НЕ silent) ==========
                     setFieldValue(config.fieldName(), selectedId,true); // ← silent = true
 
+
                     // ========== 4. ДОБАВЛЯЕМ КОМПОНЕНТ В ПРОДУКТ ==========
                     if (config.addToProduct()) {
                         String role = config.role() != null ? config.role() : "Компонент";
                         addComponentToProduct(selectedId, 1.0, role);
                     }
 
-                    // ========== 5.  ОБНОВЛЯЕМ МАРКИРОВКУ ==========
-                    // Вызываем refreshFullMarking через конфигуратор
+                    // ========== 5. ВЫЗЫВАЕМ ОБРАБОТЧИК КОНФИГУРАТОРА ==========
                     CardFieldConfigurator configurator = CardFormConfigurator.getConfigurator(cardType);
+                    if (configurator != null) {
+                        configurator.onComponentSelected(config.fieldName(), selectedId, fieldControls);
+                    }
+
+                    // ========== 6.  ОБНОВЛЯЕМ МАРКИРОВКУ ==========
                     if (configurator != null) {
                         configurator.refreshFullMarking(fieldControls);
                     }

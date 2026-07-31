@@ -284,7 +284,7 @@ public class FieldMetadataService {
         axialWheelFields.add(createHiddenField("bladeMaterial", "Материал лопатки", "text", true, null, null, null, "Укажите условный материал лопатки, например: St или AISI"));
 
         // 3.7 Количество лопаток
-        axialWheelFields.add(createHiddenField("bladeCount", "Количество установленных лопаток", "number", true, null, null, null, "Должно быть больше 1 и не превышать максимальное количество для хаба"));
+        axialWheelFields.add(createHiddenField("bladeCount", "Кол-во установленных лопаток", "number", true, null, null, null, "Должно быть больше 1 и не превышать максимальное количество для хаба"));
 
         // 3.8 Угол установки
         axialWheelFields.add(createHiddenField("bladeAngle", "Угол установки лопаток", "number", true, null, null, null, "Например: 27, 30, 43"));
@@ -543,7 +543,7 @@ public class FieldMetadataService {
      */
     private List<FieldMetadataDto> createCommonFields() {
         List<FieldMetadataDto> fields = new ArrayList<>();
-        fields.add(createField("maxSpeedRpm", "Максимальная скорость вращения (об/мин)", "number", false, null, null, null, "Введите число"));
+        fields.add(createField("maxSpeedRpm", "Макс. скорость вращения (об/мин)", "number", false, null, null, null, "Введите число"));
         fields.add(createField("weightKg", "Масса (кг)", "double", false, null, null, null, "Введите число"));
         return fields;
     }

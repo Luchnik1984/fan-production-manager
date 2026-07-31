@@ -276,6 +276,13 @@ public class MaterialServiceImpl extends BaseValidationService implements Materi
             );
         }
 
+        // Обновление classId
+        if (updated.getClassId() != null) {
+            materialClassRepository.findById(updated.getClassId())
+                    .orElseThrow(() -> new IllegalArgumentException("Класс материала не найден: " + updated.getClassId()));
+            existing.setClassId(updated.getClassId());
+        }
+
         // ========== ОБНОВЛЕНИЕ ПОЛЕЙ ==========
         if (newDesignation != null && !newDesignation.equals(oldDesignation)) {
             existing.setDesignation(newDesignation);

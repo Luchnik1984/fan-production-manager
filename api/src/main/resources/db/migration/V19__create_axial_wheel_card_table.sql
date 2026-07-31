@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS axial_wheel_card (
 
     -- ========== ОСНОВНАЯ ИНФОРМАЦИЯ ==========
                                                 manufacturer VARCHAR(100),
+                                                series VARCHAR(50),
     size DOUBLE PRECISION,
     trim_coefficient DOUBLE PRECISION,
     marking VARCHAR(100),
@@ -63,6 +64,7 @@ CREATE TABLE IF NOT EXISTS axial_wheel_card (
 -- ИНДЕКСЫ
 -- ==========================================================
 
+CREATE INDEX IF NOT EXISTS idx_axial_wheel_series ON axial_wheel_card(series);
 CREATE INDEX IF NOT EXISTS idx_axial_wheel_size ON axial_wheel_card(size);
 CREATE INDEX IF NOT EXISTS idx_axial_wheel_marking ON axial_wheel_card(marking);
 CREATE INDEX IF NOT EXISTS idx_axial_wheel_full_marking ON axial_wheel_card(full_marking);

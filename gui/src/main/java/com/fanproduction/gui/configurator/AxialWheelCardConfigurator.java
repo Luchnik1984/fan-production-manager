@@ -1,5 +1,8 @@
 package com.fanproduction.gui.configurator;
 
+import com.fanproduction.gui.client.ComponentClient;
+import com.fanproduction.gui.dto.response.ComponentDto;
+import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 
@@ -27,7 +30,8 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
             "bladeAngle",
             "hubComponentId",
             "hubName",
-            "wheelFormula"
+            "wheelFormula",
+            "bladeMaterial"
     );
 
     private static final List<String> ASSEMBLED_FIELDS = Arrays.asList(
@@ -39,8 +43,7 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
 
     private static final List<String> WELDED_FIELDS = Arrays.asList(
             "wheelHubType",
-            "bladeType",
-            "bladeMaterial"
+            "bladeType"
     );
 
     // ===================== ПОЛЯ СОСТОЯНИЯ =====================
@@ -140,13 +143,38 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         // 6. Формула колеса
         setupWheelFormulaGeneration(fieldControls);
 
-        // 7. Полная маркировка
+
+        // 7. Слушатели для управления материалом лопатки
+
+        // При переключении галочки "Сварное" делаем поле материала редактируемым
+        addCheckBoxListener(fieldControls, "isWeldedFromMaterials", () -> {
+            TextField bladeMaterialField = getTextField(fieldControls, "bladeMaterial");
+            if (bladeMaterialField != null) {
+                bladeMaterialField.setEditable(true);
+                bladeMaterialField.setStyle("");
+            }
+            updateWheelFormula(fieldControls);
+            updateFullMarking(fieldControls, false);
+        });
+
+        // При переключении галочки "Сборное" делаем поле только для чтения (если уже есть материал)
+        addCheckBoxListener(fieldControls, "isAssembledFromComponents", () -> {
+            TextField bladeMaterialField = getTextField(fieldControls, "bladeMaterial");
+            if (bladeMaterialField != null && !bladeMaterialField.getText().isEmpty()) {
+                bladeMaterialField.setEditable(false);
+                bladeMaterialField.setStyle("-fx-background-color: #f0f0f0;");
+            }
+            updateWheelFormula(fieldControls);
+            updateFullMarking(fieldControls, false);
+        });
+
+        // 8. Полная маркировка
         setupFullMarkingGeneration(fieldControls, existingCardExists);
 
-        // 8. Автозаполнение имени
+        // 9. Автозаполнение имени
         autoFillName(fieldControls, "Колесо осевое", existingCardExists);
 
-        // 9. Синхронизация при загрузке
+        // 10. Синхронизация при загрузке
         if (existingCardExists) {
             storeInitialValues(fieldControls);
 
@@ -232,7 +260,7 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
             setVisible(fieldControls, fieldLabels, fieldHints, fieldName, isPartner);
         }
 
-        // Фирменное общее
+        // Фирменное общее (включая bladeMaterial)
         for (String fieldName : OWN_COMMON_FIELDS) {
             setVisible(fieldControls, fieldLabels, fieldHints, fieldName, isOwn);
         }
@@ -293,6 +321,7 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         addTextFieldListener(fieldControls, "bladeAngle", () -> updateWheelFormula(fieldControls));
         addTextFieldListener(fieldControls, "bladeMaterial", () -> updateWheelFormula(fieldControls));
         addTextFieldListener(fieldControls, "bladeType", () -> updateWheelFormula(fieldControls));
+        addTextFieldListener(fieldControls, "bladeName", () -> updateWheelFormula(fieldControls));
         addCheckBoxListener(fieldControls, "isAssembledFromComponents", () -> updateWheelFormula(fieldControls));
         addCheckBoxListener(fieldControls, "isWeldedFromMaterials", () -> updateWheelFormula(fieldControls));
         updateWheelFormula(fieldControls);
@@ -342,6 +371,8 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         addTextFieldListener(fieldControls, "size", () -> updateFullMarking(fieldControls, false));
         addTextFieldListener(fieldControls, "wheelFormula", () -> updateFullMarking(fieldControls, false));
         addTextFieldListener(fieldControls, "hubName", () -> updateFullMarking(fieldControls, false));
+        addTextFieldListener(fieldControls, "bladeName", () -> updateFullMarking(fieldControls, false));
+        addTextFieldListener(fieldControls, "wheelHubName", () -> updateFullMarking(fieldControls, false));
 
         addCheckBoxListener(fieldControls, "generalPurpose", () -> updateFullMarking(fieldControls, false));
         addCheckBoxListener(fieldControls, "fireproof", () -> updateFullMarking(fieldControls, false));
@@ -482,12 +513,27 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         if (isPartner) {
             return new String[]{"marking"};
         } else {
-            return new String[]{"series", "size", "wheelFormula", "hubName", "executionMarking"};
+            return new String[]{
+                    "series",
+                    "size",
+                    "wheelFormula",
+                    "hubName",
+                    "bladeName",
+                    "wheelHubName",
+                    "executionMarking"};
         }
     }
 
     public void storeInitialValues(Map<String, Node> fieldControls) {
-        String[] fieldNames = {"series", "size", "wheelFormula", "hubName", "marking"};
+        String[] fieldNames = {
+                "series",
+                "size",
+                "wheelFormula",
+                "hubName",
+                "marking",
+                "bladeName",
+                "bladeMaterial",
+                "wheelHubName"};
         initialValues = new HashMap<>();
         for (String name : fieldNames) {
             initialValues.put(name, getFieldValue(fieldControls, name));
@@ -499,4 +545,44 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         initialIsWelded = isSelected(fieldControls, "isWeldedFromMaterials");
         initialExecutionMarking = getExecutionMarking(fieldControls);
     }
+
+    /**
+     * Обновляет поле "Материал лопатки" на основе выбранного компонента.
+     * Вызывается при выборе лопатки (bladeComponentId).
+     */
+    private void updateBladeMaterialFromComponent(Map<String, Node> fieldControls, Long componentId) {
+        if (componentId == null) return;
+
+        new Thread(() -> {
+            try {
+                ComponentDto component = ComponentClient.getComponentById(componentId);
+                String material = component.getMaterial();
+                Platform.runLater(() -> {
+                    if (material != null && !material.isEmpty()) {
+                        TextField bladeMaterialField = getTextField(fieldControls, "bladeMaterial");
+                        if (bladeMaterialField != null) {
+                            bladeMaterialField.setText(material);
+                            // Если выбрано "Сборное", делаем поле только для чтения
+                            if (isSelected(fieldControls, "isAssembledFromComponents")) {
+                                bladeMaterialField.setEditable(false);
+                                bladeMaterialField.setStyle("-fx-background-color: #f0f0f0;");
+                            }
+                            // ========== ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ ФОРМУЛУ ==========
+                            updateWheelFormula(fieldControls);
+                        }
+                    }
+                });
+            } catch (Exception e) {
+                System.err.println("Failed to load component for blade material: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    @Override
+    public void onComponentSelected(String fieldName, Long componentId, Map<String, Node> fieldControls) {
+        if ("bladeComponentId".equals(fieldName)) {
+            updateBladeMaterialFromComponent(fieldControls, componentId);
+        }
+    }
+
 }

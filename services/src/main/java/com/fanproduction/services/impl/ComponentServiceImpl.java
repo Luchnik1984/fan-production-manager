@@ -274,6 +274,13 @@ public class ComponentServiceImpl extends BaseValidationService implements Compo
             existing.setVendorCode(newVendorCode);
         }
 
+        // Обновление classId
+        if (updated.getClassId() != null) {
+            componentClassRepository.findById(updated.getClassId())
+                    .orElseThrow(() -> new IllegalArgumentException("Класс компонента не найден: " + updated.getClassId()));
+            existing.setClassId(updated.getClassId());
+        }
+
         // ОБНОВЛЕНИЕ ПОЛЕЙ
         if (updated.getName() != null && !updated.getName().equals(existing.getName())) {
             existing.setName(updated.getName());

@@ -40,6 +40,12 @@ public class AxialWheelCardEntity extends BaseProductCard {
     @Column(name = "trim_coefficient")
     private Double trimCoefficient;
 
+    /**
+     * Серия колеса
+     */
+    @Column(name = "series", length = 50)
+    private String series;
+
     // ==========================================================
     // 2. ТИП КОЛЕСА
     // ==========================================================
@@ -61,6 +67,7 @@ public class AxialWheelCardEntity extends BaseProductCard {
      */
     @Column(name = "marking", length = 100)
     private String marking;
+
 
     // ==========================================================
     // 3. ТИП ИЗГОТОВЛЕНИЯ (для фирменного колеса)

@@ -241,4 +241,16 @@ public interface CardFieldConfigurator {
         alert.showAndWait();
     }
 
+    /**
+     * Вызывается после выбора компонента в поле типа "selectable".
+     * Позволяет конфигуратору выполнить дополнительную логику (например, обновить связанные поля).
+     *
+     * @param fieldName имя поля, для которого выбран компонент
+     * @param componentId ID выбранного компонента
+     * @param fieldControls карта контролов
+     */
+    default void onComponentSelected(String fieldName, Long componentId, Map<String, Node> fieldControls) {
+        // По умолчанию ничего не делаем
+    }
+
 }
