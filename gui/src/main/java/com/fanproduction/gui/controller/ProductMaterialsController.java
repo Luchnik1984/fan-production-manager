@@ -1,5 +1,6 @@
 package com.fanproduction.gui.controller;
 
+import com.fanproduction.gui.client.MaterialClient;
 import com.fanproduction.gui.client.ProductMaterialClient;
 import com.fanproduction.gui.dto.ProductMaterialItemDto;
 import com.fanproduction.gui.dto.response.MaterialDto;
@@ -21,7 +22,6 @@ import javafx.util.converter.DoubleStringConverter;
 import lombok.Setter;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -52,9 +52,9 @@ public class ProductMaterialsController {
     @FXML
     private TableColumn<ProductMaterialItemDto, String> vendorCodeColumn;
     @FXML
-    private TableColumn<ProductMaterialItemDto, String> unitColumn;
-    @FXML
     private TableColumn<ProductMaterialItemDto, Double> quantityColumn;
+    @FXML
+    private TableColumn<ProductMaterialItemDto, String> unitColumn;
     @FXML
     private TableColumn<ProductMaterialItemDto, String> noteColumn;
     @FXML
@@ -208,6 +208,38 @@ public class ProductMaterialsController {
         }
     }
 
+    /**
+     * Асинхронно загружает полные данные материала по его ID
+     * и обновляет соответствующий DTO в таблице.
+     */
+    private void loadMaterialFullData(ProductMaterialItemDto dto) {
+        if (dto == null || dto.getMaterialId() == null) return;
+
+        new Thread(() -> {
+            try {
+                // Загружаем полные данные материала
+                MaterialDto material = MaterialClient.getMaterialById(dto.getMaterialId());
+
+                Platform.runLater(() -> {
+                    // Обновляем все поля DTO
+                    dto.setName(material.getName());
+                    dto.setDesignation(material.getDesignation());
+                    dto.setClassName(material.getClassName());
+                    dto.setStandard(material.getStandard());
+                    dto.setSpecification(material.getSpecification());
+                    dto.setMaterialType(material.getMaterialType());
+                    dto.setVendorCode(material.getVendorCode());
+                    dto.setUnitCode(material.getUnitCode());
+                    // Обновляем отображение в таблице
+                    refreshItem(dto);
+                });
+            } catch (Exception e) {
+                // Если не удалось загрузить, оставляем как есть (не показываем ошибку)
+                System.err.println("Failed to load full material data for ID " + dto.getMaterialId() + ": " + e.getMessage());
+            }
+        }).start();
+    }
+
     private void loadMaterials() {
         if (productCardId == null) return;
 
@@ -225,14 +257,13 @@ public class ProductMaterialsController {
                         dto.setMaterialId(((Number) item.get("materialId")).longValue());
                         dto.setName((String) item.get("materialName"));
                         dto.setClassName((String) item.get("materialClass"));
-                        dto.setStandard((String) item.get("standard"));
-                        dto.setSpecification((String) item.get("specification"));
-                        dto.setMaterialType((String) item.get("materialType"));
-                        dto.setVendorCode((String) item.get("vendorCode"));
                         dto.setUnitCode((String) item.get("unitCode"));
                         dto.setQuantityPerUnit(item.get("quantityPerUnit") != null ? ((Number) item.get("quantityPerUnit")).doubleValue() : 1.0);
                         dto.setNote((String) item.get("note"));
                         materialsList.add(dto);
+
+                        // Запускаем асинхронную дозагрузку полных данных
+                        loadMaterialFullData(dto);
                     }
                     statusLabel.setText("Материалов: " + materialsList.size());
                 });
@@ -428,4 +459,5 @@ public class ProductMaterialsController {
         }
         materialsTable.refresh();
     }
+
 }

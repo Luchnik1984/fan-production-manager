@@ -43,21 +43,62 @@ public class ComponentChangeManager {
 
     public void removeLocal(Long componentId) {
         if (componentId == null) return;
-        ProductComponentItemDto toRemove = null;
+
+        // Находим компонент в таблице
+        ProductComponentItemDto itemToRemove = null;
         for (ProductComponentItemDto item : componentsController.getItems()) {
             if (item.getComponentId().equals(componentId)) {
-                toRemove = item;
+                itemToRemove = item;
                 break;
             }
         }
-        if (toRemove == null) return;
-        componentsController.removeItem(toRemove);
+        if (itemToRemove == null) return;
+
+        // Если есть position – запрещаем удаление
+        if (itemToRemove.getPosition() != null && !itemToRemove.getPosition().isEmpty()) {
+                parentController.showAlert(
+                        "Ошибка",
+                        "Компонент '" + itemToRemove.getDisplayName() + "' используется в поле '" + itemToRemove.getPosition() + "'. " +
+                                "Сначала удалите его из основного поля карточки.",
+                        Alert.AlertType.WARNING
+                );
+            return;
+        }
+
+        // Удаляем из UI
+        componentsController.removeItem(itemToRemove);
+        // Если есть ADD для этого компонента – удаляем (отмена добавления)
+        pendingChanges.removeIf(change -> change.type == ComponentChange.Type.ADD && change.componentId.equals(componentId));
+        // Иначе добавляем REMOVE
+        pendingChanges.add(new ComponentChange(ComponentChange.Type.REMOVE, componentId, null, null, null));
+    }
+
+    /**
+     * Принудительно удаляет компонент из таблицы и pendingChanges (без проверки роли).
+     * Используется при замене компонента через основные поля.
+     */
+    public void forceRemoveLocal(Long componentId) {
+        if (componentId == null) return;
+
+        // Находим компонент в таблице
+        ProductComponentItemDto itemToRemove = null;
+        for (ProductComponentItemDto item : componentsController.getItems()) {
+            if (item.getComponentId().equals(componentId)) {
+                itemToRemove = item;
+                break;
+            }
+        }
+        if (itemToRemove == null) return;
+
+        // Удаляем из UI
+        componentsController.removeItem(itemToRemove);
 
         // Если есть ADD – удаляем (отмена добавления)
         pendingChanges.removeIf(change -> change.type == ComponentChange.Type.ADD && change.componentId.equals(componentId));
-        // Иначе – REMOVE
+        // Иначе добавляем REMOVE
         pendingChanges.add(new ComponentChange(ComponentChange.Type.REMOVE, componentId, null, null, null));
     }
+
 
     public void updateQuantityLocal(Long componentId, Double newQuantity) {
         if (componentId == null || newQuantity == null) return;

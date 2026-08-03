@@ -5,6 +5,7 @@ import com.fanproduction.gui.client.ApiClient;
 import com.fanproduction.gui.client.ComponentClient;
 import com.fanproduction.gui.client.MaterialClient;
 import com.fanproduction.gui.client.ProductCardClient;
+import com.fanproduction.gui.configurator.AxialWheelCardConfigurator;
 import com.fanproduction.gui.configurator.CardFieldConfigurator;
 import com.fanproduction.gui.configurator.CardFormConfigurator;
 import com.fanproduction.gui.dto.ProductComponentItemDto;
@@ -115,6 +116,13 @@ public class CardFormController {
 
         // ЗАГРУЖАЕМ ДАННЫЕ В ФОРМУ (С ФЛАГОМ SILENT)
         loadExistingCardData();
+
+        //ПЕРЕДАЁМ КОНТРОЛЛЕРЫ В КОНФИГУРАТОР (ЕСЛИ ОСЕВОЕ КОЛЕСО)
+        CardFieldConfigurator configurator = CardFormConfigurator.getConfigurator(cardType);
+        if (configurator instanceof AxialWheelCardConfigurator) {
+            ((AxialWheelCardConfigurator) configurator).setComponentsController(componentsTabController);
+            ((AxialWheelCardConfigurator) configurator).setParentController(this);
+        }
 
         // 2. КНОПКИ
         Button saveButton = new Button("Сохранить");
@@ -827,28 +835,68 @@ public class CardFormController {
         }).start();
     }
 
+    /**
+     * Удаляет все компоненты с указанной ролью и дополнительно по ID.
+     * Используется при замене компонента через основные поля.
+     */
+    private void removeComponentFromProductByRole(String role, Long componentIdToRemove) {
+        if (role == null && componentIdToRemove == null) return;
+        if (componentManager == null) return;
 
-    private void removeComponentFromProductByRole(String role) {
-        if (role == null || role.isEmpty()) return;
+        // 1. Удаляем все компоненты с указанной ролью
+        if (role != null && !role.isEmpty()) {
+            List<ProductComponentItemDto> toRemove = new ArrayList<>();
+            for (ProductComponentItemDto item : componentsTabController.getItems()) {
+                if (role.equals(item.getPosition())) {
+                    toRemove.add(item);
+                }
+            }
+            for (ProductComponentItemDto item : toRemove) {
+                componentManager.forceRemoveLocal(item.getComponentId());
+            }
+        }
 
-        Long cardId = getCurrentCardId();
-        if (cardId == null) return;
+        // 2. Если передан componentId, удаляем и его (на случай, если он не был найден по роли)
+        if (componentIdToRemove != null) {
+            // Проверяем, не был ли уже удалён
+            boolean stillExists = componentsTabController.getItems().stream()
+                    .anyMatch(item -> item.getComponentId().equals(componentIdToRemove));
+            if (stillExists) {
+                componentManager.forceRemoveLocal(componentIdToRemove);
+            }
+        }
+    }
 
+    /**
+     * Обработчик изменения количества компонента в таблице.
+     * Если карточка осевого колеса и компонент — лопатка, обновляем поле bladeCount.
+     */
+    public void onComponentQuantityUpdated(Long componentId, Double newQuantity) {
+        if (!"AXIAL_WHEEL".equals(cardType)) return;
         if (componentsTabController == null) return;
 
-        // Ищем компонент с такой ролью
-        ProductComponentItemDto itemToRemove = null;
+        // Ищем компонент с таким ID и ролью "Лопатка рабочего колеса"
+        ProductComponentItemDto bladeComponent = null;
         for (ProductComponentItemDto item : componentsTabController.getItems()) {
-            if (role.equals(item.getPosition())) {
-                itemToRemove = item;
+            if (item.getComponentId().equals(componentId) && "Лопатка рабочего колеса".equals(item.getPosition())) {
+                bladeComponent = item;
                 break;
             }
         }
 
-        if (itemToRemove == null) return;
+        if (bladeComponent == null) return;
 
-        // Удаляем через менеджер (локально + добавляем в pendingChanges)
-        componentManager.removeLocal(itemToRemove.getComponentId());
+        // Обновляем поле bladeCount
+        setFieldValue("bladeCount", newQuantity.intValue(), true);
+
+        // Обновляем маркировку и формулу
+        CardFieldConfigurator configurator = CardFormConfigurator.getConfigurator(cardType);
+        if (configurator != null) {
+            configurator.refreshFullMarking(fieldControls);
+            if (configurator instanceof AxialWheelCardConfigurator) {
+                ((AxialWheelCardConfigurator) configurator).refreshWheelFormula(fieldControls);
+            }
+        }
     }
 
     /**
@@ -866,9 +914,10 @@ public class CardFormController {
                         : component.getName();
 
                 Platform.runLater(() -> {
-                    // ========== 1. УДАЛЯЕМ СТАРЫЙ КОМПОНЕНТ С ТАКОЙ ЖЕ РОЛЬЮ ==========
+                    // ========== 1. УДАЛЯЕМ СТАРЫЙ КОМПОНЕНТ (по роли и по ID) ==========
                     if (config.addToProduct()) {
-                        removeComponentFromProductByRole(config.role());
+                        // Удаляем все с той же ролью и по ID нового (если он уже есть в таблице)
+                        removeComponentFromProductByRole(config.role(), selectedId);
                     }
 
                     // ========== 2. ЗАПОЛНЯЕМ ТАРГЕТ ПОЛЕ ==========
@@ -883,8 +932,16 @@ public class CardFormController {
 
                     // ========== 4. ДОБАВЛЯЕМ КОМПОНЕНТ В ПРОДУКТ ==========
                     if (config.addToProduct()) {
-                        String role = config.role() != null ? config.role() : "Компонент";
-                        componentManager.addLocal(selectedId, 1.0, role, null);
+                        // Проверяем, не добавлен ли уже этот компонент (после удаления)
+                        boolean alreadyExists = componentsTabController.getItems().stream()
+                                .anyMatch(item -> item.getComponentId().equals(selectedId));
+                        if (!alreadyExists) {
+                            String role = config.role() != null ? config.role() : "Компонент";
+                            componentManager.addLocal(selectedId, 1.0, role, null);
+                        } else {
+                            // Если уже есть, можно обновить количество или просто ничего не делать
+                            System.out.println("Component already exists in table, skipping add");
+                        }
                     }
 
                     // ========== 5. ВЫЗЫВАЕМ ОБРАБОТЧИК КОНФИГУРАТОРА ==========

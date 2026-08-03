@@ -1,5 +1,6 @@
 package com.fanproduction.gui.controller;
 
+import com.fanproduction.gui.client.ComponentClient;
 import com.fanproduction.gui.dto.response.ComponentDto;
 import com.fanproduction.gui.util.TooltipUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -206,6 +207,36 @@ public class ProductComponentsController {
         }
     }
 
+    /**
+     * Асинхронно загружает полные данные компонента по его ID
+     * и обновляет соответствующий DTO в таблице.
+     */
+    private void loadComponentFullData(ProductComponentItemDto dto) {
+        if (dto == null || dto.getComponentId() == null) return;
+
+        new Thread(() -> {
+            try {
+                // Загружаем полные данные компонента
+                ComponentDto component = ComponentClient.getComponentById(dto.getComponentId());
+
+                Platform.runLater(() -> {
+                    // Обновляем все поля DTO
+                    dto.setName(component.getName());
+                    dto.setDesignation(component.getDesignation());
+                    dto.setClassName(component.getClassName());
+                    dto.setVendorCode(component.getVendorCode());
+                    dto.setUnitCode(component.getUnitCode());
+                    dto.setDescription(component.getDescription());
+                    // Обновляем отображение в таблице
+                    refreshItem(dto);
+                });
+            } catch (Exception e) {
+                // Если не удалось загрузить, оставляем как есть
+                System.err.println("Failed to load full component data for ID " + dto.getComponentId() + ": " + e.getMessage());
+            }
+        }).start();
+    }
+
     private void loadComponents() {
         if (productCardId == null) return;
 
@@ -233,6 +264,8 @@ public class ProductComponentsController {
                             dto.setPosition((String) item.get("position"));
                             dto.setNote((String) item.get("note"));
                             componentsList.add(dto);
+                            // Запускаем асинхронную дозагрузку полных данных
+                            loadComponentFullData(dto);
                         }
                         statusLabel.setText("Компонентов: " + componentsList.size());
                     } else {
@@ -248,22 +281,25 @@ public class ProductComponentsController {
 
     @FXML
     private void handleAddComponent() {
+        // 1. Проверка, что карточка создана
         if (productCardId == null) {
             showAlert("Внимание", "Сначала сохраните карточку", Alert.AlertType.WARNING);
             return;
         }
-
+        // 2. Проверка, что выбран компонент
         if (selectedComponentId == null) {
             showAlert("Внимание", "Выберите компонент", Alert.AlertType.WARNING);
             return;
         }
 
+        // 3. Проверка, что менеджер доступен
         if (parentController == null || parentController.getComponentManager() == null) {
             showAlert("Ошибка", "Менеджер компонентов не инициализирован", Alert.AlertType.ERROR);
             return;
         }
-
         Long componentId = selectedComponentId;
+
+        // 4. Чтение и валидация количества
         String quantityText = quantityField.getText().trim();
         Double quantity;
         try {
@@ -274,7 +310,7 @@ public class ProductComponentsController {
             return;
         }
 
-        // Проверяем, не добавлен ли уже этот компонент
+        // 5. Проверка, что компонент не был добавлен ранее
         boolean alreadyExists = componentsList.stream()
                 .anyMatch(c -> c.getComponentId().equals(componentId));
         if (alreadyExists) {
@@ -286,28 +322,23 @@ public class ProductComponentsController {
         addButton.setDisable(true);
         addButton.setText("Сохранение...");
 
-        // Выполняем в отдельном потоке (как было раньше)
-        new Thread(() -> {
+        // 6. Локальное добавление через менеджер
             try {
                 // ========== ВЫЗЫВАЕМ МЕНЕДЖЕР ==========
                 parentController.getComponentManager().addLocal(componentId, quantity, null, null);
 
-                Platform.runLater(() -> {
                     addButton.setDisable(false);
                     addButton.setText("➕ Добавить");
                     quantityField.setText("1.0");
                     clearSelectedComponent();
                     statusLabel.setText("Компонент добавлен (будет сохранён при сохранении карточки)");
-                });
+
             } catch (Exception e) {
-                Platform.runLater(() -> {
                     addButton.setDisable(false);
                     addButton.setText("➕ Добавить");
                     showAlert("Ошибка", "Не удалось добавить компонент: " + e.getMessage(), Alert.AlertType.ERROR);
-                });
                 e.printStackTrace();
             }
-        }).start();
     }
 
     @FXML
@@ -329,7 +360,6 @@ public class ProductComponentsController {
         confirm.setContentText("Удалить компонент \"" + selected.getName() + "\"?");
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
-                new Thread(() -> {
                     try {
                         // ========== ВЫЗЫВАЕМ МЕНЕДЖЕР ==========
                         parentController.getComponentManager().removeLocal(selected.getComponentId());
@@ -338,7 +368,6 @@ public class ProductComponentsController {
                         Platform.runLater(() -> showAlert("Ошибка", "Не удалось удалить компонент: " + e.getMessage(), Alert.AlertType.ERROR));
                         e.printStackTrace();
                     }
-                }).start();
             }
         });
     }
@@ -359,6 +388,8 @@ public class ProductComponentsController {
             parentController.getComponentManager().updateQuantityLocal(item.getComponentId(), newQuantity);
             // Обновляем статус
             statusLabel.setText("Количество обновлено (будет сохранено при сохранении карточки)");
+            // Уведомляем родителя об изменении количества
+            parentController.onComponentQuantityUpdated(item.getComponentId(), newQuantity);
         } catch (Exception e) {
             // Показываем ошибку, если что-то пошло не так
             showAlert("Ошибка", "Не удалось обновить количество: " + e.getMessage(), Alert.AlertType.ERROR);

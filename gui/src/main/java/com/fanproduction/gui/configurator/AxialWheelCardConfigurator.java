@@ -1,10 +1,14 @@
 package com.fanproduction.gui.configurator;
 
 import com.fanproduction.gui.client.ComponentClient;
+import com.fanproduction.gui.controller.CardFormController;
+import com.fanproduction.gui.controller.ProductComponentsController;
+import com.fanproduction.gui.dto.ProductComponentItemDto;
 import com.fanproduction.gui.dto.response.ComponentDto;
 import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import lombok.Setter;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -58,6 +62,11 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
     private boolean initialIsAssembled = false;
     private boolean initialIsWelded = false;
     private String initialExecutionMarking = "";
+
+    @Setter
+    private ProductComponentsController componentsController;
+    @Setter
+    private CardFormController parentController;
 
     // ===================== ВАЛИДАЦИЯ =====================
 
@@ -143,9 +152,7 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
         // 6. Формула колеса
         setupWheelFormulaGeneration(fieldControls);
 
-
         // 7. Слушатели для управления материалом лопатки
-
         // При переключении галочки "Сварное" делаем поле материала редактируемым
         addCheckBoxListener(fieldControls, "isWeldedFromMaterials", () -> {
             TextField bladeMaterialField = getTextField(fieldControls, "bladeMaterial");
@@ -168,13 +175,22 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
             updateFullMarking(fieldControls, false);
         });
 
-        // 8. Полная маркировка
+        //8. Синхронизация bladeCount с компонентом-лопаткой
+        addTextFieldListener(fieldControls, "bladeCount", () -> {
+            if (componentsController != null && parentController != null) {
+                syncBladeCountWithComponent(fieldControls, componentsController, parentController);
+            }
+            updateWheelFormula(fieldControls);
+            updateFullMarking(fieldControls, false);
+        });
+
+        // 9. Полная маркировка
         setupFullMarkingGeneration(fieldControls, existingCardExists);
 
-        // 9. Автозаполнение имени
+        // 10. Автозаполнение имени
         autoFillName(fieldControls, "Колесо осевое", existingCardExists);
 
-        // 10. Синхронизация при загрузке
+        // 11. Синхронизация при загрузке
         if (existingCardExists) {
             storeInitialValues(fieldControls);
 
@@ -191,6 +207,10 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
             TextField wheelDiameterField = getTextField(fieldControls, "wheelDiameter");
             if (wheelDiameterField != null && !wheelDiameterField.getText().isEmpty()) {
                 lastAutoWheelDiameter = wheelDiameterField.getText();
+            }
+
+            if (componentsController != null && parentController != null) {
+                syncBladeCountWithComponent(fieldControls, componentsController, parentController);
             }
         }
     }
@@ -361,6 +381,14 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
             formulaField.setText(newFormula);
             lastAutoWheelFormula = newFormula;
         }
+    }
+
+    /**
+     * Принудительно обновляет формулу колеса.
+     * Используется при изменении количества лопаток из таблицы.
+     */
+    public void refreshWheelFormula(Map<String, Node> fieldControls) {
+        updateWheelFormula(fieldControls);
     }
 
     // -------------------- Полная маркировка --------------------
@@ -576,6 +604,47 @@ public class AxialWheelCardConfigurator implements CardFieldConfigurator {
                 System.err.println("Failed to load component for blade material: " + e.getMessage());
             }
         }).start();
+    }
+
+    /**
+     * Синхронизирует количество лопаток в таблице компонентов с полем bladeCount.
+     * Вызывается при изменении bladeCount.
+     */
+    public void syncBladeCountWithComponent(Map<String, Node> fieldControls,
+                                            ProductComponentsController componentsController,
+                                            CardFormController parentController) {
+        // Защита от вызова до установки контроллеров
+        if (componentsController == null || parentController == null) return;
+
+        // Получаем текущее значение bladeCount из поля
+        String bladeCountStr = getFieldValue(fieldControls, "bladeCount");
+        Integer bladeCount = null;
+        try {
+            bladeCount = Integer.parseInt(bladeCountStr);
+        } catch (NumberFormatException ignored) {}
+
+        // Ищем компонент "Лопатка рабочего колеса" в таблице (по роли)
+        ProductComponentItemDto bladeComponent = null;
+        for (ProductComponentItemDto item : componentsController.getItems()) {
+            if ("Лопатка рабочего колеса".equals(item.getPosition())) {
+                bladeComponent = item;
+                break;
+            }
+        }
+
+        if (bladeComponent == null) {
+            // Если лопатки ещё нет в таблице – ничего не делаем
+            return;
+        }
+
+        // Если bladeCount изменился и не совпадает с количеством в таблице
+        if (bladeCount != null && !bladeCount.equals(bladeComponent.getQuantity().intValue())) {
+            // Обновляем количество через менеджер (локально)
+            parentController.getComponentManager().updateQuantityLocal(
+                    bladeComponent.getComponentId(),
+                    bladeCount.doubleValue()
+            );
+        }
     }
 
     @Override
