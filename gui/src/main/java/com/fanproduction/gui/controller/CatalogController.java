@@ -58,21 +58,6 @@ public class CatalogController {
     private static final int PAGE_SIZE = 20;
     private String currentTypeFilter = null;
 
-    // Прямое отображение типов (без CardTypeDisplay)
-//    private static final Map<String, String> TYPE_DISPLAY_MAP = new LinkedHashMap<>();
-//
-//    static {
-//        TYPE_DISPLAY_MAP.put("MOTOR", "Электродвигатель");
-//        TYPE_DISPLAY_MAP.put("MOTOR_WHEEL", "Мотор-колесо");
-//        TYPE_DISPLAY_MAP.put("RADIAL_WHEEL", "Колесо радиальное");
-//        TYPE_DISPLAY_MAP.put("AXIAL_WHEEL", "Колесо осевое");
-//        TYPE_DISPLAY_MAP.put("AXIAL_FAN", "Вентилятор осевой");
-//        TYPE_DISPLAY_MAP.put("RADIAL_FAN", "Вентилятор радиальный");
-//        TYPE_DISPLAY_MAP.put("DUCT_FAN", "Вентилятор канальный");
-//        TYPE_DISPLAY_MAP.put("CUP", "Стакан");
-//        TYPE_DISPLAY_MAP.put("ACCESSORY", "Комплектующее");
-//    }
-
     @FXML
     private void initialize() {
         setupFilters();

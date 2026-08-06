@@ -11,6 +11,7 @@ public class ProductMaterialItemDto {
     private Long productMaterialId;
     private Long materialId;
     private String name;
+    private String designation;
     private String className;
     private String standard;
     private String specification;
@@ -19,4 +20,12 @@ public class ProductMaterialItemDto {
     private String unitCode;
     private Double quantityPerUnit;
     private String note;
+
+    public String getDisplayName() {
+        String display = name != null ? name : "";
+        if (designation != null && !designation.isEmpty() && !designation.equals(name)) {
+            display += " (" + designation + ")";
+        }
+        return display;
+    }
 }

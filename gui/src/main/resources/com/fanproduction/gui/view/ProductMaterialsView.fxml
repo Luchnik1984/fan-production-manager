@@ -30,8 +30,8 @@
             <TableColumn fx:id="specificationColumn" text="Тех. параметры" prefWidth="120" />
             <TableColumn fx:id="materialTypeColumn" text="Тип" prefWidth="80" />
             <TableColumn fx:id="vendorCodeColumn" text="Артикул" prefWidth="100" />
-            <TableColumn fx:id="unitColumn" text="Ед. изм." prefWidth="55" minWidth="55" maxWidth="55" resizable="false" />
             <TableColumn fx:id="quantityColumn" text="Кол-во" prefWidth="70" />
+            <TableColumn fx:id="unitColumn" text="Ед. изм." prefWidth="55" minWidth="55" maxWidth="55" resizable="false" />
             <TableColumn fx:id="noteColumn" text="Примечание" prefWidth="150" />
         </columns>
         <columnResizePolicy>
