@@ -2,6 +2,8 @@ package com.fanproduction.gui.controller;
 
 import com.fanproduction.core.util.UserPreferences;
 import com.fanproduction.gui.client.ApiClient;
+import com.fanproduction.gui.dto.response.ApiResponse;
+import com.fanproduction.gui.dto.response.UserDto;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -128,28 +130,35 @@ public class MainWindowController {
         tabPane.getTabs().add(journalTab);
 
         // Вкладка "Карточки" — доступна всем
-        Tab cardsTab = createPlaceholderTab("Карточки", "Каталог продукции");
-        tabPane.getTabs().add(cardsTab);
+        Tab catalogTab = createCatalogTab();
+        tabPane.getTabs().add(catalogTab);
+
+        // Вкладка "Компоненты" — доступна ADMIN и ENGINEER
+        if ("ADMIN".equals(currentUserRole) || "ENGINEER".equals(currentUserRole)) {
+            Tab componentsTab = createComponentsCatalogTab();
+            tabPane.getTabs().add(componentsTab);
+        }
+
+        // Вкладка "Материалы" — доступна
+        if ("ADMIN".equals(currentUserRole) || "ENGINEER".equals(currentUserRole)) {
+            Tab materialsTab = createMaterialsCatalogTab();
+            tabPane.getTabs().add(materialsTab);
+        }
 
         // Вкладка "Документы" — доступна всем
         Tab documentsTab = createPlaceholderTab("Документы", "Генерация ТЗ, паспортов, табличек");
         tabPane.getTabs().add(documentsTab);
 
         // Вкладка "Справочники" — доступна всем
-        Tab referencesTab = createPlaceholderTab("Справочники", "Электродвигатели, материалы, сертификаты");
+        Tab referencesTab = createPlaceholderTab("Справочники", "Декларации, сертификаты");
         tabPane.getTabs().add(referencesTab);
 
-        // Вкладка "Модерация" — ТОЛЬКО ДЛЯ ADMIN
-        if ("ADMIN".equals(currentUserRole)) {
-            Tab moderationTab = createModerationTab();
-            tabPane.getTabs().add(moderationTab);
-        }
 
-        // Вкладка "Журнал аудита" — ТОЛЬКО ДЛЯ ADMIN
-         if ("ADMIN".equals(currentUserRole)) {
-             Tab auditTab = createAuditTab();
-             tabPane.getTabs().add(auditTab);
-         }
+        // Административные вкладки "Модерация" и "Журнал аудита" (в конце, только для ADMIN)
+        if ("ADMIN".equals(currentUserRole)) {
+            tabPane.getTabs().add(createModerationTab());
+            tabPane.getTabs().add(createAuditTab());
+        }
 
         return tabPane;
     }
@@ -301,7 +310,7 @@ public class MainWindowController {
     private void checkApiConnection() {
         new Thread(() -> {
             try {
-                com.fasterxml.jackson.core.type.TypeReference<com.fanproduction.gui.dto.ApiResponse<Object>> typeRef =
+                com.fasterxml.jackson.core.type.TypeReference<ApiResponse<Object>> typeRef =
                         new com.fasterxml.jackson.core.type.TypeReference<>() {};
 
                 ApiClient.get("/test/ping", typeRef);
@@ -343,15 +352,15 @@ public class MainWindowController {
     private void loadCurrentUserInfo() {
         new Thread(() -> {
             try {
-                com.fasterxml.jackson.core.type.TypeReference<com.fanproduction.gui.dto.ApiResponse<com.fanproduction.gui.dto.UserDto>> typeRef =
+                com.fasterxml.jackson.core.type.TypeReference<ApiResponse<UserDto>> typeRef =
                         new com.fasterxml.jackson.core.type.TypeReference<>() {};
 
-                com.fanproduction.gui.dto.ApiResponse<com.fanproduction.gui.dto.UserDto> response =
+                ApiResponse<UserDto> response =
                         ApiClient.get("/users/me", typeRef);
 
                 Platform.runLater(() -> {
                     if (response.isSuccess() && response.getData() != null) {
-                        com.fanproduction.gui.dto.UserDto user = response.getData();
+                        UserDto user = response.getData();
                         currentUserEmail = user.getEmail();
                         currentUserRole = user.getRole();
 
@@ -400,6 +409,28 @@ public class MainWindowController {
             VBox errorBox = new VBox(10);
             errorBox.setStyle("-fx-padding: 20px;");
             errorBox.getChildren().add(new Label("Ошибка загрузки журнала аудита: " + e.getMessage()));
+            tab.setContent(errorBox);
+        }
+
+        return tab;
+    }
+
+    /**
+     * Создаёт вкладку каталога продукции
+     */
+    private Tab createCatalogTab() {
+        Tab tab = new Tab("Карточки");
+        tab.setClosable(false);
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/CatalogView.fxml"));
+            Parent content = loader.load();
+            tab.setContent(content);
+        } catch (IOException e) {
+            e.printStackTrace();
+            VBox errorBox = new VBox(10);
+            errorBox.setStyle("-fx-padding: 20px;");
+            errorBox.getChildren().add(new Label("Ошибка загрузки каталога: " + e.getMessage()));
             tab.setContent(errorBox);
         }
 
@@ -487,5 +518,57 @@ public class MainWindowController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    /**
+     * Создаёт вкладку компонентов.
+     */
+    private Tab createComponentsCatalogTab() {
+        Tab tab = new Tab("Компоненты");
+        tab.setClosable(false);
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/ComponentsCatalogView.fxml"));
+            Parent content = loader.load();
+
+            ComponentsCatalogController controller = loader.getController();
+            controller.setStage(stage);
+
+            tab.setContent(content);
+        } catch (IOException e) {
+            e.printStackTrace();
+            VBox errorBox = new VBox(10);
+            errorBox.setStyle("-fx-padding: 20px;");
+            errorBox.getChildren().add(new Label("Ошибка загрузки справочника компонентов: " + e.getMessage()));
+            tab.setContent(errorBox);
+        }
+
+        return tab;
+    }
+
+    /**
+     * Создаёт вкладку материалов.
+     */
+    private Tab createMaterialsCatalogTab() {
+        Tab tab = new Tab("Материалы");
+        tab.setClosable(false);
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/MaterialsCatalogView.fxml"));
+            Parent content = loader.load();
+
+            MaterialsCatalogController controller = loader.getController();
+            controller.setStage(stage);
+
+            tab.setContent(content);
+        } catch (IOException e) {
+            e.printStackTrace();
+            VBox errorBox = new VBox(10);
+            errorBox.setStyle("-fx-padding: 20px;");
+            errorBox.getChildren().add(new Label("Ошибка загрузки справочника материалов: " + e.getMessage()));
+            tab.setContent(errorBox);
+        }
+
+        return tab;
     }
 }

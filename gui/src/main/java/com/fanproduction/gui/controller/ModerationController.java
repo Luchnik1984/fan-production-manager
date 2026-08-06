@@ -1,11 +1,11 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.gui.dto.BlockRequest;
-import com.fanproduction.gui.dto.RejectRequest;
+import com.fanproduction.gui.dto.request.BlockRequest;
+import com.fanproduction.gui.dto.request.RejectRequest;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fanproduction.gui.client.ApiClient;
-import com.fanproduction.gui.dto.ApiResponse;
-import com.fanproduction.gui.dto.UserDto;
+import com.fanproduction.gui.dto.response.ApiResponse;
+import com.fanproduction.gui.dto.response.UserDto;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleStringProperty;

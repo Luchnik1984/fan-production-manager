@@ -1,8 +1,8 @@
 package com.fanproduction.gui.controller;
 
 import com.fanproduction.gui.client.ApiClient;
-import com.fanproduction.gui.dto.AuthResponse;
-import com.fanproduction.gui.dto.RegisterRequest;
+import com.fanproduction.gui.dto.response.AuthResponse;
+import com.fanproduction.gui.dto.request.RegisterRequest;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -171,7 +171,7 @@ public class RegisterController {
                                 errorLabel.setText(message);
                             } else {
                                 // Если поле не найдено, показываем в общем лейбле
-                                errorLabel.setText("Ошибка: " + message);
+                                showError(message);
                             }
                         });
                     } else {
@@ -186,7 +186,7 @@ public class RegisterController {
 
     /**
      * Парсит ошибки валидации из JSON ответа сервера
-     * Ожидается формат: {"fieldName":"error message","fieldName2":"error message2"}
+     * Использует properties() вместо deprecated fields()
      */
     private Map<String, String> parseValidationErrors(String responseBody) {
         Map<String, String> errors = new HashMap<>();
@@ -195,19 +195,18 @@ public class RegisterController {
         }
 
         try {
-            // Пробуем распарсить как JSON
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             com.fasterxml.jackson.databind.JsonNode node = mapper.readTree(responseBody);
 
             if (node.isObject()) {
-                node.fields().forEachRemaining(entry -> {
+                // Используем properties() вместо fields() (не deprecated)
+                node.properties().forEach(entry -> {
                     String field = entry.getKey();
                     String message = entry.getValue().asText();
                     errors.put(field, message);
                 });
             }
         } catch (Exception ex) {
-            // Если не JSON, возвращаем пустой Map
             System.out.println("Failed to parse validation errors: " + ex.getMessage());
         }
 
@@ -241,5 +240,20 @@ public class RegisterController {
     @FXML
     private void handleBack() {
         goToLogin();
+    }
+
+    private void showError(String message) {
+        // Безопасный показ ошибки
+        if (errorLabel != null) {
+            errorLabel.setText(message);
+            errorLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+        } else {
+            // Если errorLabel не инициализирован, используем alert
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Ошибка");
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+            alert.showAndWait();
+        }
     }
 }

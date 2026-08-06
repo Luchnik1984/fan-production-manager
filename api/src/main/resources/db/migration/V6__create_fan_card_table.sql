@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS fan_card (
     trim_coefficient DOUBLE PRECISION,
     climate_type VARCHAR(10),
     motor_id BIGINT,
+    motor_wheel_id BIGINT,
+    radial_wheel_id BIGINT,
+    axial_wheel_id BIGINT,
     hub_type VARCHAR(50),
     wheel_formula VARCHAR(100),
     wheel_diameter DOUBLE PRECISION,
@@ -18,6 +21,32 @@ CREATE TABLE IF NOT EXISTS fan_card (
     fan_class VARCHAR(20),
     fan_type VARCHAR(30),
     fan_subtype VARCHAR(30),
+
+    -- ========== ЭЛЕКТРИЧЕСКИЕ ПАРАМЕТРЫ ==========
+    power_kw DOUBLE PRECISION,
+    poles INTEGER,
+    voltage INTEGER,
+    voltage_code VARCHAR(10),
+    rated_speed_rpm INTEGER,
+    actual_speed_rpm INTEGER,
+
+    -- ========== ИСПОЛНЕНИЕ ПО НАЗНАЧЕНИЮ ==========
+    general_purpose BOOLEAN DEFAULT TRUE,
+    fireproof BOOLEAN DEFAULT FALSE,
+    fireproof_marking VARCHAR(100),
+    max_temperature INTEGER,
+    explosion_proof BOOLEAN DEFAULT FALSE,
+    explosion_marking VARCHAR(100),
+
+    -- ========== ПОЛНАЯ МАРКИРОВКА ==========
+    full_marking VARCHAR(200),
+
+    -- ========== МАРКИРОВКА КОМПОНЕНТОВ ==========
+    motor_wheel_full_marking VARCHAR(200),
+    radial_wheel_full_marking VARCHAR(200),
+    axial_wheel_full_marking VARCHAR(200),
+    motor_full_marking VARCHAR(200),
+
     FOREIGN KEY (id) REFERENCES base_product_card(id) ON DELETE CASCADE,
     FOREIGN KEY (motor_id) REFERENCES motor_card(id)
     );
@@ -25,5 +54,10 @@ CREATE TABLE IF NOT EXISTS fan_card (
 -- Индексы
 CREATE INDEX IF NOT EXISTS idx_fan_card_size ON fan_card(size);
 CREATE INDEX IF NOT EXISTS idx_fan_card_motor_id ON fan_card(motor_id);
+CREATE INDEX IF NOT EXISTS idx_fan_card_motor_wheel ON fan_card(motor_wheel_id);
+CREATE INDEX IF NOT EXISTS idx_fan_card_radial_wheel ON fan_card(radial_wheel_id);
+CREATE INDEX IF NOT EXISTS idx_fan_card_axial_wheel ON fan_card(axial_wheel_id);
 CREATE INDEX IF NOT EXISTS idx_fan_card_type ON fan_card(fan_type);
 CREATE INDEX IF NOT EXISTS idx_fan_card_class ON fan_card(fan_class);
+CREATE INDEX IF NOT EXISTS idx_fan_card_poles ON fan_card(poles);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fan_card_full_marking ON fan_card(LOWER(full_marking)) WHERE full_marking IS NOT NULL;

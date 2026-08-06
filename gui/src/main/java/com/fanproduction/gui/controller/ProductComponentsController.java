@@ -1,0 +1,530 @@
+package com.fanproduction.gui.controller;
+
+import com.fanproduction.gui.client.ComponentClient;
+import com.fanproduction.gui.dto.response.ComponentDto;
+import com.fanproduction.gui.util.TooltipUtil;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fanproduction.gui.client.ApiClient;
+import com.fanproduction.gui.dto.ProductComponentItemDto;
+import com.fanproduction.gui.dto.response.ApiResponse;
+import javafx.application.Platform;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.util.Duration;
+import lombok.Setter;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
+public class ProductComponentsController {
+
+    @FXML
+    private Button selectComponentButton;
+
+    @FXML
+    private Label selectedComponentLabel;
+
+    @FXML
+    private TextField quantityField;
+
+    @FXML
+    private Button addButton;
+    @FXML
+    private Button deleteButton;
+
+    @FXML
+    private TableView<ProductComponentItemDto> componentsTable;
+
+    @FXML
+    private TableColumn<ProductComponentItemDto, String> nameColumn;
+    @FXML
+    private TableColumn<ProductComponentItemDto, String> classColumn;
+    @FXML
+    private TableColumn<ProductComponentItemDto, Double> quantityColumn;
+    @FXML
+    private TableColumn<ProductComponentItemDto, String> positionColumn;
+    @FXML
+    private TableColumn<ProductComponentItemDto, String> noteColumn;
+    @FXML
+    private TableColumn<ProductComponentItemDto, String> vendorCodeColumn;
+    @FXML
+    private TableColumn<ProductComponentItemDto, String> unitCodeColumn;
+    @FXML
+    private TableColumn<ProductComponentItemDto, String> descriptionColumn;
+    @FXML
+    private Label statusLabel;
+
+    private final ObservableList<ProductComponentItemDto> componentsList = FXCollections.observableArrayList();
+    @Setter
+    private Long productCardId;
+    private Long selectedComponentId;
+    private String selectedComponentName;
+    private String selectedComponentUnitCode;
+    @Setter
+    private CardFormController parentController;
+
+    public void refresh(Long productCardId) {
+        this.productCardId = productCardId;
+        loadComponents();
+        clearSelectedComponent();
+        addButton.setDisable(false);
+    }
+
+    public void showNotSavedMessage() {
+        Platform.runLater(() -> {
+            componentsList.clear();
+            statusLabel.setText("Сохраните карточку, чтобы добавить комплектующие");
+            addButton.setDisable(true);
+            selectComponentButton.setDisable(true);
+        });
+    }
+
+    @FXML
+    private void initialize() {
+        setupTable();
+        setupQuantityValidation();
+    }
+
+    private void setupTable() {
+        // Наименование (только чтение, с подсказкой)
+        nameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getDisplayName()));
+        nameColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
+
+        // Класс (только чтение, с подсказкой)
+        classColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getClassName()));
+        classColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
+
+        // Артикул (только чтение, с подсказкой)
+        vendorCodeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
+                cellData.getValue().getVendorCode() != null ? cellData.getValue().getVendorCode() : ""));
+        vendorCodeColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
+
+        // Количество (редактируемое, с подсказкой)
+        quantityColumn.setCellValueFactory(cellData -> new SimpleDoubleProperty(cellData.getValue().getQuantity()).asObject());
+        quantityColumn.setCellFactory(column -> TooltipUtil.createEditableDoubleTooltipCell());
+        quantityColumn.setOnEditCommit(event -> {
+            ProductComponentItemDto item = event.getRowValue();
+            Double newQuantity = event.getNewValue();
+            if (newQuantity != null && newQuantity > 0) {
+                updateQuantity(item, newQuantity);
+            } else {
+                componentsTable.refresh();
+                showAlert("Ошибка", "Количество должно быть больше 0", Alert.AlertType.ERROR);
+            }
+        });
+
+        // Ед.изм. (только чтение, без подсказки)
+        unitCodeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
+                cellData.getValue().getUnitCode() != null ? cellData.getValue().getUnitCode() : ""));
+
+        // Описание (только чтение, с подсказкой)
+        descriptionColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
+                cellData.getValue().getDescription() != null ? cellData.getValue().getDescription() : ""));
+        descriptionColumn.setCellFactory(column -> TooltipUtil.createTooltipCell());
+
+        // Место установки (редактируемое, с подсказкой)
+        positionColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getPosition()));
+        positionColumn.setCellFactory(column -> TooltipUtil.createEditableStringTooltipCell());
+        positionColumn.setOnEditCommit(event -> {
+            ProductComponentItemDto item = event.getRowValue();
+            String newPosition = event.getNewValue();
+            updatePosition(item, newPosition);
+        });
+
+        // Примечание (редактируемое, с подсказкой)
+        noteColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getNote()));
+        noteColumn.setCellFactory(column -> TooltipUtil.createEditableStringTooltipCell());
+        noteColumn.setOnEditCommit(event -> {
+            ProductComponentItemDto item = event.getRowValue();
+            String newNote = event.getNewValue();
+            updateNote(item, newNote);
+        });
+
+        componentsTable.setItems(componentsList);
+        componentsTable.setEditable(true);
+    }
+
+    private void setupQuantityValidation() {
+        quantityField.textProperty().addListener((obs, old, newVal) -> {
+            if (newVal != null && !newVal.matches("\\d*(\\.\\d*)?")) {
+                quantityField.setText(old);
+            }
+        });
+    }
+
+    private void clearSelectedComponent() {
+        selectedComponentId = null;
+        selectedComponentName = null;
+        selectedComponentUnitCode = null;
+        selectedComponentLabel.setText("Не выбран");
+    }
+
+    @FXML
+    private void handleSelectComponent() {
+        if (productCardId == null) {
+            showAlert("Внимание", "Сначала сохраните карточку", Alert.AlertType.WARNING);
+            return;
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/ComponentSelectorView.fxml"));
+            Parent root = loader.load();
+
+            ComponentSelectorController controller = loader.getController();
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("Выбор компонента");
+            dialogStage.initModality(Modality.WINDOW_MODAL);
+            dialogStage.initOwner(selectComponentButton.getScene().getWindow());
+            dialogStage.setScene(new Scene(root, 450, 550));
+            controller.setDialogStage(dialogStage);
+
+            dialogStage.showAndWait();
+
+            ComponentDto selected = controller.getSelectedComponent();
+            if (selected != null) {
+                selectedComponentId = selected.getId();
+                selectedComponentName = selected.getName();
+                selectedComponentUnitCode = selected.getUnitCode();
+                String display = selectedComponentName;
+                if (selectedComponentUnitCode != null) {
+                    display += " (" + selectedComponentUnitCode + ")";
+                }
+                selectedComponentLabel.setText(display);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            showAlert("Ошибка", "Не удалось открыть окно выбора компонента", Alert.AlertType.ERROR);
+        }
+    }
+
+    /**
+     * Асинхронно загружает полные данные компонента по его ID
+     * и обновляет соответствующий DTO в таблице.
+     */
+    private void loadComponentFullData(ProductComponentItemDto dto) {
+        if (dto == null || dto.getComponentId() == null) return;
+
+        new Thread(() -> {
+            try {
+                // Загружаем полные данные компонента
+                ComponentDto component = ComponentClient.getComponentById(dto.getComponentId());
+
+                Platform.runLater(() -> {
+                    // Обновляем все поля DTO
+                    dto.setName(component.getName());
+                    dto.setDesignation(component.getDesignation());
+                    dto.setClassName(component.getClassName());
+                    dto.setVendorCode(component.getVendorCode());
+                    dto.setUnitCode(component.getUnitCode());
+                    dto.setDescription(component.getDescription());
+                    // Обновляем отображение в таблице
+                    refreshItem(dto);
+                });
+            } catch (Exception e) {
+                // Если не удалось загрузить, оставляем как есть
+                System.err.println("Failed to load full component data for ID " + dto.getComponentId() + ": " + e.getMessage());
+            }
+        }).start();
+    }
+
+    private void loadComponents() {
+        if (productCardId == null) return;
+
+        statusLabel.setText("Загрузка...");
+        componentsList.clear();
+
+        new Thread(() -> {
+            try {
+                TypeReference<ApiResponse<List<Map<String, Object>>>> typeRef = new TypeReference<>() {};
+                ApiResponse<List<Map<String, Object>>> response = ApiClient.get(
+                        "/components/product/" + productCardId, typeRef);
+
+                Platform.runLater(() -> {
+                    if (response.isSuccess() && response.getData() != null) {
+                        for (Map<String, Object> item : response.getData()) {
+                            ProductComponentItemDto dto = new ProductComponentItemDto();
+                            dto.setProductComponentId(((Number) item.get("id")).longValue());
+                            dto.setComponentId(((Number) item.get("componentId")).longValue());
+                            dto.setName((String) item.get("componentName"));
+                            dto.setClassName((String) item.get("componentClass"));
+                            dto.setVendorCode((String) item.get("vendorCode"));
+                            dto.setUnitCode((String) item.get("unitCode"));
+                            dto.setQuantity(item.get("quantity") != null ? ((Number) item.get("quantity")).doubleValue() : 1.0);
+                            dto.setDescription((String) item.get("description"));
+                            dto.setPosition((String) item.get("position"));
+                            dto.setNote((String) item.get("note"));
+                            componentsList.add(dto);
+                            // Запускаем асинхронную дозагрузку полных данных
+                            loadComponentFullData(dto);
+                        }
+                        statusLabel.setText("Компонентов: " + componentsList.size());
+                    } else {
+                        statusLabel.setText("Ошибка загрузки: " + response.getMessage());
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> statusLabel.setText("Ошибка: " + e.getMessage()));
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    @FXML
+    private void handleAddComponent() {
+        // 1. Проверка, что карточка создана
+        if (productCardId == null) {
+            showAlert("Внимание", "Сначала сохраните карточку", Alert.AlertType.WARNING);
+            return;
+        }
+        // 2. Проверка, что выбран компонент
+        if (selectedComponentId == null) {
+            showAlert("Внимание", "Выберите компонент", Alert.AlertType.WARNING);
+            return;
+        }
+
+        // 3. Проверка, что менеджер доступен
+        if (parentController == null || parentController.getComponentManager() == null) {
+            showAlert("Ошибка", "Менеджер компонентов не инициализирован", Alert.AlertType.ERROR);
+            return;
+        }
+        Long componentId = selectedComponentId;
+
+        // 4. Чтение и валидация количества
+        String quantityText = quantityField.getText().trim();
+        Double quantity;
+        try {
+            quantity = Double.parseDouble(quantityText);
+            if (quantity <= 0) throw new NumberFormatException();
+        } catch (NumberFormatException e) {
+            showAlert("Ошибка", "Введите корректное количество (больше 0)", Alert.AlertType.ERROR);
+            return;
+        }
+
+        // 5. Проверка, что компонент не был добавлен ранее
+        boolean alreadyExists = componentsList.stream()
+                .anyMatch(c -> c.getComponentId().equals(componentId));
+        if (alreadyExists) {
+            showAlert("Внимание", "Этот компонент уже добавлен. Измените количество в таблице.",
+                    Alert.AlertType.WARNING);
+            return;
+        }
+
+        addButton.setDisable(true);
+        addButton.setText("Сохранение...");
+
+        // 6. Локальное добавление через менеджер
+            try {
+                // ========== ВЫЗЫВАЕМ МЕНЕДЖЕР ==========
+                parentController.getComponentManager().addLocal(componentId, quantity, null, null);
+
+                    addButton.setDisable(false);
+                    addButton.setText("➕ Добавить");
+                    quantityField.setText("1.0");
+                    clearSelectedComponent();
+                    statusLabel.setText("Компонент добавлен (будет сохранён при сохранении карточки)");
+
+            } catch (Exception e) {
+                    addButton.setDisable(false);
+                    addButton.setText("➕ Добавить");
+                    showAlert("Ошибка", "Не удалось добавить компонент: " + e.getMessage(), Alert.AlertType.ERROR);
+                e.printStackTrace();
+            }
+    }
+
+    @FXML
+    private void handleDeleteSelected() {
+        ProductComponentItemDto selected = componentsTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showAlert("Внимание", "Выберите компонент для удаления", Alert.AlertType.WARNING);
+            return;
+        }
+
+        if (parentController == null || parentController.getComponentManager() == null) {
+            showAlert("Ошибка", "Менеджер компонентов не инициализирован", Alert.AlertType.ERROR);
+            return;
+        }
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Подтверждение");
+        confirm.setHeaderText("Удаление компонента");
+        confirm.setContentText("Удалить компонент \"" + selected.getName() + "\"?");
+        confirm.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                    try {
+                        // ========== ВЫЗЫВАЕМ МЕНЕДЖЕР ==========
+                        parentController.getComponentManager().removeLocal(selected.getComponentId());
+                        Platform.runLater(() -> statusLabel.setText("Компонент удалён (изменение будет сохранено при сохранении карточки)"));
+                    } catch (Exception e) {
+                        Platform.runLater(() -> showAlert("Ошибка", "Не удалось удалить компонент: " + e.getMessage(), Alert.AlertType.ERROR));
+                        e.printStackTrace();
+                    }
+            }
+        });
+    }
+
+    /**
+     * Обновляет количество компонента (локально, без отправки на сервер).
+     * Изменение будет сохранено при сохранении карточки.
+     */
+    private void updateQuantity(ProductComponentItemDto item, Double newQuantity) {
+        // Проверяем, что менеджер доступен
+        if (parentController == null || parentController.getComponentManager() == null) {
+            showAlert("Ошибка", "Менеджер компонентов не инициализирован", Alert.AlertType.ERROR);
+            return;
+        }
+
+        try {
+            // Вызываем менеджер для локального обновления количества
+            parentController.getComponentManager().updateQuantityLocal(item.getComponentId(), newQuantity);
+            // Обновляем статус
+            statusLabel.setText("Количество обновлено (будет сохранено при сохранении карточки)");
+            // Уведомляем родителя об изменении количества
+            parentController.onComponentQuantityUpdated(item.getComponentId(), newQuantity);
+        } catch (Exception e) {
+            // Показываем ошибку, если что-то пошло не так
+            showAlert("Ошибка", "Не удалось обновить количество: " + e.getMessage(), Alert.AlertType.ERROR);
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Обновляет позицию компонента (локально, без отправки на сервер).
+     * Изменение будет сохранено при сохранении карточки.
+     */
+    private void updatePosition(ProductComponentItemDto item, String newPosition) {
+        // Проверяем, что менеджер доступен
+        if (parentController == null || parentController.getComponentManager() == null) {
+            showAlert("Ошибка", "Менеджер компонентов не инициализирован", Alert.AlertType.ERROR);
+            return;
+        }
+
+        try {
+            // Вызываем менеджер для локального обновления позиции
+            parentController.getComponentManager().updatePositionLocal(item.getComponentId(), newPosition);
+            // Обновляем статус
+            statusLabel.setText("Позиция обновлена (будет сохранена при сохранении карточки)");
+        } catch (Exception e) {
+            // Показываем ошибку, если что-то пошло не так
+            showAlert("Ошибка", "Не удалось обновить позицию: " + e.getMessage(), Alert.AlertType.ERROR);
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Обновляет примечание компонента (локально, без отправки на сервер).
+     * Изменение будет сохранено при сохранении карточки.
+     */
+    private void updateNote(ProductComponentItemDto item, String newNote) {
+        // Проверяем, что менеджер доступен
+        if (parentController == null || parentController.getComponentManager() == null) {
+            showAlert("Ошибка", "Менеджер компонентов не инициализирован", Alert.AlertType.ERROR);
+            return;
+        }
+
+        try {
+            // Вызываем менеджер для локального обновления примечания
+            parentController.getComponentManager().updateNoteLocal(item.getComponentId(), newNote);
+            // Обновляем статус
+            statusLabel.setText("Примечание обновлено (будет сохранено при сохранении карточки)");
+        } catch (Exception e) {
+            // Показываем ошибку, если что-то пошло не так
+            showAlert("Ошибка", "Не удалось обновить примечание: " + e.getMessage(), Alert.AlertType.ERROR);
+            e.printStackTrace();
+        }
+    }
+
+    private void showAlert(String title, String message, Alert.AlertType type) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    /**
+     * Создаёт ячейку таблицы с всплывающей подсказкой (Tooltip) без задержки.
+     * @param <T> тип данных в ячейке (обычно String)
+     * @return настроенная ячейка
+     */
+    private <T> TableCell<ProductComponentItemDto, T> createTooltipCell() {
+        return new TableCell<>() {
+            @Override
+            protected void updateItem(T item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setTooltip(null);
+                } else {
+                    String text = item.toString();
+                    setText(text);
+                    if (!text.isEmpty()) {
+                        Tooltip tooltip = new Tooltip(text);
+                        tooltip.setShowDelay(Duration.millis(100));
+                        tooltip.setShowDuration(Duration.INDEFINITE);
+                        setTooltip(tooltip);
+                    }
+                }
+            }
+        };
+    }
+
+    public void showLoadingMessage() {
+        Platform.runLater(() -> {
+            componentsList.clear();
+            statusLabel.setText("Загрузка...");
+            addButton.setDisable(true);
+            selectComponentButton.setDisable(true);
+        });
+    }
+
+    public void enableControls() {
+        Platform.runLater(() -> {
+            addButton.setDisable(false);
+            selectComponentButton.setDisable(false);
+        });
+    }
+
+    /**
+     * Возвращает список компонентов для внешнего использования
+     */
+    public ObservableList<ProductComponentItemDto> getItems() {
+        return componentsList;
+    }
+
+    /**
+     * Удаляет компонент из списка
+     */
+    public void removeItem(ProductComponentItemDto item) {
+        if (item != null) {
+            componentsList.remove(item);
+        }
+    }
+
+    public void addItem(ProductComponentItemDto item) {
+        if (item != null) {
+            componentsList.add(item);
+        }
+    }
+
+    public void refreshItem(ProductComponentItemDto item) {
+        int index = componentsList.indexOf(item);
+        if (index >= 0) {
+            componentsList.set(index, item);
+        } else {
+            componentsList.add(item);
+        }
+        componentsTable.refresh();
+    }
+}
+
+

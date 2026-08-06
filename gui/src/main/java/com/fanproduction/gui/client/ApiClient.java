@@ -1,10 +1,16 @@
 package com.fanproduction.gui.client;
 
+import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import lombok.Getter;
+import lombok.Setter;
 
+import java.io.IOException;
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -19,15 +25,9 @@ public class ApiClient {
     private static final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule());
 
+    @Getter
+    @Setter
     private static String authToken;
-
-    public static void setAuthToken(String token) {
-        authToken = token;
-    }
-
-    public static String getAuthToken() {
-        return authToken;
-    }
 
     public static void clearAuthToken() {
         authToken = null;
@@ -61,16 +61,21 @@ public class ApiClient {
     }
 
     public static <T> T get(String path, TypeReference<T> typeReference) throws Exception {
-        HttpRequest request = createRequestBuilder(path)
-                .GET()
-                .build();
+        try {
+            HttpRequest request = createRequestBuilder(path).GET().build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() >= 200 && response.statusCode() < 300) {
-            return objectMapper.readValue(response.body(), typeReference);
-        } else {
-            throw new RuntimeException("API error: " + response.statusCode() + " - " + response.body());
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                return objectMapper.readValue(response.body(), typeReference);
+            } else {
+                throw new RuntimeException("API error: " + response.statusCode() + " - " + response.body());
+            }
+        } catch (ConnectException e) {
+            throw new RuntimeException("Нет соединения с сервером. Проверьте, запущен ли API.", e);
+        } catch (SocketTimeoutException e) {
+            throw new RuntimeException("Сервер не отвечает. Превышено время ожидания.", e);
+        } catch (IOException e) {
+            throw new RuntimeException("Ошибка соединения: " + e.getMessage(), e);
         }
     }
 
@@ -114,12 +119,15 @@ public class ApiClient {
 
     public static <T> T put(String path, Object body, Class<T> responseClass) throws Exception {
         String bodyJson = objectMapper.writeValueAsString(body);
+        System.out.println("=== PUT " + BASE_URL + path);
+        System.out.println("Body: " + bodyJson);
 
         HttpRequest request = createRequestBuilder(path)
                 .PUT(HttpRequest.BodyPublishers.ofString(bodyJson))
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println("Response: " + response.body());
 
         if (response.statusCode() >= 200 && response.statusCode() < 300) {
             return objectMapper.readValue(response.body(), responseClass);
@@ -130,12 +138,15 @@ public class ApiClient {
 
     public static <T> T put(String path, Object body, TypeReference<T> typeReference) throws Exception {
         String bodyJson = objectMapper.writeValueAsString(body);
+        System.out.println("=== PUT " + BASE_URL + path);
+        System.out.println("Body: " + bodyJson);
 
         HttpRequest request = createRequestBuilder(path)
                 .PUT(HttpRequest.BodyPublishers.ofString(bodyJson))
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println("Response: " + response.body());
 
         if (response.statusCode() >= 200 && response.statusCode() < 300) {
             return objectMapper.readValue(response.body(), typeReference);
@@ -171,6 +182,52 @@ public class ApiClient {
             return responseBody;
         } catch (Exception e) {
             return responseBody;
+        }
+    }
+
+    /**
+     * DELETE запрос
+     */
+    public static <T> T delete(String path, TypeReference<T> typeReference) throws Exception {
+        HttpRequest request = createRequestBuilder(path)
+                .DELETE()
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() >= 200 && response.statusCode() < 300) {
+            if (typeReference != null) {
+                return objectMapper.readValue(response.body(), typeReference);
+            }
+            return null;
+        } else {
+            throw new RuntimeException("API error: " + response.statusCode() + " - " + response.body());
+        }
+    }
+
+    /**
+     * DELETE запрос без возвращаемого типа
+     */
+    public static void delete(String path) throws Exception {
+        HttpRequest request = createRequestBuilder(path)
+                .DELETE()
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new RuntimeException("API error: " + response.statusCode() + " - " + response.body());
+        }
+    }
+
+    public static void deleteWithCheck(String path) throws Exception {
+        TypeReference<ApiResponse<Void>> typeRef = new TypeReference<>() {};
+        ApiResponse<Void> response = delete(path, typeRef);
+        if (response == null) {
+            throw new RuntimeException("Ответ сервера пуст");
+        }
+        if (!response.isSuccess()) {
+            throw new RuntimeException(response.getMessage());
         }
     }
 }
