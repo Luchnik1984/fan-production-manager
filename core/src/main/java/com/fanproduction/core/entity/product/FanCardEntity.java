@@ -5,6 +5,10 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+/**
+ * Абстрактная сущность для общих полей вентиляторов.
+ * Используется для осевых, радиальных, канальных и крышных вентиляторов.
+ */
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
@@ -14,14 +18,18 @@ import lombok.NoArgsConstructor;
 public abstract class FanCardEntity extends BaseProductCard {
 
     // ========== ОБЩИЕ ПОЛЯ ==========
+
+    @Column(name = "manufacturer", length = 100)
+    private String manufacturer;
+
+    @Column(name = "series", length = 50)
+    private String series;
+
     @Column(name = "size")
     private Double size;
 
-    @Column(name = "execution", length = 50)
-    private String execution;
-
-    @Column(name = "trim_coefficient")
-    private Double trimCoefficient;
+    @Column(name = "marking", length = 100)
+    private String marking;
 
     @Column(name = "climate_type", length = 10)
     private String climateType;
@@ -68,7 +76,17 @@ public abstract class FanCardEntity extends BaseProductCard {
     @Column(name = "fan_subtype", length = 30)
     private String fanSubtype;
 
+    @Column(name = "is_partner_production")
+    private Boolean isPartnerProduction = false;
+
+    @Column(name = "is_own_production")
+    private Boolean isOwnProduction = false;
+
+    @Column(name = "max_speed_rpm")
+    private Integer maxSpeedRpm;
+
     // ========== ЭЛЕКТРИЧЕСКИЕ ПАРАМЕТРЫ ==========
+
     @Column(name = "power_kw")
     private Double powerKw;
 
@@ -88,6 +106,7 @@ public abstract class FanCardEntity extends BaseProductCard {
     private Integer actualSpeedRpm;
 
     // ========== ИСПОЛНЕНИЕ ПО НАЗНАЧЕНИЮ ==========
+
     @Column(name = "general_purpose")
     private Boolean generalPurpose = true;
 
@@ -107,10 +126,12 @@ public abstract class FanCardEntity extends BaseProductCard {
     private String explosionMarking;
 
     // ========== ПОЛНАЯ МАРКИРОВКА ==========
+
     @Column(name = "full_marking", length = 200, unique = true)
     private String fullMarking;
 
     // ========== МАРКИРОВКА КОМПОНЕНТОВ ==========
+
     @Column(name = "motor_wheel_full_marking", length = 200)
     private String motorWheelFullMarking;
 
