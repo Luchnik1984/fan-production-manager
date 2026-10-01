@@ -18,11 +18,14 @@ public class DuctFanCardEntity extends FanCardEntity {
     @Column(name = "duct_size", length = 50)
     private String ductSize;
 
-    @Column(name = "execution_type", length = 20)
-    private String executionType;
+    @Column(name = "series", length = 20)
+    private String series;
 
     @Column(name = "duct_fan_type", length = 20)
     private String ductFanType;
+
+    @Column(name = "hub_component_id")
+    private Long hubComponentId;
 
     @Column(name = "wheel_size")
     private Integer wheelSize;

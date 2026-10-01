@@ -18,7 +18,7 @@ public class RadialWheelCardEntity extends BaseProductCard {
     private String manufacturer;
 
     @Column(name = "series", length = 50)
-    private String series;                     // НОВОЕ ПОЛЕ: серия колеса (КЦ, РК)
+    private String series;                     //  серия колеса (КЦ, РК)
 
     @Column(name = "size")
     private Double size;                       // размер колеса (220, 560)
