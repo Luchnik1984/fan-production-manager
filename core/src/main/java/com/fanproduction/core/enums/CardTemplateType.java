@@ -4,6 +4,13 @@ import lombok.Getter;
 
 /**
  * Типы карточек продукции.
+ * <p>
+ * Для системных карточек (MOTOR, MOTOR_WHEEL, RADIAL_WHEEL, AXIAL_WHEEL, CUP, ACCESSORY)
+ * используется жёстко заданный набор полей и логика в конфигураторах.
+ * <p>
+ * Для FAN — все вентиляторы (осевые, радиальные, канальные, крышные, струйные и др.)
+ * создаются через конструктор шаблонов. Поля и правило маркировки определяются
+ * шаблоном, привязанным к конкретной серии.
  */
 @Getter
 public enum CardTemplateType {
@@ -11,12 +18,7 @@ public enum CardTemplateType {
     MOTOR_WHEEL("Мотор-колесо", "motorWheel"),
     RADIAL_WHEEL("Колесо радиальное", "radialWheel"),
     AXIAL_WHEEL("Колесо осевое", "axialWheel"),
-    AXIAL_FAN("Вентилятор осевой", "axialFan"),
-    RADIAL_FAN("Вентилятор радиальный", "radialFan"),
-    DUCT_FAN("Вентилятор канальный", "ductFan"),
-    ROOF_LOW_PROFILE_FAN("Вентилятор крышный низкопрофильный", "roofLowProfileFan"),
-    ROOF_RADIAL_FAN("Вентилятор крышный радиальный", "roofRadialFan"),
-    ROOF_AXIAL_FAN("Вентилятор крышный осевой", "roofAxialFan"),
+    FAN("Вентилятор", "fan"),
     CUP("Стакан", "cup"),
     ACCESSORY("Комплектующее", "accessory");
 
