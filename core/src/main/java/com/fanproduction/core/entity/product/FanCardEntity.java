@@ -4,18 +4,28 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.util.Map;
 
 /**
- * Абстрактная сущность для общих полей вентиляторов.
- * Используется для осевых, радиальных, канальных и крышных вентиляторов.
+ * Сущность карточки вентилятора.
+ * Используется для всех типов вентиляторов: осевых, радиальных, канальных,
+ * крышных, струйных и любых других, создаваемых через конструктор шаблонов.
+ * <p>
+ * Системные поля хранятся в отдельных колонках (для поиска и фильтрации).
+ * Пользовательские поля хранятся в JSONB-поле dynamic_fields.
+ * <p>
+ * Каждая карточка привязана к конкретной версии шаблона (template_version_id),
+ * что позволяет безопасно изменять шаблоны, не ломая уже созданные карточки.
  */
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @Entity
 @Table(name = "fan_card")
-@Inheritance(strategy = InheritanceType.JOINED)
-public abstract class FanCardEntity extends BaseProductCard {
+public class FanCardEntity extends BaseProductCard {
 
     // ========== ОБЩИЕ ПОЛЯ ==========
 
@@ -34,6 +44,14 @@ public abstract class FanCardEntity extends BaseProductCard {
     @Column(name = "climate_type", length = 10)
     private String climateType;
 
+    @Column(name = "is_partner_production")
+    private Boolean isPartnerProduction = false;
+
+    @Column(name = "is_own_production")
+    private Boolean isOwnProduction = false;
+
+    // ========== ССЫЛКИ НА КОМПОНЕНТЫ ==========
+
     @Column(name = "motor_id")
     private Long motorId;
 
@@ -45,6 +63,8 @@ public abstract class FanCardEntity extends BaseProductCard {
 
     @Column(name = "axial_wheel_id")
     private Long axialWheelId;
+
+    // ========== ИНФОРМАЦИОННЫЕ ПОЛЯ ==========
 
     @Column(name = "hub_type", length = 50)
     private String hubType;
@@ -76,15 +96,6 @@ public abstract class FanCardEntity extends BaseProductCard {
     @Column(name = "fan_subtype", length = 30)
     private String fanSubtype;
 
-    @Column(name = "is_partner_production")
-    private Boolean isPartnerProduction = false;
-
-    @Column(name = "is_own_production")
-    private Boolean isOwnProduction = false;
-
-    @Column(name = "max_speed_rpm")
-    private Integer maxSpeedRpm;
-
     // ========== ЭЛЕКТРИЧЕСКИЕ ПАРАМЕТРЫ ==========
 
     @Column(name = "power_kw")
@@ -104,6 +115,9 @@ public abstract class FanCardEntity extends BaseProductCard {
 
     @Column(name = "actual_speed_rpm")
     private Integer actualSpeedRpm;
+
+    @Column(name = "max_speed_rpm")
+    private Integer maxSpeedRpm;
 
     // ========== ИСПОЛНЕНИЕ ПО НАЗНАЧЕНИЮ ==========
 
@@ -143,4 +157,21 @@ public abstract class FanCardEntity extends BaseProductCard {
 
     @Column(name = "motor_full_marking", length = 200)
     private String motorFullMarking;
+
+    // ========== ПОЛЯ КОНСТРУКТОРА ШАБЛОНОВ ==========
+
+    /**
+     * Ссылка на конкретную версию шаблона, по которой создана карточка.
+     * FK на fan_template_version будет добавлен позже (Спринт 7, миграция V28).
+     */
+    @Column(name = "template_version_id")
+    private Long templateVersionId;
+
+    /**
+     * Пользовательские поля, определённые в шаблоне.
+     * Формат: {"ductSize": "40-20", "wheelSize": 22.2, ...}
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "dynamic_fields", columnDefinition = "jsonb")
+    private Map<String, Object> dynamicFields;
 }
