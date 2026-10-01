@@ -2,7 +2,7 @@ package com.fanproduction.services;
 
 import com.fanproduction.core.dto.ProfileDto;
 import com.fanproduction.core.dto.UserDto;
-import com.fanproduction.core.entity.UserEntity;
+import com.fanproduction.core.entity.user.UserEntity;
 import com.fanproduction.core.enums.UserStatus;
 
 import java.util.List;

@@ -2,15 +2,20 @@ package com.fanproduction.gui.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fanproduction.gui.client.ApiClient;
-import com.fanproduction.gui.dto.ApiResponse;
-import com.fanproduction.gui.dto.AuditLogDto;
+import com.fanproduction.gui.dto.response.ApiResponse;
+import com.fanproduction.gui.dto.response.AuditLogDto;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -126,6 +131,9 @@ public class AuditController {
         ACTION_RUSSIAN_MAP.put("UPDATE_PROFILE", "Обновление профиля");
         ACTION_RUSSIAN_MAP.put("CHANGE_PASSWORD", "Смена пароля");
 
+        // Аудит
+        ACTION_RUSSIAN_MAP.put("UPDATE_AUDIT_SETTINGS", "Изменение настроек аудита");
+
         // Создаем обратный маппинг (русский -> английский)
         for (Map.Entry<String, String> entry : ACTION_RUSSIAN_MAP.entrySet()) {
             ACTION_ENGLISH_MAP.put(entry.getValue(), entry.getKey());
@@ -173,7 +181,6 @@ public class AuditController {
         setupFilters();
         setupTable();
         loadAuditLogs();
-
     }
 
     /**
@@ -229,7 +236,7 @@ public class AuditController {
                 new SimpleStringProperty(cellData.getValue().getIpAddress() != null ?
                         cellData.getValue().getIpAddress() : ""));
 
-        actionColumn.setCellFactory(column -> new TableCell<AuditLogDto, String>() {
+        actionColumn.setCellFactory(column -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
@@ -391,6 +398,34 @@ public class AuditController {
                 exportToCsv();
             }
         });
+    }
+
+    @FXML
+    private void handleOpenSettings() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/AuditSettingsView.fxml"));
+            Parent root = loader.load();
+
+            AuditSettingsController controller = loader.getController();
+
+            Stage stage = new Stage();
+            stage.setTitle("Настройки аудита");
+            stage.initModality(Modality.WINDOW_MODAL);
+            stage.initOwner(auditTable.getScene().getWindow());
+            stage.setScene(new Scene(root, 680, 580));
+            stage.setResizable(false);
+
+            controller.setDialogStage(stage);
+
+            stage.showAndWait();
+
+            // После закрытия окна настроек обновляем таблицу (если изменились фильтры)
+            refresh();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            showAlert("Ошибка", "Не удалось открыть окно настроек: " + e.getMessage(), Alert.AlertType.ERROR);
+        }
     }
 
 

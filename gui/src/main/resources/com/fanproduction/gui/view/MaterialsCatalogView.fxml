@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="10" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.fanproduction.gui.controller.MaterialsCatalogController">
+    <padding>
+        <Insets bottom="10" left="10" right="10" top="10" />
+    </padding>
+
+    <!-- Верхняя панель: поиск -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Поиск:" />
+        <TextField fx:id="searchField" promptText="Наименование, ГОСТ или артикул..." prefWidth="250" />
+        <Button fx:id="searchButton" text="Найти" onAction="#handleSearch" />
+        <Button fx:id="refreshButton" text="Обновить" onAction="#handleRefresh" />
+        <Region HBox.hgrow="ALWAYS" />
+        <Label fx:id="statusLabel" text="Всего: 0" />
+    </HBox>
+
+    <!-- SplitPane: дерево категорий + таблица -->
+    <SplitPane dividerPositions="0.25" VBox.vgrow="ALWAYS">
+        <TreeView fx:id="categoryTreeView" />
+
+        <VBox spacing="10">
+            <TableView fx:id="materialsTable" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn fx:id="nameColumn" text="Наименование" prefWidth="200" />
+                    <TableColumn fx:id="classNameColumn" text="Класс" prefWidth="150" />
+                    <TableColumn fx:id="unitColumn" text="Ед. изм." prefWidth="55" minWidth="55" maxWidth="55" resizable="false" />
+                    <TableColumn fx:id="standardColumn" text="ГОСТ/ТУ" prefWidth="100" />
+                    <TableColumn fx:id="specificationColumn" text="Тех. параметры" prefWidth="150" />
+                    <TableColumn fx:id="materialTypeColumn" text="Тип" prefWidth="70" minWidth="70" maxWidth="70" resizable="false"/>
+                    <TableColumn fx:id="vendorCodeColumn" text="Артикул" prefWidth="100" />
+                    <TableColumn fx:id="descriptionColumn" text="Описание" prefWidth="200" />
+                </columns>
+                <columnResizePolicy>
+                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+                </columnResizePolicy>
+            </TableView>
+        </VBox>
+    </SplitPane>
+
+    <!-- Нижняя панель: действия -->
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button fx:id="createCategoryButton" text="📁 Создать категорию" onAction="#handleCreateCategory" />
+        <Button fx:id="createClassButton" text="📂 Создать класс" onAction="#handleCreateClass" />
+        <Button fx:id="createButton" text="➕ Создать материал" onAction="#handleCreate" />
+        <Button fx:id="editButton" text="✏ Редактировать" onAction="#handleEdit" />
+        <Button fx:id="deleteButton" text="🗑 Удалить" onAction="#handleDelete" />
+        <Button fx:id="exportButton" text="📎 Экспорт в Excel" onAction="#handleExportToExcel" />
+    </HBox>
+</VBox>

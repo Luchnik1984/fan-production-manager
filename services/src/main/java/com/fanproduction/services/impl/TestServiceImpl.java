@@ -1,9 +1,9 @@
 package com.fanproduction.services.impl;
 
-import com.fanproduction.core.entity.UserEntity;
+import com.fanproduction.core.entity.user.UserEntity;
 import com.fanproduction.core.enums.Role;
 import com.fanproduction.core.enums.UserStatus;
-import com.fanproduction.repositories.UserRepository;
+import com.fanproduction.repositories.user.UserRepository;
 import com.fanproduction.services.TestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;

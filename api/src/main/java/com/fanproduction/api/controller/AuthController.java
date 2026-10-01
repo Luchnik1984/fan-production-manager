@@ -1,10 +1,10 @@
 package com.fanproduction.api.controller;
 
-import com.fanproduction.api.dto.AuthRequest;
-import com.fanproduction.api.dto.AuthResponse;
-import com.fanproduction.api.dto.RegisterRequest;
+import com.fanproduction.api.dto.request.AuthRequest;
+import com.fanproduction.api.dto.response.AuthResponse;
+import com.fanproduction.api.dto.request.RegisterRequest;
 import com.fanproduction.api.security.JwtService;
-import com.fanproduction.core.entity.UserEntity;
+import com.fanproduction.core.entity.user.UserEntity;
 import com.fanproduction.core.enums.Role;
 import com.fanproduction.core.enums.UserStatus;
 import com.fanproduction.core.security.AdminSecretKeyValidator;
@@ -48,25 +48,16 @@ public class AuthController {
         // Проверяем статус ДО аутентификации
         if (user.getStatus() != UserStatus.ACTIVE) {
             log.warn("User not active: {}, status: {}", request.getEmail(), user.getStatus());
-            String message;
-            switch (user.getStatus()) {
-                case PENDING:
-                    message = "⏳ Ваша регистрация ожидает подтверждения администратором. После подтверждения вы сможете войти в систему.";
-                    break;
-                case REJECTED:
-                    message = "❌ Ваша регистрация отклонена администратором.";
-                    break;
-                case BLOCKED:
-                    message = "🔒 Ваш аккаунт заблокирован. Обратитесь к администратору.";
-                    break;
-                default:
-                    message = "Аккаунт не активирован. Статус: " + user.getStatus();
-                    break;
-            }
+            String message = switch (user.getStatus()) {
+                case PENDING ->
+                        "⏳ Ваша регистрация ожидает подтверждения администратором. После подтверждения вы сможете войти в систему.";
+                case REJECTED -> "❌ Ваша регистрация отклонена администратором.";
+                case BLOCKED -> "🔒 Ваш аккаунт заблокирован. Обратитесь к администратору.";
+                default -> "Аккаунт не активирован. Статус: " + user.getStatus();
+            };
             throw new BadCredentialsException(message);
         }
 
-        try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
@@ -89,32 +80,17 @@ public class AuthController {
 
             return response;
 
-        } catch (Exception e) {
-            log.error("Authentication failed: {}", e.getMessage());
-            throw new BadCredentialsException("Неверный пароль");
-        }
     }
 
     @PostMapping("/register")
     public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
-        log.info("Register attempt for email: {}", request.getEmail());
-
-        // Проверка секретного ключа для ADMIN
         if ("ADMIN".equals(request.getRole())) {
             if (!AdminSecretKeyValidator.validate(request.getSecretKey())) {
-                throw new BadCredentialsException("Invalid admin secret key");
+                throw new IllegalArgumentException("Неверный секретный ключ администратора");
             }
         }
 
-        // Проверка, что роль существует
-        Role role;
-        try {
-            role = Role.valueOf(request.getRole());
-        } catch (IllegalArgumentException e) {
-            throw new BadCredentialsException("Invalid role: " + request.getRole());
-        }
-
-        // Создаём пользователя (пароль хешируется здесь, НЕ в UserService!)
+        Role role = Role.valueOf(request.getRole());
         UserEntity newUser = new UserEntity();
         newUser.setEmail(request.getEmail().trim().toLowerCase());
         newUser.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -122,13 +98,7 @@ public class AuthController {
         newUser.setLastName(request.getLastName());
         newUser.setPhone(request.getPhone());
         newUser.setRole(role);
-
-        // Устанавливаем статус: ADMIN сразу ACTIVE, остальные PENDING
-        if (role == Role.ADMIN) {
-            newUser.setStatus(UserStatus.ACTIVE);
-        } else {
-            newUser.setStatus(UserStatus.PENDING);
-        }
+        newUser.setStatus(role == Role.ADMIN ? UserStatus.ACTIVE : UserStatus.PENDING);
 
         UserEntity savedUser = userService.register(newUser);
 
@@ -138,8 +108,6 @@ public class AuthController {
         response.setToken(token);
         response.setEmail(savedUser.getEmail());
         response.setRole(savedUser.getRole().name());
-
-        log.info("User registered: {}", savedUser.getEmail());
 
         return response;
     }

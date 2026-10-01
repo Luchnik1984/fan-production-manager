@@ -2,10 +2,10 @@ package com.fanproduction.gui.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fanproduction.gui.client.ApiClient;
-import com.fanproduction.gui.dto.ApiResponse;
-import com.fanproduction.gui.dto.ChangePasswordRequest;
-import com.fanproduction.gui.dto.UpdateProfileRequest;
-import com.fanproduction.gui.dto.UserDto;
+import com.fanproduction.gui.dto.response.ApiResponse;
+import com.fanproduction.gui.dto.request.ChangePasswordRequest;
+import com.fanproduction.gui.dto.request.UpdateProfileRequest;
+import com.fanproduction.gui.dto.response.UserDto;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
@@ -77,7 +77,8 @@ public class ProfileController {
         new Thread(() -> {
             try {
                 ApiResponse<UserDto> response = ApiClient.get("/users/me",
-                        new TypeReference<ApiResponse<UserDto>>() {});
+                        new TypeReference<>() {
+                        });
 
                 Platform.runLater(() -> {
                     if (response.isSuccess() && response.getData() != null) {
@@ -143,7 +144,8 @@ public class ProfileController {
         new Thread(() -> {
             try {
                 ApiResponse<Void> response = ApiClient.put("/users/me", request,
-                        new TypeReference<ApiResponse<Void>>() {});
+                        new TypeReference<>() {
+                        });
 
                 Platform.runLater(() -> {
                     if (response.isSuccess()) {
@@ -226,7 +228,8 @@ public class ProfileController {
             new Thread(() -> {
                 try {
                     ApiResponse<Void> response = ApiClient.post("/users/me/change-password", request,
-                            new TypeReference<ApiResponse<Void>>() {});
+                            new TypeReference<>() {
+                            });
 
                     Platform.runLater(() -> {
                         if (response.isSuccess()) {
