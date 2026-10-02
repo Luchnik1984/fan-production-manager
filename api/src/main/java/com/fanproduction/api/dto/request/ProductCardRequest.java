@@ -13,7 +13,7 @@ import java.util.Map;
 public class ProductCardRequest {
 
     /**
-     * Тип карточки (MOTOR, AXIAL_FAN, RADIAL_FAN, DUCT_FAN, CUP, ACCESSORY)
+     * Тип карточки (MOTOR, MOTOR_WHEEL, RADIAL_WHEEL, AXIAL_WHEEL, FAN, CUP, ACCESSORY)
      */
     @NotBlank(message = "Тип карточки обязателен")
     private String cardType;

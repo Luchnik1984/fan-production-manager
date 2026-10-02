@@ -36,7 +36,7 @@ public abstract class BaseProductCard {
     private String code;
 
     /**
-     * Тип карточки (MOTOR, AXIAL_FAN, RADIAL_FAN, DUCT_FAN, CUP, ACCESSORY)
+     * Тип карточки (MOTOR, MOTOR_WHEEL, RADIAL_WHEEL, AXIAL_WHEEL, FAN, CUP, ACCESSORY)
      */
     @Column(name = "card_type", nullable = false, length = 50)
     private String cardType;

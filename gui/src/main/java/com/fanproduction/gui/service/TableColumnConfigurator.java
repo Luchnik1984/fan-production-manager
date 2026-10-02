@@ -88,25 +88,11 @@ public class TableColumnConfigurator {
                 columns.add(createStringColumn("Масса (кг)", "weightKg", 80));
                 break;
 
-            case "AXIAL_FAN":
-                columns.add(createStringColumn("Серия", "seriesName", 120));
+            case "FAN":
+                columns.add(createStringColumn("Производитель", "manufacturer", 120));
+                columns.add(createStringColumn("Серия", "series", 80));
                 columns.add(createStringColumn("Типоразмер", "size", 80));
-                columns.add(createStringColumn("Лопатки", "bladeCount", 80));
-                break;
-
-            case "RADIAL_FAN":
-                columns.add(createStringColumn("Серия", "seriesName", 120));
-                columns.add(createStringColumn("Типоразмер", "size", 80));
-                columns.add(createStringColumn("Лопатки", "bladeCount", 80));
-                break;
-
-            case "DUCT_FAN":
-                columns.add(createStringColumn("Серия", "seriesName", 120));
-                columns.add(createStringColumn("Типоразмер", "ductSize", 80));
-                columns.add(createStringColumn("Исполнение", "executionType", 80));
-                columns.add(createStringColumn("Тип", "ductFanType", 100));
-                columns.add(createStringColumn("Размер колеса", "wheelSize", 80));
-                columns.add(createStringColumn("Напряжение", "voltage", 80));
+                columns.add(createStringColumn("Маркировка", "fullMarking", 200));
                 break;
 
             case "CUP":

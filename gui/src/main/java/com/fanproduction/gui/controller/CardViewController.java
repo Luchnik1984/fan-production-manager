@@ -173,35 +173,6 @@ public class CardViewController {
 
             // ========== СПЕЦИАЛЬНАЯ ОБРАБОТКА ДЛЯ РАЗНЫХ ТИПОВ КАРТОЧЕК ==========
 
-            // Для канального вентилятора: показываем компоненты
-            if ("DUCT_FAN".equals(card.getCardType())) {
-                String ductFanType = (String) fields.get("ductFanType");
-
-                if ("Мотор-колесо".equals(ductFanType)) {
-                    String motorWheelMarking = (String) fields.get("motorWheelFullMarking");
-                    if (motorWheelMarking != null && !motorWheelMarking.isEmpty()) {
-                        addInfoRow(grid, row++, "Мотор-колесо:", motorWheelMarking);
-                    }
-                    Object powerKw = fields.get("powerKw");
-                    if (powerKw != null) {
-                        addInfoRow(grid, row++, "Мощность (КВт):", powerKw.toString());
-                    }
-                } else if ("Радиальное колесо".equals(ductFanType)) {
-                    String radialWheelMarking = (String) fields.get("radialWheelFullMarking");
-                    if (radialWheelMarking != null && !radialWheelMarking.isEmpty()) {
-                        addInfoRow(grid, row++, "Радиальное колесо:", radialWheelMarking);
-                    }
-                    String motorMarking = (String) fields.get("motorFullMarking");
-                    if (motorMarking != null && !motorMarking.isEmpty()) {
-                        addInfoRow(grid, row++, "Электродвигатель:", motorMarking);
-                    }
-                    Object powerKw = fields.get("powerKw");
-                    if (powerKw != null) {
-                        addInfoRow(grid, row++, "Мощность (КВт):", powerKw.toString());
-                    }
-                }
-            }
-
             // Для радиального колеса: специальная обработка компонента ступицы
             if ("RADIAL_WHEEL".equals(card.getCardType())) {
                 Object hubComponentId = fields.get("hubComponentId");
@@ -224,16 +195,6 @@ public class CardViewController {
 
                 Object value = fields.get(fieldName);
                 if (value == null) continue;
-
-                // Пропускаем поля, которые уже показаны выше
-                if ("DUCT_FAN".equals(card.getCardType())) {
-                    if ("powerKw".equals(fieldName)) continue;
-                    if ("motorWheelFullMarking".equals(fieldName) ||
-                            "radialWheelFullMarking".equals(fieldName) ||
-                            "motorFullMarking".equals(fieldName)) {
-                        continue;
-                    }
-                }
 
                 // Специальная логика для огнестойкости и взрывозащиты
                 if ("fireproofMarking".equals(fieldName)) {
@@ -379,54 +340,6 @@ public class CardViewController {
             orderedFields.add("maxTemperature");
             orderedFields.add("explosionProof");
             orderedFields.add("explosionMarking");
-            orderedFields.add("fullMarking");
-
-        } else if ("DUCT_FAN".equals(cardType)) {
-            orderedFields.add("seriesName");
-            orderedFields.add("ductSize");
-            orderedFields.add("executionType");
-            orderedFields.add("ductFanType");
-            orderedFields.add("poles");
-            orderedFields.add("voltage");
-            orderedFields.add("voltageCode");
-            orderedFields.add("ratedSpeedRpm");
-            orderedFields.add("actualSpeedRpm");
-            orderedFields.add("powerKw");
-            orderedFields.add("fullMarking");
-            orderedFields.add("generalPurpose");
-            orderedFields.add("fireproof");
-            orderedFields.add("fireproofMarking");
-            orderedFields.add("maxTemperature");
-            orderedFields.add("explosionProof");
-            orderedFields.add("explosionMarking");
-
-        } else if ("AXIAL_FAN".equals(cardType)) {
-            orderedFields.add("size");
-            orderedFields.add("seriesName");
-            orderedFields.add("execution");
-            orderedFields.add("position");
-            orderedFields.add("climateType");
-            orderedFields.add("motorId");
-            orderedFields.add("hubType");
-            orderedFields.add("bladeCount");
-            orderedFields.add("bladeSlots");
-            orderedFields.add("bladeShape");
-            orderedFields.add("bladeAngle");
-            orderedFields.add("cableSpec");
-            orderedFields.add("fanClass");
-            orderedFields.add("fullMarking");
-
-        } else if ("RADIAL_FAN".equals(cardType)) {
-            orderedFields.add("seriesName");
-            orderedFields.add("size");
-            orderedFields.add("execution");
-            orderedFields.add("climateType");
-            orderedFields.add("motorId");
-            orderedFields.add("radialWheelId");
-            orderedFields.add("housingAngle");
-            orderedFields.add("rotationDirection");
-            orderedFields.add("cableSpec");
-            orderedFields.add("fanClass");
             orderedFields.add("fullMarking");
 
         } else if ("CUP".equals(cardType)) {

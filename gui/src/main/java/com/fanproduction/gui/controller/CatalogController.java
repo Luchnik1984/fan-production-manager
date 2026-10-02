@@ -204,10 +204,7 @@ public class CatalogController {
                  "MOTOR_WHEEL",
                  "AXIAL_WHEEL",
                  "RADIAL_WHEEL",
-                 "DUCT_FAN",
-                 "ROOF_LOW_PROFILE_FAN",
-                 "ROOF_RADIAL_FAN",
-                 "ROOF_AXIAL_FAN",
+                 "FAN",
                  "CUP" -> true;
             default -> false;
         };

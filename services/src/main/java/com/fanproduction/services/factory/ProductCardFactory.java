@@ -13,7 +13,12 @@ import java.util.function.Function;
 /**
  * Фабрика для создания карточек продукции.
  * Использует EnumMap для регистрации поставщиков карточек.
- * Добавление нового типа карточки не требует изменения кода фабрики.
+ * <p>
+ *  Для системных типов (MOTOR, MOTOR_WHEEL, RADIAL_WHEEL, AXIAL_WHEEL, CUP, ACCESSORY)
+ *  * создаются конкретные сущности.
+ * <p>
+ *  * Для FAN используется единая сущность FanCardEntity — все вентиляторы
+ *  * создаются через конструктор шаблонов (модуль fan-template).
  */
 @Component
 public class ProductCardFactory {
@@ -32,9 +37,7 @@ public class ProductCardFactory {
         cardSuppliers.put(CardTemplateType.MOTOR_WHEEL, MotorWheelCardEntity::new);
         cardSuppliers.put(CardTemplateType.RADIAL_WHEEL, RadialWheelCardEntity::new);
         cardSuppliers.put(CardTemplateType.AXIAL_WHEEL, AxialWheelCardEntity::new);
-        cardSuppliers.put(CardTemplateType.AXIAL_FAN, AxialFanCardEntity::new);
-        cardSuppliers.put(CardTemplateType.RADIAL_FAN, RadialFanCardEntity::new);
-        cardSuppliers.put(CardTemplateType.DUCT_FAN, DuctFanCardEntity::new);
+        cardSuppliers.put(CardTemplateType.FAN, FanCardEntity::new);
         cardSuppliers.put(CardTemplateType.CUP, CupCardEntity::new);
         cardSuppliers.put(CardTemplateType.ACCESSORY, AccessoryCardEntity::new);
     }
