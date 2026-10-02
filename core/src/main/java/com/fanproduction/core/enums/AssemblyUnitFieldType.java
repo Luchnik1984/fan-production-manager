@@ -34,15 +34,16 @@ public enum AssemblyUnitFieldType {
     }
 
     /**
-     * Получить все типы вентиляторов, которые могут использовать данный сборочный узел
+     * Получить все типы вентиляторов, которые могут использовать данный сборочный узел.
+     * Так как все вентиляторы теперь имеют тип FAN, возвращаем единственный тип.
      */
     public static List<String> getFanCardTypesForUnit(String unitType) {
         return switch (unitType) {
-            case "MOTOR" -> List.of("DUCT_FAN", "RADIAL_FAN", "AXIAL_FAN",
-                    "ROOF_LOW_PROFILE_FAN", "ROOF_RADIAL_FAN", "ROOF_AXIAL_FAN");
-            case "MOTOR_WHEEL" -> List.of("DUCT_FAN", "ROOF_LOW_PROFILE_FAN");
-            case "RADIAL_WHEEL" -> List.of("DUCT_FAN", "RADIAL_FAN", "ROOF_RADIAL_FAN");
-            case "AXIAL_WHEEL" -> List.of("AXIAL_FAN", "ROOF_AXIAL_FAN");
+            case "MOTOR",
+                 "MOTOR_WHEEL",
+                 "RADIAL_WHEEL",
+                 "AXIAL_WHEEL"
+                    -> List.of("FAN");
             default -> List.of();
         };
     }
