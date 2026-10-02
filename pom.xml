@@ -46,6 +46,7 @@
 
 	<modules>
 		<module>core</module>
+		<module>fan-template</module>
 		<module>repositories</module>
 		<module>services</module>
 		<module>gui</module>
