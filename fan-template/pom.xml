@@ -30,13 +30,13 @@
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
 
-        <!-- Spring Data JPA (транзитивно есть в core, но укажем явно для ясности) -->
+        <!-- Spring Data JPA -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
-        <!-- Spring Context (транзитивно есть в core, но укажем явно) -->
+        <!-- Spring Context -->
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
@@ -49,7 +49,7 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Для работы с JSONB (Map<String, Object> ↔ JSON) -->
+        <!-- Hibernate для работы с JSONB (Map<String, Object> ↔ JSON) -->
         <dependency>
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-core</artifactId>
@@ -66,6 +66,14 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
+
+        <!-- ========== TEST DEPENDENCIES ========== -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
