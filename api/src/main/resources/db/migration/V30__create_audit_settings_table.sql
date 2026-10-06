@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS audit_settings (
     log_card_delete BOOLEAN NOT NULL DEFAULT TRUE,
     log_document_generation BOOLEAN NOT NULL DEFAULT TRUE,
     log_profile_changes BOOLEAN NOT NULL DEFAULT TRUE,
+    log_template_changes BOOLEAN NOT NULL DEFAULT TRUE,
 
     -- Служебные поля
     updated_at TIMESTAMP NOT NULL,
@@ -41,12 +42,14 @@ INSERT INTO audit_settings (
     log_card_delete,
     log_document_generation,
     log_profile_changes,
+    log_template_changes,
     updated_at,
     updated_by
 ) VALUES (
              90,
              50000,
              '0 0 2 * * *',
+             TRUE,
              TRUE,
              TRUE,
              TRUE,
@@ -76,3 +79,4 @@ COMMENT ON COLUMN audit_settings.log_card_update IS 'Логировать изм
 COMMENT ON COLUMN audit_settings.log_card_delete IS 'Логировать удаление карточек продукции';
 COMMENT ON COLUMN audit_settings.log_document_generation IS 'Логировать генерацию документов';
 COMMENT ON COLUMN audit_settings.log_profile_changes IS 'Логировать изменения профиля и пароля';
+COMMENT ON COLUMN audit_settings.log_template_changes IS 'Логировать изменения шаблонов вентиляторов';
