@@ -9,6 +9,7 @@
 -- ============================================================================
 -- Таблица fan_template — логический шаблон (привязан к серии)
 -- ============================================================================
+-- noinspection SqlResolve @ table/"fan_series"
 CREATE TABLE fan_template (
                               id                  BIGSERIAL PRIMARY KEY,
                               series_id           BIGINT NOT NULL,

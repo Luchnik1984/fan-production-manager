@@ -13,10 +13,17 @@ import org.springframework.scheduling.annotation.EnableAsync;
         "com.fanproduction.api",
         "com.fanproduction.core",
         "com.fanproduction.repositories",
-        "com.fanproduction.services"
+        "com.fanproduction.services",
+        "com.fanproduction.template"
 })
-@EnableJpaRepositories(basePackages = "com.fanproduction.repositories")
-@EntityScan(basePackages = "com.fanproduction.core.entity")
+@EnableJpaRepositories(basePackages = {
+        "com.fanproduction.repositories",
+        "com.fanproduction.template.repository"
+})
+@EntityScan(basePackages = {
+        "com.fanproduction.core.entity",
+        "com.fanproduction.template.entity"
+})
 public class ApiApplication {
 
     public static void main(String[] args) {
