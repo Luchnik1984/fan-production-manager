@@ -8,6 +8,7 @@ import com.fanproduction.template.formula.ast.MapExpression;
 import com.fanproduction.template.formula.exception.FormulaException;
 import com.fanproduction.template.formula.function.FormulaFunctions;
 import com.fanproduction.template.formula.parser.FormulaParser;
+import com.fanproduction.template.model.FieldDefinition;
 import com.fanproduction.template.service.ComputedFieldsLibrary;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,9 +20,6 @@ import java.util.Map;
 
 /**
  * Реализация движка исполнения формул DSL.
- * <p>
- * Обходит AST рекурсивно. Для {@link FieldExpression} сначала ищет
- * значение в переданной карте, потом обращается к {@link ComputedFieldsLibrary}.
  */
 @Slf4j
 @Service
@@ -90,6 +88,23 @@ public class FormulaEngineImpl implements FormulaEngine {
         return FormulaFunctions.toStringValue(result);
     }
 
+    @Override
+    public String evaluateFieldDefinition(FieldDefinition field, Map<String, Object> values) {
+        if (field == null) return null;
+        if (field.formula() == null || field.formula().isBlank()) {
+            log.debug("Поле '{}' не имеет формулы — пропущено", field.key());
+            return null;
+        }
+
+        try {
+            return evaluateToString(field.formula(), values);
+        } catch (FormulaException e) {
+            log.warn("Ошибка вычисления поля '{}' по формуле '{}': {}",
+                    field.key(), field.formula(), e.getMessage());
+            return null;
+        }
+    }
+
     // ==========================================================
     // РАЗРЕШЕНИЕ ПОЛЕЙ
     // ==========================================================
@@ -108,7 +123,6 @@ public class FormulaEngineImpl implements FormulaEngine {
         Object direct = values.get(fieldName);
         if (direct != null) return direct;
 
-        // Проверяем, зарегистрировано ли поле как вычисляемое
         if (computedFieldsLibrary.isRegistered(fieldName)) {
             try {
                 return computedFieldsLibrary.evaluate(fieldName, values);
