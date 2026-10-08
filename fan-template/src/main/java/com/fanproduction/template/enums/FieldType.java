@@ -19,5 +19,14 @@ public enum FieldType {
     /** Разделитель-заголовок секции. */
     SEPARATOR,
     /** Скрытое поле (для служебных значений). */
-    HIDDEN
+    HIDDEN,
+    /**
+     * Вычисляемое поле.
+     * <p>
+     * Значение вычисляется по формуле из {@link com.fanproduction.template.model.FieldDefinition}
+     * через {@code FormulaEngine}. Может использоваться как системное
+     * (если formula ссылается на зарегистрированное имя в ComputedFieldsLibrary),
+     * так и пользовательское (если formula — произвольное выражение на DSL).
+     */
+    COMPUTED
 }

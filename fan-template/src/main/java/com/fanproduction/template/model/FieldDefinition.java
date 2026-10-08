@@ -9,6 +9,10 @@ import java.util.Map;
  * Определение поля в шаблоне карточки вентилятора.
  * <p>
  * Расширенная модель (см. FR4.5.2). Сериализуется в JSONB.
+ * <p>
+ * Поле {@code formula} используется только для полей типа
+ * {@link FieldType#COMPUTED}. Формула задаётся на DSL
+ * (см. FR4.5.4.2) и исполняется через {@code FormulaEngine}.
  */
 public record FieldDefinition(
         String key,
@@ -26,6 +30,7 @@ public record FieldDefinition(
         Condition visibleIf,
         Condition requiredIf,
         OnSelectAction onSelect,
-        Integer displayOrder
+        Integer displayOrder,
+        String formula
 ) {
 }
