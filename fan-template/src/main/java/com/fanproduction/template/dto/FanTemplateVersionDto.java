@@ -1,23 +1,22 @@
 package com.fanproduction.template.dto;
 
 import com.fanproduction.template.enums.TemplateStatus;
+import com.fanproduction.template.model.FieldDefinition;
+import com.fanproduction.template.model.MarkingRule;
 
 import java.time.LocalDateTime;
-import java.util.Map;
+import java.util.List;
 
 /**
  * DTO версии шаблона.
- * <p>
- * Поля {@code fieldsJson} и {@code markingRuleJson} — пока как {@code Map}.
- * В подшаге 7.8 будут заменены на типизированные структуры.
  */
 public record FanTemplateVersionDto(
         Long id,
         Long templateId,
         Integer version,
         TemplateStatus status,
-        Map<String, Object> fieldsJson,
-        Map<String, Object> markingRuleJson,
+        List<FieldDefinition> fieldsJson,
+        MarkingRule markingRuleJson,
         LocalDateTime createdAt,
         String createdBy,
         LocalDateTime publishedAt,

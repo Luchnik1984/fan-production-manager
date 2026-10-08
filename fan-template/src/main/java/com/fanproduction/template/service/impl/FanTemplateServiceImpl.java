@@ -8,6 +8,8 @@ import com.fanproduction.template.entity.FanTemplate;
 import com.fanproduction.template.entity.FanTemplateVersion;
 import com.fanproduction.template.enums.TemplateStatus;
 import com.fanproduction.template.exception.TemplateValidationException;
+import com.fanproduction.template.model.FieldDefinition;
+import com.fanproduction.template.model.MarkingRule;
 import com.fanproduction.template.repository.FanTemplateRepository;
 import com.fanproduction.template.repository.FanTemplateVersionRepository;
 import com.fanproduction.template.service.FanTemplateService;
@@ -19,13 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-/**
- * Реализация сервиса управления шаблонами вентиляторов.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -49,8 +47,7 @@ public class FanTemplateServiceImpl implements FanTemplateService {
 
     @Override
     public FanTemplateDto getTemplateById(Long id) {
-        FanTemplate template = findTemplateOrThrow(id);
-        return toTemplateDto(template, null);
+        return toTemplateDto(findTemplateOrThrow(id), null);
     }
 
     @Override
@@ -76,17 +73,15 @@ public class FanTemplateServiceImpl implements FanTemplateService {
     public FanTemplateDto createTemplate(Long seriesId,
                                          String name,
                                          String description,
-                                         Map<String, Object> fieldsJson,
-                                         Map<String, Object> markingRuleJson,
+                                         List<FieldDefinition> fields,
+                                         MarkingRule markingRule,
                                          String createdBy) {
         validateNotEmpty(name, "Наименование шаблона");
 
         if (fanTemplateRepository.existsBySeriesId(seriesId)) {
-            throw new TemplateValidationException(
-                    "Для серии уже существует шаблон: " + seriesId);
+            throw new TemplateValidationException("Для серии уже существует шаблон: " + seriesId);
         }
 
-        // 1. Создаём логический шаблон без current_version_id
         FanTemplate template = new FanTemplate();
         template.setSeriesId(seriesId);
         template.setName(name.trim());
@@ -94,21 +89,17 @@ public class FanTemplateServiceImpl implements FanTemplateService {
         template.setCreatedBy(createdBy);
         FanTemplate savedTemplate = fanTemplateRepository.save(template);
 
-        // 2. Создаём первую DRAFT-версию
         FanTemplateVersion firstVersion = new FanTemplateVersion();
         firstVersion.setTemplateId(savedTemplate.getId());
         firstVersion.setVersion(1);
         firstVersion.setStatus(TemplateStatus.DRAFT);
-        firstVersion.setFieldsJson(fieldsJson != null ? fieldsJson : Map.of());
-        firstVersion.setMarkingRuleJson(markingRuleJson != null ? markingRuleJson : Map.of());
+        firstVersion.setFieldsJson(fields != null ? fields : List.of());
+        firstVersion.setMarkingRuleJson(markingRule != null ? markingRule : MarkingRule.empty());
         firstVersion.setCreatedBy(createdBy);
         fanTemplateVersionRepository.save(firstVersion);
 
         publishAudit(createdBy, AuditAction.TEMPLATE_CREATE,
                 "Создан шаблон: '" + savedTemplate.getName() + "' (серия ID=" + seriesId + ")");
-
-        log.info("Шаблон создан: id={}, seriesId={}, name={}",
-                savedTemplate.getId(), seriesId, savedTemplate.getName());
 
         return toTemplateDto(savedTemplate, null);
     }
@@ -122,17 +113,14 @@ public class FanTemplateServiceImpl implements FanTemplateService {
         if (newName != null && !newName.equals(template.getName())) {
             template.setName(newName);
         }
-
         String newDescription = trimOrNull(description);
         if (!Objects.equals(newDescription, template.getDescription())) {
             template.setDescription(newDescription);
         }
 
         FanTemplate saved = fanTemplateRepository.save(template);
-
         publishAudit(updatedBy, AuditAction.TEMPLATE_UPDATE,
                 "Обновлён шаблон: '" + saved.getName() + "' (ID=" + id + ")");
-
         return toTemplateDto(saved, null);
     }
 
@@ -140,16 +128,9 @@ public class FanTemplateServiceImpl implements FanTemplateService {
     @Transactional
     public void deleteTemplate(Long id, String deletedBy) {
         FanTemplate template = findTemplateOrThrow(id);
-
-        // TODO (Спринт 8+): проверить, что на шаблон не ссылаются карточки.
-        // Пока карточек нет — проверка не нужна.
-
         fanTemplateRepository.delete(template);
-
         publishAudit(deletedBy, AuditAction.TEMPLATE_DELETE,
                 "Удалён шаблон: '" + template.getName() + "' (ID=" + id + ")");
-
-        log.info("Шаблон удалён: id={}, name={}", id, template.getName());
     }
 
     // ==========================================================
@@ -168,8 +149,7 @@ public class FanTemplateServiceImpl implements FanTemplateService {
 
     @Override
     public FanTemplateVersionDto getVersionById(Long versionId) {
-        FanTemplateVersion version = findVersionOrThrow(versionId);
-        return toVersionDto(version);
+        return toVersionDto(findVersionOrThrow(versionId));
     }
 
     @Override
@@ -182,10 +162,10 @@ public class FanTemplateServiceImpl implements FanTemplateService {
 
     @Override
     public List<FanTemplateVersionDto> getAvailableVersions(Long templateId) {
-        List<FanTemplateVersion> versions = fanTemplateVersionRepository
+        return fanTemplateVersionRepository
                 .findByTemplateIdAndStatusIn(templateId,
-                        Set.of(TemplateStatus.PUBLISHED, TemplateStatus.LEGACY));
-        return versions.stream()
+                        Set.of(TemplateStatus.PUBLISHED, TemplateStatus.LEGACY))
+                .stream()
                 .map(this::toVersionDto)
                 .toList();
     }
@@ -199,18 +179,17 @@ public class FanTemplateServiceImpl implements FanTemplateService {
     }
 
     // ==========================================================
-    // VERSION — СОЗДАНИЕ И РЕДАКТИРОВАНИЕ DRAFT
+    // VERSION — СОЗДАНИЕ И РЕДАКТИРОВАНИЕ
     // ==========================================================
 
     @Override
     @Transactional
     public FanTemplateVersionDto createNewVersion(Long templateId,
-                                                  Map<String, Object> fieldsJson,
-                                                  Map<String, Object> markingRuleJson,
+                                                  List<FieldDefinition> fields,
+                                                  MarkingRule markingRule,
                                                   String createdBy) {
         FanTemplate template = findTemplateOrThrow(templateId);
 
-        // Запрет: у шаблона уже есть DRAFT
         if (fanTemplateVersionRepository.existsByTemplateIdAndStatus(templateId, TemplateStatus.DRAFT)) {
             throw new TemplateValidationException(
                     "У шаблона уже есть черновик (DRAFT). Сначала опубликуйте или удалите его.");
@@ -223,18 +202,15 @@ public class FanTemplateServiceImpl implements FanTemplateService {
         version.setTemplateId(templateId);
         version.setVersion(nextVersionNumber);
         version.setStatus(TemplateStatus.DRAFT);
-        version.setFieldsJson(fieldsJson != null ? fieldsJson : Map.of());
-        version.setMarkingRuleJson(markingRuleJson != null ? markingRuleJson : Map.of());
+        version.setFieldsJson(fields != null ? fields : List.of());
+        version.setMarkingRuleJson(markingRule != null ? markingRule : MarkingRule.empty());
         version.setCreatedBy(createdBy);
 
         FanTemplateVersion saved = fanTemplateVersionRepository.save(version);
 
         publishAudit(createdBy, AuditAction.TEMPLATE_UPDATE,
-                "Создана новая черновая версия v" + nextVersionNumber
-                        + " для шаблона '" + template.getName() + "' (ID=" + templateId + ")");
-
-        log.info("Создана новая версия: templateId={}, version={}",
-                templateId, nextVersionNumber);
+                "Создана черновая версия v" + nextVersionNumber
+                        + " для шаблона '" + template.getName() + "'");
 
         return toVersionDto(saved);
     }
@@ -242,8 +218,8 @@ public class FanTemplateServiceImpl implements FanTemplateService {
     @Override
     @Transactional
     public FanTemplateVersionDto updateDraftVersion(Long versionId,
-                                                    Map<String, Object> fieldsJson,
-                                                    Map<String, Object> markingRuleJson,
+                                                    List<FieldDefinition> fields,
+                                                    MarkingRule markingRule,
                                                     String updatedBy) {
         FanTemplateVersion version = findVersionOrThrow(versionId);
 
@@ -252,24 +228,19 @@ public class FanTemplateServiceImpl implements FanTemplateService {
                     "Можно редактировать только DRAFT-версии. Текущий статус: " + version.getStatus());
         }
 
-        if (fieldsJson != null) {
-            version.setFieldsJson(fieldsJson);
-        }
-        if (markingRuleJson != null) {
-            version.setMarkingRuleJson(markingRuleJson);
-        }
+        if (fields != null) version.setFieldsJson(fields);
+        if (markingRule != null) version.setMarkingRuleJson(markingRule);
 
         FanTemplateVersion saved = fanTemplateVersionRepository.save(version);
 
         publishAudit(updatedBy, AuditAction.TEMPLATE_UPDATE,
-                "Обновлён черновик v" + saved.getVersion()
-                        + " шаблона ID=" + saved.getTemplateId());
+                "Обновлён черновик v" + saved.getVersion() + " шаблона ID=" + saved.getTemplateId());
 
         return toVersionDto(saved);
     }
 
     // ==========================================================
-    // VERSION — ЖИЗНЕННЫЙ ЦИКЛ (publish / deprecate / archive)
+    // VERSION — ЖИЗНЕННЫЙ ЦИКЛ
     // ==========================================================
 
     @Override
@@ -284,32 +255,24 @@ public class FanTemplateServiceImpl implements FanTemplateService {
 
         FanTemplate template = findTemplateOrThrow(version.getTemplateId());
 
-        // 1. Старая PUBLISHED → LEGACY
         fanTemplateVersionRepository
                 .findFirstByTemplateIdAndStatus(template.getId(), TemplateStatus.PUBLISHED)
                 .ifPresent(oldPublished -> {
                     oldPublished.setStatus(TemplateStatus.LEGACY);
                     fanTemplateVersionRepository.save(oldPublished);
-                    log.info("Версия v{} переведена в LEGACY (шаблон ID={})",
-                            oldPublished.getVersion(), template.getId());
                 });
 
-        // 2. Новая → PUBLISHED
         version.setStatus(TemplateStatus.PUBLISHED);
         version.setPublishedAt(LocalDateTime.now());
         version.setPublishedBy(publishedBy);
         FanTemplateVersion saved = fanTemplateVersionRepository.save(version);
 
-        // 3. Обновить current_version_id
         template.setCurrentVersionId(saved.getId());
         fanTemplateRepository.save(template);
 
         publishAudit(publishedBy, AuditAction.TEMPLATE_PUBLISH,
                 "Опубликована версия v" + saved.getVersion()
                         + " шаблона '" + template.getName() + "'");
-
-        log.info("Версия опубликована: templateId={}, version={}",
-                template.getId(), saved.getVersion());
 
         return toVersionDto(saved);
     }
@@ -321,7 +284,7 @@ public class FanTemplateServiceImpl implements FanTemplateService {
 
         if (version.getStatus() != TemplateStatus.LEGACY) {
             throw new TemplateValidationException(
-                    "Деприкейт возможен только для LEGACY-версии. Текущий статус: " + version.getStatus());
+                    "Деприкейт возможен только для LEGACY-версии. Текущий: " + version.getStatus());
         }
 
         version.setStatus(TemplateStatus.DEPRECATED);
@@ -340,7 +303,7 @@ public class FanTemplateServiceImpl implements FanTemplateService {
 
         if (version.getStatus() != TemplateStatus.DEPRECATED) {
             throw new TemplateValidationException(
-                    "Архивировать можно только DEPRECATED-версию. Текущий статус: " + version.getStatus());
+                    "Архивировать можно только DEPRECATED-версию. Текущий: " + version.getStatus());
         }
 
         version.setStatus(TemplateStatus.ARCHIVED);
@@ -357,26 +320,21 @@ public class FanTemplateServiceImpl implements FanTemplateService {
     public void deleteVersion(Long versionId, String deletedBy) {
         FanTemplateVersion version = findVersionOrThrow(versionId);
 
-        // Проверяем, что версия в удаляемом статусе
         if (version.getStatus() != TemplateStatus.DRAFT
                 && version.getStatus() != TemplateStatus.ARCHIVED) {
             throw new TemplateValidationException(
-                    "Удалить можно только DRAFT или ARCHIVED версию. Текущий статус: " + version.getStatus());
+                    "Удалить можно только DRAFT или ARCHIVED. Текущий: " + version.getStatus());
         }
 
-        // Проверяем, что это не current_version_id шаблона
         FanTemplate template = findTemplateOrThrow(version.getTemplateId());
         if (Objects.equals(template.getCurrentVersionId(), versionId)) {
-            throw new TemplateValidationException(
-                    "Нельзя удалить текущую опубликованную версию шаблона");
+            throw new TemplateValidationException("Нельзя удалить текущую опубликованную версию");
         }
 
         fanTemplateVersionRepository.delete(version);
 
         publishAudit(deletedBy, AuditAction.TEMPLATE_DELETE,
                 "Удалена версия v" + version.getVersion() + " шаблона ID=" + version.getTemplateId());
-
-        log.info("Версия удалена: versionId={}, version={}", versionId, version.getVersion());
     }
 
     // ==========================================================
