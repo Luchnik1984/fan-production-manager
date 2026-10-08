@@ -1,6 +1,8 @@
 package com.fanproduction.template.entity;
 
 import com.fanproduction.template.enums.TemplateStatus;
+import com.fanproduction.template.model.FieldDefinition;
+import com.fanproduction.template.model.MarkingRule;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,19 +11,14 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
-import java.util.Map;
+import java.util.List;
+
 
 /**
  * Версия шаблона карточки вентилятора.
  * <p>
  * Неизменяемый снимок полей и правила маркировки.
- * После публикации содержимое {@code fieldsJson} и {@code markingRuleJson}
- * не редактируется — создаётся новая версия.
- * <p>
  * Поля {@code fieldsJson} и {@code markingRuleJson} хранятся как JSONB.
- * На этапе US7.3 объявлены как {@code Map<String, Object>}. В US7.8
- * будут заменены на типизированные структуры ({@code List<FieldDefinition>},
- * {@code MarkingRule}).
  */
 @Data
 @NoArgsConstructor
@@ -34,40 +31,29 @@ public class FanTemplateVersion {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * Ссылка на логический шаблон.
-     */
     @Column(name = "template_id", nullable = false)
     private Long templateId;
 
-    /**
-     * Номер версии в рамках шаблона (1, 2, 3...).
-     */
     @Column(name = "version", nullable = false)
     private Integer version;
 
-    /**
-     * Статус версии.
-     */
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private TemplateStatus status;
 
     /**
      * Список полей шаблона (JSONB).
-     * На этапе US7.3 — Map. В US7.8 станет List<FieldDefinition>.
      */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "fields_json", nullable = false, columnDefinition = "jsonb")
-    private Map<String, Object> fieldsJson;
+    private List<FieldDefinition> fieldsJson;
 
     /**
      * Правило маркировки (JSONB).
-     * На этапе US7.3 — Map. В US7.8 станет MarkingRule.
      */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "marking_rule_json", nullable = false, columnDefinition = "jsonb")
-    private Map<String, Object> markingRuleJson;
+    private MarkingRule markingRuleJson;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -84,5 +70,11 @@ public class FanTemplateVersion {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        if (fieldsJson == null) {
+            fieldsJson = List.of();
+        }
+        if (markingRuleJson == null) {
+            markingRuleJson = MarkingRule.empty();
+        }
     }
 }
