@@ -1,10 +1,12 @@
 package com.fanproduction.template.service;
 
+import com.fanproduction.template.enums.ConditionOperator;
 import com.fanproduction.template.enums.FieldType;
 import com.fanproduction.template.enums.RuleElementType;
 import com.fanproduction.template.formula.FormulaEngine;
 import com.fanproduction.template.formula.FormulaEngineImpl;
 import com.fanproduction.template.formula.function.FormulaFunctions;
+import com.fanproduction.template.model.Condition;
 import com.fanproduction.template.model.FieldDefinition;
 import com.fanproduction.template.model.MarkingRule;
 import com.fanproduction.template.model.MarkingRuleElement;
@@ -242,6 +244,253 @@ class MarkingEngineTest {
 
             assertThat(engine.evaluate(rule, Map.of("voltage", 380), List.of()))
                     .isEqualTo("D");
+        }
+    }
+
+    // ==========================================================
+    // CONDITION
+    // ==========================================================
+
+    @Nested
+    @DisplayName("CONDITION")
+    class ConditionTests {
+
+        @Test
+        @DisplayName("EQUALS true → then")
+        void equalsTrue() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    new MarkingRuleElement(
+                            RuleElementType.CONDITION, null, null,
+                            new Condition("isPartner", ConditionOperator.EQUALS, true, null),
+                            List.of(literal("PARTNER")),
+                            List.of(literal("OWN"))
+                    )
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of("isPartner", true), List.of()))
+                    .isEqualTo("PARTNER");
+        }
+
+        @Test
+        @DisplayName("EQUALS false → otherwise")
+        void equalsFalse() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    new MarkingRuleElement(
+                            RuleElementType.CONDITION, null, null,
+                            new Condition("isPartner", ConditionOperator.EQUALS, true, null),
+                            List.of(literal("PARTNER")),
+                            List.of(literal("OWN"))
+                    )
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of("isPartner", false), List.of()))
+                    .isEqualTo("OWN");
+        }
+
+        @Test
+        @DisplayName("EQUALS чисел: 380 и '380' равны")
+        void equalsNumberString() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    new MarkingRuleElement(
+                            RuleElementType.CONDITION, null, null,
+                            new Condition("voltage", ConditionOperator.EQUALS, 380, null),
+                            List.of(literal("YES")),
+                            List.of(literal("NO"))
+                    )
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of("voltage", "380"), List.of()))
+                    .isEqualTo("YES");
+        }
+
+        @Test
+        @DisplayName("NOT_EQUALS")
+        void notEquals() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    new MarkingRuleElement(
+                            RuleElementType.CONDITION, null, null,
+                            new Condition("x", ConditionOperator.NOT_EQUALS, "A", null),
+                            List.of(literal("NOT_A")),
+                            List.of(literal("IS_A"))
+                    )
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of("x", "B"), List.of()))
+                    .isEqualTo("NOT_A");
+            assertThat(engine.evaluate(rule, Map.of("x", "A"), List.of()))
+                    .isEqualTo("IS_A");
+        }
+
+        @Test
+        @DisplayName("NOT_EMPTY: поле заполнено → then")
+        void notEmptyTrue() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    new MarkingRuleElement(
+                            RuleElementType.CONDITION, null, null,
+                            new Condition("position", ConditionOperator.NOT_EMPTY, null, null),
+                            List.of(separator("-"), literal("Г")),
+                            List.of()
+                    )
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of("position", "Г"), List.of()))
+                    .isEqualTo("-Г");
+        }
+
+        @Test
+        @DisplayName("NOT_EMPTY: поле пусто → otherwise")
+        void notEmptyFalse() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    new MarkingRuleElement(
+                            RuleElementType.CONDITION, null, null,
+                            new Condition("position", ConditionOperator.NOT_EMPTY, null, null),
+                            List.of(separator("-"), literal("Г")),
+                            List.of()
+                    )
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of(), List.of()))
+                    .isEmpty();
+            assertThat(engine.evaluate(rule, Map.of("position", ""), List.of()))
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("EMPTY: поле пусто → then")
+        void emptyTrue() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    new MarkingRuleElement(
+                            RuleElementType.CONDITION, null, null,
+                            new Condition("x", ConditionOperator.EMPTY, null, null),
+                            List.of(literal("EMPTY")),
+                            List.of(literal("NOT_EMPTY"))
+                    )
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of(), List.of()))
+                    .isEqualTo("EMPTY");
+        }
+
+        @Test
+        @DisplayName("IN: значение входит в список")
+        void inTrue() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    new MarkingRuleElement(
+                            RuleElementType.CONDITION, null, null,
+                            new Condition("climate", ConditionOperator.IN, null,
+                                    List.of("У1", "У2", "УХЛ1")),
+                            List.of(literal("VALID")),
+                            List.of(literal("INVALID"))
+                    )
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of("climate", "У2"), List.of()))
+                    .isEqualTo("VALID");
+        }
+
+        @Test
+        @DisplayName("IN: значение не входит в список")
+        void inFalse() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    new MarkingRuleElement(
+                            RuleElementType.CONDITION, null, null,
+                            new Condition("climate", ConditionOperator.IN, null,
+                                    List.of("У1", "У2")),
+                            List.of(literal("VALID")),
+                            List.of(literal("INVALID"))
+                    )
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of("climate", "Т3"), List.of()))
+                    .isEqualTo("INVALID");
+        }
+
+        @Test
+        @DisplayName("CONDITION без otherwise ничего не добавляет")
+        void conditionWithoutElse() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    literal("BASE"),
+                    new MarkingRuleElement(
+                            RuleElementType.CONDITION, null, null,
+                            new Condition("x", ConditionOperator.EQUALS, "A", null),
+                            List.of(separator("-"), literal("EXTRA")),
+                            null    // null otherwise
+                    )
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of("x", "A"), List.of()))
+                    .isEqualTo("BASE-EXTRA");
+            assertThat(engine.evaluate(rule, Map.of("x", "B"), List.of()))
+                    .isEqualTo("BASE");
+        }
+
+        @Test
+        @DisplayName("CONDITION без then ничего не добавляет при true")
+        void conditionWithoutThen() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    literal("BASE"),
+                    new MarkingRuleElement(
+                            RuleElementType.CONDITION, null, null,
+                            new Condition("x", ConditionOperator.EQUALS, "A", null),
+                            null,   // null then
+                            List.of(separator("-"), literal("OTHER"))
+                    )
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of("x", "A"), List.of()))
+                    .isEqualTo("BASE");
+            assertThat(engine.evaluate(rule, Map.of("x", "B"), List.of()))
+                    .isEqualTo("BASE-OTHER");
+        }
+
+        @Test
+        @DisplayName("Вложенный CONDITION")
+        void nestedCondition() {
+            // ЕСЛИ isPartner = true → PARTNER
+            // ИНАЧЕ ЕСЛИ hasMotor = true → OWN-MOTOR
+            // ИНАЧЕ → OWN-OTHER
+            MarkingRule rule = new MarkingRule(List.of(
+                    new MarkingRuleElement(
+                            RuleElementType.CONDITION, null, null,
+                            new Condition("isPartner", ConditionOperator.EQUALS, true, null),
+                            List.of(literal("PARTNER")),
+                            List.of(
+                                    new MarkingRuleElement(
+                                            RuleElementType.CONDITION, null, null,
+                                            new Condition("hasMotor", ConditionOperator.EQUALS, true, null),
+                                            List.of(literal("OWN-MOTOR")),
+                                            List.of(literal("OWN-OTHER"))
+                                    )
+                            )
+                    )
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of("isPartner", true), List.of()))
+                    .isEqualTo("PARTNER");
+            assertThat(engine.evaluate(rule,
+                    Map.of("isPartner", false, "hasMotor", true), List.of()))
+                    .isEqualTo("OWN-MOTOR");
+            assertThat(engine.evaluate(rule,
+                    Map.of("isPartner", false, "hasMotor", false), List.of()))
+                    .isEqualTo("OWN-OTHER");
+        }
+
+        @Test
+        @DisplayName("CONDITION без условия — пропускается")
+        void conditionWithoutCondition() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    literal("A"),
+                    new MarkingRuleElement(
+                            RuleElementType.CONDITION, null, null,
+                            null,   // null condition
+                            List.of(literal("X")),
+                            List.of(literal("Y"))
+                    ),
+                    literal("B")
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of(), List.of()))
+                    .isEqualTo("AB");
         }
     }
 
