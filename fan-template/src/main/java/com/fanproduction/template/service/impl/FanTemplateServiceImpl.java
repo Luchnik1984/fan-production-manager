@@ -13,6 +13,7 @@ import com.fanproduction.template.model.MarkingRule;
 import com.fanproduction.template.repository.FanTemplateRepository;
 import com.fanproduction.template.repository.FanTemplateVersionRepository;
 import com.fanproduction.template.service.FanTemplateService;
+import com.fanproduction.template.service.TemplateValidationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -33,6 +34,7 @@ public class FanTemplateServiceImpl implements FanTemplateService {
     private final FanTemplateRepository fanTemplateRepository;
     private final FanTemplateVersionRepository fanTemplateVersionRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final TemplateValidationService templateValidationService;
 
     // ==========================================================
     // TEMPLATE
@@ -253,6 +255,8 @@ public class FanTemplateServiceImpl implements FanTemplateService {
                     "Опубликовать можно только DRAFT-версию. Текущий статус: " + version.getStatus());
         }
 
+        templateValidationService.validate(version);
+
         FanTemplate template = findTemplateOrThrow(version.getTemplateId());
 
         fanTemplateVersionRepository
@@ -394,5 +398,15 @@ public class FanTemplateServiceImpl implements FanTemplateService {
                 version.getPublishedAt(),
                 version.getPublishedBy()
         );
+    }
+
+    // ==========================================================
+    // VALIDATION
+    // ==========================================================
+
+    @Override
+    public List<String> validateVersion(Long versionId) {
+        FanTemplateVersion version = findVersionOrThrow(versionId);
+        return templateValidationService.collectErrors(version);
     }
 }
