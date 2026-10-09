@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 @Slf4j
@@ -197,6 +198,22 @@ public class FanTemplateServiceImpl implements FanTemplateService {
                     "У шаблона уже есть черновик (DRAFT). Сначала опубликуйте или удалите его.");
         }
 
+        // Автокопирование: если fields/markingRule не переданы — копируем из источника
+        List<FieldDefinition> effectiveFields = fields;
+        MarkingRule effectiveRule = markingRule;
+
+        if (effectiveFields == null || effectiveRule == null) {
+            FanTemplateVersion source = resolveSourceForNewVersion(template);
+            if (source != null) {
+                if (effectiveFields == null) {
+                    effectiveFields = source.getFieldsJson();
+                }
+                if (effectiveRule == null) {
+                    effectiveRule = source.getMarkingRuleJson();
+                }
+            }
+        }
+
         int nextVersionNumber = fanTemplateVersionRepository.findMaxVersion(templateId)
                 .orElse(0) + 1;
 
@@ -204,18 +221,26 @@ public class FanTemplateServiceImpl implements FanTemplateService {
         version.setTemplateId(templateId);
         version.setVersion(nextVersionNumber);
         version.setStatus(TemplateStatus.DRAFT);
-        version.setFieldsJson(fields != null ? fields : List.of());
-        version.setMarkingRuleJson(markingRule != null ? markingRule : MarkingRule.empty());
+        version.setFieldsJson(effectiveFields != null ? effectiveFields : List.of());
+        version.setMarkingRuleJson(effectiveRule != null ? effectiveRule : MarkingRule.empty());
         version.setCreatedBy(createdBy);
 
         FanTemplateVersion saved = fanTemplateVersionRepository.save(version);
 
-        publishAudit(createdBy, AuditAction.TEMPLATE_UPDATE,
-                "Создана черновая версия v" + nextVersionNumber
-                        + " для шаблона '" + template.getName() + "'");
+        String auditDetails = "Создана черновая версия v" + nextVersionNumber
+                + " для шаблона '" + template.getName() + "'";
+        if (fields == null || markingRule == null) {
+            auditDetails += " (поля/правило скопированы из предыдущей версии)";
+        }
+        publishAudit(createdBy, AuditAction.TEMPLATE_UPDATE, auditDetails);
+
+        log.info("Создана новая версия: templateId={}, version={}, автокопирование={}",
+                templateId, nextVersionNumber, fields == null || markingRule == null);
 
         return toVersionDto(saved);
     }
+
+
 
     @Override
     @Transactional
@@ -344,6 +369,31 @@ public class FanTemplateServiceImpl implements FanTemplateService {
     // ==========================================================
     // ВСПОМОГАТЕЛЬНЫЕ
     // ==========================================================
+
+    /**
+     * Выбрать версию-источник для автокопирования полей и правила.
+     * <ol>
+     *   <li>{@code current_version_id} — если задан.</li>
+     *   <li>Последняя по номеру версии — если нет current.</li>
+     * </ol>
+     *
+     * @return версия-источник или {@code null}, если у шаблона вообще нет версий
+     */
+    private FanTemplateVersion resolveSourceForNewVersion(FanTemplate template) {
+        // 1. Текущая опубликованная
+        if (template.getCurrentVersionId() != null) {
+            Optional<FanTemplateVersion> current = fanTemplateVersionRepository
+                    .findById(template.getCurrentVersionId());
+            if (current.isPresent()) {
+                return current.get();
+            }
+        }
+
+        // 2. Последняя по номеру версии
+        List<FanTemplateVersion> versions = fanTemplateVersionRepository
+                .findByTemplateIdOrderByVersionDesc(template.getId());
+        return versions.isEmpty() ? null : versions.get(0);
+    }
 
     private FanTemplate findTemplateOrThrow(Long id) {
         return fanTemplateRepository.findById(id)
