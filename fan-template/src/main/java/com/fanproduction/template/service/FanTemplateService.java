@@ -62,4 +62,12 @@ public interface FanTemplateService {
     FanTemplateVersionDto archiveVersion(Long versionId, String updatedBy);
 
     void deleteVersion(Long versionId, String deletedBy);
+
+    // ========== Validation ==========
+
+    /**
+     * Собрать список ошибок валидации версии шаблона.
+     * Используется GUI для предварительной проверки перед публикацией.
+     */
+    List<String> validateVersion(Long versionId);
 }
