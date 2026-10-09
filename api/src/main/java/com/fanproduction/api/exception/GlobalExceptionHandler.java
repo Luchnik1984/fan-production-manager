@@ -1,6 +1,7 @@
 package com.fanproduction.api.exception;
 
 import com.fanproduction.api.dto.response.ApiResponse;
+import com.fanproduction.template.exception.TemplateValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -142,6 +143,17 @@ public class GlobalExceptionHandler {
         if (errorMsg.contains("cup_card")) return "Стакан";
         if (errorMsg.contains("accessory_card")) return "Комплектующее";
         return "Изделие";
+    }
+
+    /**
+     * Обработчик для TemplateValidationException (ошибки валидации шаблонов).
+     */
+    @ExceptionHandler(TemplateValidationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTemplateValidationException(
+            TemplateValidationException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
     /**
