@@ -172,7 +172,6 @@ class TemplateCloneServiceTest {
         @Test
         @DisplayName("Поля и правило копируются в новую DRAFT-версию")
         void fieldsAndRuleCopiedToNewVersion() {
-            MarkingRule rule = MarkingRule.empty();
 
             when(fanTemplateRepository.findById(100L)).thenReturn(Optional.of(sourceTemplate));
             when(fanSeriesRepository.existsById(2L)).thenReturn(true);
