@@ -12,13 +12,20 @@ import java.util.function.Function;
 
 /**
  * Фабрика для создания карточек продукции.
- * Использует EnumMap для регистрации поставщиков карточек.
  * <p>
- *  Для системных типов (MOTOR, MOTOR_WHEEL, RADIAL_WHEEL, AXIAL_WHEEL, CUP, ACCESSORY)
- *  * создаются конкретные сущности.
+ * Использует {@link EnumMap} для регистрации поставщиков карточек.
  * <p>
- *  * Для FAN используется единая сущность FanCardEntity — все вентиляторы
- *  * создаются через конструктор шаблонов (модуль fan-template).
+ * Для системных типов ({@code MOTOR}, {@code MOTOR_WHEEL}, {@code RADIAL_WHEEL},
+ * {@code AXIAL_WHEEL}, {@code CUP}, {@code ACCESSORY}) создаются конкретные сущности.
+ * <p>
+ * Для {@code FAN} используется единая сущность {@link FanCardEntity} —
+ * все вентиляторы создаются через конструктор шаблонов (модуль {@code fan-template})
+ * и сервис {@code FanCardService}. В {@link #createCard} ветка FAN не доходит
+ * до этой фабрики — обрабатывается раньше в {@code ProductCardServiceImpl}.
+ * Регистрация {@code FanCardEntity::new} оставлена для совместимости.
+ * <p>
+ * Метод {@link #applyFields} публичен: используется для обновления существующей
+ * карточки (не создаёт новую сущность с тем же id).
  */
 @Component
 public class ProductCardFactory {
@@ -30,7 +37,7 @@ public class ProductCardFactory {
     }
 
     /**
-     * Регистрация всех поставщиков карточек
+     * Регистрация всех поставщиков карточек.
      */
     private void registerSuppliers() {
         cardSuppliers.put(CardTemplateType.MOTOR, MotorCardEntity::new);
@@ -43,12 +50,12 @@ public class ProductCardFactory {
     }
 
     /**
-     * Создаёт карточку продукции по типу и данным
-     * O(1) - константное время выполнения.
+     * Создаёт карточку продукции по типу и данным.
+     * O(1) — константное время выполнения.
      *
-     * @param cardType тип карточки (из CardTemplateType)
+     * @param cardType тип карточки (из {@link CardTemplateType})
      * @param fields   Map с полями и их значениями
-     * @return созданная сущность (наследник BaseProductCard)
+     * @return созданная сущность (наследник {@link BaseProductCard})
      */
     public BaseProductCard createCard(CardTemplateType cardType, Map<String, Object> fields) {
         CardSupplier supplier = cardSuppliers.get(cardType);
@@ -60,17 +67,28 @@ public class ProductCardFactory {
         BaseProductCard card = supplier.get();
         card.setCardType(cardType.name());
 
-        // Заполняем поля из переданной Map
-        setFields(card, fields);
+        applyFields(card, fields);
 
         return card;
     }
 
     /**
-     * Заполняет поля сущности из Map.
-     * Использует рефлексию для установки значений.
+     * Применить поля к существующей карточке.
+     * <p>
+     * В отличие от {@link #createCard}, не создаёт новую сущность — работает
+     * с уже загруженной. Используется при обновлении карточек, чтобы не потерять
+     * системные поля ({@code createdAt}, {@code createdBy}, {@code code},
+     * {@code isTemporary}).
+     * <p>
+     * Поля, которых нет в {@code fields}, <b>не</b> сбрасываются — семантика
+     * «частичное обновление». Для FAN-карточек используется другой путь
+     * ({@code FanCardService.updateFromValues}), где семантика иная
+     * (форма отправляется целиком).
+     *
+     * @param card   существующая карточка
+     * @param fields поля для применения
      */
-    private void setFields(BaseProductCard card, Map<String, Object> fields) {
+    public void applyFields(BaseProductCard card, Map<String, Object> fields) {
         if (fields == null || fields.isEmpty()) {
             return;
         }
@@ -99,7 +117,7 @@ public class ProductCardFactory {
     }
 
     /**
-     * Рекурсивно ищет поле в классе и его родителях
+     * Рекурсивно ищет поле в классе и его родителях.
      */
     private Field findField(Class<?> clazz, String fieldName) {
         try {
@@ -113,9 +131,6 @@ public class ProductCardFactory {
         }
     }
 
-    /**
-     * Преобразует значение к нужному типу
-     */
     private final Map<Class<?>, Function<Object, Object>> converters = new HashMap<>();
 
     {

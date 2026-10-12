@@ -1,12 +1,13 @@
 package com.fanproduction.services.impl;
 
 import com.fanproduction.core.entity.product.*;
-import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.core.enums.AuditAction;
+import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.core.enums.AssemblyUnitFieldType;
 import com.fanproduction.core.event.AuditEvent;
 import com.fanproduction.core.security.CurrentUserProvider;
 import com.fanproduction.repositories.product.*;
+import com.fanproduction.services.FanCardService;
 import com.fanproduction.services.ProductCardService;
 import com.fanproduction.services.factory.ProductCardFactory;
 import lombok.RequiredArgsConstructor;
@@ -30,23 +31,31 @@ public class ProductCardServiceImpl implements ProductCardService {
     private final RadialWheelCardRepository radialWheelCardRepository;
     private final AxialWheelCardRepository axialWheelCardRepository;
     private final ProductCardFactory cardFactory;
+    private final FanCardService fanCardService;
     private final ApplicationEventPublisher eventPublisher;
     private final CurrentUserProvider currentUserProvider;
 
+    // ==========================================================
+    // CREATE
+    // ==========================================================
 
     @Override
     @Transactional
     public BaseProductCard createCard(CardTemplateType cardType, Map<String, Object> fields, String createdBy) {
+        // FAN — отдельный путь через FanCardService
+        if (cardType == CardTemplateType.FAN) {
+            return createFanCard(fields, createdBy);
+        }
+
+        // Остальные типы — через фабрику
         BaseProductCard card = cardFactory.createCard(cardType, fields);
         card.setCreatedBy(createdBy);
 
-        // Генерируем уникальный код
         String code = generateCode(card);
         card.setCode(code);
 
         BaseProductCard savedCard = productCardRepository.save(card);
 
-        // Публикуем событие аудита
         eventPublisher.publishEvent(new AuditEvent(
                 this,
                 createdBy,
@@ -54,8 +63,35 @@ public class ProductCardServiceImpl implements ProductCardService {
                 "Создана карточка: " + cardType.getDisplayName() + " - " + card.getName()
         ));
 
+        log.info("Карточка создана: type={}, id={}, name={}",
+                cardType, savedCard.getId(), savedCard.getName());
+
         return savedCard;
     }
+
+    private BaseProductCard createFanCard(Map<String, Object> fields, String createdBy) {
+        Object tvIdRaw = fields.get("templateVersionId");
+        if (tvIdRaw == null) {
+            throw new IllegalArgumentException(
+                    "Для FAN-карточки обязательно поле 'templateVersionId'");
+        }
+
+        Long templateVersionId;
+        try {
+            templateVersionId = (tvIdRaw instanceof Number n)
+                    ? n.longValue()
+                    : Long.parseLong(tvIdRaw.toString());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "Поле 'templateVersionId' должно быть числом: " + tvIdRaw);
+        }
+
+        return fanCardService.createFromTemplate(templateVersionId, fields, createdBy);
+    }
+
+    // ==========================================================
+    // UPDATE
+    // ==========================================================
 
     @Override
     @Transactional
@@ -63,19 +99,19 @@ public class ProductCardServiceImpl implements ProductCardService {
         BaseProductCard existingCard = productCardRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Карточка не найдена: " + id));
 
-        // Создаём новую карточку с обновлёнными полями
         CardTemplateType cardType = CardTemplateType.valueOf(existingCard.getCardType());
-        BaseProductCard updatedCard = cardFactory.createCard(cardType, fields);
 
-        // Сохраняем ID и другие неизменяемые поля
-        updatedCard.setId(id);
-        updatedCard.setCode(existingCard.getCode());
-        updatedCard.setCreatedBy(existingCard.getCreatedBy());
-        updatedCard.setCreatedAt(existingCard.getCreatedAt());
+        // FAN — отдельный путь
+        if (cardType == CardTemplateType.FAN) {
+            return fanCardService.updateFromValues(id, fields, getCurrentUser());
+        }
 
-        BaseProductCard savedCard = productCardRepository.save(updatedCard);
+        // Остальные типы: применяем поля к существующей сущности
+        // (не создаём новую с тем же id — так теряются createdAt, code, isTemporary)
+        cardFactory.applyFields(existingCard, fields);
 
-        // Публикуем событие аудита
+        BaseProductCard savedCard = productCardRepository.save(existingCard);
+
         eventPublisher.publishEvent(new AuditEvent(
                 this,
                 getCurrentUser(),
@@ -83,8 +119,15 @@ public class ProductCardServiceImpl implements ProductCardService {
                 "Обновлена карточка: " + savedCard.getName()
         ));
 
+        log.info("Карточка обновлена: type={}, id={}, name={}",
+                cardType, id, savedCard.getName());
+
         return savedCard;
     }
+
+    // ==========================================================
+    // READ
+    // ==========================================================
 
     @Override
     public Optional<BaseProductCard> getCardById(Long id) {
@@ -111,13 +154,16 @@ public class ProductCardServiceImpl implements ProductCardService {
         return productCardRepository.findByNameContainingIgnoreCase(name);
     }
 
+    // ==========================================================
+    // DELETE
+    // ==========================================================
+
     @Override
     @Transactional
     public void deleteCard(Long id) {
         BaseProductCard card = productCardRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Карточка не найдена: " + id));
 
-        // Если карточка временная — удаляем без проверок
         if (card.isTemporary()) {
             productCardRepository.deleteById(id);
             return;
@@ -125,7 +171,6 @@ public class ProductCardServiceImpl implements ProductCardService {
 
         String cardType = card.getCardType();
 
-        // Проверяем только для сборочных узлов (используем AssemblyUnitFieldType)
         if (AssemblyUnitFieldType.fromUnitType(cardType) != null) {
             if (isAssemblyUnitUsedInFanCards(id)) {
                 List<String> usageList = getAssemblyUnitUsageInfo(id);
@@ -147,10 +192,12 @@ public class ProductCardServiceImpl implements ProductCardService {
         ));
     }
 
+    // ==========================================================
+    // CODE GENERATION
+    // ==========================================================
 
     @Override
     public String generateCode(BaseProductCard card) {
-        // TODO: Здесь будет более сложная логика в зависимости от типа вентилятора
         String timestamp = String.valueOf(System.currentTimeMillis()).substring(8);
         String uniqueId = UUID.randomUUID().toString().substring(0, 8);
         return card.getCardType().toLowerCase() + "_" + timestamp + "_" + uniqueId;
@@ -161,41 +208,32 @@ public class ProductCardServiceImpl implements ProductCardService {
         return !productCardRepository.existsByCode(code);
     }
 
-    /**
-     * Получение текущего пользователя (временное решение).
-     */
-    private String getCurrentUser() {
-        String email = currentUserProvider.getCurrentUserEmail();
-        return email != null ? email : "system";
-    }
+    // ==========================================================
+    // TEMPORARY / SEARCH
+    // ==========================================================
 
     @Override
     @Transactional
     public void removeTemporaryFlag(Long id) {
         BaseProductCard card = productCardRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Карточка не найдена"));
-            card.setTemporary(false);
-            productCardRepository.save(card);
+        card.setTemporary(false);
+        productCardRepository.save(card);
     }
-
 
     @Override
     public List<BaseProductCard> searchByFields(String query) {
         String likePattern = "%" + query.toLowerCase() + "%";
 
-        // Поиск по электродвигателям
         List<MotorCardEntity> motors = motorCardRepository.searchByFields(likePattern);
         List<BaseProductCard> results = new ArrayList<>(motors);
 
-        // Поиск по мотор-колёсам
         List<MotorWheelCardEntity> motorWheels = motorWheelCardRepository.searchByFields(likePattern);
         results.addAll(motorWheels);
 
-        // Поиск по радиальным колёсам
         List<RadialWheelCardEntity> radialWheels = radialWheelCardRepository.searchByFields(likePattern);
         results.addAll(radialWheels);
 
-        // Поиск по осевым колёсам
         List<AxialWheelCardEntity> axialWheels = axialWheelCardRepository.searchByFields(likePattern);
         results.addAll(axialWheels);
 
@@ -203,7 +241,7 @@ public class ProductCardServiceImpl implements ProductCardService {
     }
 
     // ==========================================================
-    // ПРОВЕРКА ИСПОЛЬЗОВАНИЯ СБОРОЧНОГО УЗЛА В ВЕНТИЛЯТОРАХ
+    // ПРОВЕРКИ ИСПОЛЬЗОВАНИЯ СБОРОЧНЫХ УЗЛОВ
     // ==========================================================
 
     @Override
@@ -216,20 +254,13 @@ public class ProductCardServiceImpl implements ProductCardService {
             long count;
 
             switch (cardType) {
-                case "MOTOR":
-                    count = productCardRepository.countFanCardsUsingMotor(cardId);
-                    break;
-                case "MOTOR_WHEEL":
-                    count = productCardRepository.countFanCardsUsingMotorWheel(cardId);
-                    break;
-                case "RADIAL_WHEEL":
-                    count = productCardRepository.countFanCardsUsingRadialWheel(cardId);
-                    break;
-                case "AXIAL_WHEEL":
-                    count = productCardRepository.countFanCardsUsingAxialWheel(cardId);
-                    break;
-                default:
+                case "MOTOR" -> count = productCardRepository.countFanCardsUsingMotor(cardId);
+                case "MOTOR_WHEEL" -> count = productCardRepository.countFanCardsUsingMotorWheel(cardId);
+                case "RADIAL_WHEEL" -> count = productCardRepository.countFanCardsUsingRadialWheel(cardId);
+                case "AXIAL_WHEEL" -> count = productCardRepository.countFanCardsUsingAxialWheel(cardId);
+                default -> {
                     return false;
+                }
             }
 
             return count > 0;
@@ -251,20 +282,13 @@ public class ProductCardServiceImpl implements ProductCardService {
             List<FanCardEntity> fanCards;
 
             switch (cardType) {
-                case "MOTOR":
-                    fanCards = productCardRepository.findFanCardsByMotorId(cardId);
-                    break;
-                case "MOTOR_WHEEL":
-                    fanCards = productCardRepository.findFanCardsByMotorWheelId(cardId);
-                    break;
-                case "RADIAL_WHEEL":
-                    fanCards = productCardRepository.findFanCardsByRadialWheelId(cardId);
-                    break;
-                case "AXIAL_WHEEL":
-                    fanCards = productCardRepository.findFanCardsByAxialWheelId(cardId);
-                    break;
-                default:
+                case "MOTOR" -> fanCards = productCardRepository.findFanCardsByMotorId(cardId);
+                case "MOTOR_WHEEL" -> fanCards = productCardRepository.findFanCardsByMotorWheelId(cardId);
+                case "RADIAL_WHEEL" -> fanCards = productCardRepository.findFanCardsByRadialWheelId(cardId);
+                case "AXIAL_WHEEL" -> fanCards = productCardRepository.findFanCardsByAxialWheelId(cardId);
+                default -> {
                     return usage;
+                }
             }
 
             for (FanCardEntity fanCard : fanCards) {
@@ -277,4 +301,12 @@ public class ProductCardServiceImpl implements ProductCardService {
         return usage;
     }
 
+    // ==========================================================
+    // ВСПОМОГАТЕЛЬНЫЕ
+    // ==========================================================
+
+    private String getCurrentUser() {
+        String email = currentUserProvider.getCurrentUserEmail();
+        return email != null ? email : "system";
+    }
 }
