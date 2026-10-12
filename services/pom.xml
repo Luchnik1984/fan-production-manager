@@ -29,6 +29,13 @@
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
 
+        <!-- Зависимость от fan-template (MarkingEngine, FanTemplateService, DTO) -->
+        <dependency>
+            <groupId>com.fanproduction</groupId>
+            <artifactId>fan-template</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+
         <!-- Spring Context -->
         <dependency>
             <groupId>org.springframework</groupId>
