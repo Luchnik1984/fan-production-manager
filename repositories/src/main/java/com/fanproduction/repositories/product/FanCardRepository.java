@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface FanCardRepository extends JpaRepository<FanCardEntity, Long> {
@@ -33,5 +34,15 @@ public interface FanCardRepository extends JpaRepository<FanCardEntity, Long> {
     @Query("SELECT f FROM FanCardEntity f WHERE f.size BETWEEN :minSize AND :maxSize")
     List<FanCardEntity> findBySizeRange(@Param("minSize") Double minSize,
                                         @Param("maxSize") Double maxSize);
+
+    /**
+     * Поиск по полной маркировке (регистронезависимо).
+     */
+    Optional<FanCardEntity> findByFullMarkingIgnoreCase(String fullMarking);
+
+    /**
+     * Проверить существование карточки с такой маркировкой.
+     */
+    boolean existsByFullMarkingIgnoreCase(String fullMarking);
 
 }
