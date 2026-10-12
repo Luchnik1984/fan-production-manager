@@ -3,6 +3,10 @@ package com.fanproduction.gui.service;
 import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
 import org.springframework.stereotype.Service;
 
+import com.fanproduction.gui.client.FanTemplateVersionClient;
+import com.fanproduction.gui.dto.response.DynamicFormFieldDto;
+import com.fanproduction.gui.dto.response.DynamicFormMetadataDto;
+
 import java.util.*;
 
 /**
@@ -480,5 +484,136 @@ public class FieldMetadataService {
     private FieldMetadataDto createField(String name, String label, String type, boolean required,
                                          String defaultValue, String[] options, String referenceType) {
         return createField(name, label, type, required, defaultValue, options, referenceType, null, true);
+    }
+
+    // ==========================================================
+    // FAN — динамические поля из шаблона
+    // ==========================================================
+
+    /**
+     * Загрузить поля FAN-карточки с сервера по версии шаблона.
+     * <p>
+     * Вызывает REST {@code GET /api/fan-template-versions/{id}/form},
+     * конвертирует {@link DynamicFormMetadataDto} → список {@link FieldMetadataDto}.
+     * <p>
+     * Метод синхронный — вызывать из фонового потока (например, из
+     * {@code Platform.runLater} обёртки или через {@code LoadingDialog}).
+     *
+     * @param templateVersionId ID версии шаблона
+     * @return список полей формы, в порядке {@code displayOrder}
+     * @throws RuntimeException при ошибке загрузки или конвертации
+     */
+    public List<FieldMetadataDto> getFieldsForFan(Long templateVersionId) {
+        if (templateVersionId == null) {
+            throw new IllegalArgumentException("templateVersionId не может быть null");
+        }
+
+        try {
+            DynamicFormMetadataDto metadata =
+                    FanTemplateVersionClient.getFormMetadata(templateVersionId);
+
+            if (metadata.getFields() == null) {
+                return List.of();
+            }
+
+            return metadata.getFields().stream()
+                    .map(this::toFieldMetadata)
+                    .toList();
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Не удалось загрузить поля FAN-карточки: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Получить метаданные формы FAN целиком (с версией, статусом, именем шаблона).
+     * <p>
+     * Полезно для отображения заголовка формы: «Шаблон P-серии (v2, PUBLISHED)».
+     */
+    public DynamicFormMetadataDto getFanFormMetadata(Long templateVersionId) {
+        if (templateVersionId == null) {
+            throw new IllegalArgumentException("templateVersionId не может быть null");
+        }
+
+        try {
+            return FanTemplateVersionClient.getFormMetadata(templateVersionId);
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Не удалось загрузить метаданные FAN-формы: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Конвертировать {@link DynamicFormFieldDto} → {@link FieldMetadataDto}.
+     * <p>
+     * Маппинг типов:
+     * <ul>
+     *   <li>{@code TEXT} → {@code "text"}</li>
+     *   <li>{@code NUMBER} → {@code "number"}</li>
+     *   <li>{@code DOUBLE} → {@code "double"}</li>
+     *   <li>{@code COMBOBOX} → {@code "combobox"}</li>
+     *   <li>{@code SELECTABLE} → {@code "selectable"}</li>
+     *   <li>{@code BOOLEAN} → {@code "boolean"}</li>
+     *   <li>{@code SEPARATOR} → {@code "separator"}</li>
+     *   <li>{@code HIDDEN} → {@code "hidden"}</li>
+     *   <li>{@code COMPUTED} → {@code "computed"} (в GUI — read-only text)</li>
+     * </ul>
+     */
+    private FieldMetadataDto toFieldMetadata(DynamicFormFieldDto source) {
+        FieldMetadataDto target = new FieldMetadataDto();
+
+        target.setName(source.getKey());
+        target.setLabel(source.getLabel());
+        target.setType(mapFieldType(source.getType()));
+        target.setRequired(source.isRequired());
+        target.setDefaultValue(source.getDefaultValue());
+
+        if (source.getOptions() != null) {
+            target.setOptions(source.getOptions().toArray(new String[0]));
+            target.setOptionsList(source.getOptions());
+        }
+
+        target.setHint(source.getHint());
+        target.setReferenceType(source.getReferenceType());
+        target.setTargetFieldName(source.getTargetFieldName());
+        target.setRole(source.getRole());
+
+        if (source.getAddToProduct() != null) {
+            target.setAddToProduct(source.getAddToProduct());
+        }
+
+        target.setPullFrom(source.getPullFrom());
+        target.setVisibleIf(source.getVisibleIf());
+        target.setRequiredIf(source.getRequiredIf());
+        target.setOnSelect(source.getOnSelect());
+
+        // Видимость: если есть visibleIf — изначально скрыто до первого вычисления
+        target.setVisible(source.getVisibleIf() == null);
+
+        // COMPUTED-поля в GUI — read-only
+        target.setReadOnly("COMPUTED".equals(source.getType()));
+
+        return target;
+    }
+
+    /**
+     * Привести тип поля сервера к строковому типу GUI.
+     */
+    private String mapFieldType(String serverType) {
+        if (serverType == null) return "text";
+
+        return switch (serverType) {
+            case "TEXT" -> "text";
+            case "NUMBER" -> "number";
+            case "DOUBLE" -> "double";
+            case "COMBOBOX" -> "combobox";
+            case "SELECTABLE" -> "selectable";
+            case "BOOLEAN" -> "boolean";
+            case "SEPARATOR" -> "separator";
+            case "HIDDEN" -> "hidden";
+            case "COMPUTED" -> "computed";
+            default -> "text";
+        };
     }
 }
