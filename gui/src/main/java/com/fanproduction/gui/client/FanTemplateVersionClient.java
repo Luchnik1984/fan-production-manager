@@ -42,4 +42,33 @@ public class FanTemplateVersionClient {
         TypeReference<ApiResponse<Object>> typeRef = new TypeReference<>() {};
         return ApiClient.get(BASE_PATH + "/" + templateVersionId, typeRef);
     }
+
+    /**
+     * Предпросмотр маркировки по значениям полей.
+     * <p>
+     * Вызывается из {@code FanCardConfigurator} при изменении полей формы.
+     * Не сохраняет карточку.
+     *
+     * @param templateVersionId ID версии шаблона
+     * @param values            значения полей формы
+     * @return вычисленная маркировка (может быть пустой строкой)
+     */
+    public static String previewMarking(Long templateVersionId,
+                                        java.util.Map<String, Object> values) throws Exception {
+        TypeReference<ApiResponse<String>> typeRef = new TypeReference<>() {};
+
+        java.util.Map<String, Object> request = new java.util.HashMap<>();
+        request.put("values", values);
+
+        ApiResponse<String> response = ApiClient.post(
+                BASE_PATH + "/" + templateVersionId + "/preview",
+                request,
+                typeRef
+        );
+
+        if (response.isSuccess()) {
+            return response.getData() != null ? response.getData() : "";
+        }
+        throw new RuntimeException("Preview failed: " + response.getMessage());
+    }
 }
