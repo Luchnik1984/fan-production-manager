@@ -93,6 +93,7 @@ public class FanCardServiceImpl implements FanCardService {
 
         card.setFullMarking(marking);
         card.setCode(generateCode(marking));
+        card.setName(marking);
 
         FanCardEntity saved = fanCardRepository.save(card);
 
@@ -132,6 +133,7 @@ public class FanCardServiceImpl implements FanCardService {
 
         card.setFullMarking(newMarking);
         card.setCode(generateCode(newMarking));
+        card.setName(newMarking);
 
         FanCardEntity saved = fanCardRepository.save(card);
 
@@ -166,6 +168,7 @@ public class FanCardServiceImpl implements FanCardService {
 
         card.setFullMarking(newMarking);
         card.setCode(generateCode(newMarking));
+        card.setName(newMarking);
 
         FanCardEntity saved = fanCardRepository.save(card);
 

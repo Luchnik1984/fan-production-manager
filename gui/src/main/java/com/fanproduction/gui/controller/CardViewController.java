@@ -108,7 +108,9 @@ public class CardViewController {
         Stage dialog = new Stage();
         dialog.initModality(Modality.WINDOW_MODAL);
         dialog.initOwner(owner);
-        dialog.setTitle("Просмотр карточки - " + card.getName());
+
+        String displayTitle = buildCardTitle(card);
+        dialog.setTitle("Просмотр карточки - " + displayTitle);
 
         VBox mainLayout = new VBox(15);
         mainLayout.setPadding(new Insets(20));
@@ -150,11 +152,26 @@ public class CardViewController {
         int row = 0;
 
         // Основная информация
-        addInfoRow(grid, row++, "Наименование:", card.getName());
+        addInfoRow(grid, row++, "Наименование:", buildCardTitle(card));
         addInfoRow(grid, row++, "Код:", card.getCode() != null ? card.getCode() : "—");
 
         String cardTypeDisplay = getCardTypeDisplay(card.getCardType());
         addInfoRow(grid, row++, "Тип карточки:", cardTypeDisplay);
+
+        // Для FAN: тип и вид
+        if ("FAN".equals(card.getCardType())) {
+            Map<String, Object> fields = card.getFields();
+            if (fields != null) {
+                Object fanType = fields.get("fanType");
+                if (fanType != null) {
+                    addInfoRow(grid, row++, "Тип вентилятора:", fanType.toString());
+                }
+                Object fanSubtype = fields.get("fanSubtype");
+                if (fanSubtype != null) {
+                    addInfoRow(grid, row++, "Вид/серия:", fanSubtype.toString());
+                }
+            }
+        }
 
         if (card.getCreatedAt() != null) {
             addInfoRow(grid, row++, "Дата создания:", card.getCreatedAt().format(DATE_FORMATTER));
@@ -393,6 +410,28 @@ public class CardViewController {
             return NumberFormatter.formatNumber(value);
         }
         return value.toString();
+    }
+
+    /**
+     * Построить заголовок карточки для окна просмотра.
+     * <p>
+     * Для FAN: «Тип вентилятора» + «Полная маркировка».
+     * Для других — просто name.
+     */
+    private static String buildCardTitle(ProductCardDto card) {
+        if ("FAN".equals(card.getCardType()) && card.getFields() != null) {
+            Map<String, Object> fields = card.getFields();
+            String fanType = (String) fields.get("fanType");
+            String fullMarking = (String) fields.get("fullMarking");
+
+            if (fanType != null && !fanType.isEmpty() && fullMarking != null && !fullMarking.isEmpty()) {
+                return fanType + " " + fullMarking;
+            }
+            if (fullMarking != null && !fullMarking.isEmpty()) {
+                return "Вентилятор " + fullMarking;
+            }
+        }
+        return card.getName();
     }
 
 }

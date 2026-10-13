@@ -18,37 +18,34 @@ import java.util.Map;
 /**
  * Конфигуратор FAN-карточки.
  * <p>
- * Отвечает за:
+ * Особенности:
  * <ul>
- *   <li>Real-time пересчёт полной маркировки через REST-preview
- *       (при изменении полей, с debounce).</li>
- *   <li>Защиту от перезаписи вручную отредактированной маркировки.</li>
- *   <li>Кнопку «Восстановить маркировку» (принудительный пересчёт).</li>
- *   <li>Валидацию непустой маркировки при сохранении.</li>
+ *   <li>Real-time пересчёт маркировки через REST preview (debounce 400 мс).</li>
+ *   <li>Защита от перезаписи ручных правок.</li>
+ *   <li>Флаг {@code initializing} блокирует preview во время загрузки existing-карточки.</li>
+ *   <li>{@link #markInitialized()} вызывается из {@code CardFormController} после
+ *       заполнения формы — с этого момента preview активен.</li>
  * </ul>
- * <p>
- * По логике совпадает с {@code MotorCardConfigurator},
- * {@code RadialWheelCardConfigurator} и др., но источник маркировки —
- * не Java-код, а сервер ({@code MarkingEngine}).
  */
 @Slf4j
 public class FanCardConfigurator implements CardFieldConfigurator {
 
-    /** Задержка debounce перед вызовом preview (мс). */
     private static final long DEBOUNCE_MS = 400;
 
-    /** ID версии шаблона (устанавливается из CardFormController). */
     @Setter
     private Long templateVersionId;
 
     /** Последнее автоматически сгенерированное значение маркировки. */
     private String lastAutoMarking = "";
 
-    /** Начальные значения полей (для отслеживания изменений). */
-    private Map<String, Object> initialValues = new HashMap<>();
+    /** Блокировка preview во время инициализации (загрузки existing-карточки). */
+    private volatile boolean initializing = false;
 
     /** Debounce-таймер. */
     private PauseTransition debounceTimer;
+
+    /** Сохранённая ссылка на поле fullMarking (для markInitialized). */
+    private TextField fullMarkingFieldRef;
 
     // ==========================================================
     // SETUP
@@ -60,45 +57,61 @@ public class FanCardConfigurator implements CardFieldConfigurator {
                             Map<String, Label> fieldHints,
                             boolean existingCardExists) {
 
-        // При существующей карточке запоминаем текущее значение маркировки
+        // При existing-карточке — блокируем preview до markInitialized()
         if (existingCardExists) {
-            TextField fmField = getTextField(fieldControls, "fullMarking");
-            if (fmField != null && fmField.getText() != null && !fmField.getText().isEmpty()) {
-                lastAutoMarking = fmField.getText();
-            }
-            initialValues = collectValues(fieldControls, "fullMarking");
+            initializing = true;
         }
 
-        // Вешаем listeners на все поля кроме fullMarking
+        // Сохраняем ссылку на поле fullMarking (если есть)
+        Node fmNode = fieldControls.get("fullMarking");
+        if (fmNode instanceof TextField tf) {
+            fullMarkingFieldRef = tf;
+        }
+
+        // Вешаем listeners на все поля, кроме fullMarking и name
         for (Map.Entry<String, Node> entry : fieldControls.entrySet()) {
             String fieldName = entry.getKey();
             if ("fullMarking".equals(fieldName)) continue;
-            if ("name".equals(fieldName)) continue;  // name скрыто, не участвует
+            if ("name".equals(fieldName)) continue;
 
             Node control = entry.getValue();
             if (control instanceof TextField tf) {
-                tf.textProperty().addListener((obs, o, n) -> schedulePreview(fieldControls));
+                tf.textProperty().addListener((obs, o, n) -> onFieldChanged(fieldControls));
             } else if (control instanceof ComboBox<?> cb) {
-                cb.valueProperty().addListener((obs, o, n) -> schedulePreview(fieldControls));
+                cb.valueProperty().addListener((obs, o, n) -> onFieldChanged(fieldControls));
             } else if (control instanceof CheckBox ch) {
-                ch.selectedProperty().addListener((obs, o, n) -> schedulePreview(fieldControls));
+                ch.selectedProperty().addListener((obs, o, n) -> onFieldChanged(fieldControls));
             }
         }
     }
 
+    /**
+     * Вызывается из {@code CardFormController} после заполнения формы.
+     * Сбрасывает флаг {@code initializing}, запоминает текущее значение
+     * маркировки как {@code lastAutoMarking}.
+     */
+    public void markInitialized() {
+        if (!initializing) return;
+
+        lastAutoMarking = fullMarkingFieldRef != null && fullMarkingFieldRef.getText() != null
+                ? fullMarkingFieldRef.getText()
+                : "";
+        initializing = false;
+
+        log.debug("FanCardConfigurator: initialized, lastAutoMarking='{}'", lastAutoMarking);
+    }
+
     // ==========================================================
-    // ПУБЛИЧНЫЕ МЕТОДЫ (для CardFormController)
+    // ПУБЛИЧНЫЕ МЕТОДЫ
     // ==========================================================
 
     @Override
     public void refreshFullMarking(Map<String, Node> fieldControls) {
-        // С защитой: не перезаписывает, если пользователь редактировал вручную
         recalcMarking(fieldControls, false);
     }
 
     @Override
     public void forceSetFullMarking(Map<String, Node> fieldControls) {
-        // Кнопка «Восстановить маркировку» — принудительно перезаписывает
         recalcMarking(fieldControls, true);
     }
 
@@ -120,6 +133,11 @@ public class FanCardConfigurator implements CardFieldConfigurator {
     // DEBOUNCE + ПЕРЕСЧЁТ
     // ==========================================================
 
+    private void onFieldChanged(Map<String, Node> fieldControls) {
+        if (initializing) return;  // блокировка во время загрузки
+        schedulePreview(fieldControls);
+    }
+
     private void schedulePreview(Map<String, Node> fieldControls) {
         if (debounceTimer != null) {
             debounceTimer.stop();
@@ -135,11 +153,20 @@ public class FanCardConfigurator implements CardFieldConfigurator {
             return;
         }
 
-        TextField fullMarkingField = getTextField(fieldControls, "fullMarking");
-        if (fullMarkingField == null) return;
+        TextField localField = fullMarkingFieldRef;
+        if (localField == null) {
+            Node node = fieldControls.get("fullMarking");
+            if (node instanceof TextField tf) {
+                localField = tf;
+                fullMarkingFieldRef = tf;
+            }
+        }
+        if (localField == null) return;
 
-        // Проверяем «ручное редактирование» в момент запуска
-        String current = fullMarkingField.getText();
+        final TextField fullMarkingFieldFinal = localField;
+
+        // Проверяем «ручное редактирование»
+        String current = fullMarkingFieldFinal.getText();
         boolean manuallyEdited = current != null && !current.isEmpty()
                 && !current.equals(lastAutoMarking);
 
@@ -148,10 +175,8 @@ public class FanCardConfigurator implements CardFieldConfigurator {
             return;
         }
 
-        // Собираем значения полей
         Map<String, Object> values = collectValues(fieldControls, "fullMarking");
 
-        // Вызов REST в фоне
         new Thread(() -> {
             try {
                 String newMarking = FanTemplateVersionClient.previewMarking(templateVersionId, values);
@@ -159,13 +184,12 @@ public class FanCardConfigurator implements CardFieldConfigurator {
 
                 final String finalMarking = newMarking;
                 Platform.runLater(() -> {
-                    // Перепроверяем на UI-потоке (мог измениться между вызовами)
-                    String now = fullMarkingField.getText();
+                    String now = fullMarkingFieldFinal.getText();
                     boolean stillManuallyEdited = now != null && !now.isEmpty()
                             && !now.equals(lastAutoMarking);
 
                     if (force || !stillManuallyEdited) {
-                        fullMarkingField.setText(finalMarking);
+                        fullMarkingFieldFinal.setText(finalMarking);
                         lastAutoMarking = finalMarking;
                     }
                 });
@@ -179,11 +203,6 @@ public class FanCardConfigurator implements CardFieldConfigurator {
     // СБОР ЗНАЧЕНИЙ
     // ==========================================================
 
-    /**
-     * Собрать значения полей формы в Map.
-     *
-     * @param excludeKey ключ, который нужно исключить (например, fullMarking)
-     */
     private Map<String, Object> collectValues(Map<String, Node> fieldControls, String excludeKey) {
         Map<String, Object> result = new HashMap<>();
 
