@@ -11,8 +11,8 @@ import java.util.List;
  * Содержит:
  * <ul>
  *   <li>Идентификацию версии шаблона.</li>
+ *   <li>Информацию о типе и серии (для заголовка формы).</li>
  *   <li>Список полей в порядке отображения.</li>
- *   <li>Правило маркировки (для предпросмотра).</li>
  * </ul>
  */
 public record DynamicFormMetadataDto(
@@ -21,6 +21,13 @@ public record DynamicFormMetadataDto(
         Integer version,
         TemplateStatus status,
         String templateName,
+
+        // Информация о типе и серии (для заголовка)
+        Long typeId,
+        String typeName,
+        String typeDesignation,
+        Long seriesId,
+        String seriesName,
         List<DynamicFormFieldDto> fields
 ) {
 }

@@ -2,11 +2,13 @@ package com.fanproduction.api.controller.fan;
 
 import com.fanproduction.api.controller.BaseController;
 import com.fanproduction.api.dto.request.fan.UpdateFanTemplateVersionRequest;
+import com.fanproduction.api.dto.request.fan.PreviewMarkingRequest;
 import com.fanproduction.api.dto.response.ApiResponse;
 import com.fanproduction.template.dto.DynamicFormMetadataDto;
 import com.fanproduction.template.dto.FanTemplateVersionDto;
 import com.fanproduction.template.service.DynamicFormBuilder;
 import com.fanproduction.template.service.FanTemplateService;
+import com.fanproduction.template.service.MarkingPreviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +28,7 @@ public class FanTemplateVersionController extends BaseController {
 
     private final FanTemplateService fanTemplateService;
     private final DynamicFormBuilder dynamicFormBuilder;
+    private final MarkingPreviewService markingPreviewService;
 
     // ==========================================================
     // READ
@@ -47,6 +50,26 @@ public class FanTemplateVersionController extends BaseController {
     @GetMapping("/{id}/form")
     public ApiResponse<DynamicFormMetadataDto> getFormMetadata(@PathVariable Long id) {
         return ApiResponse.success(dynamicFormBuilder.buildFormMetadata(id));
+    }
+
+    /**
+     * Предпросмотр полной маркировки FAN-карточки по значениям полей.
+     * <p>
+     * Не сохраняет карточку. Используется GUI для real-time обновления
+     * поля «Полная маркировка».
+     *
+     * @param id      ID версии шаблона
+     * @param request значения полей формы
+     * @return вычисленная маркировка (пустая строка, если не удалось)
+     */
+    @PostMapping("/{id}/preview")
+    public ApiResponse<String> previewMarking(
+            @PathVariable Long id,
+            @RequestBody PreviewMarkingRequest request) {
+        String marking = markingPreviewService.preview(
+                id,
+                request != null ? request.values() : null);
+        return ApiResponse.success(marking);
     }
 
     /**
