@@ -158,17 +158,17 @@ public class CardViewController {
         String cardTypeDisplay = getCardTypeDisplay(card.getCardType());
         addInfoRow(grid, row++, "Тип карточки:", cardTypeDisplay);
 
-        // Для FAN: тип и вид
+        // Для FAN: тип и вид вентилятора
         if ("FAN".equals(card.getCardType())) {
             Map<String, Object> fields = card.getFields();
             if (fields != null) {
                 Object fanType = fields.get("fanType");
-                if (fanType != null) {
+                if (fanType != null && !fanType.toString().isEmpty()) {
                     addInfoRow(grid, row++, "Тип вентилятора:", fanType.toString());
                 }
                 Object fanSubtype = fields.get("fanSubtype");
-                if (fanSubtype != null) {
-                    addInfoRow(grid, row++, "Вид/серия:", fanSubtype.toString());
+                if (fanSubtype != null && !fanSubtype.toString().isEmpty()) {
+                    addInfoRow(grid, row++, "Вид вентилятора:", fanSubtype.toString());
                 }
             }
         }

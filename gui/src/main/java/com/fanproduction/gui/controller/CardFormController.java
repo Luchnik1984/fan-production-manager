@@ -625,13 +625,9 @@ public class CardFormController {
             if (fanFormMetadata.getTypeName() != null) {
                 fields.put("fanType", fanFormMetadata.getTypeName());
             }
-            if (fanFormMetadata.getTypeDesignation() != null) {
-                // Опционально: склеиваем с designation
-                String typeFull = fanFormMetadata.getTypeName() + " " + fanFormMetadata.getTypeDesignation();
-                fields.put("fanTypeFull", typeFull);
-            }
-            if (fanFormMetadata.getSeriesName() != null) {
-                fields.put("fanSubtype", fanFormMetadata.getSeriesName());
+            // fanSubtype = имя вида («Прямоугольный»), не серия
+            if (fanFormMetadata.getSpeciesName() != null) {
+                fields.put("fanSubtype", fanFormMetadata.getSpeciesName());
             }
         }
 

@@ -26,8 +26,13 @@ public record DynamicFormMetadataDto(
         Long typeId,
         String typeName,
         String typeDesignation,
+
+        Long speciesId,
+        String speciesName,
+
         Long seriesId,
         String seriesName,
+
         List<DynamicFormFieldDto> fields
 ) {
 }

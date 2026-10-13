@@ -24,6 +24,10 @@ public class DynamicFormMetadataDto {
     private Long typeId;
     private String typeName;
     private String typeDesignation;
+
+    private Long speciesId;
+    private String speciesName;
+
     private Long seriesId;
     private String seriesName;
 
