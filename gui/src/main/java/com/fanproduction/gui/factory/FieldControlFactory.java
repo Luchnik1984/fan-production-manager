@@ -44,7 +44,7 @@ public class FieldControlFactory {
      */
     public Node createControl(FieldMetadataDto field, Object existingValue, Map<String, Node> fieldControls) {
         return switch (field.getType()) {
-            case "text" -> createTextField(field, existingValue);
+            case "text", "computed" -> createTextField(field, existingValue);
             case "number" -> createNumberField(field, existingValue);
             case "double" -> createDoubleField(field, existingValue);
             case "combobox" -> createComboBox(field, existingValue);

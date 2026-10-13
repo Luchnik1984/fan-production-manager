@@ -2,16 +2,22 @@ package com.fanproduction.template.service;
 
 import com.fanproduction.template.dto.DynamicFormFieldDto;
 import com.fanproduction.template.dto.DynamicFormMetadataDto;
+import com.fanproduction.template.entity.FanSeries;
+import com.fanproduction.template.entity.FanSpecies;
 import com.fanproduction.template.entity.FanTemplate;
 import com.fanproduction.template.entity.FanTemplateVersion;
+import com.fanproduction.template.entity.FanType;
 import com.fanproduction.template.enums.ConditionOperator;
 import com.fanproduction.template.enums.FieldType;
 import com.fanproduction.template.enums.TemplateStatus;
 import com.fanproduction.template.exception.TemplateValidationException;
 import com.fanproduction.template.model.Condition;
 import com.fanproduction.template.model.FieldDefinition;
+import com.fanproduction.template.repository.FanSeriesRepository;
+import com.fanproduction.template.repository.FanSpeciesRepository;
 import com.fanproduction.template.repository.FanTemplateRepository;
 import com.fanproduction.template.repository.FanTemplateVersionRepository;
+import com.fanproduction.template.repository.FanTypeRepository;
 import com.fanproduction.template.service.impl.DynamicFormBuilderImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -27,6 +33,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 /**
@@ -41,6 +48,15 @@ class DynamicFormBuilderTest {
 
     @Mock
     private FanTemplateVersionRepository fanTemplateVersionRepository;
+
+    @Mock
+    private FanSeriesRepository fanSeriesRepository;
+
+    @Mock
+    private FanSpeciesRepository fanSpeciesRepository;
+
+    @Mock
+    private FanTypeRepository fanTypeRepository;
 
     @InjectMocks
     private DynamicFormBuilderImpl builder;
@@ -75,8 +91,7 @@ class DynamicFormBuilderTest {
                 field("b", 20)
         ));
 
-        when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-        when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+        mockChain();
 
         DynamicFormMetadataDto result = builder.buildFormMetadata(10L);
 
@@ -93,8 +108,7 @@ class DynamicFormBuilderTest {
                 field("noOrder2", null)
         ));
 
-        when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-        when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+        mockChain();
 
         DynamicFormMetadataDto result = builder.buildFormMetadata(10L);
 
@@ -119,8 +133,7 @@ class DynamicFormBuilderTest {
                     field("b", 3)
             ));
 
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            mockChain();
 
             DynamicFormMetadataDto result = builder.buildFormMetadata(10L);
 
@@ -137,8 +150,7 @@ class DynamicFormBuilderTest {
                     field("b", 3)
             ));
 
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            mockChain();
 
             DynamicFormMetadataDto result = builder.buildFormMetadata(10L);
 
@@ -151,8 +163,7 @@ class DynamicFormBuilderTest {
         void emptyFields() {
             version.setFieldsJson(List.of());
 
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            mockChain();
 
             DynamicFormMetadataDto result = builder.buildFormMetadata(10L);
 
@@ -164,8 +175,7 @@ class DynamicFormBuilderTest {
         void nullFields() {
             version.setFieldsJson(null);
 
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            mockChain();
 
             DynamicFormMetadataDto result = builder.buildFormMetadata(10L);
 
@@ -182,8 +192,7 @@ class DynamicFormBuilderTest {
     void metadataPassedCorrectly() {
         version.setFieldsJson(List.of(field("a", 1)));
 
-        when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-        when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+        mockChain();
 
         DynamicFormMetadataDto result = builder.buildFormMetadata(10L);
 
@@ -192,6 +201,57 @@ class DynamicFormBuilderTest {
         assertThat(result.version()).isEqualTo(1);
         assertThat(result.status()).isEqualTo(TemplateStatus.PUBLISHED);
         assertThat(result.templateName()).isEqualTo("Шаблон P-серии");
+    }
+
+    @Test
+    @DisplayName("Информация о типе и серии заполняется")
+    void typeAndSeriesInfoFilled() {
+        version.setFieldsJson(List.of(field("a", 1)));
+
+        FanSeries series = new FanSeries();
+        series.setId(100L);
+        series.setSpeciesId(50L);
+        series.setName("P");
+
+        FanSpecies species = new FanSpecies();
+        species.setId(50L);
+        species.setTypeId(1L);
+        species.setName("Прямоугольный");
+
+        FanType type = new FanType();
+        type.setId(1L);
+        type.setName("Вентилятор канальный");
+        type.setDesignation("VRK-PatAIR");
+
+        when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+        when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+        when(fanSeriesRepository.findById(100L)).thenReturn(Optional.of(series));
+        when(fanSpeciesRepository.findById(50L)).thenReturn(Optional.of(species));
+        when(fanTypeRepository.findById(1L)).thenReturn(Optional.of(type));
+
+        DynamicFormMetadataDto result = builder.buildFormMetadata(10L);
+
+        assertThat(result.typeId()).isEqualTo(1L);
+        assertThat(result.typeName()).isEqualTo("Вентилятор канальный");
+        assertThat(result.typeDesignation()).isEqualTo("VRK-PatAIR");
+        assertThat(result.seriesId()).isEqualTo(100L);
+        assertThat(result.seriesName()).isEqualTo("P");
+    }
+
+    @Test
+    @DisplayName("Если серия не найдена — метаданные всё равно строятся")
+    void missingSeriesIsTolerated() {
+        version.setFieldsJson(List.of(field("a", 1)));
+
+        when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+        when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+        when(fanSeriesRepository.findById(100L)).thenReturn(Optional.empty());
+
+        DynamicFormMetadataDto result = builder.buildFormMetadata(10L);
+
+        assertThat(result.templateId()).isEqualTo(1L);
+        assertThat(result.typeId()).isNull();
+        assertThat(result.seriesId()).isNull();
     }
 
     // ==========================================================
@@ -223,8 +283,7 @@ class DynamicFormBuilderTest {
 
         version.setFieldsJson(List.of(fullField));
 
-        when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-        when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+        mockChain();
 
         DynamicFormMetadataDto result = builder.buildFormMetadata(10L);
 
@@ -254,8 +313,7 @@ class DynamicFormBuilderTest {
 
         version.setFieldsJson(List.of(comboField));
 
-        when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-        when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+        mockChain();
 
         DynamicFormMetadataDto result = builder.buildFormMetadata(10L);
 
@@ -308,6 +366,32 @@ class DynamicFormBuilderTest {
     // ==========================================================
     // ВСПОМОГАТЕЛЬНЫЕ
     // ==========================================================
+
+    /**
+     * Настройка типовой цепочки моков: version → template → series → species → type.
+     */
+    private void mockChain() {
+        FanSeries series = new FanSeries();
+        series.setId(100L);
+        series.setSpeciesId(50L);
+        series.setName("P");
+
+        FanSpecies species = new FanSpecies();
+        species.setId(50L);
+        species.setTypeId(1L);
+        species.setName("Прямоугольный");
+
+        FanType type = new FanType();
+        type.setId(1L);
+        type.setName("Вентилятор канальный");
+        type.setDesignation("VRK-PatAIR");
+
+        lenient().when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+        lenient().when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+        lenient().when(fanSeriesRepository.findById(100L)).thenReturn(Optional.of(series));
+        lenient().when(fanSpeciesRepository.findById(50L)).thenReturn(Optional.of(species));
+        lenient().when(fanTypeRepository.findById(1L)).thenReturn(Optional.of(type));
+    }
 
     private static FieldDefinition field(String key, Integer displayOrder) {
         return new FieldDefinition(

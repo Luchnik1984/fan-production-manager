@@ -9,8 +9,6 @@ import java.util.List;
 
 /**
  * DTO метаданных формы карточки FAN.
- * <p>
- * Соответствует {@code com.fanproduction.template.dto.DynamicFormMetadataDto}.
  */
 @Data
 @NoArgsConstructor
@@ -22,5 +20,12 @@ public class DynamicFormMetadataDto {
     private Integer version;
     private String status;
     private String templateName;
+
+    private Long typeId;
+    private String typeName;
+    private String typeDesignation;
+    private Long seriesId;
+    private String seriesName;
+
     private List<DynamicFormFieldDto> fields;
 }

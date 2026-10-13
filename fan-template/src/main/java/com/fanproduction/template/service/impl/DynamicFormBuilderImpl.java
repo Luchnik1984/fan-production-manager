@@ -4,11 +4,17 @@ import com.fanproduction.template.dto.DynamicFormFieldDto;
 import com.fanproduction.template.dto.DynamicFormMetadataDto;
 import com.fanproduction.template.entity.FanTemplate;
 import com.fanproduction.template.entity.FanTemplateVersion;
+import com.fanproduction.template.entity.FanSeries;
+import com.fanproduction.template.entity.FanSpecies;
+import com.fanproduction.template.entity.FanType;
 import com.fanproduction.template.enums.FieldType;
 import com.fanproduction.template.exception.TemplateValidationException;
 import com.fanproduction.template.model.FieldDefinition;
 import com.fanproduction.template.repository.FanTemplateRepository;
 import com.fanproduction.template.repository.FanTemplateVersionRepository;
+import com.fanproduction.template.repository.FanSeriesRepository;
+import com.fanproduction.template.repository.FanSpeciesRepository;
+import com.fanproduction.template.repository.FanTypeRepository;
 import com.fanproduction.template.service.DynamicFormBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +35,9 @@ public class DynamicFormBuilderImpl implements DynamicFormBuilder {
 
     private final FanTemplateRepository fanTemplateRepository;
     private final FanTemplateVersionRepository fanTemplateVersionRepository;
+    private final FanSeriesRepository fanSeriesRepository;
+    private final FanSpeciesRepository fanSpeciesRepository;
+    private final FanTypeRepository fanTypeRepository;
 
     @Override
     public DynamicFormMetadataDto buildFormMetadata(Long templateVersionId) {
@@ -44,10 +53,33 @@ public class DynamicFormBuilderImpl implements DynamicFormBuilder {
                 .orElseThrow(() -> new TemplateValidationException(
                         "Шаблон не найден: " + version.getTemplateId()));
 
+        // Цепочка: series → species → type
+        Long typeId = null;
+        String typeName = null;
+        String typeDesignation = null;
+        Long seriesId = null;
+        String seriesName = null;
+
+        FanSeries series = fanSeriesRepository.findById(template.getSeriesId()).orElse(null);
+        if (series != null) {
+            seriesId = series.getId();
+            seriesName = series.getName();
+
+            FanSpecies species = fanSpeciesRepository.findById(series.getSpeciesId()).orElse(null);
+            if (species != null) {
+                FanType type = fanTypeRepository.findById(species.getTypeId()).orElse(null);
+                if (type != null) {
+                    typeId = type.getId();
+                    typeName = type.getName();
+                    typeDesignation = type.getDesignation();
+                }
+            }
+        }
+
         List<DynamicFormFieldDto> fields = buildFields(version.getFieldsJson());
 
-        log.debug("Построены метаданные формы: templateVersionId={}, полей={}",
-                templateVersionId, fields.size());
+        log.debug("Построены метаданные формы: versionId={}, type={}, series={}, полей={}",
+                templateVersionId, typeName, seriesName, fields.size());
 
         return new DynamicFormMetadataDto(
                 template.getId(),
@@ -55,6 +87,11 @@ public class DynamicFormBuilderImpl implements DynamicFormBuilder {
                 version.getVersion(),
                 version.getStatus(),
                 template.getName(),
+                typeId,
+                typeName,
+                typeDesignation,
+                seriesId,
+                seriesName,
                 fields
         );
     }

@@ -12,10 +12,7 @@ import com.fanproduction.gui.dto.ProductComponentItemDto;
 import com.fanproduction.gui.dto.ProductMaterialItemDto;
 import com.fanproduction.gui.dto.config.SelectableFieldConfig;
 import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
-import com.fanproduction.gui.dto.response.ApiResponse;
-import com.fanproduction.gui.dto.response.ComponentDto;
-import com.fanproduction.gui.dto.response.MaterialDto;
-import com.fanproduction.gui.dto.response.ProductCardDto;
+import com.fanproduction.gui.dto.response.*;
 import com.fanproduction.gui.factory.FieldControlFactory;
 import com.fanproduction.gui.manager.ComponentChangeManager;
 import com.fanproduction.gui.manager.MaterialChangeManager;
@@ -46,6 +43,15 @@ public class CardFormController {
     private final Long templateVersionId;
     private final FieldMetadataService metadataService = new FieldMetadataService();
     private final FieldControlFactory controlFactory;
+
+    // ========== FAN: метаданные формы ==========
+
+    /** Полные метаданные FAN-формы (загружаются при cardType=FAN). */
+    private DynamicFormMetadataDto fanFormMetadata;
+
+    /** Список полей FAN-формы (после конвертации). */
+    private List<FieldMetadataDto> fanFields;
+
     // Контроллеры вкладок
     private ProductComponentsController componentsTabController;
     private ProductMaterialsController materialsTabController;
@@ -115,10 +121,16 @@ public class CardFormController {
     }
 
     private void initUI() {
+        // 0. Для FAN — сначала загружаем метаданные шаблона
+        if ("FAN".equals(cardType)) {
+            loadFanMetadata();
+        }
         String title = existingCard == null ? "Создание карточки" : "Редактирование карточки";
         String displayName = getTypeDisplayName(cardType);
-        if ("FAN".equals(cardType) && templateVersionId != null) {
-            displayName += " (шаблон v" + templateVersionId + ")";
+        if ("FAN".equals(cardType) && fanFormMetadata != null) {
+            displayName = fanFormMetadata.getTemplateName()
+                    + " (v" + fanFormMetadata.getVersion()
+                    + ", " + fanFormMetadata.getStatus() + ")";
         }
         stage.setTitle(title + " - " + displayName);
 
@@ -233,6 +245,70 @@ public class CardFormController {
         loadAdditionalData();
     }
 
+    // ==========================================================
+    // FAN: загрузка метаданных шаблона
+    // ==========================================================
+
+    /**
+     * Загрузить метаданные FAN-формы по версии шаблона.
+     * <p>
+     * Версия шаблона определяется:
+     * <ol>
+     *   <li>Из поля {@code templateVersionId} (при создании карточки).</li>
+     *   <li>Из {@code existingCard.fields.templateVersionId} (при редактировании).</li>
+     * </ol>
+     * <p>
+     * Загрузка синхронная — вызывается в EDT до построения UI. Для локального
+     * API это быстро. Если в будущем понадобится асинхронность — вынести
+     * в {@code LoadingDialog}.
+     */
+    private void loadFanMetadata() {
+        Long versionId = resolveTemplateVersionId();
+        if (versionId == null) {
+            showAlert("Ошибка",
+                    "Не удалось определить версию шаблона FAN",
+                    Alert.AlertType.ERROR);
+            return;
+        }
+
+        try {
+            fanFormMetadata = metadataService.getFanFormMetadata(versionId);
+            fanFields = metadataService.getFieldsForFan(versionId);
+        } catch (Exception e) {
+            showAlert("Ошибка",
+                    "Не удалось загрузить шаблон FAN: " + e.getMessage(),
+                    Alert.AlertType.ERROR);
+        }
+    }
+
+    /**
+     * Определить ID версии шаблона:
+     * <ol>
+     *   <li>Из поля класса {@link #templateVersionId} (создание).</li>
+     *   <li>Из {@code existingCard.fields.templateVersionId} (редактирование).</li>
+     * </ol>
+     */
+    private Long resolveTemplateVersionId() {
+        if (templateVersionId != null) {
+            return templateVersionId;
+        }
+
+        if (existingCard != null && existingCard.getFields() != null) {
+            Object tv = existingCard.getFields().get("templateVersionId");
+            if (tv instanceof Number n) {
+                return n.longValue();
+            }
+            if (tv instanceof String s) {
+                try {
+                    return Long.parseLong(s);
+                } catch (NumberFormatException ignored) {
+                    // пропускаем
+                }
+            }
+        }
+        return null;
+    }
+
     private GridPane createFormGrid() {
         GridPane grid = new GridPane();
         grid.setHgap(15);
@@ -250,7 +326,12 @@ public class CardFormController {
 
         grid.getColumnConstraints().addAll(col1, col2);
 
-        List<FieldMetadataDto> fields = metadataService.getFieldsForType(cardType);
+        List<FieldMetadataDto> fields;
+        if ("FAN".equals(cardType) && fanFields != null) {
+            fields = fanFields;
+        } else {
+            fields = metadataService.getFieldsForType(cardType);
+        }
         int row = 0;
 
         // Поле "Наименование"
@@ -359,6 +440,21 @@ public class CardFormController {
         Map<String, Object> fields = existingCard.getFields();
         if (fields == null) return;
 
+        // FAN: разворачиваем dynamicFields в плоскую структуру
+        // (на сервере они хранятся в отдельном JSONB-поле)
+        if ("FAN".equals(cardType)) {
+            Object dynamicFieldsObj = fields.get("dynamicFields");
+            if (dynamicFieldsObj instanceof Map<?, ?> df) {
+                for (Map.Entry<?, ?> entry : df.entrySet()) {
+                    String key = entry.getKey().toString();
+                    Object value = entry.getValue();
+                    if (value != null) {
+                        setFieldValue(key, value, true);
+                    }
+                }
+            }
+        }
+
         for (Map.Entry<String, Object> entry : fields.entrySet()) {
             String fieldName = entry.getKey();
             Object value = entry.getValue();
@@ -462,6 +558,11 @@ public class CardFormController {
         Node nameControl = fieldControls.get("name");
         if (nameControl instanceof TextField) {
             name = ((TextField) nameControl).getText().trim();
+        }
+
+        // FAN: добавляем templateVersionId в fields
+        if ("FAN".equals(cardType) && fanFormMetadata != null) {
+            fields.put("templateVersionId", fanFormMetadata.getTemplateVersionId());
         }
 
         final String finalName = name;

@@ -83,10 +83,12 @@ public class FanCardServiceImpl implements FanCardService {
         card.setTemplateVersionId(templateVersionId);
         card.setFanTemplateId(template.getId());
         card.setCreatedBy(createdBy);
+        // Заполняем fan_type именем типа (для отображения в каталоге)
+        fillFanType(card, template);
 
         applyValuesToCard(card, values, "Вентилятор " + template.getName());
 
-        String marking = computeMarking(card, rule, fields);
+        String marking = computeMarking(card, rule, fields, values);
         ensureMarkingUnique(marking, null);
 
         card.setFullMarking(marking);
@@ -125,7 +127,7 @@ public class FanCardServiceImpl implements FanCardService {
 
         applyValuesToCard(card, values, card.getName());
 
-        String newMarking = computeMarking(card, rule, fields);
+        String newMarking = computeMarking(card, rule, fields, values);
         ensureMarkingUnique(newMarking, cardId);
 
         card.setFullMarking(newMarking);
@@ -159,7 +161,7 @@ public class FanCardServiceImpl implements FanCardService {
         validateTemplateContent(fields, rule);
 
         String oldMarking = card.getFullMarking();
-        String newMarking = computeMarking(card, rule, fields);
+        String newMarking = computeMarking(card, rule, fields, null );
         ensureMarkingUnique(newMarking, cardId);
 
         card.setFullMarking(newMarking);
@@ -331,9 +333,39 @@ public class FanCardServiceImpl implements FanCardService {
     // ВЫЧИСЛЕНИЕ МАРКИРОВКИ
     // ==========================================================
 
+    /**
+     * Определить полную маркировку карточки.
+     * <p>
+     * Логика:
+     * <ol>
+     *   <li>Если в {@code values} передан непустой {@code fullMarking} —
+     *       используем его (пользователь отредактировал вручную).</li>
+     *   <li>Иначе — вычисляем через {@link MarkingEngine}.</li>
+     * </ol>
+     *
+     * @param card           карточка (с уже применёнными values)
+     * @param rule           правило маркировки
+     * @param fields         определения полей
+     * @param valuesFromForm значения из формы (могут содержать fullMarking)
+     * @return итоговая маркировка
+     */
     private String computeMarking(FanCardEntity card,
                                   MarkingRule rule,
-                                  List<FieldDefinition> fields) {
+                                  List<FieldDefinition> fields,
+                                  Map<String, Object> valuesFromForm) {
+        // 1. Ручное редактирование
+        if (valuesFromForm != null) {
+            Object manual = valuesFromForm.get("fullMarking");
+            if (manual != null) {
+                String manualStr = manual.toString().trim();
+                if (!manualStr.isEmpty()) {
+                    log.debug("Используется маркировка, заданная вручную: {}", manualStr);
+                    return manualStr;
+                }
+            }
+        }
+
+        // 2. Автоматическое вычисление
         Map<String, Object> markingValues = buildMarkingValues(card, card.getDynamicFields());
 
         String marking;
@@ -437,5 +469,22 @@ public class FanCardServiceImpl implements FanCardService {
     private void publishAudit(String username, AuditAction action, String details) {
         String actor = (username != null && !username.isBlank()) ? username : "system";
         eventPublisher.publishEvent(new AuditEvent(this, actor, action, details));
+    }
+
+    /**
+     * Заполнить {@code fanType} (имя типа) и {@code fanSubtype} (имя вида)
+     * из шаблона. Используется GUI для отображения в каталоге:
+     * «Вентилятор канальный VRK-PatAIR-P-60-30-4-380».
+     * <p>
+     * Требует доступа к {@code FanTypeRepository}, {@code FanSpeciesRepository},
+     * {@code FanSeriesRepository}. Если в будущем откажемся — удалим метод.
+     */
+    private void fillFanType(FanCardEntity card, FanTemplate template) {
+        // Идём по цепочке: series → species → type
+        // Пока FanCardRepository — отдельный модуль, репозитории шаблонов живут
+        // в fan-template. Мы не хотим тянуть их в services.
+        // Поэтому — оставим заглушку, заполнение сделает FanCardService на стороне
+        // fan-template позже. Сейчас — заполняем хотя бы имя шаблона.
+        card.setFanType(template.getName());
     }
 }
