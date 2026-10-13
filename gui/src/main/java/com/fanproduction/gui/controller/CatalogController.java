@@ -2,6 +2,7 @@ package com.fanproduction.gui.controller;
 
 import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.gui.client.ProductCardClient;
+import com.fanproduction.gui.component.FanTemplateSelectionDialog;
 import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fanproduction.gui.service.TableColumnConfigurator;
@@ -324,14 +325,47 @@ public class CatalogController {
                 showAlert("Ошибка", "Неизвестный тип продукции", Alert.AlertType.ERROR);
                 return;
             }
-            CardFormController form = new CardFormController(
-                    ownerStage,
-                    cardType,
-                    null,
-                    this::handleRefresh
-            );
-            form.show();
+
+            if ("FAN".equals(cardType)) {
+                // FAN — сначала выбираем серию и версию шаблона
+                openFanSelectionDialog(ownerStage);
+            } else {
+                // Системные карточки — открываем форму как раньше
+                CardFormController form = new CardFormController(
+                        ownerStage,
+                        cardType,
+                        null,
+                        this::handleRefresh
+                );
+                form.show();
+            }
         });
+    }
+
+    /**
+     * Открыть диалог выбора версии шаблона FAN.
+     * <p>
+     * После выбора версии откроется форма CardFormController с cardType=FAN.
+     * Логика CardFormController для FAN будет расширена в US8.4.b.
+     */
+    private void openFanSelectionDialog(Stage ownerStage) {
+        FanTemplateSelectionDialog selectionDialog = new FanTemplateSelectionDialog(ownerStage);
+        selectionDialog.show();
+
+        Long selectedVersionId = selectionDialog.getSelectedVersionId();
+        if (selectedVersionId == null) {
+            return; // пользователь отменил
+        }
+
+        // Открываем форму FAN с уже известным templateVersionId
+        CardFormController form = new CardFormController(
+                ownerStage,
+                "FAN",
+                null,
+                selectedVersionId,
+                this::handleRefresh
+        );
+        form.show();
     }
 
     @FXML

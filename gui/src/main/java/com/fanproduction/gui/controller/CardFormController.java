@@ -43,6 +43,7 @@ public class CardFormController {
     private final String cardType;
     private final ProductCardDto existingCard;
     private final Runnable onSaveCallback;
+    private final Long templateVersionId;
     private final FieldMetadataService metadataService = new FieldMetadataService();
     private final FieldControlFactory controlFactory;
     // Контроллеры вкладок
@@ -77,13 +78,49 @@ public class CardFormController {
         this.controlFactory = new FieldControlFactory(
                 this.stage,
                 this::autoFillFromSelection);
+        this.templateVersionId = null;
+
+        initUI();
+    }
+
+    /**
+     * Конструктор для FAN-карточек с явно указанной версией шаблона.
+     * <p>
+     * Полная реализация — US8.4.b. Пока сохраняем {@code templateVersionId}
+     * и делегируем в основной конструктор.
+     *
+     * @param owner              родительское окно
+     * @param cardType           тип карточки ("FAN")
+     * @param existingCard       существующая карточка (null при создании)
+     * @param templateVersionId  ID версии шаблона
+     * @param onSaveCallback     callback после сохранения
+     */
+    public CardFormController(Stage owner,
+                              String cardType,
+                              ProductCardDto existingCard,
+                              Long templateVersionId,
+                              Runnable onSaveCallback) {
+        this.stage = new Stage();
+        this.stage.initModality(Modality.WINDOW_MODAL);
+        this.stage.initOwner(owner);
+        this.cardType = cardType;
+        this.existingCard = existingCard;
+        this.onSaveCallback = onSaveCallback;
+        this.templateVersionId = templateVersionId;
+        this.controlFactory = new FieldControlFactory(
+                this.stage,
+                this::autoFillFromSelection);
 
         initUI();
     }
 
     private void initUI() {
         String title = existingCard == null ? "Создание карточки" : "Редактирование карточки";
-        stage.setTitle(title + " - " + getTypeDisplayName(cardType));
+        String displayName = getTypeDisplayName(cardType);
+        if ("FAN".equals(cardType) && templateVersionId != null) {
+            displayName += " (шаблон v" + templateVersionId + ")";
+        }
+        stage.setTitle(title + " - " + displayName);
 
         VBox mainLayout = new VBox(15);
         mainLayout.setPadding(new Insets(20));
@@ -161,13 +198,35 @@ public class CardFormController {
         Scene scene = new Scene(mainLayout, 900, 700);
         stage.setScene(scene);
 
+//        // 4. СОЗДАЁМ ВРЕМЕННУЮ КАРТОЧКУ (ТОЛЬКО ДЛЯ НОВОЙ)
+//        if (existingCard == null && getTemporaryCardId() == null) {
+//            createTemporaryCardAsync();
+//            waitForTemporaryCardAndOpenTabs();
+//        } else if (existingCard == null && getTemporaryCardId() != null) {
+//            currentTemporaryCardId = getTemporaryCardId();
+//            refreshTemporaryCardInTabs(currentTemporaryCardId);
+//        }
+
         // 4. СОЗДАЁМ ВРЕМЕННУЮ КАРТОЧКУ (ТОЛЬКО ДЛЯ НОВОЙ)
-        if (existingCard == null && getTemporaryCardId() == null) {
-            createTemporaryCardAsync();
-            waitForTemporaryCardAndOpenTabs();
-        } else if (existingCard == null && getTemporaryCardId() != null) {
-            currentTemporaryCardId = getTemporaryCardId();
-            refreshTemporaryCardInTabs(currentTemporaryCardId);
+        // Для FAN временную карточку не создаём — она требует templateVersionId,
+        // логика сохранения FAN реализуется в US8.4.b, а временные карточки
+        // будут полностью удалены в US8.6 (атомарное сохранение).
+        if (existingCard == null && !"FAN".equals(cardType)) {
+            if (getTemporaryCardId() == null) {
+                createTemporaryCardAsync();
+                waitForTemporaryCardAndOpenTabs();
+            } else {
+                currentTemporaryCardId = getTemporaryCardId();
+                refreshTemporaryCardInTabs(currentTemporaryCardId);
+            }
+        } else if (existingCard == null && "FAN".equals(cardType)) {
+            // FAN — вкладки компонентов/материалов пока неактивны
+            if (componentsTabController != null) {
+                componentsTabController.showLoadingMessage();
+            }
+            if (materialsTabController != null) {
+                materialsTabController.showLoadingMessage();
+            }
         }
 
         // ========== 5. ЗАГРУЖАЕМ ДОПОЛНИТЕЛЬНЫЕ ДАННЫЕ ДЛЯ РЕДАКТИРОВАНИЯ ==========
