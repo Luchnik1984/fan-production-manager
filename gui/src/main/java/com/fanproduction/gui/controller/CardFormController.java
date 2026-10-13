@@ -8,6 +8,7 @@ import com.fanproduction.gui.client.ProductCardClient;
 import com.fanproduction.gui.configurator.AxialWheelCardConfigurator;
 import com.fanproduction.gui.configurator.CardFieldConfigurator;
 import com.fanproduction.gui.configurator.CardFormConfigurator;
+import com.fanproduction.gui.configurator.FanCardConfigurator;
 import com.fanproduction.gui.dto.ProductComponentItemDto;
 import com.fanproduction.gui.dto.ProductMaterialItemDto;
 import com.fanproduction.gui.dto.config.SelectableFieldConfig;
@@ -166,11 +167,15 @@ public class CardFormController {
         // ЗАГРУЖАЕМ ДАННЫЕ В ФОРМУ (С ФЛАГОМ SILENT)
         loadExistingCardData();
 
-        //ПЕРЕДАЁМ КОНТРОЛЛЕРЫ В КОНФИГУРАТОР (ЕСЛИ ОСЕВОЕ КОЛЕСО)
+        // Передаём зависимости в конфигураторы
         CardFieldConfigurator configurator = CardFormConfigurator.getConfigurator(cardType);
         if (configurator instanceof AxialWheelCardConfigurator) {
             ((AxialWheelCardConfigurator) configurator).setComponentsController(componentsTabController);
             ((AxialWheelCardConfigurator) configurator).setParentController(this);
+        } else if (configurator instanceof FanCardConfigurator fanConf) {
+            // FAN: передаём templateVersionId для preview-запросов
+            Long versionId = resolveTemplateVersionId();
+            fanConf.setTemplateVersionId(versionId);
         }
 
         // 2. КНОПКИ
@@ -334,7 +339,8 @@ public class CardFormController {
         }
         int row = 0;
 
-        // Поле "Наименование"
+        // Поле "Наименование" (для FAN — скрыто, name = fullMarking на сервере)
+        boolean isFan = "FAN".equals(cardType);
         Label nameLabel = new Label("Наименование:");
         nameLabel.setStyle("-fx-font-weight: bold;");
         TextField nameField = new TextField();
@@ -345,6 +351,14 @@ public class CardFormController {
         grid.add(nameLabel, 0, row);
         grid.add(nameField, 1, row);
         fieldControls.put("name", nameField);
+
+        if (isFan) {
+            // Скрываем, но оставляем в fieldControls (для saveCard)
+            nameLabel.setVisible(false);
+            nameLabel.setManaged(false);
+            nameField.setVisible(false);
+            nameField.setManaged(false);
+        }
         row++;
 
         for (FieldMetadataDto field : fields) {
@@ -391,6 +405,49 @@ public class CardFormController {
             fieldContainer.setManaged(isVisible);
 
             row++;
+        }
+
+        // Для FAN: добавляем поле «Полная маркировка» последним
+        if (isFan) {
+            Label fmLabel = new Label("Полная маркировка *");
+            fmLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #B71C1C;");
+
+            TextField fmField = new TextField();
+            fmField.setPromptText("Заполняется автоматически, можно редактировать вручную");
+            fmField.setStyle("-fx-background-color: #FFFDE7;");
+
+            // Заполняем текущим значением, если редактируем
+            if (existingCard != null && existingCard.getFields() != null) {
+                Object fm = existingCard.getFields().get("fullMarking");
+                if (fm != null) {
+                    fmField.setText(fm.toString());
+                }
+            }
+
+            VBox fmContainer = new VBox(2, fmField);
+            Label fmHint = new Label("Вычисляется автоматически. При ручном изменении не перезаписывается. " +
+                    "Кнопка «Восстановить маркировку» вернёт автоматическое значение.");
+            fmHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #888;");
+            fmContainer.getChildren().add(fmHint);
+
+            grid.add(fmLabel, 0, row);
+            grid.add(fmContainer, 1, row);
+
+            fieldControls.put("fullMarking", fmField);
+            fieldLabels.put("fullMarking", fmLabel);
+            fieldHints.put("fullMarking", fmHint);
+            row++;
+        }
+
+        // Для FAN: серия предзаполняется из шаблона и не редактируется
+        if (isFan && fanFormMetadata != null && fanFormMetadata.getSeriesName() != null
+                && !fanFormMetadata.getSeriesName().isEmpty()) {
+            Node seriesControl = fieldControls.get("series");
+            if (seriesControl instanceof TextField seriesField) {
+                seriesField.setText(fanFormMetadata.getSeriesName());
+                seriesField.setEditable(false);
+                seriesField.setStyle("-fx-background-color: #F0F0F0; -fx-text-fill: #333;");
+            }
         }
 
         CardFormConfigurator.configure(cardType, fieldControls, fieldLabels, fieldHints, existingCard != null);
@@ -563,6 +620,21 @@ public class CardFormController {
         // FAN: добавляем templateVersionId в fields
         if ("FAN".equals(cardType) && fanFormMetadata != null) {
             fields.put("templateVersionId", fanFormMetadata.getTemplateVersionId());
+        }
+
+        // FAN: если name пустое — автозаполняем из fullMarking
+        if ("FAN".equals(cardType) && name.isEmpty()) {
+            Node fmControl = fieldControls.get("fullMarking");
+            if (fmControl instanceof TextField fmField) {
+                String fm = fmField.getText() != null ? fmField.getText().trim() : "";
+                if (!fm.isEmpty()) {
+                    name = fm;
+                    // обновляем скрытое поле, чтобы ушло в fields
+                    if (nameControl instanceof TextField nameTextField) {
+                        nameTextField.setText(fm);
+                    }
+                }
+            }
         }
 
         final String finalName = name;

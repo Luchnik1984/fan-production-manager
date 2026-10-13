@@ -7,13 +7,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Фабрика для получения конфигуратора специальных полей карточки.
+ * Фабрика конфигураторов специальных полей карточки.
  * <p>
  * Для системных карточек (MOTOR, MOTOR_WHEEL, RADIAL_WHEEL, AXIAL_WHEEL)
  * используются жёстко заданные конфигураторы.
  * <p>
- * Для FAN (все вентиляторы) конфигуратор не нужен — вся логика
- * работает через конструктор шаблонов (модуль fan-template).
+ * Для FAN (все вентиляторы) — {@link FanCardConfigurator}, который
+ * загружает поля и правило маркировки из шаблона (через REST).
  */
 public class CardFormConfigurator {
 
@@ -24,15 +24,11 @@ public class CardFormConfigurator {
         configurators.put("MOTOR_WHEEL", new MotorWheelCardConfigurator());
         configurators.put("RADIAL_WHEEL", new RadialWheelCardConfigurator());
         configurators.put("AXIAL_WHEEL", new AxialWheelCardConfigurator());
+        configurators.put("FAN", new FanCardConfigurator());
     }
 
     /**
-     * Настраивает специальные поля для карточки
-     * @param cardType тип карточки
-     * @param fieldControls карта контролов
-     * @param fieldLabels карта лейблов
-     * @param fieldHints карта подсказок
-     * @param existingCardExists есть ли уже существующая карточка
+     * Настраивает специальные поля для карточки.
      */
     public static void configure(String cardType,
                                  Map<String, Node> fieldControls,
@@ -46,8 +42,7 @@ public class CardFormConfigurator {
     }
 
     /**
-     * Возвращает конфигуратор для указанного типа карточки
-     * Для FAN (и других динамических типов) возвращает null.
+     * Возвращает конфигуратор для указанного типа карточки.
      */
     public static CardFieldConfigurator getConfigurator(String cardType) {
         return configurators.get(cardType);

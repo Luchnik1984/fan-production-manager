@@ -164,6 +164,20 @@ public class CatalogController {
         String cardType = dto.getCardType();
         Map<String, Object> fields = dto.getFields();
 
+        // FAN: используем fanType (имя типа из шаблона) + fullMarking
+        if ("FAN".equals(cardType)) {
+            String fanType = fields != null ? (String) fields.get("fanType") : null;
+            String fullMarking = fields != null ? (String) fields.get("fullMarking") : null;
+
+            if (fullMarking != null && !fullMarking.isEmpty()) {
+                if (fanType != null && !fanType.isEmpty()) {
+                    return fanType + " " + fullMarking;
+                }
+                return "Вентилятор " + fullMarking;
+            }
+            return dto.getName() != null ? dto.getName() : "Вентилятор";
+        }
+
         // Получаем displayName из enum
         String typeDisplayName = getTypeDisplayName(cardType);
 
