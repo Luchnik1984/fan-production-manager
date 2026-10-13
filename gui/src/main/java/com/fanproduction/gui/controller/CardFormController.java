@@ -173,9 +173,9 @@ public class CardFormController {
             ((AxialWheelCardConfigurator) configurator).setComponentsController(componentsTabController);
             ((AxialWheelCardConfigurator) configurator).setParentController(this);
         } else if (configurator instanceof FanCardConfigurator fanConf) {
-            // FAN: передаём templateVersionId для preview-запросов
             Long versionId = resolveTemplateVersionId();
             fanConf.setTemplateVersionId(versionId);
+            fanConf.markInitialized();  // сбрасываем флаг, запоминаем lastAutoMarking
         }
 
         // 2. КНОПКИ
@@ -620,6 +620,19 @@ public class CardFormController {
         // FAN: добавляем templateVersionId в fields
         if ("FAN".equals(cardType) && fanFormMetadata != null) {
             fields.put("templateVersionId", fanFormMetadata.getTemplateVersionId());
+
+            // Служебные поля для отображения (не участвуют в маркировке)
+            if (fanFormMetadata.getTypeName() != null) {
+                fields.put("fanType", fanFormMetadata.getTypeName());
+            }
+            if (fanFormMetadata.getTypeDesignation() != null) {
+                // Опционально: склеиваем с designation
+                String typeFull = fanFormMetadata.getTypeName() + " " + fanFormMetadata.getTypeDesignation();
+                fields.put("fanTypeFull", typeFull);
+            }
+            if (fanFormMetadata.getSeriesName() != null) {
+                fields.put("fanSubtype", fanFormMetadata.getSeriesName());
+            }
         }
 
         // FAN: если name пустое — автозаполняем из fullMarking
