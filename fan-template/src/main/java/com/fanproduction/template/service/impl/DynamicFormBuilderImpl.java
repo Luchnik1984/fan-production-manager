@@ -57,6 +57,8 @@ public class DynamicFormBuilderImpl implements DynamicFormBuilder {
         Long typeId = null;
         String typeName = null;
         String typeDesignation = null;
+        Long speciesId = null;
+        String speciesName = null;
         Long seriesId = null;
         String seriesName = null;
 
@@ -67,6 +69,9 @@ public class DynamicFormBuilderImpl implements DynamicFormBuilder {
 
             FanSpecies species = fanSpeciesRepository.findById(series.getSpeciesId()).orElse(null);
             if (species != null) {
+                speciesId = species.getId();
+                speciesName = species.getName();
+
                 FanType type = fanTypeRepository.findById(species.getTypeId()).orElse(null);
                 if (type != null) {
                     typeId = type.getId();
@@ -90,6 +95,8 @@ public class DynamicFormBuilderImpl implements DynamicFormBuilder {
                 typeId,
                 typeName,
                 typeDesignation,
+                speciesId,
+                speciesName,
                 seriesId,
                 seriesName,
                 fields
