@@ -5,6 +5,7 @@ import com.fanproduction.api.dto.request.fan.CreateFanTypeRequest;
 import com.fanproduction.api.dto.request.fan.UpdateFanTypeRequest;
 import com.fanproduction.api.dto.response.ApiResponse;
 import com.fanproduction.template.dto.FanTypeDto;
+import com.fanproduction.template.dto.FanTypeShortDto;
 import com.fanproduction.template.service.FanHierarchyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,18 @@ public class FanTypeController extends BaseController {
     @GetMapping("/{id}")
     public ApiResponse<FanTypeDto> getTypeById(@PathVariable Long id) {
         return ApiResponse.success(fanHierarchyService.getTypeById(id));
+    }
+
+    /**
+     * Краткий список типов для ComboBox (без вложенных видов).
+     * <p>
+     * Доступен всем аутентифицированным пользователям — используется
+     * в ComboBox фильтрации каталога.
+     */
+    @GetMapping("/short-list")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<List<FanTypeShortDto>> getShortList() {
+        return ApiResponse.success(fanHierarchyService.getShortList());
     }
 
     /**

@@ -2,9 +2,12 @@ package com.fanproduction.gui.controller;
 
 import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.gui.client.ProductCardClient;
+import com.fanproduction.gui.client.FanTypeClient;
 import com.fanproduction.gui.component.FanTemplateSelectionDialog;
 import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.ProductCardDto;
+import com.fanproduction.gui.dto.CatalogFilterOption;
+import com.fanproduction.gui.dto.response.FanTypeShortDto;
 import com.fanproduction.gui.service.TableColumnConfigurator;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -20,7 +23,7 @@ import java.util.stream.Collectors;
 public class CatalogController {
 
     @FXML
-    private ComboBox<String> typeFilterComboBox;
+    private ComboBox<CatalogFilterOption> typeFilterComboBox;
 
     @FXML
     private TextField searchField;
@@ -57,7 +60,8 @@ public class CatalogController {
     private int totalPages = 0;
     private int totalElements = 0;
     private static final int PAGE_SIZE = 20;
-    private String currentTypeFilter = null;
+    private String currentCardTypeFilter = null;
+    private String currentFanTypeFilter = null;
 
     @FXML
     private void initialize() {
@@ -66,25 +70,53 @@ public class CatalogController {
     }
 
     private void setupFilters() {
-        // Получаем все типы из enum, преобразуем в русские названия, сохраняем порядок enum
-        List<String> displayNames = Arrays.stream(CardTemplateType.values())
-                .map(CardTemplateType::getDisplayName)
-                .toList();
+        typeFilterComboBox.getItems().clear();
 
-        typeFilterComboBox.getItems().add("Все типы");
-        typeFilterComboBox.getItems().addAll(displayNames);
-        typeFilterComboBox.setValue("Все типы");
+        // «Все типы»
+        typeFilterComboBox.getItems().add(new CatalogFilterOption("Все типы", null, null));
+
+        // Системные типы (кроме FAN)
+        for (CardTemplateType type : CardTemplateType.values()) {
+            if (type == CardTemplateType.FAN) continue;
+            typeFilterComboBox.getItems().add(
+                    new CatalogFilterOption(type.getDisplayName(), type.name(), null));
+        }
+
+        typeFilterComboBox.setValue(typeFilterComboBox.getItems().get(0));
 
         typeFilterComboBox.valueProperty().addListener((obs, old, newVal) -> {
-            if ("Все типы".equals(newVal)) {
-                currentTypeFilter = null;
+            if (newVal !=null) {
+                currentCardTypeFilter = newVal.cardType();
+                currentFanTypeFilter = newVal.fanType();
             } else {
-                // По русскому названию получаем enum и берём его name() для API
-                CardTemplateType type = CardTemplateType.fromDisplayName(newVal);
-                currentTypeFilter = type.name();
+                currentCardTypeFilter = null;
+                currentFanTypeFilter = null;
             }
             handleSearch();
         });
+
+        // Асинхронно подгружаем типы вентиляторов
+        loadFanTypesIntoFilter();
+    }
+
+    /**
+     * Асинхронно загрузить динамические типы вентиляторов и добавить в ComboBox.
+     */
+    private void loadFanTypesIntoFilter() {
+        new Thread(() -> {
+            try {
+                List<FanTypeShortDto> fanTypes = FanTypeClient.getShortList();
+                Platform.runLater(() -> {
+                    for (FanTypeShortDto ft : fanTypes) {
+                        typeFilterComboBox.getItems().add(
+                                new CatalogFilterOption(ft.getDisplayName(), "FAN", ft.getFilterValue()));
+                    }
+                });
+            } catch (Exception e) {
+                // Не критично — просто не будет FAN-типов в списке
+                System.err.println("Не удалось загрузить типы вентиляторов: " + e.getMessage());
+            }
+        }).start();
     }
 
     private void loadProducts() {
@@ -93,7 +125,7 @@ public class CatalogController {
         new Thread(() -> {
             try {
                 ApiResponse<Map<String, Object>> response = ProductCardClient.getAllCards(
-                        currentPage, PAGE_SIZE, currentTypeFilter);
+                        currentPage, PAGE_SIZE, currentCardTypeFilter, currentFanTypeFilter);
 
                 Platform.runLater(() -> {
                     if (response.isSuccess() && response.getData() != null) {
@@ -129,7 +161,7 @@ public class CatalogController {
                         updatePaginationControls();
                         statusLabel.setText("Всего записей: " + totalElements);
 
-                        TableColumnConfigurator.setupColumns(productsTable, currentTypeFilter);
+                        TableColumnConfigurator.setupColumns(productsTable, currentCardTypeFilter);
                         productsTable.setItems(productList);
 
                         productsTable.setOnMouseClicked(event -> {

@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -45,4 +47,10 @@ public interface FanCardRepository extends JpaRepository<FanCardEntity, Long> {
      */
     boolean existsByFullMarkingIgnoreCase(String fullMarking);
 
+    /**
+     * Поиск FAN-карточек по имени типа вентилятора.
+     * <p>
+     * Пример значения: {@code "Вентилятор канальный"}.
+     */
+    Page<FanCardEntity> findByFanType(String fanType, Pageable pageable);
 }
