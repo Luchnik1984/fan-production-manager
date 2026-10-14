@@ -19,14 +19,27 @@ public class ProductCardClient {
     /**
      * Получить все карточки с пагинацией
      */
-    public static ApiResponse<Map<String, Object>> getAllCards(int page, int size, String cardType) throws Exception {
+    public static ApiResponse<Map<String, Object>> getAllCards(int page, int size,
+                                                               String cardType,
+                                                               String fanType) throws Exception {
         StringBuilder url = new StringBuilder(BASE_PATH + "?page=" + page + "&size=" + size);
         if (cardType != null && !cardType.isEmpty()) {
             url.append("&cardType=").append(cardType);
         }
+        if (fanType != null && !fanType.isEmpty()) {
+            url.append("&fanType=")
+                    .append(java.net.URLEncoder.encode(fanType, java.nio.charset.StandardCharsets.UTF_8));
+        }
 
         TypeReference<ApiResponse<Map<String, Object>>> typeRef = new TypeReference<>() {};
         return ApiClient.get(url.toString(), typeRef);
+    }
+
+    /**
+     * Старая сигнатура для обратной совместимости.
+     */
+    public static ApiResponse<Map<String, Object>> getAllCards(int page, int size, String cardType) throws Exception {
+        return getAllCards(page, size, cardType, null);
     }
 
     /**

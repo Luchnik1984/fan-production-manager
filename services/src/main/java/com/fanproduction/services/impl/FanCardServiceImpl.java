@@ -83,8 +83,6 @@ public class FanCardServiceImpl implements FanCardService {
         card.setTemplateVersionId(templateVersionId);
         card.setFanTemplateId(template.getId());
         card.setCreatedBy(createdBy);
-        // Заполняем fan_type именем типа (для отображения в каталоге)
-        fillFanType(card, template);
 
         applyValuesToCard(card, values, "Вентилятор " + template.getName());
 
@@ -474,20 +472,4 @@ public class FanCardServiceImpl implements FanCardService {
         eventPublisher.publishEvent(new AuditEvent(this, actor, action, details));
     }
 
-    /**
-     * Заполнить {@code fanType} (имя типа) и {@code fanSubtype} (имя вида)
-     * из шаблона. Используется GUI для отображения в каталоге:
-     * «Вентилятор канальный VRK-PatAIR-P-60-30-4-380».
-     * <p>
-     * Требует доступа к {@code FanTypeRepository}, {@code FanSpeciesRepository},
-     * {@code FanSeriesRepository}. Если в будущем откажемся — удалим метод.
-     */
-    private void fillFanType(FanCardEntity card, FanTemplate template) {
-        // Идём по цепочке: series → species → type
-        // Пока FanCardRepository — отдельный модуль, репозитории шаблонов живут
-        // в fan-template. Мы не хотим тянуть их в services.
-        // Поэтому — оставим заглушку, заполнение сделает FanCardService на стороне
-        // fan-template позже. Сейчас — заполняем хотя бы имя шаблона.
-        card.setFanType(template.getName());
-    }
 }

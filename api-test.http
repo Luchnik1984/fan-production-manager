@@ -34,12 +34,21 @@ POST http://localhost:8083/api/auth/register
 Content-Type: application/json
 
 {
-  "email": "newuser@test.com",
-  "password": "password123",
+  "email": "user@test.ru",
+  "password": "123456789",
   "firstName": "New",
   "lastName": "User",
   "phone": "+79001234567",
   "role": "ENGINEER"
+}
+
+###
+POST http://localhost:8083/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@test.ru",
+  "password": "123456789"
 }
 
 ### Регистрация нового админа
@@ -74,7 +83,7 @@ POST http://localhost:8083/api/auth/login
 Content-Type: application/json
 
 {
-  "email": "admin@test.ru",
+  "email": "admin@admin.ru",
   "password": "123456789"
 }
 

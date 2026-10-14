@@ -4,6 +4,7 @@ package com.fanproduction.template.service;
 import com.fanproduction.template.dto.FanSeriesDto;
 import com.fanproduction.template.dto.FanSpeciesDto;
 import com.fanproduction.template.dto.FanTypeDto;
+import com.fanproduction.template.dto.FanTypeShortDto;
 
 import java.util.List;
 
@@ -128,4 +129,11 @@ public interface FanHierarchyService {
      * Все уровни заполнены (species и series не null).
      */
     List<FanTypeDto> getTree();
+
+    /**
+     * Список типов вентиляторов для ComboBox.
+     * <p>
+     * Возвращает {@code id, displayName, filterValue}.
+     */
+    List<FanTypeShortDto> getShortList();
 }

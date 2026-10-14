@@ -34,6 +34,7 @@ public class ProductCardServiceImpl implements ProductCardService {
     private final FanCardService fanCardService;
     private final ApplicationEventPublisher eventPublisher;
     private final CurrentUserProvider currentUserProvider;
+    private final FanCardRepository fanCardRepository;
 
     // ==========================================================
     // CREATE
@@ -152,6 +153,12 @@ public class ProductCardServiceImpl implements ProductCardService {
     @Override
     public List<BaseProductCard> searchByName(String name) {
         return productCardRepository.findByNameContainingIgnoreCase(name);
+    }
+
+    @Override
+    public Page<BaseProductCard> getFanCardsByFanType(String fanType, Pageable pageable) {
+        return fanCardRepository.findByFanType(fanType, pageable)
+                .map(card -> card);
     }
 
     // ==========================================================

@@ -5,6 +5,7 @@ import com.fanproduction.core.event.AuditEvent;
 import com.fanproduction.template.dto.FanSeriesDto;
 import com.fanproduction.template.dto.FanSpeciesDto;
 import com.fanproduction.template.dto.FanTypeDto;
+import com.fanproduction.template.dto.FanTypeShortDto;
 import com.fanproduction.template.entity.FanSeries;
 import com.fanproduction.template.entity.FanSpecies;
 import com.fanproduction.template.entity.FanType;
@@ -307,6 +308,29 @@ public class FanHierarchyServiceImpl implements FanHierarchyService {
 
         publishAudit(deletedBy, AuditAction.TEMPLATE_DELETE,
                 "Удалена серия вентилятора: ID=" + id);
+    }
+
+    // ==========================================================
+    // SHORT LIST (для ComboBox)
+    // ==========================================================
+
+    @Override
+    public List<FanTypeShortDto> getShortList() {
+        return fanTypeRepository.findAllByOrderByDesignationAsc().stream()
+                .map(this::toShortDto)
+                .toList();
+    }
+
+    private FanTypeShortDto toShortDto(FanType type) {
+        String filterValue = (type.getName() != null && !type.getName().isBlank())
+                ? type.getName()
+                : type.getDesignation();
+
+        String displayName = (type.getName() != null && !type.getName().isBlank())
+                ? type.getName() + " (" + type.getDesignation() + ")"
+                : type.getDesignation();
+
+        return new FanTypeShortDto(type.getId(), displayName, filterValue);
     }
 
     // ==========================================================

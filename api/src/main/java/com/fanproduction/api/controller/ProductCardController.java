@@ -79,6 +79,7 @@ public class ProductCardController extends BaseController {
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<Page<ProductCardResponse>> getAllCards(
             @RequestParam(required = false) String cardType,
+            @RequestParam(required = false) String fanType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
@@ -89,11 +90,12 @@ public class ProductCardController extends BaseController {
 
         Page<BaseProductCard> cardsPage;
 
-        if (cardType != null && !cardType.isEmpty()) {
-
-                CardTemplateType type = CardTemplateType.valueOf(cardType);
-                cardsPage = productCardService.getCardsByType(type, pageable);
-
+        if ("FAN".equals(cardType) && fanType != null && !fanType.isEmpty()) {
+            // Фильтр по конкретному типу вентилятора
+            cardsPage = productCardService.getFanCardsByFanType(fanType, pageable);
+        } else if (cardType != null && !cardType.isEmpty()) {
+            CardTemplateType type = CardTemplateType.valueOf(cardType);
+            cardsPage = productCardService.getCardsByType(type, pageable);
         } else {
             cardsPage = productCardService.getAllCards(pageable);
         }

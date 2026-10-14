@@ -45,6 +45,7 @@ class ProductCardServiceFANTest {
     @Mock private MotorWheelCardRepository motorWheelCardRepository;
     @Mock private RadialWheelCardRepository radialWheelCardRepository;
     @Mock private AxialWheelCardRepository axialWheelCardRepository;
+    @Mock private FanCardRepository fanCardRepository;
     @Mock private FanCardService fanCardService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private CurrentUserProvider currentUserProvider;
@@ -64,7 +65,8 @@ class ProductCardServiceFANTest {
                 realFactory,
                 fanCardService,
                 eventPublisher,
-                currentUserProvider
+                currentUserProvider,
+                fanCardRepository
         );
     }
 

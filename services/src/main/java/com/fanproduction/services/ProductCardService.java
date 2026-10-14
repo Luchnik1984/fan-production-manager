@@ -94,4 +94,11 @@ public interface ProductCardService {
      * @return список строк с описанием использования
      */
     List<String> getAssemblyUnitUsageInfo(Long cardId);
+
+    /**
+     * Получить FAN-карточки с фильтром по имени типа вентилятора.
+     * <p>
+     * Например, {@code fanType = "Вентилятор канальный"}.
+     */
+    Page<BaseProductCard> getFanCardsByFanType(String fanType, Pageable pageable);
 }
