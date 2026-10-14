@@ -468,15 +468,58 @@ public class CardFormController {
         Node control = fieldControls.get(fieldName);
         if (control == null) return;
 
+        String textValue = value != null ? value.toString() : "";
+
         if (control instanceof TextField textField) {
-            String textValue = value != null ? value.toString() : "";
             if (!textField.getText().equals(textValue)) {
                 textField.setText(textValue);
             }
-        } else if (control instanceof Label) {
-            String textValue = value != null ? value.toString() : "";
-            ((Label) control).setText(textValue);
+        } else if (control instanceof Label label) {
+            label.setText(textValue);
+        } else if (control instanceof ComboBox<?> comboBox) {
+            setComboBoxValue(comboBox, value);
+        } else if (control instanceof CheckBox checkBox) {
+            if (value instanceof Boolean b) {
+                checkBox.setSelected(b);
+            } else if (value != null) {
+                checkBox.setSelected(Boolean.parseBoolean(value.toString()));
+            }
         }
+    }
+
+    /**
+     * Установить значение в ComboBox.
+     * <ul>
+     *   <li>Для {@code ComboBox<String>} — setValue по строке.</li>
+     *   <li>Для {@code ComboBox<SelectableItem>} или подобных — поиск по {@code toString()}.</li>
+     * </ul>
+     */
+    @SuppressWarnings("unchecked")
+    private void setComboBoxValue(ComboBox<?> comboBox, Object value) {
+        if (value == null) {
+            comboBox.setValue(null);
+            return;
+        }
+
+        if (comboBox.getItems().isEmpty()) return;
+
+        Object first = comboBox.getItems().get(0);
+
+        // ComboBox<String>
+        if (first instanceof String) {
+            ((ComboBox<String>) comboBox).setValue(value.toString());
+            return;
+        }
+
+        // ComboBox<SelectableItem> и подобные
+        for (Object item : comboBox.getItems()) {
+            if (item != null && item.toString().equals(value.toString())) {
+                ((ComboBox<Object>) comboBox).setValue(item);
+                return;
+            }
+        }
+
+        // Не нашли — ставим первое (или ничего не делаем)
     }
 
     /**
@@ -1141,68 +1184,166 @@ public class CardFormController {
     }
 
     /**
-     * Автозаполнение при выборе компонента.
-     * Использует setFieldValue с silent=false
+     * Универсальная автоподстановка при выборе значения в SELECTABLE-поле.
+     * <p>
+     * Работает для всех типов ссылок:
+     * <ul>
+     *   <li>{@code COMPONENT} — загружает {@link ComponentDto}.</li>
+     *   <li>{@code MOTOR}, {@code MOTOR_WHEEL}, {@code RADIAL_WHEEL},
+     *       {@code AXIAL_WHEEL} — загружает {@link ProductCardDto}.</li>
+     * </ul>
+     * <p>
+     * Применяет:
+     * <ol>
+     *   <li>{@code targetFieldName} — displayName выбранной сущности.</li>
+     *   <li>{@code fieldName} — ID выбранной сущности.</li>
+     *   <li>{@code pullFrom} — маппинг полей из связанной сущности в поля формы.</li>
+     *   <li>{@code addToProduct} — добавление компонента в таблицу.</li>
+     *   <li>{@code onComponentSelected} — callback конфигуратора.</li>
+     * </ol>
      */
     private void autoFillFromSelection(SelectableFieldConfig config, Long selectedId) {
+        if (config == null || selectedId == null) return;
+
         new Thread(() -> {
             try {
-                if (selectedId == null || config == null) return;
-
-                ComponentDto component = ComponentClient.getComponentById(selectedId);
-                String designation = component.getDesignation() != null && !component.getDesignation().isEmpty()
-                        ? component.getDesignation()
-                        : component.getName();
+                Map<String, Object> sourceFields = loadSourceFields(config.referenceType(), selectedId);
+                String displayName = computeDisplayName(config.referenceType(), sourceFields);
 
                 Platform.runLater(() -> {
-                    // ========== 1. УДАЛЯЕМ СТАРЫЙ КОМПОНЕНТ (по роли и по ID) ==========
+                    // 1. Удаляем старый компонент (если есть)
                     if (config.addToProduct()) {
-                        // Удаляем все с той же ролью и по ID нового (если он уже есть в таблице)
                         removeComponentFromProductByRole(config.role(), selectedId);
                     }
 
-                    // ========== 2. ЗАПОЛНЯЕМ ТАРГЕТ ПОЛЕ ==========
+                    // 2. targetFieldName ← displayName
                     String targetFieldName = config.targetFieldName();
                     if (targetFieldName != null && !targetFieldName.isEmpty()) {
-                        setFieldValue(targetFieldName, designation,true);
+                        setFieldValue(targetFieldName, displayName, true);
                     }
 
-                    // ========== 3. СОХРАНЯЕМ ID В ПОЛЕ (НЕ silent) ==========
-                    setFieldValue(config.fieldName(), selectedId,true);
+                    // 3. fieldName ← selectedId
+                    setFieldValue(config.fieldName(), selectedId, true);
 
+                    // 4. pullFrom — применяем маппинг
+                    applyPullFrom(config, sourceFields);
 
-                    // ========== 4. ДОБАВЛЯЕМ КОМПОНЕНТ В ПРОДУКТ ==========
+                    // 5. addToProduct — добавляем в таблицу
                     if (config.addToProduct()) {
-                        // Проверяем, не добавлен ли уже этот компонент (после удаления)
                         boolean alreadyExists = componentsTabController.getItems().stream()
                                 .anyMatch(item -> item.getComponentId().equals(selectedId));
                         if (!alreadyExists) {
                             String role = config.role() != null ? config.role() : "Компонент";
                             componentManager.addLocal(selectedId, 1.0, role, null);
-                        } else {
-                            // Если уже есть, можно обновить количество или просто ничего не делать
-                            System.out.println("Component already exists in table, skipping add");
                         }
                     }
 
-                    // ========== 5. ВЫЗЫВАЕМ ОБРАБОТЧИК КОНФИГУРАТОРА ==========
+                    // 6. Callback конфигуратора
                     CardFieldConfigurator configurator = CardFormConfigurator.getConfigurator(cardType);
                     if (configurator != null) {
                         configurator.onComponentSelected(config.fieldName(), selectedId, fieldControls);
-                    }
-
-                    // ========== 6.  ОБНОВЛЯЕМ МАРКИРОВКУ ==========
-                    if (configurator != null) {
                         configurator.refreshFullMarking(fieldControls);
                     }
-
                 });
             } catch (Exception e) {
                 e.printStackTrace();
-                Platform.runLater(() -> showAlert("Ошибка", "Не удалось загрузить компонент: " + e.getMessage(),
+                Platform.runLater(() -> showAlert("Ошибка",
+                        "Не удалось загрузить компонент: " + e.getMessage(),
                         Alert.AlertType.ERROR));
             }
         }).start();
+    }
+
+    // ==========================================================
+    // ЗАГРУЗКА СВЯЗАННОЙ СУЩНОСТИ
+    // ==========================================================
+
+    /**
+     * Загрузить поля связанной сущности в плоскую Map.
+     */
+    private Map<String, Object> loadSourceFields(String referenceType, Long id) throws Exception {
+        if (referenceType == null) return new HashMap<>();
+
+        // COMPONENT — через ComponentClient
+        if ("COMPONENT".equals(referenceType)) {
+            ComponentDto c = ComponentClient.getComponentById(id);
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", c.getId());
+            m.put("name", c.getName());
+            m.put("designation", c.getDesignation());
+            m.put("vendorCode", c.getVendorCode());
+            m.put("unitId", c.getUnitId());
+            m.put("unitCode", c.getUnitCode());
+            m.put("unitName", c.getUnitName());
+            m.put("className", c.getClassName());
+            m.put("classId", c.getClassId());
+            m.put("description", c.getDescription());
+            m.put("weightKg", c.getWeightKg());
+            m.put("material", c.getMaterial());
+            if (c.getTechnicalSpecs() != null) {
+                m.putAll(c.getTechnicalSpecs());
+            }
+            return m;
+        }
+
+        // MOTOR, MOTOR_WHEEL, RADIAL_WHEEL, AXIAL_WHEEL — через ProductCardClient
+        ApiResponse<ProductCardDto> response = ProductCardClient.getCardById(id);
+        if (response != null && response.isSuccess() && response.getData() != null) {
+            ProductCardDto card = response.getData();
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", card.getId());
+            m.put("name", card.getName());
+            m.put("code", card.getCode());
+            m.put("cardType", card.getCardType());
+            if (card.getFields() != null) {
+                m.putAll(card.getFields());
+            }
+            return m;
+        }
+
+        throw new RuntimeException("Не удалось загрузить сущность: " + referenceType + " id=" + id);
+    }
+
+    /**
+     * Определить displayName для сохранения в targetFieldName.
+     */
+    private String computeDisplayName(String referenceType, Map<String, Object> sourceFields) {
+        // Для компонентов — designation (например, «SM1210»)
+        if ("COMPONENT".equals(referenceType)) {
+            Object designation = sourceFields.get("designation");
+            if (designation != null && !designation.toString().isEmpty()) {
+                return designation.toString();
+            }
+            Object name = sourceFields.get("name");
+            return name != null ? name.toString() : "";
+        }
+
+        // Для остальных — fullMarking или name
+        Object fullMarking = sourceFields.get("fullMarking");
+        if (fullMarking != null && !fullMarking.toString().isEmpty()) {
+            return fullMarking.toString();
+        }
+        Object name = sourceFields.get("name");
+        return name != null ? name.toString() : "";
+    }
+
+    /**
+     * Применить маппинг {@code pullFrom} к полям формы.
+     */
+    private void applyPullFrom(SelectableFieldConfig config, Map<String, Object> sourceFields) {
+        if (config.pullFrom() == null || config.pullFrom().isEmpty()) return;
+
+        for (Map.Entry<String, String> entry : config.pullFrom().entrySet()) {
+            String sourceKey = entry.getKey();
+            String targetKey = entry.getValue();
+
+            if (sourceKey == null || targetKey == null) continue;
+
+            Object value = sourceFields.get(sourceKey);
+            if (value != null) {
+                setFieldValue(targetKey, value, true);
+            }
+        }
     }
 
 }
