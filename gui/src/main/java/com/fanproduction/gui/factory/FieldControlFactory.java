@@ -170,7 +170,8 @@ public class FieldControlFactory {
                 field.getReferenceType(),
                 field.getTargetFieldName(),
                 field.getRole(),
-                field.isAddToProduct()
+                field.isAddToProduct(),
+                field.getPullFrom()
         );
 
         // ========== ПЕРЕДАЁМ Consumer, КОТОРЫЙ ЗАХВАТЫВАЕТ КОНФИГ ==========
