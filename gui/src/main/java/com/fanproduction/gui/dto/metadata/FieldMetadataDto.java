@@ -61,8 +61,10 @@ public class FieldMetadataDto {
     /** Роль компонента (место установки). */
     private String role;
 
-    /** Добавлять ли в product_components. */
-    private boolean addToProduct = true;
+    /** Добавлять ли в product_components.
+     *  Дефолт — false. Устанавливается в true только для SELECTABLE-полей
+     *  с referenceType=COMPONENT (через FieldControlFactory). */
+    private boolean addToProduct = false;
 
     // ========== ДЛЯ FAN (из шаблона) ==========
 
