@@ -18,6 +18,7 @@ import com.fanproduction.gui.factory.FieldControlFactory;
 import com.fanproduction.gui.manager.ComponentChangeManager;
 import com.fanproduction.gui.manager.MaterialChangeManager;
 import com.fanproduction.gui.service.FieldMetadataService;
+import com.fanproduction.gui.util.FieldVisibilityManager;
 import com.fasterxml.jackson.core.type.TypeReference;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -73,6 +74,7 @@ public class CardFormController {
     private final Map<String, TextField> referenceFields = new HashMap<>();
     private final Map<String, Label> fieldLabels = new HashMap<>();
     private final Map<String, Label> fieldHints = new HashMap<>();
+    private FieldVisibilityManager visibilityManager;
 
 
     public CardFormController(Stage owner, String cardType, ProductCardDto existingCard, Runnable onSaveCallback) {
@@ -166,6 +168,11 @@ public class CardFormController {
 
         // ЗАГРУЖАЕМ ДАННЫЕ В ФОРМУ (С ФЛАГОМ SILENT)
         loadExistingCardData();
+
+        // Пересчитываем видимость после загрузки (для existing-карточки)
+        if (visibilityManager != null) {
+            visibilityManager.recalcAll(collectAllValues());
+        }
 
         // Передаём зависимости в конфигураторы
         CardFieldConfigurator configurator = CardFormConfigurator.getConfigurator(cardType);
@@ -439,9 +446,86 @@ public class CardFormController {
                 seriesField.setStyle("-fx-background-color: #F0F0F0; -fx-text-fill: #333;");
             }
         }
+        // Инициализируем visibilityManager и регистрируем все поля с условиями
+        initVisibilityManager(fields);
 
         CardFormConfigurator.configure(cardType, fieldControls, fieldLabels, fieldHints, existingCard != null);
         return grid;
+    }
+
+    /**
+     * Инициализировать {@link FieldVisibilityManager} и зарегистрировать
+     * все поля формы с их условиями {@code visibleIf} / {@code requiredIf}.
+     */
+    private void initVisibilityManager(java.util.List<FieldMetadataDto> fields) {
+        visibilityManager = new FieldVisibilityManager(fieldControls, fieldLabels);
+
+        for (FieldMetadataDto field : fields) {
+            String key = field.getName();
+
+            // Компонент поля должен существовать в fieldControls
+            if (!fieldControls.containsKey(key)) continue;
+
+            visibilityManager.register(
+                    key,
+                    field.getVisibleIf(),
+                    field.getRequiredIf(),
+                    field.isRequired(),
+                    field.getLabel()
+            );
+        }
+
+        // Подписываемся на изменения всех полей
+        registerVisibilityListeners();
+
+        // Первичный пересчёт — на основе текущих значений
+        visibilityManager.recalcAll(collectAllValues());
+    }
+
+    /**
+     * Подписать listeners на все поля — для пересчёта видимости.
+     */
+    private void registerVisibilityListeners() {
+        for (Map.Entry<String, Node> entry : fieldControls.entrySet()) {
+            Node control = entry.getValue();
+            if (control instanceof TextField tf) {
+                tf.textProperty().addListener((obs, o, n) -> recalcVisibility());
+            } else if (control instanceof ComboBox<?> cb) {
+                cb.valueProperty().addListener((obs, o, n) -> recalcVisibility());
+            } else if (control instanceof CheckBox ch) {
+                ch.selectedProperty().addListener((obs, o, n) -> recalcVisibility());
+            }
+        }
+    }
+
+    /**
+     * Пересчитать видимость и обязательность полей.
+     */
+    private void recalcVisibility() {
+        if (visibilityManager == null) return;
+        visibilityManager.recalcAll(collectAllValues());
+    }
+
+    /**
+     * Собрать текущие значения всех полей формы.
+     */
+    private Map<String, Object> collectAllValues() {
+        Map<String, Object> values = new HashMap<>();
+
+        for (Map.Entry<String, Node> entry : fieldControls.entrySet()) {
+            String key = entry.getKey();
+            Node control = entry.getValue();
+
+            if (control instanceof TextField tf) {
+                String text = tf.getText() != null ? tf.getText().trim() : "";
+                if (!text.isEmpty()) values.put(key, text);
+            } else if (control instanceof ComboBox<?> cb) {
+                if (cb.getValue() != null) values.put(key, cb.getValue());
+            } else if (control instanceof CheckBox ch) {
+                values.put(key, ch.isSelected());
+            }
+        }
+        return values;
     }
 
     private Node createControlForField(FieldMetadataDto field, Object existingValue) {
@@ -691,19 +775,26 @@ public class CardFormController {
             return;
         }
 
-        // Проверяем обязательные поля (только видимые)
+        // Проверяем обязательные поля (только видимые и эффективно обязательные)
         for (Map.Entry<String, FieldMetadataDto> entry : fieldMetadata.entrySet()) {
             FieldMetadataDto field = entry.getValue();
-            if (field.isRequired()) {
-                Node control = fieldControls.get(field.getName());
-                if (control != null && !control.isVisible()) {
-                    continue;
-                }
-                Object value = finalFields.get(field.getName());
-                if (value == null || (value instanceof String && ((String) value).isEmpty())) {
-                    showAlert("Ошибка", "Поле '" + field.getLabel() + "' обязательно для заполнения", Alert.AlertType.ERROR);
-                    return;
-                }
+            String key = field.getName();
+
+            boolean isRequired;
+            if (visibilityManager != null) {
+                isRequired = visibilityManager.isEffectiveRequired(key);
+            } else {
+                isRequired = field.isRequired();
+            }
+
+            if (!isRequired) continue;
+
+            Object value = finalFields.get(key);
+            if (value == null || (value instanceof String && ((String) value).isEmpty())) {
+                showAlert("Ошибка",
+                        "Поле '" + field.getLabel() + "' обязательно для заполнения",
+                        Alert.AlertType.ERROR);
+                return;
             }
         }
 
