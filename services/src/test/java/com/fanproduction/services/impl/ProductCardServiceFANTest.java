@@ -7,7 +7,9 @@ import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.core.event.AuditEvent;
 import com.fanproduction.core.security.CurrentUserProvider;
 import com.fanproduction.repositories.product.*;
+import com.fanproduction.services.ComponentService;
 import com.fanproduction.services.FanCardService;
+import com.fanproduction.services.MaterialService;
 import com.fanproduction.services.factory.ProductCardFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -49,6 +51,8 @@ class ProductCardServiceFANTest {
     @Mock private FanCardService fanCardService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private CurrentUserProvider currentUserProvider;
+    @Mock private ComponentService componentService;
+    @Mock private MaterialService materialService;
 
     private ProductCardServiceImpl service;
     private ProductCardFactory realFactory;
@@ -66,7 +70,9 @@ class ProductCardServiceFANTest {
                 fanCardService,
                 eventPublisher,
                 currentUserProvider,
-                fanCardRepository
+                fanCardRepository,
+                componentService,
+                materialService
         );
     }
 
