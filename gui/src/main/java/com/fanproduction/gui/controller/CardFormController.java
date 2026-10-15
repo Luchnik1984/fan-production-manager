@@ -215,15 +215,6 @@ public class CardFormController {
         Scene scene = new Scene(mainLayout, 900, 700);
         stage.setScene(scene);
 
-//        // 4. СОЗДАЁМ ВРЕМЕННУЮ КАРТОЧКУ (ТОЛЬКО ДЛЯ НОВОЙ)
-//        if (existingCard == null && getTemporaryCardId() == null) {
-//            createTemporaryCardAsync();
-//            waitForTemporaryCardAndOpenTabs();
-//        } else if (existingCard == null && getTemporaryCardId() != null) {
-//            currentTemporaryCardId = getTemporaryCardId();
-//            refreshTemporaryCardInTabs(currentTemporaryCardId);
-//        }
-
         // 4. СОЗДАЁМ ВРЕМЕННУЮ КАРТОЧКУ (ТОЛЬКО ДЛЯ НОВОЙ)
         // Для FAN временную карточку не создаём — она требует templateVersionId,
         // логика сохранения FAN реализуется в US8.4.b, а временные карточки
@@ -245,7 +236,6 @@ public class CardFormController {
                 materialsTabController.showLoadingMessage();
             }
         }
-
         // ========== 5. ЗАГРУЖАЕМ ДОПОЛНИТЕЛЬНЫЕ ДАННЫЕ ДЛЯ РЕДАКТИРОВАНИЯ ==========
         loadAdditionalData();
     }
@@ -1198,7 +1188,8 @@ public class CardFormController {
      *   <li>{@code targetFieldName} — displayName выбранной сущности.</li>
      *   <li>{@code fieldName} — ID выбранной сущности.</li>
      *   <li>{@code pullFrom} — маппинг полей из связанной сущности в поля формы.</li>
-     *   <li>{@code addToProduct} — добавление компонента в таблицу.</li>
+     *   <li>{@code addToProduct} — добавление компонента в таблицу
+     *       (только для referenceType=COMPONENT).</li>
      *   <li>{@code onComponentSelected} — callback конфигуратора.</li>
      * </ol>
      */
@@ -1211,8 +1202,12 @@ public class CardFormController {
                 String displayName = computeDisplayName(config.referenceType(), sourceFields);
 
                 Platform.runLater(() -> {
+                    // addToProduct эффективен только для COMPONENT
+                    boolean canAddToProduct = config.addToProduct()
+                            && "COMPONENT".equals(config.referenceType());
+
                     // 1. Удаляем старый компонент (если есть)
-                    if (config.addToProduct()) {
+                    if (canAddToProduct) {
                         removeComponentFromProductByRole(config.role(), selectedId);
                     }
 
@@ -1228,8 +1223,8 @@ public class CardFormController {
                     // 4. pullFrom — применяем маппинг
                     applyPullFrom(config, sourceFields);
 
-                    // 5. addToProduct — добавляем в таблицу
-                    if (config.addToProduct()) {
+                    // 5. addToProduct — добавляем в таблицу (только для COMPONENT)
+                    if (canAddToProduct) {
                         boolean alreadyExists = componentsTabController.getItems().stream()
                                 .anyMatch(item -> item.getComponentId().equals(selectedId));
                         if (!alreadyExists) {

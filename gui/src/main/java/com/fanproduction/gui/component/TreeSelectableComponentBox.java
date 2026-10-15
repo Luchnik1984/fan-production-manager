@@ -190,19 +190,17 @@ public class TreeSelectableComponentBox {
     private void runDialog() {
         String referenceType = config.referenceType();
         if ("COMPONENT".equals(referenceType)) {
-            // Открываем существующее окно создания компонента
             openComponentCreationDialog();
         } else {
-            // Для остальных типов - форма создания карточки
-            CardFormController form = new CardFormController(
-                    ownerStage,
-                    referenceType,
-                    null,
-                    () -> Platform.runLater(this::openSelector)
-            );
-            form.show();
+                CardFormController form = new CardFormController(
+                        ownerStage,
+                        referenceType,
+                        null,
+                        () -> Platform.runLater(this::openSelector)
+                );
+                form.show();
+            }
         }
-    }
 
     private void openComponentCreationDialog() {
         LoadingDialog loadingDialog = new LoadingDialog(ownerStage, "Загрузка");
@@ -214,13 +212,12 @@ public class TreeSelectableComponentBox {
             List<ComponentDto> components = ComponentClient.getAllComponents();
             return new Object[]{categories, classes, components};
         }, result -> {
-            Object[] data = (Object[]) result;
             @SuppressWarnings("unchecked")
-            List<ComponentCategoryDto> categories = (List<ComponentCategoryDto>) data[0];
+            List<ComponentCategoryDto> categories = (List<ComponentCategoryDto>) ((Object[]) result)[0];
             @SuppressWarnings("unchecked")
-            List<ComponentClassDto> classes = (List<ComponentClassDto>) data[1];
+            List<ComponentClassDto> classes = (List<ComponentClassDto>) ((Object[]) result)[1];
             @SuppressWarnings("unchecked")
-            List<ComponentDto> components = (List<ComponentDto>) data[2];
+            List<ComponentDto> components = (List<ComponentDto>) ((Object[]) result)[2];
 
             showComponentCreationWindow(categories, classes, components);
         });

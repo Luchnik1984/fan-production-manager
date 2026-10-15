@@ -1,6 +1,7 @@
 package com.fanproduction.gui.component;
 
 import com.fanproduction.core.dto.Displayable;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -19,6 +20,9 @@ public class TreeSelectorDialog {
     private final Consumer<Object> onSelect;
     private final Runnable onCreate;
     private Object selectedItem;
+
+    /** Флаг: пользователь нажал «+ Создать новый». */
+    private boolean createRequested = false;
 
     public TreeSelectorDialog(Stage owner, String title, TreeItem<Object> root,
                               Consumer<Object> onSelect, Runnable onCreate) {
@@ -76,10 +80,8 @@ public class TreeSelectorDialog {
 
         Button createButton = new Button("➕ Создать новый");
         createButton.setOnAction(e -> {
+            createRequested = true;
             dialog.close();
-            if (onCreate != null) {
-                onCreate.run();
-            }
         });
 
         Button cancelButton = new Button("Отмена");
@@ -98,5 +100,10 @@ public class TreeSelectorDialog {
 
     public void show() {
         dialog.showAndWait();
+        // onCreate вызывается ПОСЛЕ полного закрытия диалога.
+        // Это критично для корректной установки фокуса вложенной формы.
+        if (createRequested && onCreate != null) {
+            Platform.runLater(onCreate);
+        }
     }
 }

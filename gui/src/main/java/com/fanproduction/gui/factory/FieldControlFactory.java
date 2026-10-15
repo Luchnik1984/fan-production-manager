@@ -165,17 +165,35 @@ public class FieldControlFactory {
                                           Object existingValue,
                                           Map<String, Node> fieldControls) {
 
+        // addToProduct эффективен только для COMPONENT.
+        // Для MOTOR / MOTOR_WHEEL / RADIAL_WHEEL / AXIAL_WHEEL — это ссылки на карточки,
+        // а не на записи таблицы component. Их нельзя добавлять в product_components.
+        boolean effectiveAddToProduct = field.isAddToProduct()
+                && "COMPONENT".equals(field.getReferenceType());
+
+        TreeSelectableComponentBox treeBox = buildTreeSelectableComponentBox(field, effectiveAddToProduct);
+
+        if (existingValue instanceof Number) {
+            treeBox.setSelectedId(((Number) existingValue).longValue());
+        }
+
+        return treeBox.getContainer();
+    }
+
+    private TreeSelectableComponentBox buildTreeSelectableComponentBox(FieldMetadataDto field, boolean effectiveAddToProduct) {
         SelectableFieldConfig config = new SelectableFieldConfig(
                 field.getName(),
                 field.getReferenceType(),
                 field.getTargetFieldName(),
                 field.getRole(),
-                field.isAddToProduct(),
+                effectiveAddToProduct,
                 field.getPullFrom()
         );
 
         // ========== ПЕРЕДАЁМ Consumer, КОТОРЫЙ ЗАХВАТЫВАЕТ КОНФИГ ==========
-        TreeSelectableComponentBox treeBox = new TreeSelectableComponentBox(
+        // ← Consumer<Long>
+        // ← конфиг из замыкания
+        return new TreeSelectableComponentBox(
                 ownerStage,
                 config,
                 id -> {  // ← Consumer<Long>
@@ -184,12 +202,6 @@ public class FieldControlFactory {
                     }
                 }
         );
-
-        if (existingValue instanceof Number) {
-            treeBox.setSelectedId(((Number) existingValue).longValue());
-        }
-
-        return treeBox.getContainer();
     }
 
     private Node createHiddenField(FieldMetadataDto field, Object existingValue) {
