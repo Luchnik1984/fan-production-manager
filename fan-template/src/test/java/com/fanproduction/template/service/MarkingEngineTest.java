@@ -495,6 +495,161 @@ class MarkingEngineTest {
     }
 
     // ==========================================================
+    // СЖАТИЕ РАЗДЕЛИТЕЛЕЙ
+    // ==========================================================
+
+    @Nested
+    @DisplayName("Сжатие разделителей")
+    class SeparatorCollapseTests {
+
+        @Test
+        @DisplayName("Разделитель с пустым полем в середине сжимается")
+        void separatorWithEmptyFieldInMiddle() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    literal("A"),
+                    separator("-"),
+                    new MarkingRuleElement(RuleElementType.FIELD, null, "x", null, null, null),
+                    separator("-"),
+                    literal("C")
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of(), List.of()))
+                    .isEqualTo("A-C");
+        }
+
+        @Test
+        @DisplayName("Висший разделитель в конце удаляется")
+        void trailingSeparatorRemoved() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    literal("A"),
+                    separator("-"),
+                    new MarkingRuleElement(RuleElementType.FIELD, null, "x", null, null, null)
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of(), List.of()))
+                    .isEqualTo("A");
+        }
+
+        @Test
+        @DisplayName("Все значения непустые — разделители на месте")
+        void allFieldsPresent() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    literal("A"),
+                    separator("-"),
+                    literal("B"),
+                    separator("-"),
+                    literal("C")
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of(), List.of()))
+                    .isEqualTo("A-B-C");
+        }
+
+        @Test
+        @DisplayName("Всё пусто — пустая строка")
+        void allEmpty() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    new MarkingRuleElement(RuleElementType.FIELD, null, "x", null, null, null),
+                    separator("-"),
+                    new MarkingRuleElement(RuleElementType.FIELD, null, "y", null, null, null)
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of(), List.of()))
+                    .isEqualTo("");
+        }
+
+        @Test
+        @DisplayName("CONDITION с пустым then не оставляет висящий разделитель")
+        void conditionEmptyThen() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    literal("A"),
+                    separator("-"),
+                    literal("B"),
+                    new MarkingRuleElement(
+                            RuleElementType.CONDITION, null, null,
+                            new Condition("flag", ConditionOperator.EQUALS, true, null),
+                            List.of(separator("-"),
+                                    new MarkingRuleElement(RuleElementType.FIELD, null, "x", null, null, null)),
+                            List.of()
+                    )
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of("flag", true), List.of()))
+                    .isEqualTo("A-B");
+        }
+
+        @Test
+        @DisplayName("CONDITION с непустым then добавляет разделитель")
+        void conditionNonEmptyThen() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    literal("A"),
+                    separator("-"),
+                    literal("B"),
+                    new MarkingRuleElement(
+                            RuleElementType.CONDITION, null, null,
+                            new Condition("flag", ConditionOperator.EQUALS, true, null),
+                            List.of(separator("-"),
+                                    new MarkingRuleElement(RuleElementType.FIELD, null, "x", null, null, null)),
+                            List.of()
+                    )
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of("flag", true, "x", 10), List.of()))
+                    .isEqualTo("A-B-10");
+        }
+
+        @Test
+        @DisplayName("CONDITION без условия — пропускается")
+        void emptyConditionSkipped() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    literal("A"),
+                    separator("-"),
+                    literal("B"),
+                    new MarkingRuleElement(
+                            RuleElementType.CONDITION, null, null,
+                            null,
+                            List.of(separator("-"),
+                                    new MarkingRuleElement(RuleElementType.FIELD, null, "x", null, null, null)),
+                            List.of()
+                    )
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of(), List.of()))
+                    .isEqualTo("A-B");
+        }
+
+        @Test
+        @DisplayName("Поля подряд без разделителя склеиваются как раньше")
+        void fieldsWithoutSeparators() {
+            MarkingRule rule = new MarkingRule(List.of(
+                    new MarkingRuleElement(RuleElementType.FIELD, null, "a", null, null, null),
+                    new MarkingRuleElement(RuleElementType.FIELD, null, "b", null, null, null)
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of("a", "X", "b", "Y"), List.of()))
+                    .isEqualTo("XY");
+        }
+
+        @Test
+        @DisplayName("CONDITION в самом начале: ведущий разделитель сохраняется")
+        void conditionAtStartKeepsLeadingSeparator() {
+            // Правило: CONDITION[NOT_EMPTY x: then: [SEP("-"), FIELD(x)]]
+            MarkingRule rule = new MarkingRule(List.of(
+                    new MarkingRuleElement(
+                            RuleElementType.CONDITION, null, null,
+                            new Condition("x", ConditionOperator.NOT_EMPTY, null, null),
+                            List.of(separator("-"),
+                                    new MarkingRuleElement(RuleElementType.FIELD, null, "x", null, null, null)),
+                            List.of()
+                    )
+            ));
+
+            assertThat(engine.evaluate(rule, Map.of("x", "Г"), List.of()))
+                    .isEqualTo("-Г");
+        }
+    }
+
+    // ==========================================================
     // КОМПЛЕКСНЫЕ (без CONDITION)
     // ==========================================================
 

@@ -289,7 +289,7 @@ public class FormulaFunctions {
     /**
      * Привести значение к {@link Double}. Возвращает {@code null} при неудаче.
      */
-    static Double toNumber(Object value) {
+   public static Double toNumber(Object value) {
         if (value == null) return null;
         if (value instanceof Number n) return n.doubleValue();
         if (value instanceof String s) {
@@ -307,7 +307,7 @@ public class FormulaFunctions {
     /**
      * Привести значение к {@link Boolean}. {@code null} → {@code false}.
      */
-    static Boolean toBoolean(Object value) {
+   public static Boolean toBoolean(Object value) {
         if (value == null) return false;
         if (value instanceof Boolean b) return b;
         if (value instanceof Number n) return n.doubleValue() != 0;
@@ -333,7 +333,7 @@ public class FormulaFunctions {
     /**
      * Проверка на «пустое» значение: {@code null}, пустая строка, пустая коллекция.
      */
-    static boolean isEmpty(Object value) {
+    public static boolean isEmpty(Object value) {
         if (value == null) return true;
         if (value instanceof String s) return s.isEmpty();
         if (value instanceof java.util.Collection<?> c) return c.isEmpty();
@@ -343,7 +343,7 @@ public class FormulaFunctions {
     /**
      * Сравнить два значения с учётом числового/строкового представления.
      */
-    static boolean valuesEqual(Object a, Object b) {
+    public static boolean valuesEqual(Object a, Object b) {
         if (a == null && b == null) return true;
         if (a == null || b == null) return false;
 
@@ -361,14 +361,14 @@ public class FormulaFunctions {
     /**
      * Сравнить ключи MAP: числа — как числа, строки — как строки.
      */
-    static boolean keysEqual(Object key, Object value) {
+    public static boolean keysEqual(Object key, Object value) {
         return valuesEqual(key, value);
     }
 
     /**
      * Форматировать число: целое — без дроби, дробное — с запятой.
      */
-    static String formatNumber(double value) {
+    public static String formatNumber(double value) {
         if (value == Math.floor(value) && !Double.isInfinite(value)) {
             return String.valueOf((long) value);
         }
