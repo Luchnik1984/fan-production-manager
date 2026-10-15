@@ -1,5 +1,7 @@
 package com.fanproduction.services.impl;
 
+import com.fanproduction.core.entity.component.ProductComponentEntity;
+import com.fanproduction.core.entity.material.ProductMaterialRequirementEntity;
 import com.fanproduction.core.entity.product.*;
 import com.fanproduction.core.enums.AuditAction;
 import com.fanproduction.core.enums.CardTemplateType;
@@ -7,8 +9,12 @@ import com.fanproduction.core.enums.AssemblyUnitFieldType;
 import com.fanproduction.core.event.AuditEvent;
 import com.fanproduction.core.security.CurrentUserProvider;
 import com.fanproduction.repositories.product.*;
+import com.fanproduction.services.ComponentService;
 import com.fanproduction.services.FanCardService;
+import com.fanproduction.services.MaterialService;
 import com.fanproduction.services.ProductCardService;
+import com.fanproduction.services.dto.ProductComponentItemData;
+import com.fanproduction.services.dto.ProductMaterialItemData;
 import com.fanproduction.services.factory.ProductCardFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -35,6 +42,8 @@ public class ProductCardServiceImpl implements ProductCardService {
     private final ApplicationEventPublisher eventPublisher;
     private final CurrentUserProvider currentUserProvider;
     private final FanCardRepository fanCardRepository;
+    private final ComponentService componentService;
+    private final MaterialService materialService;
 
     // ==========================================================
     // CREATE
@@ -306,6 +315,176 @@ public class ProductCardServiceImpl implements ProductCardService {
         }
 
         return usage;
+    }
+
+    // ==========================================================
+    // АТОМАРНОЕ СОХРАНЕНИЕ (FR11)
+    // ==========================================================
+
+    @Override
+    @Transactional
+    public BaseProductCard createFullCard(CardTemplateType cardType,
+                                          String name,
+                                          Map<String, Object> fields,
+                                          List<ProductComponentItemData> components,
+                                          List<ProductMaterialItemData> materials,
+                                          String createdBy) {
+        Map<String, Object> safeFields = buildSafeFields(fields, name);
+
+        BaseProductCard savedCard = createCard(cardType, safeFields, createdBy);
+        Long cardId = savedCard.getId();
+
+        // Применяем компоненты
+        if (components != null) {
+            for (ProductComponentItemData c : components) {
+                componentService.addComponentToProduct(
+                        cardId,
+                        c.componentId(),
+                        c.quantity() != null ? c.quantity() : 1.0,
+                        c.position(),
+                        c.note()
+                );
+            }
+        }
+
+        // Применяем материалы
+        if (materials != null) {
+            for (ProductMaterialItemData m : materials) {
+                materialService.addMaterialToProduct(
+                        cardId,
+                        m.materialId(),
+                        m.quantityPerUnit() != null ? m.quantityPerUnit() : 1.0,
+                        m.note()
+                );
+            }
+        }
+
+        log.info("createFullCard: cardId={}, components={}, materials={}",
+                cardId,
+                components != null ? components.size() : 0,
+                materials != null ? materials.size() : 0);
+
+        return savedCard;
+    }
+
+    @Override
+    @Transactional
+    public BaseProductCard updateFullCard(Long id,
+                                          String name,
+                                          Map<String, Object> fields,
+                                          List<ProductComponentItemData> components,
+                                          List<Long> componentsToRemove,
+                                          List<ProductMaterialItemData> materials,
+                                          List<Long> materialsToRemove) {
+        Map<String, Object> safeFields = buildSafeFields(fields, name);
+
+        BaseProductCard updatedCard = updateCard(id, safeFields);
+
+        // Удаляем указанные компоненты
+        if (componentsToRemove != null) {
+            for (Long componentId : componentsToRemove) {
+                try {
+                    componentService.removeComponentFromProduct(id, componentId);
+                } catch (Exception e) {
+                    log.debug("Компонент {} уже отсутствует у карточки {}", componentId, id);
+                }
+            }
+        }
+
+        // Обрабатываем компоненты (add/update)
+        if (components != null && !components.isEmpty()) {
+            Map<Long, ProductComponentEntity> existingMap =
+                    componentService.getComponentsByProductCard(id).stream()
+                            .collect(Collectors.toMap(
+                                    ProductComponentEntity::getComponentId,
+                                    x -> x,
+                                    (a, b) -> a));
+
+            for (ProductComponentItemData c : components) {
+                ProductComponentEntity existing = existingMap.get(c.componentId());
+
+                if (existing != null) {
+                    if (c.quantity() != null) {
+                        componentService.updateComponentQuantity(id, c.componentId(), c.quantity());
+                    }
+                    if (c.position() != null) {
+                        componentService.updateComponentPosition(id, c.componentId(), c.position());
+                    }
+                    if (c.note() != null) {
+                        componentService.updateComponentNote(id, c.componentId(), c.note());
+                    }
+                } else {
+                    componentService.addComponentToProduct(
+                            id,
+                            c.componentId(),
+                            c.quantity() != null ? c.quantity() : 1.0,
+                            c.position(),
+                            c.note()
+                    );
+                }
+            }
+        }
+
+        // Удаляем указанные материалы
+        if (materialsToRemove != null) {
+            for (Long materialId : materialsToRemove) {
+                try {
+                    materialService.removeMaterialFromProduct(id, materialId);
+                } catch (Exception e) {
+                    log.debug("Материал {} уже отсутствует у карточки {}", materialId, id);
+                }
+            }
+        }
+
+        // Обрабатываем материалы (add/update)
+        if (materials != null && !materials.isEmpty()) {
+            Map<Long, ProductMaterialRequirementEntity> existingMap =
+                    materialService.getMaterialsByProductCard(id).stream()
+                            .collect(Collectors.toMap(
+                                    ProductMaterialRequirementEntity::getMaterialId,
+                                    x -> x,
+                                    (a, b) -> a));
+
+            for (ProductMaterialItemData m : materials) {
+                ProductMaterialRequirementEntity existing = existingMap.get(m.materialId());
+
+                if (existing != null) {
+                    if (m.quantityPerUnit() != null) {
+                        materialService.updateMaterialQuantity(id, m.materialId(), m.quantityPerUnit());
+                    }
+                    if (m.note() != null) {
+                        materialService.updateMaterialNote(id, m.materialId(), m.note());
+                    }
+                } else {
+                    materialService.addMaterialToProduct(
+                            id,
+                            m.materialId(),
+                            m.quantityPerUnit() != null ? m.quantityPerUnit() : 1.0,
+                            m.note()
+                    );
+                }
+            }
+        }
+
+        log.info("updateFullCard: cardId={}, components={}, materials={}",
+                id,
+                components != null ? components.size() : 0,
+                materials != null ? materials.size() : 0);
+
+        return updatedCard;
+    }
+
+    /**
+     * Подготовить Map полей: копия + добавление name, если задано.
+     */
+    private Map<String, Object> buildSafeFields(Map<String, Object> fields, String name) {
+        Map<String, Object> safeFields = fields != null
+                ? new HashMap<>(fields)
+                : new HashMap<>();
+        if (name != null && !name.isBlank()) {
+            safeFields.put("name", name);
+        }
+        return safeFields;
     }
 
     // ==========================================================

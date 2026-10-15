@@ -1,5 +1,8 @@
 package com.fanproduction.api.controller;
 
+import com.fanproduction.api.dto.request.ProductComponentItemRequest;
+import com.fanproduction.api.dto.request.ProductFullRequest;
+import com.fanproduction.api.dto.request.ProductMaterialItemRequest;
 import com.fanproduction.api.dto.response.ApiResponse;
 import com.fanproduction.api.dto.request.ProductCardRequest;
 import com.fanproduction.api.dto.response.ProductCardResponse;
@@ -7,6 +10,8 @@ import com.fanproduction.api.mapper.ProductCardMapper;
 import com.fanproduction.core.entity.product.BaseProductCard;
 import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.services.ProductCardService;
+import com.fanproduction.services.dto.ProductComponentItemData;
+import com.fanproduction.services.dto.ProductMaterialItemData;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -170,6 +175,91 @@ public class ProductCardController extends BaseController {
                 productCardService.removeTemporaryFlag(id);
             }
             return ApiResponse.success(null);
+    }
+
+    /**
+     * Создать карточку продукции с компонентами и материалами атомарно.
+     * <p>
+     * См. FR11.
+     */
+    @PostMapping("/full")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
+    public ApiResponse<ProductCardResponse> createFullCard(
+            @Valid @RequestBody ProductFullRequest request) {
+        try {
+            CardTemplateType cardType = CardTemplateType.valueOf(request.cardType());
+
+            List<ProductComponentItemData> components = mapComponents(request.components());
+            List<ProductMaterialItemData> materials = mapMaterials(request.materials());
+
+            BaseProductCard card = productCardService.createFullCard(
+                    cardType,
+                    request.name(),
+                    request.fields(),
+                    components,
+                    materials,
+                    getCurrentUser()
+            );
+
+            return ApiResponse.success(productCardMapper.toResponse(card));
+
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    /**
+     * Обновить карточку продукции с компонентами и материалами атомарно.
+     */
+    @PutMapping("/{id}/full")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
+    public ApiResponse<ProductCardResponse> updateFullCard(
+            @PathVariable Long id,
+            @Valid @RequestBody ProductFullRequest request) {
+        try {
+            List<ProductComponentItemData> components = mapComponents(request.components());
+            List<ProductMaterialItemData> materials = mapMaterials(request.materials());
+
+            BaseProductCard card = productCardService.updateFullCard(
+                    id,
+                    request.name(),
+                    request.fields(),
+                    components,
+                    request.componentsToRemove(),
+                    materials,
+                    request.materialsToRemove()
+            );
+
+            return ApiResponse.success(productCardMapper.toResponse(card));
+
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    // ==========================================================
+    // МАППИНГ DTO
+    // ==========================================================
+
+    private List<ProductComponentItemData> mapComponents(List<ProductComponentItemRequest> src) {
+        if (src == null) return List.of();
+        return src.stream()
+                .map(c -> new ProductComponentItemData(
+                        c.componentId(),
+                        c.quantity(),
+                        c.position(),
+                        c.note()))
+                .toList();
+    }
+
+    private List<ProductMaterialItemData> mapMaterials(List<ProductMaterialItemRequest> src) {
+        if (src == null) return List.of();
+        return src.stream()
+                .map(m -> new ProductMaterialItemData(
+                        m.materialId(),
+                        m.quantityPerUnit(),
+                        m.note()))
+                .toList();
     }
 
     private void validateProductCardRequest(ProductCardRequest request) {
