@@ -8,7 +8,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Построитель дерева электродвигателей.
+ * <p>
+ * Иерархия: Серия → Монтажное исполнение → Тип двигателя → Экземпляр.
+ * <p>
+ * <b>Null-safe:</b> отсутствующие значения (null) группируются под
+ * заглушкой {@link #NULL_PLACEHOLDER}, чтобы {@code Collectors.groupingBy}
+ * не падал с NPE.
+ */
 public class MotorTreeBuilder {
+
+    private static final String NULL_PLACEHOLDER = "—";
 
     public TreeItem<Object> buildTree(List<MotorDto> items) {
         TreeItem<Object> root = new TreeItem<>();
@@ -16,8 +27,8 @@ public class MotorTreeBuilder {
         root.setExpanded(true);
 
         Map<String, List<MotorDto>> bySeries = items.stream()
-                .filter(item -> item.getSeries() != null)
-                .collect(Collectors.groupingBy(MotorDto::getSeries));
+                .collect(Collectors.groupingBy(
+                        item -> safe(item.getSeries())));
 
         for (Map.Entry<String, List<MotorDto>> seriesEntry : bySeries.entrySet()) {
             TreeItem<Object> seriesItem = new TreeItem<>(seriesEntry.getKey());
@@ -25,7 +36,8 @@ public class MotorTreeBuilder {
             seriesItem.setGraphic(IconFactory.createFolderIcon());
 
             Map<String, List<MotorDto>> byMounting = seriesEntry.getValue().stream()
-                    .collect(Collectors.groupingBy(MotorDto::getMountingType));
+                    .collect(Collectors.groupingBy(
+                            item -> safe(item.getMountingType())));
 
             for (Map.Entry<String, List<MotorDto>> mountingEntry : byMounting.entrySet()) {
                 TreeItem<Object> mountingItem = new TreeItem<>(mountingEntry.getKey());
@@ -33,7 +45,8 @@ public class MotorTreeBuilder {
                 mountingItem.setGraphic(IconFactory.createFolderIcon());
 
                 Map<String, List<MotorDto>> byMotorType = mountingEntry.getValue().stream()
-                        .collect(Collectors.groupingBy(MotorDto::getMotorType));
+                        .collect(Collectors.groupingBy(
+                                item -> safe(item.getMotorType())));
 
                 for (Map.Entry<String, List<MotorDto>> motorTypeEntry : byMotorType.entrySet()) {
                     TreeItem<Object> motorTypeItem = new TreeItem<>(motorTypeEntry.getKey());
@@ -53,5 +66,10 @@ public class MotorTreeBuilder {
         }
 
         return root;
+    }
+
+    /** Заменить null на заглушку, чтобы groupingBy не падал. */
+    private static String safe(String value) {
+        return value != null ? value : NULL_PLACEHOLDER;
     }
 }

@@ -22,6 +22,7 @@ public class MaterialTreeBuilder {
         this.allCategories = allCategories;
         this.allClasses = allClasses;
         this.materialsByClassId = allMaterials.stream()
+                .filter(m -> m.getClassId() != null)   // ← отсекаем битые
                 .collect(Collectors.groupingBy(MaterialDto::getClassId));
     }
 

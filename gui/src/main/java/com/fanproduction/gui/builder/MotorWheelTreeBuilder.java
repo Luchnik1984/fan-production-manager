@@ -8,7 +8,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Построитель дерева мотор-колёс.
+ * <p>
+ * Иерархия: Производитель → Тип лопаток → Размер → Экземпляр.
+ * <p>
+ * <b>Null-safe:</b> отсутствующие значения группируются под заглушкой.
+ */
 public class MotorWheelTreeBuilder {
+
+    private static final String NULL_PLACEHOLDER = "—";
 
     public TreeItem<Object> buildTree(List<MotorWheelDto> items) {
         TreeItem<Object> root = new TreeItem<>();
@@ -16,8 +25,8 @@ public class MotorWheelTreeBuilder {
         root.setExpanded(true);
 
         Map<String, List<MotorWheelDto>> byManufacturer = items.stream()
-                .filter(item -> item.getManufacturer() != null)
-                .collect(Collectors.groupingBy(MotorWheelDto::getManufacturer));
+                .collect(Collectors.groupingBy(
+                        item -> safe(item.getManufacturer())));
 
         for (Map.Entry<String, List<MotorWheelDto>> manufacturerEntry : byManufacturer.entrySet()) {
             TreeItem<Object> manufacturerItem = new TreeItem<>(manufacturerEntry.getKey());
@@ -25,18 +34,20 @@ public class MotorWheelTreeBuilder {
             manufacturerItem.setGraphic(IconFactory.createFolderIcon());
 
             Map<String, List<MotorWheelDto>> byBladeType = manufacturerEntry.getValue().stream()
-                    .collect(Collectors.groupingBy(MotorWheelDto::getBladeType));
+                    .collect(Collectors.groupingBy(
+                            item -> safe(item.getBladeType())));
 
             for (Map.Entry<String, List<MotorWheelDto>> bladeEntry : byBladeType.entrySet()) {
                 TreeItem<Object> bladeItem = new TreeItem<>(bladeEntry.getKey());
                 bladeItem.setExpanded(true);
                 bladeItem.setGraphic(IconFactory.createFolderIcon());
 
-                Map<Integer, List<MotorWheelDto>> bySize = bladeEntry.getValue().stream()
-                        .collect(Collectors.groupingBy(MotorWheelDto::getSize));
+                Map<String, List<MotorWheelDto>> bySize = bladeEntry.getValue().stream()
+                        .collect(Collectors.groupingBy(
+                                item -> item.getSize() != null ? item.getSize() + " мм" : NULL_PLACEHOLDER));
 
-                for (Map.Entry<Integer, List<MotorWheelDto>> sizeEntry : bySize.entrySet()) {
-                    TreeItem<Object> sizeItem = new TreeItem<>(sizeEntry.getKey() + " мм");
+                for (Map.Entry<String, List<MotorWheelDto>> sizeEntry : bySize.entrySet()) {
+                    TreeItem<Object> sizeItem = new TreeItem<>(sizeEntry.getKey());
                     sizeItem.setExpanded(true);
                     sizeItem.setGraphic(IconFactory.createFolderIcon());
 
@@ -53,5 +64,9 @@ public class MotorWheelTreeBuilder {
         }
 
         return root;
+    }
+
+    private static String safe(String value) {
+        return value != null ? value : NULL_PLACEHOLDER;
     }
 }
