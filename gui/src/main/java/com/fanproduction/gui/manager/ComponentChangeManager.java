@@ -5,15 +5,10 @@ import com.fanproduction.gui.controller.ProductComponentsController;
 import com.fanproduction.gui.dto.ProductComponentItemDto;
 import com.fanproduction.gui.dto.change.ComponentChange;
 import com.fanproduction.gui.dto.request.ProductFullRequestDto;
-import com.fanproduction.gui.dto.response.ApiResponse;
-import com.fanproduction.gui.client.ApiClient;
-import com.fasterxml.jackson.core.type.TypeReference;
 import javafx.scene.control.Alert;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Менеджер изменений по компонентам.
@@ -22,8 +17,6 @@ import java.util.Map;
  * <ul>
  *   <li><b>Локальный (для FAN):</b> изменения копятся, при сохранении
  *       формируется {@link ProductFullRequestDto} через {@link # buildRequest()}.</li>
- *   <li><b>Старый (для системных карточек):</b> изменения применяются
- *       через {@link #applyChanges(Long)} (это будет удалено в 8.6.c).</li>
  * </ul>
  */
 public class ComponentChangeManager {
@@ -53,48 +46,68 @@ public class ComponentChangeManager {
         parentController.loadComponentNameAndUpdate(componentId, newItem);
     }
 
+    /**
+     * Удалить компонент из UI (с проверкой роли).
+     * <p>
+     * Запрещает удаление, если у компонента есть {@code position} —
+     * он используется в основном поле карточки.
+     */
     public void removeLocal(Long componentId) {
-        if (componentId == null) return;
-
-        ProductComponentItemDto itemToRemove = null;
-        for (ProductComponentItemDto item : componentsController.getItems()) {
-            if (item.getComponentId().equals(componentId)) {
-                itemToRemove = item;
-                break;
-            }
-        }
-        if (itemToRemove == null) return;
-
-        if (itemToRemove.getPosition() != null && !itemToRemove.getPosition().isEmpty()) {
-            parentController.showAlert(
-                    "Ошибка",
-                    "Компонент '" + itemToRemove.getDisplayName() + "' используется в поле '" + itemToRemove.getPosition() + "'. " +
-                            "Сначала удалите его из основного поля карточки.",
-                    Alert.AlertType.WARNING
-            );
-            return;
-        }
-
-        componentsController.removeItem(itemToRemove);
-        pendingChanges.removeIf(change -> change.type == ComponentChange.Type.ADD && change.componentId.equals(componentId));
-        pendingChanges.add(new ComponentChange(ComponentChange.Type.REMOVE, componentId, null, null, null));
+        removeLocalInternal(componentId, true);
     }
 
+    /**
+     * Удалить компонент из UI без проверки роли.
+     * <p>
+     * Используется при замене компонента через основное поле —
+     * старый компонент удаляется принудительно.
+     */
     public void forceRemoveLocal(Long componentId) {
+        removeLocalInternal(componentId, false);
+    }
+
+    /**
+     * Общая логика удаления.
+     *
+     * @param componentId  ID компонента
+     * @param checkPosition проверять ли role-позицию (true для user-initiated)
+     */
+    private void removeLocalInternal(Long componentId, boolean checkPosition) {
         if (componentId == null) return;
 
-        ProductComponentItemDto itemToRemove = null;
-        for (ProductComponentItemDto item : componentsController.getItems()) {
-            if (item.getComponentId().equals(componentId)) {
-                itemToRemove = item;
-                break;
-            }
-        }
+        ProductComponentItemDto itemToRemove = findItemByComponentId(componentId);
         if (itemToRemove == null) return;
 
+        if (checkPosition) {
+            if (itemToRemove.getPosition() != null && !itemToRemove.getPosition().isEmpty()) {
+                parentController.showAlert(
+                        "Ошибка",
+                        "Компонент '" + itemToRemove.getDisplayName() + "' используется в поле '"
+                                + itemToRemove.getPosition() + "'. "
+                                + "Сначала удалите его из основного поля карточки.",
+                        Alert.AlertType.WARNING
+                );
+                return;
+            }
+        }
+
         componentsController.removeItem(itemToRemove);
-        pendingChanges.removeIf(change -> change.type == ComponentChange.Type.ADD && change.componentId.equals(componentId));
-        pendingChanges.add(new ComponentChange(ComponentChange.Type.REMOVE, componentId, null, null, null));
+        pendingChanges.removeIf(change -> change.type == ComponentChange.Type.ADD
+                && change.componentId.equals(componentId));
+        pendingChanges.add(new ComponentChange(
+                ComponentChange.Type.REMOVE, componentId, null, null, null));
+    }
+
+    /**
+     * Найти DTO-элемент в UI по ID компонента.
+     */
+    private ProductComponentItemDto findItemByComponentId(Long componentId) {
+        for (ProductComponentItemDto item : componentsController.getItems()) {
+            if (item.getComponentId().equals(componentId)) {
+                return item;
+            }
+        }
+        return null;
     }
 
     public void updateQuantityLocal(Long componentId, Double newQuantity) {
@@ -156,7 +169,7 @@ public class ComponentChangeManager {
     /**
      * Собрать данные для атомарного запроса.
      * <p>
-     * Используется для FAN — вместо {@link #applyChanges(Long)}.
+     * Используется для FAN.
      * <p>
      * Логика:
      * <ol>
@@ -190,67 +203,6 @@ public class ComponentChangeManager {
         target.setComponentsToRemove(toRemove);
 
         pendingChanges.clear();
-    }
-
-    // ===================== СТАРОЕ (для системных карточек) =====================
-
-    /**
-     * Применить изменения через отдельные endpoints.
-     * <p>
-     * <b>DEPRECATED:</b> используется только для системных карточек.
-     * Будет удалён в 8.6.c.
-     */
-    public void applyChanges(Long cardId) {
-        if (pendingChanges.isEmpty()) return;
-        List<ComponentChange> changes = new ArrayList<>(pendingChanges);
-        pendingChanges.clear();
-
-        changes.sort((a, b) -> {
-            if (a.type == ComponentChange.Type.REMOVE && b.type != ComponentChange.Type.REMOVE) return -1;
-            if (a.type != ComponentChange.Type.REMOVE && b.type == ComponentChange.Type.REMOVE) return 1;
-            return 0;
-        });
-
-        for (ComponentChange change : changes) {
-            try {
-                switch (change.type) {
-                    case REMOVE:
-                        ApiClient.delete("/components/product/" + cardId + "/" + change.componentId);
-                        break;
-                    case ADD:
-                        Map<String, Object> req = new HashMap<>();
-                        req.put("componentId", change.componentId);
-                        req.put("quantity", change.quantity != null ? change.quantity : 1.0);
-                        if (change.position != null && !change.position.isEmpty()) req.put("position", change.position);
-                        if (change.note != null && !change.note.isEmpty()) req.put("note", change.note);
-                        ApiClient.post("/components/product/" + cardId, req,
-                                new TypeReference<ApiResponse<Map<String, Object>>>() {});
-                        break;
-                    case UPDATE_QUANTITY:
-                        Map<String, Double> qty = new HashMap<>();
-                        qty.put("quantity", change.quantity);
-                        ApiClient.put("/components/product/" + cardId + "/" + change.componentId + "/quantity", qty,
-                                new TypeReference<ApiResponse<Void>>() {});
-                        break;
-                    case UPDATE_POSITION:
-                        Map<String, String> pos = new HashMap<>();
-                        pos.put("position", change.position != null ? change.position : "");
-                        ApiClient.put("/components/product/" + cardId + "/" + change.componentId + "/position", pos,
-                                new TypeReference<ApiResponse<Void>>() {});
-                        break;
-                    case UPDATE_NOTE:
-                        Map<String, String> noteMap = new HashMap<>();
-                        noteMap.put("note", change.note != null ? change.note : "");
-                        ApiClient.put("/components/product/" + cardId + "/" + change.componentId + "/note", noteMap,
-                                new TypeReference<ApiResponse<Void>>() {});
-                        break;
-                }
-            } catch (Exception e) {
-                System.err.println("Failed to apply component change: " + e.getMessage());
-                parentController.showAlert("Ошибка", "Не удалось применить изменение компонента: " + e.getMessage(),
-                        Alert.AlertType.ERROR);
-            }
-        }
     }
 
     public void clear() {
