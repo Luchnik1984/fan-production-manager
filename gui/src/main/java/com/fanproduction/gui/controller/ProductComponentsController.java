@@ -178,12 +178,6 @@ public class ProductComponentsController {
 
     @FXML
     private void handleSelectComponent() {
-        boolean isFanMode = parentController != null && "FAN".equals(parentController.getCardType());
-        if (productCardId == null && !isFanMode) {
-            showAlert("Внимание", "Сначала сохраните карточку", Alert.AlertType.WARNING);
-            return;
-        }
-
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/ComponentSelectorView.fxml"));
             Parent root = loader.load();
@@ -289,13 +283,6 @@ public class ProductComponentsController {
 
     @FXML
     private void handleAddComponent() {
-        // 1. Для FAN разрешаем добавлять без productCardId (сохранение — атомарно)
-        //    Для системных карточек требуем productCardId (старая логика)
-        boolean isFanMode = parentController != null && "FAN".equals(parentController.getCardType());
-        if (productCardId == null && !isFanMode) {
-            showAlert("Внимание", "Сначала сохраните карточку", Alert.AlertType.WARNING);
-            return;
-        }
         // 2. Проверка, что выбран компонент
         if (selectedComponentId == null) {
             showAlert("Внимание", "Выберите компонент", Alert.AlertType.WARNING);
@@ -486,22 +473,6 @@ public class ProductComponentsController {
                 }
             }
         };
-    }
-
-    public void showLoadingMessage() {
-        Platform.runLater(() -> {
-            componentsList.clear();
-            statusLabel.setText("Компонентов: 0");
-            addButton.setDisable(false);
-            selectComponentButton.setDisable(false);
-        });
-    }
-
-    public void enableControls() {
-        Platform.runLater(() -> {
-            addButton.setDisable(false);
-            selectComponentButton.setDisable(false);
-        });
     }
 
     /**

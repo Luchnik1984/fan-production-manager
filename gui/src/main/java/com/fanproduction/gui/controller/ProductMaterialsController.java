@@ -177,12 +177,6 @@ public class ProductMaterialsController {
 
     @FXML
     private void handleSelectMaterial() {
-        boolean isFanMode = parentController != null && "FAN".equals(parentController.getCardType());
-        if (productCardId == null && !isFanMode) {
-            showAlert("Внимание", "Сначала сохраните карточку", Alert.AlertType.WARNING);
-            return;
-        }
-
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fanproduction/gui/view/MaterialSelectorView.fxml"));
             Parent root = loader.load();
@@ -282,12 +276,6 @@ public class ProductMaterialsController {
 
     @FXML
     private void handleAddMaterial() {
-        boolean isFanMode = parentController != null && "FAN".equals(parentController.getCardType());
-        if (productCardId == null && !isFanMode) {
-            showAlert("Внимание", "Сначала сохраните карточку", Alert.AlertType.WARNING);
-            return;
-        }
-
         if (selectedMaterialId == null) {
             showAlert("Внимание", "Выберите материал", Alert.AlertType.WARNING);
             return;
@@ -417,22 +405,6 @@ public class ProductMaterialsController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
-    }
-
-    public void showLoadingMessage() {
-        Platform.runLater(() -> {
-            materialsList.clear();
-            statusLabel.setText("Материалов: 0");
-            addButton.setDisable(false);
-            selectMaterialButton.setDisable(false);
-        });
-    }
-
-    public void enableControls() {
-        Platform.runLater(() -> {
-            addButton.setDisable(false);
-            selectMaterialButton.setDisable(false);
-        });
     }
 
     /**
