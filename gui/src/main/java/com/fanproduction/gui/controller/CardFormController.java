@@ -14,6 +14,7 @@ import com.fanproduction.gui.dto.ProductMaterialItemDto;
 import com.fanproduction.gui.dto.config.SelectableFieldConfig;
 import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
 import com.fanproduction.gui.dto.response.*;
+import com.fanproduction.gui.dto.request.ProductFullRequestDto;
 import com.fanproduction.gui.factory.FieldControlFactory;
 import com.fanproduction.gui.manager.ComponentChangeManager;
 import com.fanproduction.gui.manager.MaterialChangeManager;
@@ -39,7 +40,6 @@ import java.util.concurrent.CompletableFuture;
 public class CardFormController {
 
     private final Stage stage;
-    private final String cardType;
     private final ProductCardDto existingCard;
     private final Runnable onSaveCallback;
     private final Long templateVersionId;
@@ -68,6 +68,8 @@ public class CardFormController {
     private ComponentChangeManager componentManager;
     @Getter
     private MaterialChangeManager materialManager;
+    @Getter
+    private final String cardType;
 
     private final Map<String, Node> fieldControls = new HashMap<>();
     private final Map<String, FieldMetadataDto> fieldMetadata = new HashMap<>();
@@ -811,30 +813,40 @@ public class CardFormController {
         saveButton.setDisable(true);
         saveButton.setText("Сохранение...");
 
+        final boolean isFan = "FAN".equals(cardType);
+
         new Thread(() -> {
             try {
                 ApiResponse<ProductCardDto> response;
-                if (isNewCard && existingCardId != null) {
-                    // Обновляем временную карточку
-                    response = ProductCardClient.updateCard(existingCardId, finalName, finalFields);
-                    if (response.isSuccess()) {
-                        removeTemporaryFlag(existingCardId);
-                    }
-                } else if (isNewCard) {
-                    response = ProductCardClient.createCard(cardType, finalName, finalFields);
+
+                if (isFan) {
+                    // FAN: атомарное сохранение через /full
+                    response = saveFanCard(finalName, finalFields, finalId, isNewCard);
                 } else {
-                    response = ProductCardClient.updateCard(finalId, finalName, finalFields);
+                    // Системные: старая логика через временные карточки
+                    if (isNewCard && existingCardId != null) {
+                        response = ProductCardClient.updateCard(existingCardId, finalName, finalFields);
+                        if (response.isSuccess()) {
+                            removeTemporaryFlag(existingCardId);
+                        }
+                    } else if (isNewCard) {
+                        response = ProductCardClient.createCard(cardType, finalName, finalFields);
+                    } else {
+                        response = ProductCardClient.updateCard(finalId, finalName, finalFields);
+                    }
                 }
 
                 Platform.runLater(() -> {
                     if (response.isSuccess()) {
-                        // Получаем ID карточки из ответа
                         Long cardId = response.getData().getId();
-                        // Применяем отложенные изменения компонентов
-                        if (componentManager != null) componentManager.applyChanges(cardId);
-                        if (materialManager != null) materialManager.applyChanges(cardId);
 
-                        removeTemporaryCardId();
+                        // Для системных — применяем отложенные изменения (старая логика)
+                        if (!isFan) {
+                            if (componentManager != null) componentManager.applyChanges(cardId);
+                            if (materialManager != null) materialManager.applyChanges(cardId);
+                            removeTemporaryCardId();
+                        }
+
                         showAlert("Успешно", "Карточка " + (isNewCard ? "создана" : "обновлена"),
                                 Alert.AlertType.INFORMATION);
                         if (onSaveCallback != null) {
@@ -856,6 +868,40 @@ public class CardFormController {
                 e.printStackTrace();
             }
         }).start();
+    }
+
+    /**
+     * Сохранить FAN-карточку атомарно через {@code POST /full} или
+     * {@code PUT /{id}/full}.
+     */
+    private ApiResponse<ProductCardDto> saveFanCard(String name,
+                                                    Map<String, Object> fields,
+                                                    Long existingId,
+                                                    boolean isNewCard) throws Exception {
+        ProductFullRequestDto request = new ProductFullRequestDto();
+        request.setCardType("FAN");
+        request.setName(name);
+        request.setFields(fields);
+
+        // Собираем компоненты и материалы из менеджеров
+        if (componentManager != null) {
+            componentManager.buildRequest(request);
+        } else {
+            request.setComponents(java.util.List.of());
+            request.setComponentsToRemove(java.util.List.of());
+        }
+        if (materialManager != null) {
+            materialManager.buildRequest(request);
+        } else {
+            request.setMaterials(java.util.List.of());
+            request.setMaterialsToRemove(java.util.List.of());
+        }
+
+        if (isNewCard || existingId == null) {
+            return ProductCardClient.createFullCard(request);
+        } else {
+            return ProductCardClient.updateFullCard(existingId, request);
+        }
     }
 
     public String getTypeDisplayName(String cardType) {

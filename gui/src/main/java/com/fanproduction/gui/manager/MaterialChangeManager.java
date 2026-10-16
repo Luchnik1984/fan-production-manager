@@ -4,6 +4,7 @@ import com.fanproduction.gui.controller.CardFormController;
 import com.fanproduction.gui.controller.ProductMaterialsController;
 import com.fanproduction.gui.dto.ProductMaterialItemDto;
 import com.fanproduction.gui.dto.change.MaterialChange;
+import com.fanproduction.gui.dto.request.ProductFullRequestDto;
 import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.client.ApiClient;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -14,6 +15,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Менеджер изменений по материалам.
+ * <p>
+ * Работает в двух режимах:
+ * <ul>
+ *   <li><b>Локальный (для FAN):</b> изменения копятся, при сохранении
+ *       формируется {@link ProductFullRequestDto} через {@link #buildRequest(ProductFullRequestDto)}.</li>
+ *   <li><b>Старый (для системных карточек):</b> изменения применяются
+ *       через {@link #applyChanges(Long)} (это будет удалено в 8.6.c).</li>
+ * </ul>
+ */
 public class MaterialChangeManager {
 
     private final ProductMaterialsController materialsController;
@@ -25,6 +37,8 @@ public class MaterialChangeManager {
         this.materialsController = materialsController;
         this.parentController = parentController;
     }
+
+    // ===================== ЛОКАЛЬНЫЕ ОПЕРАЦИИ =====================
 
     public void addLocal(Long materialId, Double quantity, String note) {
         if (materialId == null) return;
@@ -89,6 +103,45 @@ public class MaterialChangeManager {
         pendingChanges.add(new MaterialChange(MaterialChange.Type.UPDATE_NOTE, materialId, null, newNote));
     }
 
+    // ===================== ФОРМИРОВАНИЕ ЗАПРОСА (для FAN) =====================
+
+    /**
+     * Собрать данные для атомарного запроса.
+     * <p>
+     * Аналог {@code ComponentChangeManager.buildRequest}.
+     */
+    public void buildRequest(ProductFullRequestDto target) {
+        List<ProductFullRequestDto.MaterialItemDto> materials = new ArrayList<>();
+        for (ProductMaterialItemDto item : materialsController.getItems()) {
+            if (item.getMaterialId() == null) continue;
+            materials.add(new ProductFullRequestDto.MaterialItemDto(
+                    item.getMaterialId(),
+                    item.getQuantityPerUnit() != null ? item.getQuantityPerUnit() : 1.0,
+                    item.getNote()
+            ));
+        }
+
+        List<Long> toRemove = new ArrayList<>();
+        for (MaterialChange change : pendingChanges) {
+            if (change.type == MaterialChange.Type.REMOVE) {
+                toRemove.add(change.materialId);
+            }
+        }
+
+        target.setMaterials(materials);
+        target.setMaterialsToRemove(toRemove);
+
+        pendingChanges.clear();
+    }
+
+    // ===================== СТАРОЕ (для системных карточек) =====================
+
+    /**
+     * Применить изменения через отдельные endpoints.
+     * <p>
+     * <b>DEPRECATED:</b> используется только для системных карточек.
+     * Будет удалён в 8.6.c.
+     */
     public void applyChanges(Long cardId) {
         if (pendingChanges.isEmpty()) return;
         List<MaterialChange> changes = new ArrayList<>(pendingChanges);

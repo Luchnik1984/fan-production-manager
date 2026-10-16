@@ -4,6 +4,7 @@ import com.fanproduction.gui.controller.CardFormController;
 import com.fanproduction.gui.controller.ProductComponentsController;
 import com.fanproduction.gui.dto.ProductComponentItemDto;
 import com.fanproduction.gui.dto.change.ComponentChange;
+import com.fanproduction.gui.dto.request.ProductFullRequestDto;
 import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.client.ApiClient;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -14,6 +15,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Менеджер изменений по компонентам.
+ * <p>
+ * Работает в двух режимах:
+ * <ul>
+ *   <li><b>Локальный (для FAN):</b> изменения копятся, при сохранении
+ *       формируется {@link ProductFullRequestDto} через {@link # buildRequest()}.</li>
+ *   <li><b>Старый (для системных карточек):</b> изменения применяются
+ *       через {@link #applyChanges(Long)} (это будет удалено в 8.6.c).</li>
+ * </ul>
+ */
 public class ComponentChangeManager {
 
     private final ProductComponentsController componentsController;
@@ -26,7 +38,7 @@ public class ComponentChangeManager {
         this.parentController = parentController;
     }
 
-    // ===================== ЛОКАЛЬНЫЕ МЕТОДЫ =====================
+    // ===================== ЛОКАЛЬНЫЕ ОПЕРАЦИИ =====================
 
     public void addLocal(Long componentId, Double quantity, String position, String note) {
         if (componentId == null) return;
@@ -44,7 +56,6 @@ public class ComponentChangeManager {
     public void removeLocal(Long componentId) {
         if (componentId == null) return;
 
-        // Находим компонент в таблице
         ProductComponentItemDto itemToRemove = null;
         for (ProductComponentItemDto item : componentsController.getItems()) {
             if (item.getComponentId().equals(componentId)) {
@@ -54,33 +65,24 @@ public class ComponentChangeManager {
         }
         if (itemToRemove == null) return;
 
-        // Если есть position – запрещаем удаление
         if (itemToRemove.getPosition() != null && !itemToRemove.getPosition().isEmpty()) {
-                parentController.showAlert(
-                        "Ошибка",
-                        "Компонент '" + itemToRemove.getDisplayName() + "' используется в поле '" + itemToRemove.getPosition() + "'. " +
-                                "Сначала удалите его из основного поля карточки.",
-                        Alert.AlertType.WARNING
-                );
+            parentController.showAlert(
+                    "Ошибка",
+                    "Компонент '" + itemToRemove.getDisplayName() + "' используется в поле '" + itemToRemove.getPosition() + "'. " +
+                            "Сначала удалите его из основного поля карточки.",
+                    Alert.AlertType.WARNING
+            );
             return;
         }
 
-        // Удаляем из UI
         componentsController.removeItem(itemToRemove);
-        // Если есть ADD для этого компонента – удаляем (отмена добавления)
         pendingChanges.removeIf(change -> change.type == ComponentChange.Type.ADD && change.componentId.equals(componentId));
-        // Иначе добавляем REMOVE
         pendingChanges.add(new ComponentChange(ComponentChange.Type.REMOVE, componentId, null, null, null));
     }
 
-    /**
-     * Принудительно удаляет компонент из таблицы и pendingChanges (без проверки роли).
-     * Используется при замене компонента через основные поля.
-     */
     public void forceRemoveLocal(Long componentId) {
         if (componentId == null) return;
 
-        // Находим компонент в таблице
         ProductComponentItemDto itemToRemove = null;
         for (ProductComponentItemDto item : componentsController.getItems()) {
             if (item.getComponentId().equals(componentId)) {
@@ -90,15 +92,10 @@ public class ComponentChangeManager {
         }
         if (itemToRemove == null) return;
 
-        // Удаляем из UI
         componentsController.removeItem(itemToRemove);
-
-        // Если есть ADD – удаляем (отмена добавления)
         pendingChanges.removeIf(change -> change.type == ComponentChange.Type.ADD && change.componentId.equals(componentId));
-        // Иначе добавляем REMOVE
         pendingChanges.add(new ComponentChange(ComponentChange.Type.REMOVE, componentId, null, null, null));
     }
-
 
     public void updateQuantityLocal(Long componentId, Double newQuantity) {
         if (componentId == null || newQuantity == null) return;
@@ -154,14 +151,60 @@ public class ComponentChangeManager {
         pendingChanges.add(new ComponentChange(ComponentChange.Type.UPDATE_NOTE, componentId, null, null, newNote));
     }
 
-    // ===================== ПРИМЕНЕНИЕ ИЗМЕНЕНИЙ =====================
+    // ===================== ФОРМИРОВАНИЕ ЗАПРОСА (для FAN) =====================
 
+    /**
+     * Собрать данные для атомарного запроса.
+     * <p>
+     * Используется для FAN — вместо {@link #applyChanges(Long)}.
+     * <p>
+     * Логика:
+     * <ol>
+     *   <li>Все текущие элементы из UI (componentsController.getItems()) —
+     *       в список {@code components}.</li>
+     *   <li>Все pendingChanges типа REMOVE — в список {@code componentsToRemove}.</li>
+     * </ol>
+     * <p>
+     * После вызова — pendingChanges очищаются.
+     */
+    public void buildRequest(ProductFullRequestDto target) {
+        List<ProductFullRequestDto.ComponentItemDto> components = new ArrayList<>();
+        for (ProductComponentItemDto item : componentsController.getItems()) {
+            if (item.getComponentId() == null) continue;
+            components.add(new ProductFullRequestDto.ComponentItemDto(
+                    item.getComponentId(),
+                    item.getQuantity() != null ? item.getQuantity() : 1.0,
+                    item.getPosition(),
+                    item.getNote()
+            ));
+        }
+
+        List<Long> toRemove = new ArrayList<>();
+        for (ComponentChange change : pendingChanges) {
+            if (change.type == ComponentChange.Type.REMOVE) {
+                toRemove.add(change.componentId);
+            }
+        }
+
+        target.setComponents(components);
+        target.setComponentsToRemove(toRemove);
+
+        pendingChanges.clear();
+    }
+
+    // ===================== СТАРОЕ (для системных карточек) =====================
+
+    /**
+     * Применить изменения через отдельные endpoints.
+     * <p>
+     * <b>DEPRECATED:</b> используется только для системных карточек.
+     * Будет удалён в 8.6.c.
+     */
     public void applyChanges(Long cardId) {
         if (pendingChanges.isEmpty()) return;
         List<ComponentChange> changes = new ArrayList<>(pendingChanges);
         pendingChanges.clear();
 
-        // Сортируем: сначала REMOVE, потом остальное
         changes.sort((a, b) -> {
             if (a.type == ComponentChange.Type.REMOVE && b.type != ComponentChange.Type.REMOVE) return -1;
             if (a.type != ComponentChange.Type.REMOVE && b.type == ComponentChange.Type.REMOVE) return 1;
@@ -210,18 +253,7 @@ public class ComponentChangeManager {
         }
     }
 
-    // ===================== ОЧИСТКА =====================
-
     public void clear() {
         pendingChanges.clear();
-    }
-
-    // ===================== ЗАГРУЗКА ИЗ БД (опционально) =====================
-
-    public void loadFromDatabase(Long cardId) {
-        // Можно перенести сюда логику loadComponents из ProductComponentsController,
-        // но пока оставим как есть.
-        // Этот метод может быть вызван из CardFormController при открытии карточки.
-        // Для простоты мы будем использовать существующий componentsController.refresh(cardId)
     }
 }

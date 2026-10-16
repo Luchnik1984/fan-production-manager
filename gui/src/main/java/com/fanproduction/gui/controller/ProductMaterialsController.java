@@ -72,7 +72,12 @@ public class ProductMaterialsController {
 
     public void refresh(Long productCardId) {
         this.productCardId = productCardId;
-        loadMaterials();
+        if (productCardId != null) {
+            loadMaterials();
+        } else {
+            materialsList.clear();
+            statusLabel.setText("Материалов: 0");
+        }
         clearSelectedMaterial();
         addButton.setDisable(false);
         deleteButton.setDisable(false);
@@ -172,7 +177,8 @@ public class ProductMaterialsController {
 
     @FXML
     private void handleSelectMaterial() {
-        if (productCardId == null) {
+        boolean isFanMode = parentController != null && "FAN".equals(parentController.getCardType());
+        if (productCardId == null && !isFanMode) {
             showAlert("Внимание", "Сначала сохраните карточку", Alert.AlertType.WARNING);
             return;
         }
@@ -276,7 +282,8 @@ public class ProductMaterialsController {
 
     @FXML
     private void handleAddMaterial() {
-        if (productCardId == null) {
+        boolean isFanMode = parentController != null && "FAN".equals(parentController.getCardType());
+        if (productCardId == null && !isFanMode) {
             showAlert("Внимание", "Сначала сохраните карточку", Alert.AlertType.WARNING);
             return;
         }
@@ -415,9 +422,9 @@ public class ProductMaterialsController {
     public void showLoadingMessage() {
         Platform.runLater(() -> {
             materialsList.clear();
-            statusLabel.setText("Загрузка...");
-            addButton.setDisable(true);
-            selectMaterialButton.setDisable(true);
+            statusLabel.setText("Материалов: 0");
+            addButton.setDisable(false);
+            selectMaterialButton.setDisable(false);
         });
     }
 
