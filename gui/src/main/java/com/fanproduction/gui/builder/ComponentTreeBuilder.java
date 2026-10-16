@@ -22,6 +22,7 @@ public class ComponentTreeBuilder {
         this.allCategories = allCategories;
         this.allClasses = allClasses;
         this.componentsByClassId = allComponents.stream()
+                .filter(c -> c.getClassId() != null)   // ← отсекаем битые
                 .collect(Collectors.groupingBy(ComponentDto::getClassId));
     }
 

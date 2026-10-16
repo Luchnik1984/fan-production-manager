@@ -75,9 +75,16 @@ public class ProductComponentsController {
 
     public void refresh(Long productCardId) {
         this.productCardId = productCardId;
-        loadComponents();
+        if (productCardId != null) {
+            loadComponents();
+        } else {
+            // FAN-режим: карточка ещё не сохранена — список пустой
+            componentsList.clear();
+            statusLabel.setText("Компонентов: 0");
+        }
         clearSelectedComponent();
         addButton.setDisable(false);
+        selectComponentButton.setDisable(false);
     }
 
     public void showNotSavedMessage() {
@@ -171,7 +178,8 @@ public class ProductComponentsController {
 
     @FXML
     private void handleSelectComponent() {
-        if (productCardId == null) {
+        boolean isFanMode = parentController != null && "FAN".equals(parentController.getCardType());
+        if (productCardId == null && !isFanMode) {
             showAlert("Внимание", "Сначала сохраните карточку", Alert.AlertType.WARNING);
             return;
         }
@@ -281,8 +289,10 @@ public class ProductComponentsController {
 
     @FXML
     private void handleAddComponent() {
-        // 1. Проверка, что карточка создана
-        if (productCardId == null) {
+        // 1. Для FAN разрешаем добавлять без productCardId (сохранение — атомарно)
+        //    Для системных карточек требуем productCardId (старая логика)
+        boolean isFanMode = parentController != null && "FAN".equals(parentController.getCardType());
+        if (productCardId == null && !isFanMode) {
             showAlert("Внимание", "Сначала сохраните карточку", Alert.AlertType.WARNING);
             return;
         }
@@ -481,9 +491,9 @@ public class ProductComponentsController {
     public void showLoadingMessage() {
         Platform.runLater(() -> {
             componentsList.clear();
-            statusLabel.setText("Загрузка...");
-            addButton.setDisable(true);
-            selectComponentButton.setDisable(true);
+            statusLabel.setText("Компонентов: 0");
+            addButton.setDisable(false);
+            selectComponentButton.setDisable(false);
         });
     }
 

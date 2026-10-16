@@ -12,19 +12,15 @@ import java.util.Map;
  * Управляет видимостью и обязательностью полей формы на основе
  * условий {@code visibleIf} / {@code requiredIf}.
  * <p>
- * Хранит ссылки на контролы, метки и «базовые» (из шаблона) значения
- * обязательности и текста метки. Пересчитывает состояние при каждом
- * изменении полей.
+ * <b>Ключевой принцип (US8.5.b-fix3):</b>
+ * менеджер управляет <b>только теми полями</b>, для которых определено
+ * соответствующее условие. Поля без {@code visibleIf} / {@code requiredIf}
+ * <b>не трогаются</b> — их видимость и обязательность управляются другими
+ * механизмами ({@code ExecutionMarkingHelper}, {@code FieldMetadataService}
+ * и т.д.).
  * <p>
- * Логика:
- * <ul>
- *   <li>{@code visible = visibleIf == null || evaluate(visibleIf) == true}.</li>
- *   <li>{@code required = baseRequired || (requiredIf != null && evaluate(requiredIf))}.</li>
- *   <li>При visible=false: label, control и его родительский контейнер
- *       скрыты и {@code managed=false}.</li>
- *   <li>Метка получает суффикс {@code " *"}, если поле обязательно,
- *       и {@code ":"} — иначе.</li>
- * </ul>
+ * Это устраняет конфликт с {@code ExecutionMarkingHelper}, который
+ * управляет видимостью полей огнестойкости/взрывозащиты у MOTOR-карточек.
  */
 public class FieldVisibilityManager {
 
@@ -49,12 +45,9 @@ public class FieldVisibilityManager {
 
     /**
      * Зарегистрировать поле с условиями.
-     *
-     * @param key               ключ поля
-     * @param visibleIf         условие видимости (может быть {@code null})
-     * @param requiredIf        условие обязательности (может быть {@code null})
-     * @param baseRequired      обязательность из шаблона (поле.required)
-     * @param originalLabel     оригинальный текст метки без суффикса
+     * <p>
+     * Регистрировать можно любое поле — но {@code recalcAll} затронет
+     * только те, у которых есть {@code visibleIf} или {@code requiredIf}.
      */
     public void register(String key,
                          ConditionDto visibleIf,
@@ -70,9 +63,9 @@ public class FieldVisibilityManager {
     }
 
     /**
-     * Пересчитать видимость и обязательность всех полей.
-     *
-     * @param values текущие значения полей
+     * Пересчитать видимость и обязательность полей, у которых есть условия.
+     * <p>
+     * Поля без условий не трогаются.
      */
     public void recalcAll(Map<String, Object> values) {
         for (Map.Entry<String, Node> entry : fieldControls.entrySet()) {
@@ -80,11 +73,27 @@ public class FieldVisibilityManager {
             Node control = entry.getValue();
             Label label = fieldLabels.get(key);
 
-            boolean visible = isVisible(key, values);
-            boolean required = isRequired(key, values);
+            // 1. Видимость: только если есть visibleIf
+            if (visibleIfMap.containsKey(key)) {
+                boolean visible = ConditionEvaluator.evaluate(visibleIfMap.get(key), values);
+                applyVisibility(control, label, visible);
+            }
 
-            effectiveRequiredMap.put(key, required && visible);
-            applyState(key, control, label, visible, required);
+            // 2. Обязательность: только если есть requiredIf
+            boolean effectiveRequired;
+            if (requiredIfMap.containsKey(key)) {
+                Boolean base = baseRequiredMap.getOrDefault(key, false);
+                boolean required = base
+                        || ConditionEvaluator.evaluate(requiredIfMap.get(key), values);
+                applyRequiredSuffix(key, label, required);
+                effectiveRequired = required;
+            } else {
+                effectiveRequired = baseRequiredMap.getOrDefault(key, false);
+            }
+
+            // 3. Кэш эффективной обязательности = required AND visible
+            boolean visibleNow = control == null || control.isVisible();
+            effectiveRequiredMap.put(key, effectiveRequired && visibleNow);
         }
     }
 
@@ -98,7 +107,7 @@ public class FieldVisibilityManager {
     }
 
     /**
-     * Проверить, видимо ли поле сейчас.
+     * Проверить, видимо ли поле сейчас (без побочных эффектов).
      */
     public boolean isVisible(String key, Map<String, Object> values) {
         ConditionDto visibleIf = visibleIfMap.get(key);
@@ -120,8 +129,7 @@ public class FieldVisibilityManager {
     // ПРИМЕНЕНИЕ СОСТОЯНИЯ
     // ==========================================================
 
-    private void applyState(String key, Node control, Label label,
-                            boolean visible, boolean required) {
+    private void applyVisibility(Node control, Label label, boolean visible) {
         if (control != null) {
             control.setVisible(visible);
             control.setManaged(visible);
@@ -134,8 +142,12 @@ public class FieldVisibilityManager {
         if (label != null) {
             label.setVisible(visible);
             label.setManaged(visible);
-            String base = originalLabels.getOrDefault(key, "");
-            label.setText(base + (required ? " *" : ":"));
         }
+    }
+
+    private void applyRequiredSuffix(String key, Label label, boolean required) {
+        if (label == null) return;
+        String base = originalLabels.getOrDefault(key, "");
+        label.setText(base + (required ? " *" : ":"));
     }
 }

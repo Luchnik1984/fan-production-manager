@@ -1,5 +1,6 @@
 package com.fanproduction.gui.client;
 
+import com.fanproduction.gui.dto.request.ProductFullRequestDto;
 import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -151,5 +152,25 @@ public class ProductCardClient {
             }
         }
         return result;
+    }
+
+    /**
+     * Создать карточку атомарно: карточка + компоненты + материалы.
+     * <p>
+     * Endpoint {@code POST /api/products/full}.
+     */
+    public static ApiResponse<ProductCardDto> createFullCard(ProductFullRequestDto request) throws Exception {
+        TypeReference<ApiResponse<ProductCardDto>> typeRef = new TypeReference<>() {};
+        return ApiClient.post(BASE_PATH + "/full", request, typeRef);
+    }
+
+    /**
+     * Обновить карточку атомарно: карточка + компоненты + материалы.
+     * <p>
+     * Endpoint {@code PUT /api/products/{id}/full}.
+     */
+    public static ApiResponse<ProductCardDto> updateFullCard(Long id, ProductFullRequestDto request) throws Exception {
+        TypeReference<ApiResponse<ProductCardDto>> typeRef = new TypeReference<>() {};
+        return ApiClient.put(BASE_PATH + "/" + id + "/full", request, typeRef);
     }
 }
