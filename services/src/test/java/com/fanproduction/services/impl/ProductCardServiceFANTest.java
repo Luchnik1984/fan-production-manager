@@ -214,7 +214,6 @@ class ProductCardServiceFANTest {
             existing.setCreatedBy("original@test");
             existing.setMotorType("100L");
             existing.setPowerKw(5.5);
-            existing.setTemporary(false);
 
             Map<String, Object> fields = new HashMap<>();
             fields.put("powerKw", 7.5);

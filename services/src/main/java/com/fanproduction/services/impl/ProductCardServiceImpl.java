@@ -117,7 +117,7 @@ public class ProductCardServiceImpl implements ProductCardService {
         }
 
         // Остальные типы: применяем поля к существующей сущности
-        // (не создаём новую с тем же id — так теряются createdAt, code, isTemporary)
+        // (не создаём новую с тем же id — так теряются createdAt, code)
         cardFactory.applyFields(existingCard, fields);
 
         BaseProductCard savedCard = productCardRepository.save(existingCard);
@@ -179,11 +179,6 @@ public class ProductCardServiceImpl implements ProductCardService {
     public void deleteCard(Long id) {
         BaseProductCard card = productCardRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Карточка не найдена: " + id));
-
-        if (card.isTemporary()) {
-            productCardRepository.deleteById(id);
-            return;
-        }
 
         String cardType = card.getCardType();
 

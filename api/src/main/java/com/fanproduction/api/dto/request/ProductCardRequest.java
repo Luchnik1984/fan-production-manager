@@ -31,8 +31,4 @@ public class ProductCardRequest {
     @NotNull(message = "Поля карточки обязательны")
     private Map<String, Object> fields;
 
-    /**
-     * Флаг временной карточки
-     */
-    private Boolean isTemporary = false;
 }
