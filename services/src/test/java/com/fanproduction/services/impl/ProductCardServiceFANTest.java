@@ -10,6 +10,7 @@ import com.fanproduction.repositories.product.*;
 import com.fanproduction.services.ComponentService;
 import com.fanproduction.services.FanCardService;
 import com.fanproduction.services.MaterialService;
+import com.fanproduction.services.ProductCardValidationService;
 import com.fanproduction.services.factory.ProductCardFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -53,6 +54,7 @@ class ProductCardServiceFANTest {
     @Mock private CurrentUserProvider currentUserProvider;
     @Mock private ComponentService componentService;
     @Mock private MaterialService materialService;
+    @Mock private ProductCardValidationService validationService;
 
     private ProductCardServiceImpl service;
     private ProductCardFactory realFactory;
@@ -72,7 +74,8 @@ class ProductCardServiceFANTest {
                 currentUserProvider,
                 fanCardRepository,
                 componentService,
-                materialService
+                materialService,
+                validationService
         );
     }
 

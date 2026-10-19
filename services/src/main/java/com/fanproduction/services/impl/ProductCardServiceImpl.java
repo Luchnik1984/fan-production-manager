@@ -9,10 +9,7 @@ import com.fanproduction.core.enums.AssemblyUnitFieldType;
 import com.fanproduction.core.event.AuditEvent;
 import com.fanproduction.core.security.CurrentUserProvider;
 import com.fanproduction.repositories.product.*;
-import com.fanproduction.services.ComponentService;
-import com.fanproduction.services.FanCardService;
-import com.fanproduction.services.MaterialService;
-import com.fanproduction.services.ProductCardService;
+import com.fanproduction.services.*;
 import com.fanproduction.services.dto.ProductComponentItemData;
 import com.fanproduction.services.dto.ProductMaterialItemData;
 import com.fanproduction.services.factory.ProductCardFactory;
@@ -44,6 +41,7 @@ public class ProductCardServiceImpl implements ProductCardService {
     private final FanCardRepository fanCardRepository;
     private final ComponentService componentService;
     private final MaterialService materialService;
+    private final ProductCardValidationService validationService;
 
     // ==========================================================
     // CREATE
@@ -56,6 +54,9 @@ public class ProductCardServiceImpl implements ProductCardService {
         if (cardType == CardTemplateType.FAN) {
             return createFanCard(fields, createdBy);
         }
+
+        // Валидация обязательных полей
+        validationService.validateForCreate(cardType, fields);
 
         // Остальные типы — через фабрику
         BaseProductCard card = cardFactory.createCard(cardType, fields);
@@ -115,6 +116,9 @@ public class ProductCardServiceImpl implements ProductCardService {
         if (cardType == CardTemplateType.FAN) {
             return fanCardService.updateFromValues(id, fields, getCurrentUser());
         }
+
+        // Валидация обязательных полей
+        validationService.validateForUpdate(cardType, existingCard, fields);
 
         // Остальные типы: применяем поля к существующей сущности
         // (не создаём новую с тем же id — так теряются createdAt, code)

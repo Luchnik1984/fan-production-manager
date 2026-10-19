@@ -11,6 +11,7 @@ import com.fanproduction.repositories.product.*;
 import com.fanproduction.services.ComponentService;
 import com.fanproduction.services.FanCardService;
 import com.fanproduction.services.MaterialService;
+import com.fanproduction.services.ProductCardValidationService;
 import com.fanproduction.services.dto.ProductComponentItemData;
 import com.fanproduction.services.dto.ProductMaterialItemData;
 import com.fanproduction.services.factory.ProductCardFactory;
@@ -56,6 +57,7 @@ class ProductCardServiceFullTest {
     @Mock private MaterialService materialService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private CurrentUserProvider currentUserProvider;
+    @Mock private ProductCardValidationService validationService;
 
     private ProductCardServiceImpl service;
 
@@ -74,7 +76,8 @@ class ProductCardServiceFullTest {
                 currentUserProvider,
                 fanCardRepository,
                 componentService,
-                materialService
+                materialService,
+                validationService
         );
     }
 
