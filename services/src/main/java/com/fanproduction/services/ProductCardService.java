@@ -73,12 +73,6 @@ public interface ProductCardService {
      */
     boolean isCodeUnique(String code);
 
-
-    /**
-     * Снять флаг временной карточки
-     */
-    void removeTemporaryFlag(Long id);
-
     List<BaseProductCard> searchByFields(String query);
 
     /**

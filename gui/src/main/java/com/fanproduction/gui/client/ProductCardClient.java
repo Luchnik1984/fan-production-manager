@@ -6,7 +6,6 @@ import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -52,48 +51,11 @@ public class ProductCardClient {
     }
 
     /**
-     * Создать новую карточку
-     */
-    public static ApiResponse<ProductCardDto> createCard(String cardType, String name, Map<String, Object> fields) throws Exception {
-        Map<String, Object> request = new HashMap<>();
-        request.put("cardType", cardType);
-        request.put("name", name);
-        request.put("fields", fields);
-
-        TypeReference<ApiResponse<ProductCardDto>> typeRef = new TypeReference<>() {};
-        return ApiClient.post(BASE_PATH, request, typeRef);
-    }
-
-    /**
-     * Обновить карточку
-     */
-    public static ApiResponse<ProductCardDto> updateCard(Long id, String name, Map<String, Object> fields) throws Exception {
-        Map<String, Object> request = new HashMap<>();
-        request.put("cardType", "IGNORED");
-        request.put("name", name);
-        request.put("fields", fields);
-
-        TypeReference<ApiResponse<ProductCardDto>> typeRef = new TypeReference<>() {};
-        return ApiClient.put(BASE_PATH + "/" + id, request, typeRef);
-    }
-
-    /**
      * Удалить карточку
      */
     public static ApiResponse<Void> deleteCard(Long id) throws Exception {
         TypeReference<ApiResponse<Void>> typeRef = new TypeReference<>() {};
         return ApiClient.delete(BASE_PATH + "/" + id, typeRef);
-    }
-
-    /**
-     * Удалить карточку с проверкой
-     */
-    public static void deleteCardWithCheck(Long id) throws Exception {
-        ApiResponse<Void> response = deleteCard(id);
-        if (response == null || !response.isSuccess()) {
-            String errorMsg = response != null ? response.getMessage() : "Неизвестная ошибка";
-            throw new RuntimeException(errorMsg);
-        }
     }
 
     /**
