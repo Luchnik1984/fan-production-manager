@@ -190,12 +190,44 @@ public class CardViewBuilderImpl implements CardViewBuilder {
 
     @Override
     public CardViewLayout buildForSystemCard(ProductCardDto card) {
-        String title = card.getName();
+        String title = buildSystemTitle(card);
 
         List<CardViewField> header = buildSystemHeader(card);
         CardViewSection techSpecs = buildSystemTechSpecs(card);
 
         return buildLayout(title, header, techSpecs);
+    }
+
+    /**
+     * Заголовок окна для системной карточки.
+     * <p>
+     * Формат: «Отображаемое имя типа + полная маркировка».
+     * Например: «Колесо осевое AW(6,3)-С-624/3-9/4ZL/43/PAG-SM1610».
+     * <p>
+     * Защита от дублирования: если {@code fullMarking} уже содержит имя типа
+     * в начале (пользователь мог вручную вписать в {@code fullMarking}
+     * название типа) — возвращаем только {@code fullMarking}.
+     * <p>
+     * Если {@code fullMarking} пуст — fallback на {@code name}, чтобы заголовок
+     * не был пустым (старые карточки без маркировки).
+     */
+    private String buildSystemTitle(ProductCardDto card) {
+        String typeDisplayName = getCardTypeDisplay(card.getCardType());
+        Map<String, Object> fields = card.getFields() != null ? card.getFields() : Map.of();
+        String fullMarking = str(fields.get("fullMarking"));
+
+        if (fullMarking != null) {
+            if (fullMarking.startsWith(typeDisplayName)) {
+                return fullMarking;
+            }
+            return typeDisplayName + " " + fullMarking;
+        }
+
+        String name = card.getName();
+        if (name != null && !name.isBlank()) {
+            return name;
+        }
+        return typeDisplayName;
     }
 
     private List<CardViewField> buildSystemHeader(ProductCardDto card) {
@@ -534,7 +566,7 @@ public class CardViewBuilderImpl implements CardViewBuilder {
             return new CardViewSection("Компоненты", List.of(), subsections);
         } catch (Exception e) {
             log.warn("Не удалось загрузить компоненты карточки id={}: {}", cardId, e.getMessage());
-            return new CardViewSection("Компоненты", List.of(), List.of());
+            return null;
         }
     }
 
@@ -573,7 +605,7 @@ public class CardViewBuilderImpl implements CardViewBuilder {
             return new CardViewSection("Материалы", List.of(), subsections);
         } catch (Exception e) {
             log.warn("Не удалось загрузить материалы карточки id={}: {}", cardId, e.getMessage());
-            return new CardViewSection("Материалы", List.of(), List.of());
+            return null;
         }
     }
 

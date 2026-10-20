@@ -459,7 +459,15 @@ public class CatalogController {
                         }
                     });
                 } catch (Exception e) {
-                    Platform.runLater(() -> showAlert("Ошибка", "Ошибка удаления: " + e.getMessage(), Alert.AlertType.ERROR));
+                    String msg = e.getMessage() != null ? e.getMessage() : "неизвестная ошибка";
+                    // Если сервер вернул 409 — это не «ошибка», а бизнес-ограничение.
+                    // Показываем как предупреждение, а не как ошибку.
+                    Alert.AlertType type = msg.toLowerCase().contains("используется")
+                            || msg.toLowerCase().contains("невозможно удалить")
+                            ? Alert.AlertType.WARNING
+                            : Alert.AlertType.ERROR;
+                    String title = type == Alert.AlertType.WARNING ? "Невозможно удалить" : "Ошибка удаления";
+                    Platform.runLater(() -> showAlert(title, msg, type));
                 }
             }).start();
         }

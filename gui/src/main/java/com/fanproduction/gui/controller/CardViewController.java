@@ -66,6 +66,8 @@ public class CardViewController {
     private static final String LOADING_TEXT = "Загрузка…";
     private static final String EMPTY_COMPONENTS_TEXT = "Нет компонентов";
     private static final String EMPTY_MATERIALS_TEXT = "Нет материалов";
+    private static final String ERROR_COMPONENTS_TEXT = "Не удалось загрузить компоненты";
+    private static final String ERROR_MATERIALS_TEXT = "Не удалось загрузить материалы";
 
     /**
      * Единый экземпляр builder'а — шарит кэш метаданных шаблонов.
@@ -442,7 +444,7 @@ public class CardViewController {
             } catch (Exception e) {
                 log.warn("Ошибка загрузки компонентов для карточки id={}: {}",
                         cardId, e.getMessage());
-                section = new CardViewSection(COMPONENTS_TITLE, List.of(), List.of());
+                section = null;  // маркер ошибки — applyComponentsSection покажет «не удалось загрузить»
             }
             CardViewSection finalSection = section;
             Platform.runLater(() -> applyComponentsSection(finalSection));
@@ -458,7 +460,7 @@ public class CardViewController {
             } catch (Exception e) {
                 log.warn("Ошибка загрузки материалов для карточки id={}: {}",
                         cardId, e.getMessage());
-                section = new CardViewSection(MATERIALS_TITLE, List.of(), List.of());
+                section = null;  // маркер ошибки
             }
             CardViewSection finalSection = section;
             Platform.runLater(() -> applyMaterialsSection(finalSection));
@@ -485,12 +487,31 @@ public class CardViewController {
     }
 
     private void applyComponentsSection(CardViewSection section) {
+        if (section == null) {
+            replaceContainerContent(componentsContainer, ERROR_COMPONENTS_TEXT);
+            return;
+        }
         applySectionToContainer(section, componentsContainer, EMPTY_COMPONENTS_TEXT);
     }
 
     private void applyMaterialsSection(CardViewSection section) {
+        if (section == null) {
+            replaceContainerContent(materialsContainer, ERROR_MATERIALS_TEXT);
+            return;
+        }
         applySectionToContainer(section, materialsContainer, EMPTY_MATERIALS_TEXT);
     }
+
+    /**
+     * Полностью заменить содержимое контейнера одним плейсхолдером.
+     * Используется для сигнала «ошибка загрузки» (когда {@code section == null}).
+     */
+    private void replaceContainerContent(VBox container, String text) {
+        if (container == null) return;
+        container.getChildren().clear();
+        container.getChildren().add(placeholder(text));
+    }
+
 
     /**
      * Универсальная логика для «Компонентов» и «Материалов»:

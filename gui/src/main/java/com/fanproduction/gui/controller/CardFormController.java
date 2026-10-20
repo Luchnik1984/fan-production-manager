@@ -30,10 +30,12 @@ import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.util.*;
 
+@Slf4j
 public class CardFormController {
 
     private final Stage stage;
@@ -47,6 +49,8 @@ public class CardFormController {
 
     /** Полные метаданные FAN-формы (загружаются при cardType=FAN). */
     private DynamicFormMetadataDto fanFormMetadata;
+    /** true, если инициализация формы не удалась — show() не откроет окно. */
+    private boolean failed = false;
 
     /** Список полей FAN-формы (после конвертации). */
     private List<FieldMetadataDto> fanFields;
@@ -118,9 +122,13 @@ public class CardFormController {
     }
 
     private void initUI() {
-        // 0. Для FAN — сначала загружаем метаданные шаблона
+        // 0. Для FAN — сначала загружаем метаданные шаблона.
+        //    Если не удалось — форма не строится (иначе пользователь увидит пустое окно).
         if ("FAN".equals(cardType)) {
-            loadFanMetadata();
+            if (!loadFanMetadata()) {
+                this.failed = true;
+                return;
+            }
         }
         String title = existingCard == null ? "Создание карточки" : "Редактирование карточки";
         String displayName = getTypeDisplayName(cardType);
@@ -223,34 +231,31 @@ public class CardFormController {
     // ==========================================================
 
     /**
-     * Загрузить метаданные FAN-формы по версии шаблона.
-     * <p>
-     * Версия шаблона определяется:
-     * <ol>
-     *   <li>Из поля {@code templateVersionId} (при создании карточки).</li>
-     *   <li>Из {@code existingCard.fields.templateVersionId} (при редактировании).</li>
-     * </ol>
-     * <p>
-     * Загрузка синхронная — вызывается в EDT до построения UI. Для локального
-     * API это быстро. Если в будущем понадобится асинхронность — вынести
-     * в {@code LoadingDialog}.
+     * Загрузить метаданные FAN-формы.
+     *
+     * @return {@code true} — метаданные загружены, {@code false} — ошибка
+     *         (пользователь уже увидел предупреждение, форма открываться не должна)
      */
-    private void loadFanMetadata() {
+    private boolean loadFanMetadata() {
         Long versionId = resolveTemplateVersionId();
         if (versionId == null) {
             showAlert("Ошибка",
                     "Не удалось определить версию шаблона FAN",
                     Alert.AlertType.ERROR);
-            return;
+            return false;
         }
 
         try {
             fanFormMetadata = metadataService.getFanFormMetadata(versionId);
             fanFields = metadataService.getFieldsForFan(versionId);
+            return fanFormMetadata != null && fanFields != null;
         } catch (Exception e) {
+            log.warn("Не удалось загрузить шаблон FAN (versionId={}): {}",
+                    versionId, e.getMessage());
             showAlert("Ошибка",
                     "Не удалось загрузить шаблон FAN: " + e.getMessage(),
                     Alert.AlertType.ERROR);
+            return false;
         }
     }
 
@@ -873,6 +878,11 @@ public class CardFormController {
     }
 
     public void show() {
+        if (failed) {
+            // Окно не строилось — показывать нечего.
+            // Пользователь уже увидел предупреждение с причиной.
+            return;
+        }
         stage.showAndWait();
     }
 
