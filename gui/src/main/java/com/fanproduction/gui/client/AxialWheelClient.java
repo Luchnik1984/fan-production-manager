@@ -50,5 +50,38 @@ public class AxialWheelClient {
         }
         return result;
     }
+
+    public static AxialWheelDto getById(Long id) throws Exception {
+        if (id == null) return null;
+
+        var response = com.fanproduction.gui.client.ProductCardClient.getCardById(id);
+        if (response == null || !response.isSuccess() || response.getData() == null) {
+            return null;
+        }
+
+        com.fanproduction.gui.dto.response.ProductCardDto card = response.getData();
+        if (!"AXIAL_WHEEL".equals(card.getCardType())) {
+            return null;
+        }
+
+        AxialWheelDto dto = new AxialWheelDto();
+        dto.setId(card.getId());
+        dto.setName(card.getName());
+
+        Map<String, Object> fields = card.getFields();
+        if (fields == null) return dto;
+
+        dto.setManufacturer((String) fields.get("manufacturer"));
+        dto.setMarking((String) fields.get("marking"));
+        dto.setBladeType((String) fields.get("bladeType"));
+        dto.setSize(fields.get("size") != null ? ((Number) fields.get("size")).doubleValue() : null);
+        dto.setWheelDiameter(fields.get("wheelDiameter") != null ? ((Number) fields.get("wheelDiameter")).intValue() : null);
+        dto.setBladeCount(fields.get("bladeCount") != null ? ((Number) fields.get("bladeCount")).intValue() : null);
+        dto.setBladeAngle(fields.get("bladeAngle") != null ? ((Number) fields.get("bladeAngle")).intValue() : null);
+        dto.setBladeMaterial((String) fields.get("bladeMaterial"));
+        dto.setFullMarking((String) fields.get("fullMarking"));
+
+        return dto;
+    }
 }
 

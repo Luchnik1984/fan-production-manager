@@ -527,21 +527,39 @@ public class FieldMetadataService {
     }
 
     /**
-     * Получить метаданные формы FAN целиком (с версией, статусом, именем шаблона).
+     * Получить метаданные формы FAN с кэшем (TTL 10 минут).
      * <p>
-     * Полезно для отображения заголовка формы: «Шаблон P-серии (v2, PUBLISHED)».
+     * Кэш нужен, чтобы не делать REST-запрос при каждом открытии
+     * окна просмотра. Инвалидация — по истечении TTL или через
+     * {@link #clearFanMetadataCache()}.
      */
     public DynamicFormMetadataDto getFanFormMetadata(Long templateVersionId) {
         if (templateVersionId == null) {
             throw new IllegalArgumentException("templateVersionId не может быть null");
         }
 
+        CachedMetadata cached = fanMetadataCache.get(templateVersionId);
+        if (cached != null && !cached.isExpired()) {
+            return cached.data();
+        }
+
         try {
-            return FanTemplateVersionClient.getFormMetadata(templateVersionId);
+            DynamicFormMetadataDto loaded = FanTemplateVersionClient.getFormMetadata(templateVersionId);
+            fanMetadataCache.put(templateVersionId,
+                    new CachedMetadata(loaded, System.currentTimeMillis() + CACHE_TTL_MS));
+            return loaded;
         } catch (Exception e) {
             throw new RuntimeException(
                     "Не удалось загрузить метаданные FAN-формы: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Очистить кэш метаданных шаблонов.
+     * Вызывать после публикации новой версии шаблона или по кнопке «Обновить».
+     */
+    public void clearFanMetadataCache() {
+        fanMetadataCache.clear();
     }
 
     /**
@@ -615,5 +633,19 @@ public class FieldMetadataService {
             case "COMPUTED" -> "computed";
             default -> "text";
         };
+    }
+
+    // ==========================================================
+    // КЭШ МЕТАДАННЫХ ШАБЛОНОВ (TTL 10 минут)
+    // ==========================================================
+
+    private static final long CACHE_TTL_MS = 10 * 60 * 1000; // 10 минут
+
+    private final Map<Long, CachedMetadata> fanMetadataCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private record CachedMetadata(DynamicFormMetadataDto data, long expiresAt) {
+        boolean isExpired() {
+            return System.currentTimeMillis() > expiresAt;
+        }
     }
 }

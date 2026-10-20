@@ -41,4 +41,38 @@ public class MotorWheelClient {
         }
         return result;
     }
+
+    public static MotorWheelDto getById(Long id) throws Exception {
+        if (id == null) return null;
+
+        var response = com.fanproduction.gui.client.ProductCardClient.getCardById(id);
+        if (response == null || !response.isSuccess() || response.getData() == null) {
+            return null;
+        }
+
+        com.fanproduction.gui.dto.response.ProductCardDto card = response.getData();
+        if (!"MOTOR_WHEEL".equals(card.getCardType())) {
+            return null;
+        }
+
+        MotorWheelDto dto = new MotorWheelDto();
+        dto.setId(card.getId());
+        dto.setName(card.getName());
+
+        Map<String, Object> fields = card.getFields();
+        if (fields == null) return dto;
+
+        dto.setManufacturer((String) fields.get("manufacturer"));
+        dto.setBladeType((String) fields.get("bladeType"));
+        dto.setSize(fields.get("size") != null ? ((Number) fields.get("size")).intValue() : null);
+        dto.setPoles(fields.get("poles") != null ? ((Number) fields.get("poles")).intValue() : null);
+        dto.setVoltageCode((String) fields.get("voltageCode"));
+        dto.setPowerKw(fields.get("powerKw") != null ? ((Number) fields.get("powerKw")).doubleValue() : null);
+        dto.setRatedSpeedRpm(fields.get("ratedSpeedRpm") != null ? ((Number) fields.get("ratedSpeedRpm")).intValue() : null);
+        dto.setActualSpeedRpm(fields.get("actualSpeedRpm") != null ? ((Number) fields.get("actualSpeedRpm")).intValue() : null);
+        dto.setVoltage(fields.get("voltage") != null ? ((Number) fields.get("voltage")).intValue() : null);
+        dto.setFullMarking((String) fields.get("fullMarking"));
+
+        return dto;
+    }
 }
