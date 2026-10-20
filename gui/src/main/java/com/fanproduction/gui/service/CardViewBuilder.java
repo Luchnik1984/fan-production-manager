@@ -14,9 +14,10 @@ import java.util.List;
  * сразу (поля карточки, метаданные шаблона), а часть — требует
  * REST-запросов (связанные элементы, компоненты, материалы).
  * <p>
- * Основной метод {@link #buildForFan(ProductCardDto)} — синхронный,
- * строит шапку и «Технические характеристики». Остальные методы
- * вызываются асинхронно из {@code CardViewController}.
+ * Основные методы — {@link #buildForFan(ProductCardDto)} и
+ * {@link #buildForSystemCard(ProductCardDto)} — синхронные, строят
+ * шапку и «Технические характеристики». Остальные методы вызываются
+ * асинхронно из {@code CardViewController}.
  */
 public interface CardViewBuilder {
 
@@ -31,8 +32,29 @@ public interface CardViewBuilder {
     CardViewLayout buildForFan(ProductCardDto card);
 
     /**
-     * Загрузить связанные элементы (электродвигатель, колесо) и вернуть
-     * подсекции для вставки в «Технические характеристики».
+     * Построить базовую разметку для системной карточки
+     * (MOTOR, MOTOR_WHEEL, RADIAL_WHEEL, AXIAL_WHEEL, CUP, ACCESSORY).
+     * <p>
+     * Использует {@link FieldMetadataService#getFieldsForType(String)} для
+     * порядка и лейблов полей. Специфичные правила (fireproof/explosion)
+     * применяются так же, как в старой {@code CardViewController}.
+     * <p>
+     * ID-поля ссылок на компоненты ({@code hubComponentId},
+     * {@code bladeComponentId}, {@code wheelHubComponentId}) в ТХ
+     * <b>не включаются</b> — они загружаются отдельно через
+     * {@link #buildLinkedElements(ProductCardDto)} и показываются
+     * как подсекции.
+     */
+    CardViewLayout buildForSystemCard(ProductCardDto card);
+
+    /**
+     * Загрузить связанные элементы и вернуть подсекции для вставки
+     * в «Технические характеристики».
+     * <p>
+     * Для FAN: электродвигатель, осевое/радиальное колесо, мотор-колесо.
+     * Для системных карточек: компоненты, на которые ссылаются поля
+     * {@code hubComponentId}, {@code bladeComponentId},
+     * {@code wheelHubComponentId} (RADIAL_WHEEL, AXIAL_WHEEL).
      * <p>
      * Асинхронно вызывается из {@code CardViewController}. Если ни один
      * элемент не задан или REST-запрос упал — возвращается пустой список.

@@ -6,7 +6,9 @@ import com.fanproduction.gui.client.MotorClient;
 import com.fanproduction.gui.client.MotorWheelClient;
 import com.fanproduction.gui.client.ProductMaterialClient;
 import com.fanproduction.gui.client.RadialWheelClient;
+import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
 import com.fanproduction.gui.dto.response.AxialWheelDto;
+import com.fanproduction.gui.dto.response.ComponentDto;
 import com.fanproduction.gui.dto.response.DynamicFormFieldDto;
 import com.fanproduction.gui.dto.response.DynamicFormMetadataDto;
 import com.fanproduction.gui.dto.response.MotorDto;
@@ -48,6 +50,14 @@ public class CardViewBuilderImpl implements CardViewBuilder {
             "isPartnerProduction", "isOwnProduction"
     );
 
+    /**
+     * Поля-ссылки на компоненты — в ТХ не включаются, они идут
+     * в {@link #buildLinkedElements(ProductCardDto)} как подсекции.
+     */
+    private static final Set<String> COMPONENT_REF_FIELDS = Set.of(
+            "hubComponentId", "bladeComponentId", "wheelHubComponentId"
+    );
+
     private final FieldMetadataService metadataService;
 
     public CardViewBuilderImpl(FieldMetadataService metadataService) {
@@ -55,42 +65,20 @@ public class CardViewBuilderImpl implements CardViewBuilder {
     }
 
     // ==========================================================
-    // ОСНОВНОЙ МЕТОД
+    // FAN
     // ==========================================================
 
     @Override
     public CardViewLayout buildForFan(ProductCardDto card) {
-        String title = buildTitle(card);
+        String title = buildFanTitle(card);
 
-        List<CardViewField> header = buildHeader(card);
-        CardViewSection techSpecs = buildTechSpecs(card);
+        List<CardViewField> header = buildFanHeader(card);
+        CardViewSection techSpecs = buildFanTechSpecs(card);
 
-        CardViewTab mainTab = new CardViewTab(
-                "Основные поля",
-                header,
-                techSpecs != null ? List.of(techSpecs) : List.of()
-        );
-
-        CardViewTab componentsTab = new CardViewTab(
-                "Компоненты",
-                List.of(),
-                List.of()
-        );
-
-        CardViewTab materialsTab = new CardViewTab(
-                "Материалы",
-                List.of(),
-                List.of()
-        );
-
-        return new CardViewLayout(title, List.of(mainTab, componentsTab, materialsTab));
+        return buildLayout(title, header, techSpecs);
     }
 
-    // ==========================================================
-    // ЗАГОЛОВОК
-    // ==========================================================
-
-    private String buildTitle(ProductCardDto card) {
+    private String buildFanTitle(ProductCardDto card) {
         Map<String, Object> fields = card.getFields();
         if (fields == null) return card.getName();
 
@@ -105,11 +93,7 @@ public class CardViewBuilderImpl implements CardViewBuilder {
         return card.getName();
     }
 
-    // ==========================================================
-    // ШАПКА
-    // ==========================================================
-
-    private List<CardViewField> buildHeader(ProductCardDto card) {
+    private List<CardViewField> buildFanHeader(ProductCardDto card) {
         List<CardViewField> header = new ArrayList<>();
         Map<String, Object> fields = card.getFields() != null ? card.getFields() : Map.of();
 
@@ -127,12 +111,11 @@ public class CardViewBuilderImpl implements CardViewBuilder {
         return header;
     }
 
-    // ==========================================================
-    // ТЕХНИЧЕСКИЕ ХАРАКТЕРИСТИКИ
-    // ==========================================================
+    private CardViewSection buildFanTechSpecs(ProductCardDto card) {
+        Map<String, Object> fields = card.getFields();
+        if (fields == null) return null;
 
-    private CardViewSection buildTechSpecs(ProductCardDto card) {
-        Long templateVersionId = getLong(card.getFields().get("templateVersionId"));
+        Long templateVersionId = getLong(fields.get("templateVersionId"));
         if (templateVersionId == null) {
             log.warn("У карточки нет templateVersionId — ТХ не строятся");
             return null;
@@ -159,25 +142,19 @@ public class CardViewBuilderImpl implements CardViewBuilder {
 
             // SEPARATOR — заголовок подсекции
             if ("SEPARATOR".equals(type)) {
-                // Закрываем предыдущую подсекцию
-                if (currentSubsectionTitle != null) {
+                if (currentSubsectionTitle != null && !currentSubsectionFields.isEmpty()) {
                     subsections.add(new CardViewSubsection(
                             currentSubsectionTitle, currentSubsectionFields));
-                    currentSubsectionTitle = null;
-                    currentSubsectionFields = null;
                 }
                 currentSubsectionTitle = fieldDef.getLabel();
                 currentSubsectionFields = new ArrayList<>();
                 continue;
             }
 
-            // Служебные / скрытые — пропускаем
             if (TECHNICAL_FIELDS.contains(fieldDef.getKey())) continue;
             if (HEADER_FIELDS.contains(fieldDef.getKey())) continue;
 
-            Object rawValue = card.getFields() != null
-                    ? card.getFields().get(fieldDef.getKey())
-                    : null;
+            Object rawValue = fields.get(fieldDef.getKey());
             String formatted = formatValue(rawValue);
             if (formatted == null) continue;
 
@@ -191,7 +168,6 @@ public class CardViewBuilderImpl implements CardViewBuilder {
             }
         }
 
-        // Закрываем последнюю подсекцию
         if (currentSubsectionTitle != null && !currentSubsectionFields.isEmpty()) {
             subsections.add(new CardViewSubsection(
                     currentSubsectionTitle, currentSubsectionFields));
@@ -209,18 +185,177 @@ public class CardViewBuilderImpl implements CardViewBuilder {
     }
 
     // ==========================================================
-    // СВЯЗАННЫЕ ЭЛЕМЕНТЫ
+    // SYSTEM CARDS (MOTOR, MOTOR_WHEEL, RADIAL_WHEEL, AXIAL_WHEEL, CUP, ACCESSORY)
+    // ==========================================================
+
+    @Override
+    public CardViewLayout buildForSystemCard(ProductCardDto card) {
+        String title = card.getName();
+
+        List<CardViewField> header = buildSystemHeader(card);
+        CardViewSection techSpecs = buildSystemTechSpecs(card);
+
+        return buildLayout(title, header, techSpecs);
+    }
+
+    private List<CardViewField> buildSystemHeader(ProductCardDto card) {
+        List<CardViewField> header = new ArrayList<>();
+        Map<String, Object> fields = card.getFields() != null ? card.getFields() : Map.of();
+
+        addIfNotEmpty(header, "Наименование", card.getName());
+        addIfNotEmpty(header, "Код", card.getCode());
+        addIfNotEmpty(header, "Тип карточки", getCardTypeDisplay(card.getCardType()));
+        addIfNotEmpty(header, "Полная маркировка", str(fields.get("fullMarking")));
+        if (card.getCreatedAt() != null) {
+            addIfNotEmpty(header, "Дата создания", card.getCreatedAt().format(DATE_FORMATTER));
+        }
+        addIfNotEmpty(header, "Создал", card.getCreatedBy());
+
+        return header;
+    }
+
+    private CardViewSection buildSystemTechSpecs(ProductCardDto card) {
+        Map<String, Object> fields = card.getFields();
+        if (fields == null || fields.isEmpty()) return null;
+
+        List<FieldMetadataDto> metadata = metadataService.getFieldsForType(card.getCardType());
+        if (metadata == null || metadata.isEmpty()) {
+            log.debug("Нет метаданных для типа {} — ТХ не строятся", card.getCardType());
+            return null;
+        }
+
+        List<CardViewField> fieldsWithoutSubsection = new ArrayList<>();
+        List<CardViewSubsection> subsections = new ArrayList<>();
+
+        List<CardViewField> currentSubsectionFields = null;
+        String currentSubsectionTitle = null;
+
+        for (FieldMetadataDto fieldDef : metadata) {
+            String name = fieldDef.getName();
+            String type = fieldDef.getType();
+
+            // SEPARATOR — заголовок подсекции
+            if ("separator".equals(type)) {
+                if (currentSubsectionTitle != null && !currentSubsectionFields.isEmpty()) {
+                    subsections.add(new CardViewSubsection(
+                            currentSubsectionTitle, currentSubsectionFields));
+                }
+                currentSubsectionTitle = fieldDef.getLabel();
+                currentSubsectionFields = new ArrayList<>();
+                continue;
+            }
+
+            // Служебные / заголовочные / компонентные ссылки — пропускаем
+            if (TECHNICAL_FIELDS.contains(name)) continue;
+            if (HEADER_FIELDS.contains(name)) continue;
+            if (COMPONENT_REF_FIELDS.contains(name)) continue;
+
+            // Специальные правила видимости (как в старой CardViewController)
+            if ("fireproofMarking".equals(name)
+                    || "maxTemperature".equals(name)) {
+                if (!Boolean.TRUE.equals(fields.get("fireproof"))) continue;
+            }
+            if ("explosionMarking".equals(name)) {
+                if (!Boolean.TRUE.equals(fields.get("explosionProof"))) continue;
+            }
+
+            // Скрытые и пустые — пропускаем
+            Object rawValue = fields.get(name);
+            String formatted = formatValue(rawValue);
+            if (formatted == null) continue;
+
+            CardViewField viewField = new CardViewField(
+                    cleanLabel(fieldDef.getLabel()), formatted);
+
+            if (currentSubsectionTitle != null) {
+                currentSubsectionFields.add(viewField);
+            } else {
+                fieldsWithoutSubsection.add(viewField);
+            }
+        }
+
+        if (currentSubsectionTitle != null && !currentSubsectionFields.isEmpty()) {
+            subsections.add(new CardViewSubsection(
+                    currentSubsectionTitle, currentSubsectionFields));
+        }
+
+        if (fieldsWithoutSubsection.isEmpty() && subsections.isEmpty()) {
+            return null;
+        }
+
+        return new CardViewSection(
+                "Технические характеристики",
+                fieldsWithoutSubsection,
+                subsections
+        );
+    }
+
+    // ==========================================================
+    // ОБЩАЯ СБОРКА LAYOUT
+    // ==========================================================
+
+    private CardViewLayout buildLayout(String title,
+                                       List<CardViewField> header,
+                                       CardViewSection techSpecs) {
+        CardViewTab mainTab = new CardViewTab(
+                "Основные поля",
+                header,
+                techSpecs != null ? List.of(techSpecs) : List.of()
+        );
+
+        CardViewTab componentsTab = new CardViewTab("Компоненты", List.of(), List.of());
+        CardViewTab materialsTab = new CardViewTab("Материалы", List.of(), List.of());
+
+        return new CardViewLayout(title, List.of(mainTab, componentsTab, materialsTab));
+    }
+
+    // ==========================================================
+    // СВЯЗАННЫЕ ЭЛЕМЕНТЫ (FAN + системы)
     // ==========================================================
 
     @Override
     public List<CardViewSubsection> buildLinkedElements(ProductCardDto card) {
         List<CardViewSubsection> result = new ArrayList<>();
         Map<String, Object> fields = card.getFields() != null ? card.getFields() : Map.of();
+        String cardType = card.getCardType();
 
+        // ========== FAN: связанные узлы (электродвигатель, колёса) ==========
+        if ("FAN".equals(cardType)) {
+            addFanLinkedElements(fields, result);
+        }
+
+        // ========== Системные карточки: компоненты по ссылкам ==========
+        if ("RADIAL_WHEEL".equals(cardType)) {
+            Long hubId = getLong(fields.get("hubComponentId"));
+            if (hubId != null) {
+                addComponentSection(result, hubId, "Ступица колеса");
+            }
+        }
+
+        if ("AXIAL_WHEEL".equals(cardType)) {
+            Long wheelHubId = getLong(fields.get("wheelHubComponentId"));
+            if (wheelHubId != null) {
+                addComponentSection(result, wheelHubId, "Хаб рабочего колеса");
+            }
+            Long bladeId = getLong(fields.get("bladeComponentId"));
+            if (bladeId != null) {
+                addComponentSection(result, bladeId, "Лопатка рабочего колеса");
+            }
+            Long setupHubId = getLong(fields.get("hubComponentId"));
+            if (setupHubId != null) {
+                addComponentSection(result, setupHubId, "Установочная ступица");
+            }
+        }
+
+        return result;
+    }
+
+    private void addFanLinkedElements(Map<String, Object> fields,
+                                      List<CardViewSubsection> result) {
         Long motorId = getLong(fields.get("motorId"));
         if (motorId != null) {
-            CardViewSubsection motorSection = buildMotorSection(motorId);
-            if (motorSection != null) result.add(motorSection);
+            CardViewSubsection section = buildMotorSection(motorId);
+            if (section != null) result.add(section);
         }
 
         Long axialWheelId = getLong(fields.get("axialWheelId"));
@@ -240,9 +375,18 @@ public class CardViewBuilderImpl implements CardViewBuilder {
             CardViewSubsection section = buildMotorWheelSection(motorWheelId);
             if (section != null) result.add(section);
         }
-
-        return result;
     }
+
+    private void addComponentSection(List<CardViewSubsection> result,
+                                     Long componentId,
+                                     String title) {
+        CardViewSubsection section = buildComponentSection(componentId, title);
+        if (section != null) result.add(section);
+    }
+
+    // ==========================================================
+    // СЕКЦИИ СВЯЗАННЫХ ЭЛЕМЕНТОВ
+    // ==========================================================
 
     private CardViewSubsection buildMotorSection(Long motorId) {
         try {
@@ -325,8 +469,32 @@ public class CardViewBuilderImpl implements CardViewBuilder {
         }
     }
 
+    private CardViewSubsection buildComponentSection(Long componentId, String title) {
+        try {
+            ComponentDto component = ComponentClient.getComponentById(componentId);
+            if (component == null) return null;
+
+            List<CardViewField> fields = new ArrayList<>();
+            addIfNotEmpty(fields, "Наименование", component.getName());
+            addIfNotEmpty(fields, "Обозначение", component.getDesignation());
+            addIfNotEmpty(fields, "Артикул", component.getVendorCode());
+            addIfNotEmpty(fields, "Класс", component.getClassName());
+            addIfNotEmpty(fields, "Материал", component.getMaterial());
+            addIfNotEmpty(fields, "Ед. изм.", component.getUnitCode());
+            if (component.getWeightKg() != null) {
+                addIfNotEmpty(fields, "Масса (кг)", NumberFormatter.formatNumber(component.getWeightKg()));
+            }
+            addIfNotEmpty(fields, "Описание", component.getDescription());
+
+            return fields.isEmpty() ? null : new CardViewSubsection(title, fields);
+        } catch (Exception e) {
+            log.warn("Не удалось загрузить COMPONENT id={}: {}", componentId, e.getMessage());
+            return null;
+        }
+    }
+
     // ==========================================================
-    // КОМПОНЕНТЫ
+    // КОМПОНЕНТЫ / МАТЕРИАЛЫ (без изменений)
     // ==========================================================
 
     @Override
@@ -336,7 +504,6 @@ public class CardViewBuilderImpl implements CardViewBuilder {
         }
 
         try {
-            // TypeReference<ApiResponse<List<Map<String,Object>>>> — из ProductMaterialClient, но для компонентов
             var items = ComponentClient.getProductComponents(cardId);
             if (items == null || items.isEmpty()) {
                 return new CardViewSection("Компоненты", List.of(), List.of());
@@ -370,10 +537,6 @@ public class CardViewBuilderImpl implements CardViewBuilder {
             return new CardViewSection("Компоненты", List.of(), List.of());
         }
     }
-
-    // ==========================================================
-    // МАТЕРИАЛЫ
-    // ==========================================================
 
     @Override
     public CardViewSection buildMaterialsSection(Long cardId) {
@@ -475,5 +638,17 @@ public class CardViewBuilderImpl implements CardViewBuilder {
         if (s.endsWith(":")) s = s.substring(0, s.length() - 1).trim();
         if (s.endsWith("*")) s = s.substring(0, s.length() - 1).trim();
         return s;
+    }
+
+    /**
+     * Русское название типа карточки для шапки.
+     */
+    private String getCardTypeDisplay(String cardType) {
+        try {
+            return com.fanproduction.core.enums.CardTemplateType
+                    .valueOf(cardType).getDisplayName();
+        } catch (IllegalArgumentException e) {
+            return cardType;
+        }
     }
 }
