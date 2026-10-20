@@ -1,8 +1,6 @@
 package com.fanproduction.gui.service;
 
 import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
-import org.springframework.stereotype.Service;
-
 import com.fanproduction.gui.client.FanTemplateVersionClient;
 import com.fanproduction.gui.dto.response.DynamicFormFieldDto;
 import com.fanproduction.gui.dto.response.DynamicFormMetadataDto;
@@ -10,9 +8,23 @@ import com.fanproduction.gui.dto.response.DynamicFormMetadataDto;
 import java.util.*;
 
 /**
- * Сервис для получения метаданных полей для разных типов карточек.
+ * Сервис метаданных полей карточек.
+ * <p>
+ * В GUI-модуле Spring-контекст не поднимается (см. {@code LoginApplication} —
+ * запуск через {@code Application.launch}, а не {@code SpringApplication.run}),
+ * поэтому класс создаётся через {@code new}:
+ * <ul>
+ *   <li>{@link com.fanproduction.gui.controller.CardViewController} — через
+ *       статический {@code BUILDER};</li>
+ *   <li>{@link com.fanproduction.gui.controller.CardFormController} — как поле
+ *       экземпляра.</li>
+ * </ul>
+ * Аннотация {@code @Service} намеренно не используется.
+ * <p>
+ * Кэш метаданных шаблонов FAN (TTL 10 минут) — ключ к быстрому открытию
+ * повторных окон просмотра. Именно поэтому {@code CardViewController.BUILDER}
+ * сделан {@code static final}: кэш шарится между всеми окнами.
  */
-@Service
 public class FieldMetadataService {
 
     private final Map<String, List<FieldMetadataDto>> metadataMap = new HashMap<>();
