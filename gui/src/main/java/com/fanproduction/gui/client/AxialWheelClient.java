@@ -1,87 +1,55 @@
 package com.fanproduction.gui.client;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.AxialWheelDto;
+import com.fanproduction.gui.util.CardFieldExtractor;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class AxialWheelClient {
+public class AxialWheelClient extends BaseCardClient<AxialWheelDto> {
 
-    @SuppressWarnings("unchecked")
+    private static final AxialWheelClient INSTANCE = new AxialWheelClient();
+
     public static List<AxialWheelDto> getAll() throws Exception {
-        TypeReference<ApiResponse<Map<String, Object>>> typeRef = new TypeReference<>() {};
-        ApiResponse<Map<String, Object>> response = ApiClient.get("/products?cardType=AXIAL_WHEEL&size=1000", typeRef);
-
-        List<AxialWheelDto> result = new ArrayList<>();
-        if (response.isSuccess() && response.getData() != null) {
-            List<Map<String, Object>> content = (List<Map<String, Object>>) response.getData().get("content");
-            for (Map<String, Object> item : content) {
-                AxialWheelDto dto = new AxialWheelDto();
-                dto.setId(((Number) item.get("id")).longValue());
-
-                Map<String, Object> fields = (Map<String, Object>) item.get("fields");
-                dto.setManufacturer((String) fields.get("manufacturer"));
-                dto.setMarking((String) fields.get("marking"));
-                dto.setBladeType((String) fields.get("bladeType"));
-                dto.setSize(fields.get("size") != null ? ((Number) fields.get("size")).doubleValue() : null);
-                dto.setExecution((String) fields.get("execution"));
-                dto.setTrimCoefficient(fields.get("trimCoefficient") != null ? ((Number) fields.get("trimCoefficient")).doubleValue() : null);
-                dto.setHubType((String) fields.get("hubType"));
-                dto.setBladeCount(fields.get("bladeCount") != null ? ((Number) fields.get("bladeCount")).intValue() : null);
-                dto.setBladeSlots(fields.get("bladeSlots") != null ? ((Number) fields.get("bladeSlots")).intValue() : null);
-                dto.setBladeShape((String) fields.get("bladeShape"));
-                dto.setBladeAngle(fields.get("bladeAngle") != null ? ((Number) fields.get("bladeAngle")).intValue() : null);
-                dto.setBladeMaterial((String) fields.get("bladeMaterial"));
-                dto.setWheelDiameter(fields.get("wheelDiameter") != null ? ((Number) fields.get("wheelDiameter")).intValue() : null);
-                dto.setWheelFormula((String) fields.get("wheelFormula"));
-                dto.setGeneralPurpose(fields.get("generalPurpose") != null ? (Boolean) fields.get("generalPurpose") : null);
-                dto.setFireproof(fields.get("fireproof") != null ? (Boolean) fields.get("fireproof") : null);
-                dto.setFireproofMarking((String) fields.get("fireproofMarking"));
-                dto.setMaxTemperature(fields.get("maxTemperature") != null ? ((Number) fields.get("maxTemperature")).intValue() : null);
-                dto.setExplosionProof(fields.get("explosionProof") != null ? (Boolean) fields.get("explosionProof") : null);
-                dto.setExplosionMarking((String) fields.get("explosionMarking"));
-                dto.setFullMarking((String) fields.get("fullMarking"));
-
-                result.add(dto);
-            }
-        }
-        return result;
+        return INSTANCE.fetchAll();
     }
 
     public static AxialWheelDto getById(Long id) throws Exception {
-        if (id == null) return null;
+        return INSTANCE.fetchById(id);
+    }
 
-        var response = com.fanproduction.gui.client.ProductCardClient.getCardById(id);
-        if (response == null || !response.isSuccess() || response.getData() == null) {
-            return null;
-        }
+    @Override
+    protected String getCardType() {
+        return "AXIAL_WHEEL";
+    }
 
-        com.fanproduction.gui.dto.response.ProductCardDto card = response.getData();
-        if (!"AXIAL_WHEEL".equals(card.getCardType())) {
-            return null;
-        }
+    @Override
+    protected AxialWheelDto createDto() {
+        return new AxialWheelDto();
+    }
 
-        AxialWheelDto dto = new AxialWheelDto();
-        dto.setId(card.getId());
-        dto.setName(card.getName());
-
-        Map<String, Object> fields = card.getFields();
-        if (fields == null) return dto;
-
-        dto.setManufacturer((String) fields.get("manufacturer"));
-        dto.setMarking((String) fields.get("marking"));
-        dto.setBladeType((String) fields.get("bladeType"));
-        dto.setSize(fields.get("size") != null ? ((Number) fields.get("size")).doubleValue() : null);
-        dto.setWheelDiameter(fields.get("wheelDiameter") != null ? ((Number) fields.get("wheelDiameter")).intValue() : null);
-        dto.setBladeCount(fields.get("bladeCount") != null ? ((Number) fields.get("bladeCount")).intValue() : null);
-        dto.setBladeAngle(fields.get("bladeAngle") != null ? ((Number) fields.get("bladeAngle")).intValue() : null);
-        dto.setBladeMaterial((String) fields.get("bladeMaterial"));
-        dto.setFullMarking((String) fields.get("fullMarking"));
-
-        return dto;
+    @Override
+    protected void populateFromFields(AxialWheelDto dto, Map<String, Object> f) {
+        dto.setManufacturer(CardFieldExtractor.getString(f, "manufacturer"));
+        dto.setMarking(CardFieldExtractor.getString(f, "marking"));
+        dto.setBladeType(CardFieldExtractor.getString(f, "bladeType"));
+        dto.setSize(CardFieldExtractor.getDouble(f, "size"));
+        dto.setExecution(CardFieldExtractor.getString(f, "execution"));
+        dto.setTrimCoefficient(CardFieldExtractor.getDouble(f, "trimCoefficient"));
+        dto.setHubType(CardFieldExtractor.getString(f, "hubType"));
+        dto.setBladeCount(CardFieldExtractor.getInteger(f, "bladeCount"));
+        dto.setBladeSlots(CardFieldExtractor.getInteger(f, "bladeSlots"));
+        dto.setBladeShape(CardFieldExtractor.getString(f, "bladeShape"));
+        dto.setBladeAngle(CardFieldExtractor.getInteger(f, "bladeAngle"));
+        dto.setBladeMaterial(CardFieldExtractor.getString(f, "bladeMaterial"));
+        dto.setWheelDiameter(CardFieldExtractor.getInteger(f, "wheelDiameter"));
+        dto.setWheelFormula(CardFieldExtractor.getString(f, "wheelFormula"));
+        dto.setGeneralPurpose(CardFieldExtractor.getBoolean(f, "generalPurpose"));
+        dto.setFireproof(CardFieldExtractor.getBoolean(f, "fireproof"));
+        dto.setFireproofMarking(CardFieldExtractor.getString(f, "fireproofMarking"));
+        dto.setMaxTemperature(CardFieldExtractor.getInteger(f, "maxTemperature"));
+        dto.setExplosionProof(CardFieldExtractor.getBoolean(f, "explosionProof"));
+        dto.setExplosionMarking(CardFieldExtractor.getString(f, "explosionMarking"));
+        dto.setFullMarking(CardFieldExtractor.getString(f, "fullMarking"));
     }
 }
-
