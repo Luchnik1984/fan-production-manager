@@ -10,7 +10,6 @@ spring:
     restart:
       enabled: true
 
-
   # ============================================
   # DATASOURCE CONFIGURATION
   # ============================================
@@ -46,6 +45,19 @@ spring:
     validate-on-migrate: true
     clean-disabled: true
     placeholder-replacement: false
+
+# ============================================
+# SPRINGDOC / SWAGGER
+# ============================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
+    disable-swagger-default-url: true
+
 # ============================================
 # LOGGING SETTINGS
 # ============================================

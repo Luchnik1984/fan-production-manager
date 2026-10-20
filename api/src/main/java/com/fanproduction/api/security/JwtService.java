@@ -7,12 +7,14 @@ import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import java.security.Key;
 import java.util.Date;
 import java.util.UUID;
 
 @Service
+@Slf4j
 public class JwtService {
 
     @Value("${JWT_SECRET:mySecretKeyForJWTTokenGeneration12345678901234567890}")
@@ -24,13 +26,12 @@ public class JwtService {
     @Value("${JWT_REFRESH_EXPIRATION:604800000}")  // 7 дней в миллисекундах
     private Long refreshExpiration;
 
+
     @PostConstruct
     public void init() {
-        System.out.println("=== JwtService initialized ===");
-        System.out.println("JWT_SECRET: " + secret);
-        System.out.println("JWT_EXPIRATION: " + expiration + " ms (" + (expiration / 1000 / 60 / 60) + " hours)");
-        System.out.println("JWT_REFRESH_EXPIRATION: " + refreshExpiration + " ms (" + (refreshExpiration / 1000 / 60 / 60 / 24) + " days)");
-        System.out.println("==============================");
+        log.info("JwtService initialized: expiration={} ms ({} h), refreshExpiration={} ms ({} d)",
+                expiration, expiration / 1000 / 60 / 60,
+                refreshExpiration, refreshExpiration / 1000 / 60 / 60 / 24);
     }
 
     private Key getSigningKey() {
