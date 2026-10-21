@@ -18,11 +18,13 @@ import javafx.scene.layout.HBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.function.Consumer;
 
+@Slf4j
 public class TreeSelectableComponentBox {
 
     @Getter
@@ -239,11 +241,16 @@ public class TreeSelectableComponentBox {
             stage.initOwner(ownerStage);
             stage.setScene(new Scene(root, 900, 600));
 
+            // Передаём Stage в контроллер, чтобы createBaseDialog мог initOwner(stage)
+            // и модальность внутренних диалогов была WINDOW_MODAL относительно
+            // этого окна создания компонента, а не APPLICATION_MODAL.
+            controller.setStage(stage);
+
             stage.setOnHidden(e -> openSelector());
 
             stage.show();
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Не удалось открыть окно создания компонента", e);
             showError("Не удалось открыть окно создания компонента");
         }
     }
