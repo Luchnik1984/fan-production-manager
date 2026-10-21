@@ -20,8 +20,8 @@ import java.util.Set;
  * <ul>
  *   <li>{@code dynamicFields} — не системное, хранит пользовательские поля.</li>
  *   <li>Поля {@code BaseProductCard} ({@code id}, {@code name}, {@code code},
- *       {@code cardType}, {@code createdAt}, {@code updatedAt}, {@code createdBy},
- *       {@code isTemporary}) — обрабатываются отдельно.</li>
+ *       {@code cardType}, {@code createdAt}, {@code updatedAt}, {@code createdBy})
+ *       — обрабатываются отдельно.</li>
  * </ul>
  */
 public final class FanCardFields {

@@ -1,8 +1,6 @@
 package com.fanproduction.gui.service;
 
 import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
-import org.springframework.stereotype.Service;
-
 import com.fanproduction.gui.client.FanTemplateVersionClient;
 import com.fanproduction.gui.dto.response.DynamicFormFieldDto;
 import com.fanproduction.gui.dto.response.DynamicFormMetadataDto;
@@ -10,9 +8,23 @@ import com.fanproduction.gui.dto.response.DynamicFormMetadataDto;
 import java.util.*;
 
 /**
- * Сервис для получения метаданных полей для разных типов карточек.
+ * Сервис метаданных полей карточек.
+ * <p>
+ * В GUI-модуле Spring-контекст не поднимается (см. {@code LoginApplication} —
+ * запуск через {@code Application.launch}, а не {@code SpringApplication.run}),
+ * поэтому класс создаётся через {@code new}:
+ * <ul>
+ *   <li>{@link com.fanproduction.gui.controller.CardViewController} — через
+ *       статический {@code BUILDER};</li>
+ *   <li>{@link com.fanproduction.gui.controller.CardFormController} — как поле
+ *       экземпляра.</li>
+ * </ul>
+ * Аннотация {@code @Service} намеренно не используется.
+ * <p>
+ * Кэш метаданных шаблонов FAN (TTL 10 минут) — ключ к быстрому открытию
+ * повторных окон просмотра. Именно поэтому {@code CardViewController.BUILDER}
+ * сделан {@code static final}: кэш шарится между всеми окнами.
  */
-@Service
 public class FieldMetadataService {
 
     private final Map<String, List<FieldMetadataDto>> metadataMap = new HashMap<>();
@@ -527,21 +539,39 @@ public class FieldMetadataService {
     }
 
     /**
-     * Получить метаданные формы FAN целиком (с версией, статусом, именем шаблона).
+     * Получить метаданные формы FAN с кэшем (TTL 10 минут).
      * <p>
-     * Полезно для отображения заголовка формы: «Шаблон P-серии (v2, PUBLISHED)».
+     * Кэш нужен, чтобы не делать REST-запрос при каждом открытии
+     * окна просмотра. Инвалидация — по истечении TTL или через
+     * {@link #clearFanMetadataCache()}.
      */
     public DynamicFormMetadataDto getFanFormMetadata(Long templateVersionId) {
         if (templateVersionId == null) {
             throw new IllegalArgumentException("templateVersionId не может быть null");
         }
 
+        CachedMetadata cached = fanMetadataCache.get(templateVersionId);
+        if (cached != null && !cached.isExpired()) {
+            return cached.data();
+        }
+
         try {
-            return FanTemplateVersionClient.getFormMetadata(templateVersionId);
+            DynamicFormMetadataDto loaded = FanTemplateVersionClient.getFormMetadata(templateVersionId);
+            fanMetadataCache.put(templateVersionId,
+                    new CachedMetadata(loaded, System.currentTimeMillis() + CACHE_TTL_MS));
+            return loaded;
         } catch (Exception e) {
             throw new RuntimeException(
                     "Не удалось загрузить метаданные FAN-формы: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Очистить кэш метаданных шаблонов.
+     * Вызывать после публикации новой версии шаблона или по кнопке «Обновить».
+     */
+    public void clearFanMetadataCache() {
+        fanMetadataCache.clear();
     }
 
     /**
@@ -615,5 +645,19 @@ public class FieldMetadataService {
             case "COMPUTED" -> "computed";
             default -> "text";
         };
+    }
+
+    // ==========================================================
+    // КЭШ МЕТАДАННЫХ ШАБЛОНОВ (TTL 10 минут)
+    // ==========================================================
+
+    private static final long CACHE_TTL_MS = 10 * 60 * 1000; // 10 минут
+
+    private final Map<Long, CachedMetadata> fanMetadataCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private record CachedMetadata(DynamicFormMetadataDto data, long expiresAt) {
+        boolean isExpired() {
+            return System.currentTimeMillis() > expiresAt;
+        }
     }
 }

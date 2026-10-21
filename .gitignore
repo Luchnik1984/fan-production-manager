@@ -92,3 +92,5 @@ temp/
 !.mvn/wrapper/maven-wrapper.properties
 
 HELP.md
+/FanProduction-Local.postman_environment.json
+/FanProduction-Setup.postman_collection.json

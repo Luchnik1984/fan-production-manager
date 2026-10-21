@@ -51,12 +51,6 @@ public interface ProductCardRepository extends JpaRepository<BaseProductCard, Lo
     @Query("SELECT COUNT(p) FROM BaseProductCard p WHERE p.cardType = :cardType")
     long countByCardType(@Param("cardType") String cardType);
 
-    /**
-     * Поиск временных карточек
-     */
-    List<BaseProductCard> findByIsTemporaryTrue();
-
-
     // ==========================================================
     // МЕТОДЫ ДЛЯ ПРОВЕРКИ ИСПОЛЬЗОВАНИЯ СБОРОЧНЫХ УЗЛОВ
     // ==========================================================

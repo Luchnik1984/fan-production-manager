@@ -77,8 +77,7 @@ public class ProductCardFactory {
      * <p>
      * В отличие от {@link #createCard}, не создаёт новую сущность — работает
      * с уже загруженной. Используется при обновлении карточек, чтобы не потерять
-     * системные поля ({@code createdAt}, {@code createdBy}, {@code code},
-     * {@code isTemporary}).
+     * системные поля ({@code createdAt}, {@code createdBy}, {@code code}).
      * <p>
      * Поля, которых нет в {@code fields}, <b>не</b> сбрасываются — семантика
      * «частичное обновление». Для FAN-карточек используется другой путь

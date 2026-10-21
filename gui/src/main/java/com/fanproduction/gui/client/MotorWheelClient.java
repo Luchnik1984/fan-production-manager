@@ -1,44 +1,46 @@
 package com.fanproduction.gui.client;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.MotorWheelDto;
+import com.fanproduction.gui.util.CardFieldExtractor;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class MotorWheelClient {
-    @SuppressWarnings("unchecked")
+public class MotorWheelClient extends BaseCardClient<MotorWheelDto> {
+
+    private static final MotorWheelClient INSTANCE = new MotorWheelClient();
 
     public static List<MotorWheelDto> getAll() throws Exception {
-        TypeReference<ApiResponse<Map<String, Object>>> typeRef = new TypeReference<>() {};
-        ApiResponse<Map<String, Object>> response = ApiClient.get("/products?cardType=MOTOR_WHEEL&size=1000", typeRef);
+        return INSTANCE.fetchAll();
+    }
 
-        List<MotorWheelDto> result = new ArrayList<>();
-        if (response.isSuccess() && response.getData() != null) {
-            List<Map<String, Object>> content = (List<Map<String, Object>>) response.getData().get("content");
-            for (Map<String, Object> item : content) {
-                MotorWheelDto dto = new MotorWheelDto();
-                dto.setId(((Number) item.get("id")).longValue());
+    public static MotorWheelDto getById(Long id) throws Exception {
+        return INSTANCE.fetchById(id);
+    }
 
-                Map<String, Object> fields = (Map<String, Object>) item.get("fields");
-                dto.setManufacturer((String) fields.get("manufacturer"));
-                dto.setBladeType((String) fields.get("bladeType"));
-                dto.setSize(fields.get("size") != null ? ((Number) fields.get("size")).intValue() : null);
-                dto.setPoles(fields.get("poles") != null ? ((Number) fields.get("poles")).intValue() : null);
-                dto.setVoltageCode((String) fields.get("voltageCode"));
-                dto.setPowerKw(fields.get("powerKw") != null ? ((Number) fields.get("powerKw")).doubleValue() : null);
-                dto.setRatedSpeedRpm(fields.get("ratedSpeedRpm") != null ? ((Number) fields.get("ratedSpeedRpm")).intValue() : null);
-                dto.setActualSpeedRpm(fields.get("actualSpeedRpm") != null ? ((Number) fields.get("actualSpeedRpm")).intValue() : null);
-                dto.setVoltage(fields.get("voltage") != null ? ((Number) fields.get("voltage")).intValue() : null);
-                dto.setWeightKg(fields.get("weightKg") != null ? ((Number) fields.get("weightKg")).doubleValue() : null);
-                dto.setFullMarking((String) fields.get("fullMarking"));
-                dto.setMotorCode((String) fields.get("motorCode"));
+    @Override
+    protected String getCardType() {
+        return "MOTOR_WHEEL";
+    }
 
-                result.add(dto);
-            }
-        }
-        return result;
+    @Override
+    protected MotorWheelDto createDto() {
+        return new MotorWheelDto();
+    }
+
+    @Override
+    protected void populateFromFields(MotorWheelDto dto, Map<String, Object> f) {
+        dto.setManufacturer(CardFieldExtractor.getString(f, "manufacturer"));
+        dto.setBladeType(CardFieldExtractor.getString(f, "bladeType"));
+        dto.setSize(CardFieldExtractor.getInteger(f, "size"));
+        dto.setPoles(CardFieldExtractor.getInteger(f, "poles"));
+        dto.setVoltageCode(CardFieldExtractor.getString(f, "voltageCode"));
+        dto.setPowerKw(CardFieldExtractor.getDouble(f, "powerKw"));
+        dto.setRatedSpeedRpm(CardFieldExtractor.getInteger(f, "ratedSpeedRpm"));
+        dto.setActualSpeedRpm(CardFieldExtractor.getInteger(f, "actualSpeedRpm"));
+        dto.setVoltage(CardFieldExtractor.getInteger(f, "voltage"));
+        dto.setWeightKg(CardFieldExtractor.getDouble(f, "weightKg"));
+        dto.setFullMarking(CardFieldExtractor.getString(f, "fullMarking"));
+        dto.setMotorCode(CardFieldExtractor.getString(f, "motorCode"));
     }
 }

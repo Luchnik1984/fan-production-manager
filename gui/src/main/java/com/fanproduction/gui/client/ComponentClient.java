@@ -7,6 +7,7 @@ import com.fanproduction.gui.dto.response.ComponentDto;
 import com.fanproduction.gui.dto.response.UnitOfMeasureDto;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Клиент для работы с API компонентов.
@@ -91,5 +92,18 @@ public class ComponentClient {
             return response.getData();
         }
         throw new RuntimeException("Failed to search components: " + response.getMessage());
+    }
+
+    /**
+     * Получить компоненты, привязанные к карточке продукции.
+     */
+    public static List<Map<String, Object>> getProductComponents(Long productCardId) throws Exception {
+        TypeReference<ApiResponse<List<Map<String, Object>>>> typeRef = new TypeReference<>() {};
+        ApiResponse<List<Map<String, Object>>> response = ApiClient.get(
+                BASE_PATH + "/product/" + productCardId, typeRef);
+        if (response.isSuccess() && response.getData() != null) {
+            return response.getData();
+        }
+        return java.util.List.of();
     }
 }

@@ -23,7 +23,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -48,11 +47,6 @@ public class ProductCardController extends BaseController {
 
             // Добавляем name в fields
             request.getFields().put("name", request.getName());
-
-            // Если это временная карточка
-            if (request.getIsTemporary() != null && request.getIsTemporary()) {
-                request.getFields().put("isTemporary", true);
-            }
 
             BaseProductCard card = productCardService.createCard(
                     cardType,
@@ -161,20 +155,6 @@ public class ProductCardController extends BaseController {
                 .map(productCardMapper::toResponse)
                 .collect(Collectors.toList());
         return ApiResponse.success(responses);
-    }
-
-    /**
-     * Снять флаг временной карточки
-     */
-    @PutMapping("/{id}/temporary")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
-    public ApiResponse<Void> removeTemporaryFlag(@PathVariable Long id, @RequestBody Map<String, Boolean> request) {
-
-            Boolean isTemporary = request.get("isTemporary");
-            if (isTemporary != null && !isTemporary) {
-                productCardService.removeTemporaryFlag(id);
-            }
-            return ApiResponse.success(null);
     }
 
     /**

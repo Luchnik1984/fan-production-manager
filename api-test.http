@@ -6,8 +6,8 @@ POST http://localhost:8083/api/auth/login
 Content-Type: application/json
 
 {
-  "email": "admin@mail.ru",
-  "password": "123456789"
+  "email": "admin@admin.ru",
+  "password": "admin123"
 }
 ### Логин
 POST http://localhost:8083/api/auth/login

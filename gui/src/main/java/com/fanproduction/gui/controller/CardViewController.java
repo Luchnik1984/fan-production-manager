@@ -1,437 +1,564 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.core.enums.CardTemplateType;
-import com.fanproduction.gui.client.ComponentClient;
-import com.fanproduction.gui.dto.response.ComponentDto;
 import com.fanproduction.gui.dto.response.ProductCardDto;
-import com.fanproduction.gui.util.NumberFormatter;
+import com.fanproduction.gui.dto.view.CardViewField;
+import com.fanproduction.gui.dto.view.CardViewLayout;
+import com.fanproduction.gui.dto.view.CardViewSection;
+import com.fanproduction.gui.dto.view.CardViewSubsection;
+import com.fanproduction.gui.dto.view.CardViewTab;
+import com.fanproduction.gui.service.CardViewBuilder;
+import com.fanproduction.gui.service.CardViewBuilderImpl;
+import com.fanproduction.gui.service.FieldMetadataService;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Separator;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import lombok.extern.slf4j.Slf4j;
 
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
- * Контроллер для просмотра карточки продукции в режиме "только чтение".
- * Вызывается по двойному щелчку на строке таблицы.
+ * Окно просмотра карточки продукции в режиме «только чтение».
+ * <p>
+ * Строится на основе {@link CardViewLayout}, который возвращает
+ * {@link CardViewBuilder}. Логика разметки полностью вынесена из контроллера:
+ * <ul>
+ *   <li>Шапка и «Технические характеристики» — синхронно ({@link CardViewBuilder#buildForFan}
+ *       или {@link CardViewBuilder#buildForSystemCard});</li>
+ *   <li>Связанные элементы (электродвигатель, колёса, компоненты по ссылкам) —
+ *       асинхронно ({@link CardViewBuilder#buildLinkedElements});</li>
+ *   <li>Компоненты и материалы — асинхронно ({@link CardViewBuilder#buildComponentsSection},
+ *       {@link CardViewBuilder#buildMaterialsSection}).</li>
+ * </ul>
+ * <p>
+ * В GUI Spring-контекст не поднимается, поэтому {@link CardViewBuilder} и
+ * {@link FieldMetadataService} создаются через {@code new}. Статическое поле
+ * {@link #BUILDER} живёт всё время работы приложения — это позволяет шарить
+ * кэш метаданных шаблонов (TTL 10 минут в {@link FieldMetadataService}) между
+ * всеми окнами.
  */
+@Slf4j
 public class CardViewController {
 
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+    // ==========================================================
+    // КОНСТАНТЫ
+    // ==========================================================
 
-    private static final Map<String, String> FIELD_RUSSIAN_NAMES = new HashMap<>();
+    private static final String MAIN_TAB_TITLE = "Основные поля";
+    private static final String TECH_SPECS_TITLE = "Технические характеристики";
+    private static final String COMPONENTS_TITLE = "Компоненты";
+    private static final String MATERIALS_TITLE = "Материалы";
 
-    static {
-        // Общие поля
-        FIELD_RUSSIAN_NAMES.put("name", "Наименование");
-        FIELD_RUSSIAN_NAMES.put("code", "Код");
-        FIELD_RUSSIAN_NAMES.put("cardType", "Тип карточки");
-        FIELD_RUSSIAN_NAMES.put("createdAt", "Дата создания");
-        FIELD_RUSSIAN_NAMES.put("createdBy", "Создал");
+    private static final String LOADING_TEXT = "Загрузка…";
+    private static final String EMPTY_COMPONENTS_TEXT = "Нет компонентов";
+    private static final String EMPTY_MATERIALS_TEXT = "Нет материалов";
+    private static final String ERROR_COMPONENTS_TEXT = "Не удалось загрузить компоненты";
+    private static final String ERROR_MATERIALS_TEXT = "Не удалось загрузить материалы";
 
-        // Поля электродвигателя
-        FIELD_RUSSIAN_NAMES.put("series", "Серия");
-        FIELD_RUSSIAN_NAMES.put("motorType", "Тип двигателя");
-        FIELD_RUSSIAN_NAMES.put("poles", "Количество полюсов");
-        FIELD_RUSSIAN_NAMES.put("powerKw", "Мощность (КВт)");
-        FIELD_RUSSIAN_NAMES.put("ratedSpeedRpm", "Номинальная скорость (об/мин)");
-        FIELD_RUSSIAN_NAMES.put("actualSpeedRpm", "Фактическая скорость (об/мин)");
-        FIELD_RUSSIAN_NAMES.put("shaftSize", "Размер вала (мм)");
-        FIELD_RUSSIAN_NAMES.put("mountingType", "Исполнение по монтажу");
-        FIELD_RUSSIAN_NAMES.put("climateType", "Климатическое исполнение");
-        FIELD_RUSSIAN_NAMES.put("voltage", "Напряжение (В)");
-        FIELD_RUSSIAN_NAMES.put("operationMode", "Режим работы");
-        FIELD_RUSSIAN_NAMES.put("weightKg", "Масса (кг)");
-        FIELD_RUSSIAN_NAMES.put("generalPurpose", "Общего применения");
-        FIELD_RUSSIAN_NAMES.put("fireproof", "Огнестойкость");
-        FIELD_RUSSIAN_NAMES.put("fireproofMarking", "Маркировка огнестойкости");
-        FIELD_RUSSIAN_NAMES.put("maxTemperature", "Предельная температура (°C)");
-        FIELD_RUSSIAN_NAMES.put("explosionProof", "Взрывозащита");
-        FIELD_RUSSIAN_NAMES.put("explosionMarking", "Маркировка взрывозащиты");
-        FIELD_RUSSIAN_NAMES.put("fullMarking", "Полная маркировка");
+    /**
+     * Единый экземпляр builder'а — шарит кэш метаданных шаблонов.
+     * В GUI Spring-контекст не используется — создаём через {@code new}.
+     */
+    private static final CardViewBuilder BUILDER =
+            new CardViewBuilderImpl(new FieldMetadataService());
 
-        // Поля мотор-колеса
-        FIELD_RUSSIAN_NAMES.put("manufacturer", "Производитель");
-        FIELD_RUSSIAN_NAMES.put("bladeType", "Тип лопаток");
-        FIELD_RUSSIAN_NAMES.put("size", "Размер");
-        FIELD_RUSSIAN_NAMES.put("voltageCode", "Код напряжения");
-        FIELD_RUSSIAN_NAMES.put("motorCode", "Код двигателя");
+    // ==========================================================
+    // ПОЛЯ ЭКЗЕМПЛЯРА
+    // ==========================================================
 
-        // Поля радиального колеса
-        FIELD_RUSSIAN_NAMES.put("marking", "Маркировка колеса");
-        FIELD_RUSSIAN_NAMES.put("bladeMod", "Модификация лопатки");
-        FIELD_RUSSIAN_NAMES.put("wheelFormula", "Формула колеса");
-        FIELD_RUSSIAN_NAMES.put("bladeCount", "Количество лопаток");
-        FIELD_RUSSIAN_NAMES.put("hubType", "Ступица");
-        FIELD_RUSSIAN_NAMES.put("hubName", "Ступица");
-        FIELD_RUSSIAN_NAMES.put("maxSpeedRpm", "Максимальная скорость (об/мин)");
-        FIELD_RUSSIAN_NAMES.put("frontDiskMod", "Модификация переднего диска");
-        FIELD_RUSSIAN_NAMES.put("wheelWidth", "Ширина колеса");
-        FIELD_RUSSIAN_NAMES.put("bladeLengthCoeff", "Коэффициент длины лопатки");
-        FIELD_RUSSIAN_NAMES.put("wheelCode", "Код колеса");
+    private final Stage dialog;
+    private final ProductCardDto card;
 
-        // Поля осевого колеса
-        FIELD_RUSSIAN_NAMES.put("execution", "Исполнение");
-        FIELD_RUSSIAN_NAMES.put("trimCoefficient", "Коэф. подрезки (%)");
-        FIELD_RUSSIAN_NAMES.put("bladeSlots", "Посадочных мест");
-        FIELD_RUSSIAN_NAMES.put("bladeShape", "Форма лопатки");
-        FIELD_RUSSIAN_NAMES.put("bladeAngle", "Угол установки");
-        FIELD_RUSSIAN_NAMES.put("bladeMaterial", "Материал лопатки");
-        FIELD_RUSSIAN_NAMES.put("wheelDiameter", "Диаметр колеса (мм)");
+    /** Контейнер для подсекций ТХ — сюда добавляются связанные элементы. */
+    private VBox techSpecsSubsectionsContainer;
 
-        // Поля канального вентилятора
-        FIELD_RUSSIAN_NAMES.put("seriesName", "Наименование серии");
-        FIELD_RUSSIAN_NAMES.put("ductSize", "Типоразмер");
-        FIELD_RUSSIAN_NAMES.put("executionType", "Исполнение");
-        FIELD_RUSSIAN_NAMES.put("ductFanType", "Тип колеса");
-        FIELD_RUSSIAN_NAMES.put("motorWheelId", "Мотор-колесо");
-        FIELD_RUSSIAN_NAMES.put("radialWheelId", "Радиальное колесо");
-        FIELD_RUSSIAN_NAMES.put("motorId", "Электродвигатель");
-        FIELD_RUSSIAN_NAMES.put("wheelSize", "Размер колеса (мм)");
+    /** Контейнер вкладки «Компоненты». */
+    private VBox componentsContainer;
 
-        // Поля для хранения полной маркировки компонентов
-        FIELD_RUSSIAN_NAMES.put("motorWheelFullMarking", "Мотор-колесо");
-        FIELD_RUSSIAN_NAMES.put("radialWheelFullMarking", "Радиальное колесо");
-        FIELD_RUSSIAN_NAMES.put("axialWheelFullMarking", "Осевое колесо");
-        FIELD_RUSSIAN_NAMES.put("motorFullMarking", "Электродвигатель");
+    /** Контейнер вкладки «Материалы». */
+    private VBox materialsContainer;
+
+    // ==========================================================
+    // PUBLIC API
+    // ==========================================================
+
+    /**
+     * Открыть окно просмотра карточки.
+     * <p>
+     * Обратная совместимость: сохранена сигнатура для {@code CatalogController}
+     * и других точек вызова. Внутри создаётся экземпляр контроллера (stateless,
+     * живёт до закрытия окна) и вызывается {@link #showInternal()}.
+     */
+    public static void show(Stage owner, ProductCardDto card) {
+        if (card == null) {
+            showAlert("Ошибка", "Карточка не получена", Alert.AlertType.ERROR);
+            return;
+        }
+        new CardViewController(owner, card).showInternal();
     }
 
-    public static void show(Stage owner, ProductCardDto card) {
-        Stage dialog = new Stage();
-        dialog.initModality(Modality.WINDOW_MODAL);
-        dialog.initOwner(owner);
+    // ==========================================================
+    // КОНСТРУКТОР
+    // ==========================================================
 
-        String displayTitle = buildCardTitle(card);
-        dialog.setTitle("Просмотр карточки - " + displayTitle);
+    private CardViewController(Stage owner, ProductCardDto card) {
+        this.card = card;
+        this.dialog = new Stage();
+        this.dialog.initModality(Modality.WINDOW_MODAL);
+        if (owner != null) {
+            this.dialog.initOwner(owner);
+        }
+    }
 
+    // ==========================================================
+    // ОСНОВНОЙ ЦИКЛ
+    // ==========================================================
+
+    private void showInternal() {
+        CardViewLayout layout;
+        try {
+            layout = isFan()
+                    ? BUILDER.buildForFan(card)
+                    : BUILDER.buildForSystemCard(card);
+        } catch (Exception e) {
+            log.error("Ошибка построения layout для карточки id={}: {}",
+                    card.getId(), e.getMessage(), e);
+            showAlert("Ошибка", "Не удалось построить разметку: " + e.getMessage(),
+                    Alert.AlertType.ERROR);
+            return;
+        }
+
+        if (layout == null || layout.tabs() == null || layout.tabs().isEmpty()) {
+            showAlert("Ошибка", "Разметка карточки пуста", Alert.AlertType.ERROR);
+            return;
+        }
+
+        String windowTitle = layout.title() != null ? layout.title() : card.getName();
+        dialog.setTitle("Просмотр карточки — " + windowTitle);
+
+        buildUI(layout);
+
+        // Запускаем асинхронные загрузки ДО showAndWait — фоновые потоки
+        // не блокируют UI, результат применяется через Platform.runLater.
+        startAsyncLoads();
+
+        dialog.showAndWait();
+    }
+
+    private boolean isFan() {
+        return "FAN".equals(card.getCardType());
+    }
+
+    // ==========================================================
+    // ПОСТРОЕНИЕ UI
+    // ==========================================================
+
+    private void buildUI(CardViewLayout layout) {
         VBox mainLayout = new VBox(15);
         mainLayout.setPadding(new Insets(20));
         mainLayout.setStyle("-fx-background-color: #f5f5f5;");
 
-        // Заголовок
-        Label titleLabel = new Label(card.getName());
+        Label titleLabel = new Label(layout.title() != null ? layout.title() : card.getName());
         titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        titleLabel.setWrapText(true);
 
-        // Разделитель
         Separator separator = new Separator();
 
-        // Форма с данными
-        GridPane grid = createInfoGrid(card);
+        TabPane tabPane = new TabPane();
+        tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        VBox.setVgrow(tabPane, Priority.ALWAYS);
 
-        // Кнопка закрытия
+        for (CardViewTab tab : layout.tabs()) {
+            Tab uiTab = new Tab(tab.title() != null ? tab.title() : "—");
+            uiTab.setClosable(false);
+            uiTab.setContent(buildTabContent(tab));
+            tabPane.getTabs().add(uiTab);
+        }
+
         Button closeButton = new Button("Закрыть");
         closeButton.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white;");
         closeButton.setOnAction(e -> dialog.close());
 
-        mainLayout.getChildren().addAll(titleLabel, separator, grid, closeButton);
+        HBox buttonBox = new HBox();
+        buttonBox.setAlignment(Pos.CENTER_RIGHT);
+        buttonBox.getChildren().add(closeButton);
 
-        // Прокрутка для длинных форм
-        ScrollPane scrollPane = new ScrollPane(mainLayout);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setPrefHeight(500);
+        mainLayout.getChildren().addAll(titleLabel, separator, tabPane, buttonBox);
 
-        Scene scene = new Scene(scrollPane, 550, 600);
+        Scene scene = new Scene(mainLayout, 750, 700);
         dialog.setScene(scene);
-        dialog.showAndWait();
     }
 
-    private static GridPane createInfoGrid(ProductCardDto card) {
+    /**
+     * Строит содержимое вкладки в зависимости от её назначения:
+     * <ul>
+     *   <li>«Основные поля» — шапка + секции (с особым контейнером для ТХ);</li>
+     *   <li>«Компоненты» — плейсхолдер «Загрузка…», потом заменяется;</li>
+     *   <li>«Материалы» — плейсхолдер «Загрузка…», потом заменяется;</li>
+     *   <li>Остальные — все секции подряд.</li>
+     * </ul>
+     */
+    private Node buildTabContent(CardViewTab tab) {
+        VBox content = new VBox(15);
+        content.setPadding(new Insets(15));
+
+        String title = tab.title();
+
+        if (MAIN_TAB_TITLE.equals(title)) {
+            renderMainTab(tab, content);
+        } else if (COMPONENTS_TITLE.equals(title)) {
+            this.componentsContainer = content;
+            content.getChildren().add(placeholder(LOADING_TEXT));
+        } else if (MATERIALS_TITLE.equals(title)) {
+            this.materialsContainer = content;
+            content.getChildren().add(placeholder(LOADING_TEXT));
+        } else {
+            // Неизвестная вкладка — рендерим как есть
+            if (tab.header() != null && !tab.header().isEmpty()) {
+                content.getChildren().add(renderHeader(tab.header()));
+                content.getChildren().add(new Separator());
+            }
+            if (tab.sections() != null) {
+                for (CardViewSection section : tab.sections()) {
+                    content.getChildren().add(renderSection(section));
+                }
+            }
+        }
+
+        ScrollPane scroll = new ScrollPane(content);
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background-color: transparent;");
+        return scroll;
+    }
+
+    /**
+     * Рендер вкладки «Основные поля»: шапка + ТХ + (если есть) другие секции.
+     * <p>
+     * Контейнер подсекций ТХ сохраняется в {@link #techSpecsSubsectionsContainer},
+     * чтобы {@link #applyLinkedElements(List)} мог добавить туда связанные
+     * элементы после асинхронной загрузки.
+     */
+    private void renderMainTab(CardViewTab tab, VBox parent) {
+        // Шапка
+        if (tab.header() != null && !tab.header().isEmpty()) {
+            parent.getChildren().add(renderHeader(tab.header()));
+            parent.getChildren().add(new Separator());
+        }
+
+        List<CardViewSection> sections = tab.sections() != null ? tab.sections() : List.of();
+
+        // Находим секцию ТХ (если есть)
+        CardViewSection techSpecsSection = null;
+        for (CardViewSection section : sections) {
+            if (TECH_SPECS_TITLE.equals(section.title())) {
+                techSpecsSection = section;
+            } else {
+                parent.getChildren().add(renderSection(section));
+            }
+        }
+
+        // Всегда создаём контейнер ТХ — даже если секции не было,
+        // чтобы связанные элементы могли быть добавлены асинхронно.
+        parent.getChildren().add(buildTechSpecsBox(techSpecsSection));
+    }
+
+    /**
+     * Собирает «Технические характеристики» из секции (или пустой каркас).
+     * <p>
+     * Сохраняет {@link #techSpecsSubsectionsContainer} — VBox, в который
+     * {@link #applyLinkedElements(List)} добавляет подсекции.
+     */
+    private Node buildTechSpecsBox(CardViewSection techSpecsSection) {
+        VBox box = new VBox(10);
+        box.setStyle("-fx-padding: 5 0 5 0;");
+
+        Label title = new Label(TECH_SPECS_TITLE);
+        title.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        box.getChildren().add(title);
+
+        // Поля секции ТХ (без подсекций)
+        if (techSpecsSection != null
+                && techSpecsSection.fields() != null
+                && !techSpecsSection.fields().isEmpty()) {
+            VBox fieldsBox = new VBox(6);
+            for (CardViewField field : techSpecsSection.fields()) {
+                fieldsBox.getChildren().add(renderField(field));
+            }
+            box.getChildren().add(fieldsBox);
+        }
+
+        // Контейнер для подсекций (сначала шаблонные, потом — связанные)
+        VBox subsectionsBox = new VBox(10);
+        if (techSpecsSection != null && techSpecsSection.subsections() != null) {
+            for (CardViewSubsection sub : techSpecsSection.subsections()) {
+                subsectionsBox.getChildren().add(renderSubsection(sub));
+            }
+        }
+        this.techSpecsSubsectionsContainer = subsectionsBox;
+        box.getChildren().add(subsectionsBox);
+
+        return box;
+    }
+
+    // ==========================================================
+    // РЕНДЕР ЭЛЕМЕНТОВ
+    // ==========================================================
+
+    private Node renderHeader(List<CardViewField> header) {
         GridPane grid = new GridPane();
         grid.setHgap(15);
-        grid.setVgap(12);
-        grid.setPadding(new Insets(10));
+        grid.setVgap(8);
+        grid.setPadding(new Insets(5, 0, 10, 0));
 
         int row = 0;
+        for (CardViewField field : header) {
+            Label label = new Label(field.label() + ":");
+            label.setStyle("-fx-font-weight: bold;");
+            label.setMinWidth(180);
 
-        // Основная информация
-        addInfoRow(grid, row++, "Наименование:", buildCardTitle(card));
-        addInfoRow(grid, row++, "Код:", card.getCode() != null ? card.getCode() : "—");
+            Label value = new Label(field.value() != null ? field.value() : "—");
+            value.setWrapText(true);
 
-        String cardTypeDisplay = getCardTypeDisplay(card.getCardType());
-        addInfoRow(grid, row++, "Тип карточки:", cardTypeDisplay);
-
-        // Для FAN: тип и вид вентилятора
-        if ("FAN".equals(card.getCardType())) {
-            Map<String, Object> fields = card.getFields();
-            if (fields != null) {
-                Object fanType = fields.get("fanType");
-                if (fanType != null && !fanType.toString().isEmpty()) {
-                    addInfoRow(grid, row++, "Тип вентилятора:", fanType.toString());
-                }
-                Object fanSubtype = fields.get("fanSubtype");
-                if (fanSubtype != null && !fanSubtype.toString().isEmpty()) {
-                    addInfoRow(grid, row++, "Вид вентилятора:", fanSubtype.toString());
-                }
-            }
-        }
-
-        if (card.getCreatedAt() != null) {
-            addInfoRow(grid, row++, "Дата создания:", card.getCreatedAt().format(DATE_FORMATTER));
-        }
-
-        if (card.getCreatedBy() != null && !card.getCreatedBy().isEmpty()) {
-            addInfoRow(grid, row++, "Создал:", card.getCreatedBy());
-        }
-
-        Map<String, Object> fields = card.getFields();
-        if (fields != null && !fields.isEmpty()) {
-            Label separatorLabel = new Label("Технические характеристики:");
-            separatorLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
-            grid.add(separatorLabel, 0, row, 2, 1);
+            grid.add(label, 0, row);
+            grid.add(value, 1, row);
             row++;
-
-            // ========== СПЕЦИАЛЬНАЯ ОБРАБОТКА ДЛЯ РАЗНЫХ ТИПОВ КАРТОЧЕК ==========
-
-            // Для радиального колеса: специальная обработка компонента ступицы
-            if ("RADIAL_WHEEL".equals(card.getCardType())) {
-                Object hubComponentId = fields.get("hubComponentId");
-                if (hubComponentId instanceof Number) {
-                    Long componentId = ((Number) hubComponentId).longValue();
-                    String componentDisplayName = getComponentDisplayName(componentId);
-                    addInfoRow(grid, row++, "Ступица:", componentDisplayName != null ? componentDisplayName : "—");
-                    fields.put("hubComponentId_processed", true);
-                }
-            }
-
-            // Получаем упорядоченный список полей для данного типа карточки
-            List<String> orderedFields = getOrderedFields(card.getCardType());
-
-            for (String fieldName : orderedFields) {
-                // Пропускаем уже обработанные поля
-                if (fields.containsKey(fieldName + "_processed")) {
-                    continue;
-                }
-
-                Object value = fields.get(fieldName);
-                if (value == null) continue;
-
-                // Специальная логика для огнестойкости и взрывозащиты
-                if ("fireproofMarking".equals(fieldName)) {
-                    Boolean fireproof = (Boolean) fields.get("fireproof");
-                    if (fireproof == null || !fireproof) continue;
-                }
-                if ("explosionMarking".equals(fieldName)) {
-                    Boolean explosionProof = (Boolean) fields.get("explosionProof");
-                    if (explosionProof == null || !explosionProof) continue;
-                }
-                if ("maxTemperature".equals(fieldName)) {
-                    Boolean fireproof = (Boolean) fields.get("fireproof");
-                    if (fireproof == null || !fireproof) continue;
-                }
-
-                // Для булевых полей показываем всегда
-                if (value instanceof Boolean) {
-                    String russianName = FIELD_RUSSIAN_NAMES.getOrDefault(fieldName, fieldName);
-                    String stringValue = formatValue(value);
-                    addInfoRow(grid, row++, russianName + ":", stringValue);
-                    continue;
-                }
-
-                // Для остальных полей пропускаем пустые строки
-                if (value instanceof String && ((String) value).isEmpty()) continue;
-
-                // Для hubComponentId уже обработали отдельно
-                if ("hubComponentId".equals(fieldName)) continue;
-
-                String russianName = FIELD_RUSSIAN_NAMES.getOrDefault(fieldName, fieldName);
-                String stringValue = formatValue(value);
-                addInfoRow(grid, row++, russianName + ":", stringValue);
-            }
         }
-
         return grid;
     }
 
-    /**
-     * Получает displayName = name+" "+"("+designation+")" компонента по его ID через API
-     */
-    private static String getComponentDisplayName(Long componentId) {
-        if (componentId == null) return null;
-        try {
-            ComponentDto component = ComponentClient.getComponentById(componentId);
-            return component != null ? component.getDisplayName() : "Компонент #" + componentId;
-        } catch (Exception e) {
-            System.err.println("Failed to load component: " + e.getMessage());
-            return "Компонент #" + componentId;
-        }
-    }
+    private Node renderSection(CardViewSection section) {
+        VBox box = new VBox(10);
+        box.setStyle("-fx-padding: 5 0 5 0;");
 
-    /**
-     * Возвращает упорядоченный список полей для отображения
-     */
-    private static List<String> getOrderedFields(String cardType) {
-        List<String> orderedFields = new ArrayList<>();
-
-        if ("RADIAL_WHEEL".equals(cardType)) {
-            // Раздел 1: Основная информация
-            orderedFields.add("manufacturer");
-            orderedFields.add("series");
-            orderedFields.add("size");
-            orderedFields.add("marking");
-
-            // Раздел 2: Характеристики колеса
-            orderedFields.add("bladeType");
-            orderedFields.add("hubComponentId");
-            orderedFields.add("maxSpeedRpm");
-            orderedFields.add("weightKg");
-
-            // Раздел 3: Дополнительные параметры
-            orderedFields.add("wheelFormula");
-            orderedFields.add("wheelCode");
-            orderedFields.add("bladeMod");
-            orderedFields.add("frontDiskMod");
-            orderedFields.add("wheelWidth");
-            orderedFields.add("bladeLengthCoeff");
-            orderedFields.add("bladeCount");
-            orderedFields.add("diameter");
-
-            // Раздел 4: Исполнение
-            orderedFields.add("generalPurpose");
-            orderedFields.add("fireproof");
-            orderedFields.add("fireproofMarking");
-            orderedFields.add("maxTemperature");
-            orderedFields.add("explosionProof");
-            orderedFields.add("explosionMarking");
-
-            // Полная маркировка
-            orderedFields.add("fullMarking");
-
-        } else if ("MOTOR".equals(cardType)) {
-            orderedFields.add("series");
-            orderedFields.add("motorType");
-            orderedFields.add("poles");
-            orderedFields.add("powerKw");
-            orderedFields.add("ratedSpeedRpm");
-            orderedFields.add("actualSpeedRpm");
-            orderedFields.add("shaftSize");
-            orderedFields.add("mountingType");
-            orderedFields.add("climateType");
-            orderedFields.add("voltage");
-            orderedFields.add("operationMode");
-            orderedFields.add("weightKg");
-            orderedFields.add("generalPurpose");
-            orderedFields.add("fireproof");
-            orderedFields.add("maxTemperature");
-            orderedFields.add("explosionProof");
-            orderedFields.add("explosionMarking");
-            orderedFields.add("fullMarking");
-
-        } else if ("MOTOR_WHEEL".equals(cardType)) {
-            orderedFields.add("manufacturer");
-            orderedFields.add("bladeType");
-            orderedFields.add("size");
-            orderedFields.add("poles");
-            orderedFields.add("voltageCode");
-            orderedFields.add("voltage");
-            orderedFields.add("powerKw");
-            orderedFields.add("ratedSpeedRpm");
-            orderedFields.add("actualSpeedRpm");
-            orderedFields.add("weightKg");
-            orderedFields.add("motorCode");
-            orderedFields.add("fullMarking");
-
-        } else if ("AXIAL_WHEEL".equals(cardType)) {
-            orderedFields.add("manufacturer");
-            orderedFields.add("marking");
-            orderedFields.add("bladeType");
-            orderedFields.add("size");
-            orderedFields.add("execution");
-            orderedFields.add("trimCoefficient");
-            orderedFields.add("bladeCount");
-            orderedFields.add("bladeSlots");
-            orderedFields.add("bladeShape");
-            orderedFields.add("bladeAngle");
-            orderedFields.add("bladeMaterial");
-            orderedFields.add("wheelDiameter");
-            orderedFields.add("wheelFormula");
-            orderedFields.add("generalPurpose");
-            orderedFields.add("fireproof");
-            orderedFields.add("maxTemperature");
-            orderedFields.add("explosionProof");
-            orderedFields.add("explosionMarking");
-            orderedFields.add("fullMarking");
-
-        } else if ("CUP".equals(cardType)) {
-            orderedFields.add("diameter");
-            orderedFields.add("height");
-            orderedFields.add("material");
-            orderedFields.add("thickness");
-            orderedFields.add("fullMarking");
-
-        } else if ("ACCESSORY".equals(cardType)) {
-            orderedFields.add("accessoryType");
-            orderedFields.add("compatibleModels");
-            orderedFields.add("vendorCode");
-            orderedFields.add("unit");
-            orderedFields.add("price");
-            orderedFields.add("fullMarking");
-
-        } else {
-            // Для остальных типов - просто все поля
-            return new ArrayList<>(FIELD_RUSSIAN_NAMES.keySet());
+        if (section.title() != null && !section.title().isEmpty()) {
+            Label title = new Label(section.title());
+            title.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+            box.getChildren().add(title);
         }
 
-        return orderedFields;
-    }
-
-    private static void addInfoRow(GridPane grid, int row, String label, String value) {
-        Label labelControl = new Label(label);
-        labelControl.setStyle("-fx-font-weight: bold;");
-
-        Label valueControl = new Label(value);
-        valueControl.setWrapText(true);
-
-        grid.add(labelControl, 0, row);
-        grid.add(valueControl, 1, row);
-    }
-
-    private static String getCardTypeDisplay(String cardType) {
-        try {
-            return CardTemplateType.valueOf(cardType).getDisplayName();
-        } catch (IllegalArgumentException e) {
-            return cardType;
+        if (section.fields() != null && !section.fields().isEmpty()) {
+            VBox fieldsBox = new VBox(6);
+            for (CardViewField field : section.fields()) {
+                fieldsBox.getChildren().add(renderField(field));
+            }
+            box.getChildren().add(fieldsBox);
         }
+
+        if (section.subsections() != null && !section.subsections().isEmpty()) {
+            VBox subsectionsBox = new VBox(10);
+            for (CardViewSubsection sub : section.subsections()) {
+                subsectionsBox.getChildren().add(renderSubsection(sub));
+            }
+            box.getChildren().add(subsectionsBox);
+        }
+
+        return box;
     }
 
-    private static String formatValue(Object value) {
-        if (value == null) return "—";
-        if (value instanceof Boolean) {
-            return (Boolean) value ? "Да" : "Нет";
+    private Node renderSubsection(CardViewSubsection sub) {
+        VBox box = new VBox(6);
+        box.setStyle("-fx-padding: 5 0 5 15;");
+
+        if (sub.title() != null && !sub.title().isEmpty()) {
+            Label title = new Label(sub.title());
+            title.setStyle("-fx-font-weight: bold; -fx-font-size: 12px; -fx-text-fill: #555;");
+            box.getChildren().add(title);
         }
-        if (value instanceof Number) {
-            return NumberFormatter.formatNumber(value);
+
+        if (sub.fields() != null) {
+            for (CardViewField field : sub.fields()) {
+                box.getChildren().add(renderField(field));
+            }
         }
-        return value.toString();
+
+        return box;
     }
+
+    private Node renderField(CardViewField field) {
+        HBox box = new HBox(10);
+        box.setAlignment(Pos.TOP_LEFT);
+
+        Label label = new Label(field.label() + ":");
+        label.setStyle("-fx-font-weight: bold;");
+        label.setMinWidth(200);
+        label.setPrefWidth(200);
+
+        Label value = new Label(field.value() != null ? field.value() : "—");
+        value.setWrapText(true);
+        HBox.setHgrow(value, Priority.ALWAYS);
+
+        box.getChildren().addAll(label, value);
+        return box;
+    }
+
+    private Label placeholder(String text) {
+        Label label = new Label(text);
+        label.setStyle("-fx-text-fill: #888; -fx-font-style: italic;");
+        return label;
+    }
+
+    // ==========================================================
+    // АСИНХРОННЫЕ ЗАГРУЗКИ
+    // ==========================================================
+
+    private void startAsyncLoads() {
+        loadLinkedElementsAsync();
+        loadComponentsAsync();
+        loadMaterialsAsync();
+    }
+
+    private void loadLinkedElementsAsync() {
+        new Thread(() -> {
+            try {
+                List<CardViewSubsection> linked = BUILDER.buildLinkedElements(card);
+                if (linked != null && !linked.isEmpty()) {
+                    Platform.runLater(() -> applyLinkedElements(linked));
+                }
+            } catch (Exception e) {
+                log.warn("Ошибка загрузки связанных элементов для карточки id={}: {}",
+                        card.getId(), e.getMessage());
+            }
+        }, "CardView-linked").start();
+    }
+
+    private void loadComponentsAsync() {
+        Long cardId = card.getId();
+        new Thread(() -> {
+            CardViewSection section;
+            try {
+                section = BUILDER.buildComponentsSection(cardId);
+            } catch (Exception e) {
+                log.warn("Ошибка загрузки компонентов для карточки id={}: {}",
+                        cardId, e.getMessage());
+                section = null;  // маркер ошибки — applyComponentsSection покажет «не удалось загрузить»
+            }
+            CardViewSection finalSection = section;
+            Platform.runLater(() -> applyComponentsSection(finalSection));
+        }, "CardView-components").start();
+    }
+
+    private void loadMaterialsAsync() {
+        Long cardId = card.getId();
+        new Thread(() -> {
+            CardViewSection section;
+            try {
+                section = BUILDER.buildMaterialsSection(cardId);
+            } catch (Exception e) {
+                log.warn("Ошибка загрузки материалов для карточки id={}: {}",
+                        cardId, e.getMessage());
+                section = null;  // маркер ошибки
+            }
+            CardViewSection finalSection = section;
+            Platform.runLater(() -> applyMaterialsSection(finalSection));
+        }, "CardView-materials").start();
+    }
+
+    // ==========================================================
+    // ПРИМЕНЕНИЕ РЕЗУЛЬТАТОВ АСИНХРОННЫХ ЗАГРУЗОК
+    // ==========================================================
 
     /**
-     * Построить заголовок карточки для окна просмотра.
+     * Добавляет подсекции связанных элементов в контейнер ТХ.
      * <p>
-     * Для FAN: «Тип вентилятора» + «Полная маркировка».
-     * Для других — просто name.
+     * Вызывается в FX-потоке через {@code Platform.runLater}.
      */
-    private static String buildCardTitle(ProductCardDto card) {
-        if ("FAN".equals(card.getCardType()) && card.getFields() != null) {
-            Map<String, Object> fields = card.getFields();
-            String fanType = (String) fields.get("fanType");
-            String fullMarking = (String) fields.get("fullMarking");
-
-            if (fanType != null && !fanType.isEmpty() && fullMarking != null && !fullMarking.isEmpty()) {
-                return fanType + " " + fullMarking;
-            }
-            if (fullMarking != null && !fullMarking.isEmpty()) {
-                return "Вентилятор " + fullMarking;
-            }
+    private void applyLinkedElements(List<CardViewSubsection> linked) {
+        if (techSpecsSubsectionsContainer == null) {
+            log.warn("techSpecsSubsectionsContainer не инициализирован — пропуск связанных элементов");
+            return;
         }
-        return card.getName();
+        for (CardViewSubsection sub : linked) {
+            techSpecsSubsectionsContainer.getChildren().add(renderSubsection(sub));
+        }
     }
 
+    private void applyComponentsSection(CardViewSection section) {
+        if (section == null) {
+            replaceContainerContent(componentsContainer, ERROR_COMPONENTS_TEXT);
+            return;
+        }
+        applySectionToContainer(section, componentsContainer, EMPTY_COMPONENTS_TEXT);
+    }
+
+    private void applyMaterialsSection(CardViewSection section) {
+        if (section == null) {
+            replaceContainerContent(materialsContainer, ERROR_MATERIALS_TEXT);
+            return;
+        }
+        applySectionToContainer(section, materialsContainer, EMPTY_MATERIALS_TEXT);
+    }
+
+    /**
+     * Полностью заменить содержимое контейнера одним плейсхолдером.
+     * Используется для сигнала «ошибка загрузки» (когда {@code section == null}).
+     */
+    private void replaceContainerContent(VBox container, String text) {
+        if (container == null) return;
+        container.getChildren().clear();
+        container.getChildren().add(placeholder(text));
+    }
+
+
+    /**
+     * Универсальная логика для «Компонентов» и «Материалов»:
+     * очищает контейнер, рендерит поля и подсекции, либо показывает «Нет …».
+     */
+    private void applySectionToContainer(CardViewSection section,
+                                         VBox container,
+                                         String emptyText) {
+        if (container == null) {
+            return;
+        }
+        container.getChildren().clear();
+
+        boolean hasFields = section != null
+                && section.fields() != null && !section.fields().isEmpty();
+        boolean hasSubsections = section != null
+                && section.subsections() != null && !section.subsections().isEmpty();
+
+        if (!hasFields && !hasSubsections) {
+            container.getChildren().add(placeholder(emptyText));
+            return;
+        }
+
+        if (hasFields) {
+            VBox fieldsBox = new VBox(6);
+            for (CardViewField field : section.fields()) {
+                fieldsBox.getChildren().add(renderField(field));
+            }
+            container.getChildren().add(fieldsBox);
+        }
+
+        if (hasSubsections) {
+            for (CardViewSubsection sub : section.subsections()) {
+                container.getChildren().add(renderSubsection(sub));
+            }
+        }
+    }
+
+    // ==========================================================
+    // УТИЛИТЫ
+    // ==========================================================
+
+    private static void showAlert(String title, String message, Alert.AlertType type) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
 }

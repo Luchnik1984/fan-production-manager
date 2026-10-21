@@ -13,12 +13,15 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import lombok.Setter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import lombok.extern.slf4j.Slf4j;
 
 
 /**
@@ -29,6 +32,7 @@ import java.util.Map;
  * @param <C> тип категории
  * @param <CL> тип класса
  */
+@Slf4j
 public abstract class BaseCatalogController<T, C, CL> {
 
     @Setter
@@ -619,7 +623,16 @@ public abstract class BaseCatalogController<T, C, CL> {
     protected Dialog<ButtonType> createBaseDialog(String title) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(title);
-        dialog.initOwner(stage);
+        // WINDOW_MODAL — блокирует только владельца (каталог), не всё приложение.
+        // Без явного initModality JavaFX ставит APPLICATION_MODAL (дефолт для Dialog),
+        // что блокирует всё приложение, включая форму карточки.
+        dialog.initModality(Modality.WINDOW_MODAL);
+
+        if (stage != null) {
+            dialog.initOwner(stage);
+        } else {
+            log.warn("createBaseDialog: stage == null, модальность без owner'а ({})", title);
+        }
         dialog.setResizable(true);
         dialog.setWidth(900);
         dialog.setHeight(700);
