@@ -7,6 +7,7 @@ import com.fanproduction.gui.dto.response.FanSpeciesDto;
 import com.fanproduction.gui.dto.response.FanTemplateDto;
 import com.fanproduction.gui.dto.response.FanTemplateVersionDto;
 import com.fanproduction.gui.dto.response.FanTypeDto;
+import com.fanproduction.gui.util.FanTreeBuilder;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -129,24 +130,7 @@ public class FanTemplateSelectionDialog {
             try {
                 List<FanTypeDto> tree = FanTypeClient.getTree();
                 Platform.runLater(() -> {
-                    TreeItem<Object> rootItem = new TreeItem<>();
-                    for (FanTypeDto type : tree) {
-                        TreeItem<Object> typeItem = new TreeItem<>(type);
-                        typeItem.setExpanded(true);
-                        if (type.getSpecies() != null) {
-                            for (FanSpeciesDto species : type.getSpecies()) {
-                                TreeItem<Object> speciesItem = new TreeItem<>(species);
-                                speciesItem.setExpanded(true);
-                                if (species.getSeries() != null) {
-                                    for (FanSeriesDto series : species.getSeries()) {
-                                        speciesItem.getChildren().add(new TreeItem<>(series));
-                                    }
-                                }
-                                typeItem.getChildren().add(speciesItem);
-                            }
-                        }
-                        rootItem.getChildren().add(typeItem);
-                    }
+                    TreeItem<Object> rootItem = FanTreeBuilder.buildTree(tree);
                     treeView.setRoot(rootItem);
                     treeView.setCellFactory(tv -> new TreeCell<>() {
                         @Override

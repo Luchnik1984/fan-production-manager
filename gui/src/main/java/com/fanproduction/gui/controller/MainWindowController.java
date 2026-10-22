@@ -20,6 +20,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -29,6 +30,7 @@ import java.time.format.DateTimeFormatter;
  * Контроллер главного окна приложения.
  * Управляет TabPane с основными разделами и статус-баром.
  */
+@Slf4j
 public class MainWindowController {
 
     @FXML
@@ -156,6 +158,7 @@ public class MainWindowController {
 
         // Административные вкладки "Модерация" и "Журнал аудита" (в конце, только для ADMIN)
         if ("ADMIN".equals(currentUserRole)) {
+            tabPane.getTabs().add(createTemplateConstructorTab());
             tabPane.getTabs().add(createModerationTab());
             tabPane.getTabs().add(createAuditTab());
         }
@@ -231,6 +234,30 @@ public class MainWindowController {
             VBox errorBox = new VBox(10);
             errorBox.setStyle("-fx-padding: 20px;");
             errorBox.getChildren().add(new Label("Ошибка загрузки модуля модерации: " + e.getMessage()));
+            tab.setContent(errorBox);
+        }
+
+        return tab;
+    }
+
+    /**
+     * Вкладка «Конструктор шаблонов» — доступна только ADMIN.
+     */
+    private Tab createTemplateConstructorTab() {
+        Tab tab = new Tab("Конструктор шаблонов");
+        tab.setClosable(false);
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(
+                    "/com/fanproduction/gui/view/TemplateConstructorView.fxml"));
+            Parent content = loader.load();
+            tab.setContent(content);
+        } catch (IOException e) {
+            log.error("Не удалось загрузить конструктор шаблонов", e);
+            VBox errorBox = new VBox(10);
+            errorBox.setStyle("-fx-padding: 20px;");
+            errorBox.getChildren().add(new Label(
+                    "Ошибка загрузки конструктора шаблонов: " + e.getMessage()));
             tab.setContent(errorBox);
         }
 
