@@ -1,72 +1,166 @@
 package com.fanproduction.gui.client;
 
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.fanproduction.gui.dto.request.fan.CloneFanTemplateRequest;
+import com.fanproduction.gui.dto.request.fan.CreateFanTemplateRequest;
+import com.fanproduction.gui.dto.request.fan.CreateFanTemplateVersionRequest;
+import com.fanproduction.gui.dto.request.fan.UpdateFanTemplateRequest;
 import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.FanTemplateDto;
 import com.fanproduction.gui.dto.response.FanTemplateVersionDto;
-import com.fanproduction.gui.dto.response.FanTypeDto;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.util.List;
 
 /**
- * Клиент для REST API шаблонов FAN и иерархии.
+ * Клиент для REST API шаблонов FAN (/api/fan-templates) и иерархии.
  */
 public class FanTemplateClient {
 
-    private static final String BASE_TEMPLATES = "/fan-templates";
-    private static final String BASE_TYPES = "/fan-types";
+    private static final String BASE_PATH = "/fan-templates";
 
-    // ========== ИЕРАРХИЯ ==========
-
-    /**
-     * Загрузить дерево Тип → Вид → Серия.
-     */
-    public static List<FanTypeDto> getTree() throws Exception {
-        TypeReference<ApiResponse<List<FanTypeDto>>> typeRef = new TypeReference<>() {};
-        ApiResponse<List<FanTypeDto>> response = ApiClient.get(BASE_TYPES + "/tree", typeRef);
-        if (response.isSuccess() && response.getData() != null) {
-            return response.getData();
-        }
-        throw new RuntimeException("Не удалось загрузить дерево типов: " + response.getMessage());
+    private FanTemplateClient() {
     }
 
-    // ========== ШАБЛОНЫ ==========
+    // ==========================================================
+    // TEMPLATE — READ
+    // ==========================================================
 
-    /**
-     * Получить все шаблоны (без версий).
-     */
     public static List<FanTemplateDto> getAllTemplates() throws Exception {
         TypeReference<ApiResponse<List<FanTemplateDto>>> typeRef = new TypeReference<>() {};
-        ApiResponse<List<FanTemplateDto>> response = ApiClient.get(BASE_TEMPLATES, typeRef);
+        ApiResponse<List<FanTemplateDto>> response = ApiClient.get(BASE_PATH, typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
         }
         throw new RuntimeException("Не удалось загрузить шаблоны: " + response.getMessage());
     }
 
-    /**
-     * Получить шаблон по ID серии.
-     */
+    public static FanTemplateDto getTemplateById(Long id) throws Exception {
+        TypeReference<ApiResponse<FanTemplateDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<FanTemplateDto> response = ApiClient.get(BASE_PATH + "/" + id, typeRef);
+        if (response.isSuccess() && response.getData() != null) {
+            return response.getData();
+        }
+        throw new RuntimeException("Шаблон не найден: " + response.getMessage());
+    }
+
+    public static FanTemplateDto getTemplateWithVersions(Long id) throws Exception {
+        TypeReference<ApiResponse<FanTemplateDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<FanTemplateDto> response = ApiClient.get(
+                BASE_PATH + "/" + id + "/with-versions", typeRef);
+        if (response.isSuccess() && response.getData() != null) {
+            return response.getData();
+        }
+        throw new RuntimeException("Шаблон не найден: " + response.getMessage());
+    }
+
     public static FanTemplateDto getTemplateBySeries(Long seriesId) throws Exception {
         TypeReference<ApiResponse<FanTemplateDto>> typeRef = new TypeReference<>() {};
         ApiResponse<FanTemplateDto> response = ApiClient.get(
-                BASE_TEMPLATES + "/by-series/" + seriesId, typeRef);
+                BASE_PATH + "/by-series/" + seriesId, typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
         }
         throw new RuntimeException("Шаблон не найден для серии: " + seriesId);
     }
 
-    /**
-     * Версии, доступные для создания карточек (PUBLISHED + LEGACY).
-     */
-    public static List<FanTemplateVersionDto> getAvailableVersions(Long templateId) throws Exception {
-        TypeReference<ApiResponse<List<FanTemplateVersionDto>>> typeRef = new TypeReference<>() {};
-        ApiResponse<List<FanTemplateVersionDto>> response = ApiClient.get(
-                BASE_TEMPLATES + "/" + templateId + "/versions/available", typeRef);
+    // ==========================================================
+    // TEMPLATE — CREATE / UPDATE / DELETE / CLONE
+    // ==========================================================
+
+    public static FanTemplateDto createTemplate(CreateFanTemplateRequest request) throws Exception {
+        TypeReference<ApiResponse<FanTemplateDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<FanTemplateDto> response = ApiClient.post(BASE_PATH, request, typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
         }
-        throw new RuntimeException("Не удалось загрузить версии шаблона: " + response.getMessage());
+        throw new RuntimeException("Не удалось создать шаблон: " + response.getMessage());
+    }
+
+    public static FanTemplateDto updateTemplate(Long id, UpdateFanTemplateRequest request) throws Exception {
+        TypeReference<ApiResponse<FanTemplateDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<FanTemplateDto> response = ApiClient.put(BASE_PATH + "/" + id, request, typeRef);
+        if (response.isSuccess() && response.getData() != null) {
+            return response.getData();
+        }
+        throw new RuntimeException("Не удалось обновить шаблон: " + response.getMessage());
+    }
+
+    public static void deleteTemplate(Long id) throws Exception {
+        ApiClient.deleteWithCheck(BASE_PATH + "/" + id);
+    }
+
+    public static FanTemplateDto cloneTemplate(Long id, CloneFanTemplateRequest request) throws Exception {
+        TypeReference<ApiResponse<FanTemplateDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<FanTemplateDto> response = ApiClient.post(
+                BASE_PATH + "/" + id + "/clone", request, typeRef);
+        if (response.isSuccess() && response.getData() != null) {
+            return response.getData();
+        }
+        throw new RuntimeException("Не удалось клонировать шаблон: " + response.getMessage());
+    }
+
+    // ==========================================================
+    // VERSIONS — READ
+    // ==========================================================
+
+    public static List<FanTemplateVersionDto> getVersionsByTemplate(Long templateId) throws Exception {
+        TypeReference<ApiResponse<List<FanTemplateVersionDto>>> typeRef = new TypeReference<>() {};
+        ApiResponse<List<FanTemplateVersionDto>> response = ApiClient.get(
+                BASE_PATH + "/" + templateId + "/versions", typeRef);
+        if (response.isSuccess() && response.getData() != null) {
+            return response.getData();
+        }
+        throw new RuntimeException("Не удалось загрузить версии: " + response.getMessage());
+    }
+
+    public static FanTemplateVersionDto getPublishedVersion(Long templateId) throws Exception {
+        TypeReference<ApiResponse<FanTemplateVersionDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<FanTemplateVersionDto> response = ApiClient.get(
+                BASE_PATH + "/" + templateId + "/versions/published", typeRef);
+        if (response.isSuccess() && response.getData() != null) {
+            return response.getData();
+        }
+        return null;  // нет опубликованной версии — это не ошибка
+    }
+
+    public static List<FanTemplateVersionDto> getAvailableVersions(Long templateId) throws Exception {
+        TypeReference<ApiResponse<List<FanTemplateVersionDto>>> typeRef = new TypeReference<>() {};
+        ApiResponse<List<FanTemplateVersionDto>> response = ApiClient.get(
+                BASE_PATH + "/" + templateId + "/versions/available", typeRef);
+        if (response.isSuccess() && response.getData() != null) {
+            return response.getData();
+        }
+        throw new RuntimeException("Не удалось загрузить версии: " + response.getMessage());
+    }
+
+    public static FanTemplateVersionDto getDraftVersion(Long templateId) throws Exception {
+        TypeReference<ApiResponse<FanTemplateVersionDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<FanTemplateVersionDto> response = ApiClient.get(
+                BASE_PATH + "/" + templateId + "/versions/draft", typeRef);
+        if (response.isSuccess() && response.getData() != null) {
+            return response.getData();
+        }
+        return null;  // нет черновика — это не ошибка
+    }
+
+    // ==========================================================
+    // VERSIONS — CREATE
+    // ==========================================================
+
+    /**
+     * Создать новую DRAFT-версию.
+     * <p>
+     * Если {@code request == null} или его поля null — сервер скопирует
+     * из текущей версии (автокопирование в FanTemplateServiceImpl).
+     */
+    public static FanTemplateVersionDto createNewVersion(Long templateId,
+                                                         CreateFanTemplateVersionRequest request) throws Exception {
+        TypeReference<ApiResponse<FanTemplateVersionDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<FanTemplateVersionDto> response = ApiClient.post(
+                BASE_PATH + "/" + templateId + "/versions", request, typeRef);
+        if (response.isSuccess() && response.getData() != null) {
+            return response.getData();
+        }
+        throw new RuntimeException("Не удалось создать версию: " + response.getMessage());
     }
 }
