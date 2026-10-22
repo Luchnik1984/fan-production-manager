@@ -1,6 +1,7 @@
 package com.fanproduction.gui.component;
 
 import com.fanproduction.gui.client.FanTemplateClient;
+import com.fanproduction.gui.client.FanTypeClient;
 import com.fanproduction.gui.dto.response.FanSeriesDto;
 import com.fanproduction.gui.dto.response.FanSpeciesDto;
 import com.fanproduction.gui.dto.response.FanTemplateDto;
@@ -126,7 +127,7 @@ public class FanTemplateSelectionDialog {
         statusLabel.setText("Загрузка дерева...");
         new Thread(() -> {
             try {
-                List<FanTypeDto> tree = FanTemplateClient.getTree();
+                List<FanTypeDto> tree = FanTypeClient.getTree();
                 Platform.runLater(() -> {
                     TreeItem<Object> rootItem = new TreeItem<>();
                     for (FanTypeDto type : tree) {

@@ -111,3 +111,23 @@ mvn -pl gui clean compile exec:java "-Dexec.mainClass=com.fanproduction.gui.Logi
 java -jar gui/target/gui-0.0.1-SNAPSHOT.jar
 mvn clean package -DskipTests
 ```
+
+
+
+## Синхронизация клиентских DTO с серверными
+
+`gui` не зависит от `fan-template` (чтобы не тянуть Hibernate/Spring Data
+в fat JAR десктопа). Поэтому следующие классы дублируются:
+
+| Серверный (fan-template)                        | Клиентский (gui)                        |
+|-------------------------------------------------|-----------------------------------------|
+| template.enums.FieldType                        | gui.dto.fan.FieldType                   |
+| template.enums.RuleElementType                  | gui.dto.fan.RuleElementType             |
+| template.enums.ConditionOperator                | gui.dto.fan.ConditionOperator           |
+| template.model.FieldDefinition                  | gui.dto.fan.FieldDefinitionDto          |
+| template.model.MarkingRule                      | gui.dto.fan.MarkingRuleDto              |
+| template.model.MarkingRuleElement               | gui.dto.fan.MarkingRuleElementDto       |
+
+**Правило:** при изменении серверного класса — синхронизировать клиентский.
+Несоблюдение ловится при первом REST-ответе (Jackson упадёт с
+"Unrecognized field" / "Ошибка разбора ответа сервера").
