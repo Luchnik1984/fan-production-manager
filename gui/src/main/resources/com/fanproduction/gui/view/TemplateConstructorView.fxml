@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.fanproduction.gui.controller.TemplateTreeController">
+
+    <!-- Верхняя панель действий -->
+    <ToolBar>
+        <Button fx:id="createTypeButton" text="➕ Создать тип" onAction="#handleCreateType"/>
+        <Separator/>
+        <Button fx:id="refreshButton" text="🔄 Обновить" onAction="#handleRefresh"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Label fx:id="statusLabel" text="Загрузка…" style="-fx-text-fill: #666;"/>
+    </ToolBar>
+
+    <!-- Основная панель: дерево слева, детали справа -->
+    <SplitPane dividerPositions="0.30" VBox.vgrow="ALWAYS">
+        <TreeView fx:id="hierarchyTree"/>
+
+        <StackPane fx:id="detailPane">
+            <VBox alignment="CENTER" spacing="10" style="-fx-padding: 20px;">
+                <Label text="Выберите серию в дереве"
+                       style="-fx-font-size: 14px; -fx-text-fill: #888;"/>
+                <Label text="Для управления шаблоном выберите серию слева."
+                       style="-fx-font-size: 11px; -fx-text-fill: #aaa;" wrapText="true"/>
+            </VBox>
+        </StackPane>
+    </SplitPane>
+</VBox>
