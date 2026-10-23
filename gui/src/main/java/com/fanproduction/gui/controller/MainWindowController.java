@@ -19,7 +19,6 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -43,7 +42,7 @@ public class MainWindowController {
     private Label connectionStatusLabel;
     private Label timeLabel;
 
-    @Setter
+
     private Stage stage;
     private String currentUserRole;
     private String currentUserEmail;
@@ -52,6 +51,21 @@ public class MainWindowController {
             DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
 
     private Timeline timeUpdater;
+
+    /**
+     * Установить главное окно и применить ограничения на минимальный размер.
+     * <p>
+     * <b>Важно:</b> {@code Stage} игнорирует {@code Node.minWidth}/{@code Node.minHeight}
+     * на корневом узле сцены. Минимальные размеры надо выставлять через
+     * {@link Stage#setMinWidth}/{@link Stage#setMinHeight}.
+     */
+    public void setStage(Stage stage) {
+        this.stage = stage;
+        if (stage != null) {
+            stage.setMinWidth(1100);
+            stage.setMinHeight(700);
+        }
+    }
 
 
     /**

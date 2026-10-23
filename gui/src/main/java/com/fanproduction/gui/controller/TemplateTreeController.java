@@ -13,33 +13,32 @@ import com.fanproduction.gui.dto.response.FanSeriesDto;
 import com.fanproduction.gui.dto.response.FanSpeciesDto;
 import com.fanproduction.gui.dto.response.FanTypeDto;
 import com.fanproduction.gui.util.FanTreeBuilder;
+import com.fanproduction.gui.util.TemplateControllerHelper;
 import javafx.application.Platform;
+import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.Dialog;
-import javafx.scene.control.Label;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.TextField;
-import javafx.scene.control.TreeCell;
-import javafx.scene.control.TreeItem;
-import javafx.scene.control.TreeView;
+import javafx.scene.Parent;
+import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
-import javafx.stage.Modality;
 import javafx.stage.Window;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 /**
- * Контроллер вкладки «Конструктор шаблонов».
+ * Контроллер вкладки «Конструктор шаблонов» (Спринт 9, US9.1).
+ * <p>
+ * Отвечает за:
+ * <ul>
+ *   <li>Загрузку дерева Тип → Вид → Серия.</li>
+ *   <li>CRUD типов, видов, серий через контекстное меню.</li>
+ *   <li>Загрузку правой панели шаблона {@code TemplateDetailView}
+ *       (лениво, при первом выборе серии).</li>
+ * </ul>
+ * <p>
+ * Общие утилиты ({@code runAsync}, {@code showAlert}, {@code buildDialog},
+ * {@code confirmDelete}) — из {@link TemplateControllerHelper}.
  */
 @Slf4j
 public class TemplateTreeController {
@@ -58,12 +57,9 @@ public class TemplateTreeController {
     // СОСТОЯНИЕ
     // ==========================================================
 
-    /**
-     * Колбэк при выборе серии. В US9.2 будет заменён на открытие панели шаблона.
-     * Пока — просто логирует.
-     */
-    private final Consumer<FanSeriesDto> onSeriesSelected = series ->
-            log.debug("Серия выбрана: {} (id={})", series.getName(), series.getId());
+    /** Лениво загружаемая правая панель шаблона. */
+    private Parent templateDetailView;
+    private TemplateDetailController templateDetailController;
 
     // ==========================================================
     // ИНИЦИАЛИЗАЦИЯ
@@ -117,6 +113,34 @@ public class TemplateTreeController {
         statusLabel.setText("Типов: " + (types != null ? types.size() : 0));
     }
 
+    /**
+     * Загрузить правую панель шаблона для выбранной серии.
+     * <p>
+     * Панель {@code TemplateDetailView} создаётся лениво — при первом выборе
+     * серии. При последующих выборах переиспользуется тот же контроллер:
+     * внутри {@link TemplateDetailController#showForSeries(FanSeriesDto)}
+     * сбрасывается состояние и запускается новая загрузка.
+     */
+    private void loadTemplateDetail(FanSeriesDto series) {
+        if (templateDetailView == null) {
+            try {
+                FXMLLoader loader = new FXMLLoader(getClass().getResource(
+                        "/com/fanproduction/gui/view/TemplateDetailView.fxml"));
+                templateDetailView = loader.load();
+                templateDetailController = loader.getController();
+            } catch (Exception e) {
+                log.error("Не удалось загрузить панель шаблона", e);
+                showAlert("Ошибка",
+                        "Не удалось открыть панель шаблона: " + e.getMessage(),
+                        Alert.AlertType.ERROR);
+                return;
+            }
+        }
+
+        templateDetailController.showForSeries(series);
+        detailPane.getChildren().setAll(templateDetailView);
+    }
+
     // ==========================================================
     // CELL FACTORY + СЛУШАТЕЛЬ ВЫБОРА
     // ==========================================================
@@ -151,8 +175,7 @@ public class TemplateTreeController {
         hierarchyTree.getSelectionModel().selectedItemProperty().addListener(
                 (obs, old, newItem) -> {
                     if (newItem != null && newItem.getValue() instanceof FanSeriesDto series) {
-                        onSeriesSelected.accept(series);
-                        showSeriesPlaceholder(series);
+                        loadTemplateDetail(series);
                     } else if (newItem != null) {
                         showDetailPlaceholder("Выбран " + describeNode(newItem.getValue()) + ". " +
                                 "Для управления шаблоном выберите серию.");
@@ -168,22 +191,6 @@ public class TemplateTreeController {
         if (value instanceof FanTypeDto) return "тип";
         if (value instanceof FanSpeciesDto) return "вид";
         return "элемент";
-    }
-
-    private void showSeriesPlaceholder(FanSeriesDto series) {
-        VBox box = new VBox(10);
-        box.setAlignment(Pos.CENTER);
-        box.setStyle("-fx-padding: 20px;");
-
-        Label title = new Label("Серия: " + series.getDisplayName());
-        title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
-
-        Label hint = new Label("Панель управления шаблоном появится в следующем подшаге (US9.2).");
-        hint.setStyle("-fx-text-fill: #888; -fx-font-size: 12px;");
-        hint.setWrapText(true);
-
-        box.getChildren().addAll(title, hint);
-        detailPane.getChildren().setAll(box);
     }
 
     private void showDetailPlaceholder(String text) {
@@ -230,7 +237,7 @@ public class TemplateTreeController {
             } else if (value instanceof FanSeriesDto series) {
                 edit.setOnAction(e -> handleEditSeries(series));
                 delete.setOnAction(e -> handleDeleteSeries(series));
-                openTemplate.setOnAction(e -> onSeriesSelected.accept(series));
+                openTemplate.setOnAction(e -> loadTemplateDetail(series));
                 menu.getItems().addAll(openTemplate, edit, delete);
             }
 
@@ -285,7 +292,7 @@ public class TemplateTreeController {
         dialog.getDialogPane().setContent(grid);
 
         dialog.showAndWait().ifPresent(button -> {
-            if (button != dialog.getDialogPane().getButtonTypes().get(0)) return;
+            if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) return;
 
             String name = nameField.getText().trim();
             String designation = designationField.getText().trim();
@@ -346,7 +353,7 @@ public class TemplateTreeController {
         dialog.getDialogPane().setContent(grid);
 
         dialog.showAndWait().ifPresent(button -> {
-            if (button != dialog.getDialogPane().getButtonTypes().get(0)) return;
+            if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) return;
 
             String name = nameField.getText().trim();
 
@@ -400,7 +407,7 @@ public class TemplateTreeController {
         dialog.getDialogPane().setContent(grid);
 
         dialog.showAndWait().ifPresent(button -> {
-            if (button != dialog.getDialogPane().getButtonTypes().get(0)) return;
+            if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) return;
 
             String name = nameField.getText().trim();
 
@@ -418,121 +425,30 @@ public class TemplateTreeController {
     }
 
     // ==========================================================
-    // ОБЩИЕ УТИЛИТЫ
+    // ОБЩИЕ УТИЛИТЫ — тонкие обёртки над TemplateControllerHelper
     // ==========================================================
 
-    private Dialog<ButtonType> buildDialog(String title) {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle(title);
-        dialog.setHeaderText(null);
-        dialog.initModality(Modality.WINDOW_MODAL);
-
-        Window owner = getOwnerWindow();
-        if (owner != null) {
-            dialog.initOwner(owner);
-        }
-
-        dialog.getDialogPane().getButtonTypes().addAll(
-                new ButtonType("Сохранить", ButtonBar.ButtonData.OK_DONE),
-                new ButtonType("Отмена", ButtonBar.ButtonData.CANCEL_CLOSE));
-        return dialog;
+    private Window owner() {
+        return TemplateControllerHelper.resolveOwner(hierarchyTree);
     }
 
-    private GridPane buildGrid() {
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(20));
-        return grid;
-    }
-
-    private Window getOwnerWindow() {
-        return hierarchyTree.getScene() != null ? hierarchyTree.getScene().getWindow() : null;
-    }
-
-    private boolean confirmDelete(String message, String additionalHint) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Подтверждение удаления");
-        alert.setHeaderText(message);
-
-        StringBuilder content = new StringBuilder("Это действие необратимо.");
-        if (additionalHint != null) {
-            content.append("\n").append(additionalHint);
-        }
-        alert.setContentText(content.toString());
-
-        Window owner = getOwnerWindow();
-        if (owner != null) {
-            alert.initOwner(owner);
-            alert.initModality(Modality.WINDOW_MODAL);
-        }
-
-        return alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
-    }
-
-    /**
-     * Выполнить асинхронное действие и, при успехе, перезагрузить дерево.
-     * <p>
-     * <b>Важно:</b> {@code action} должна содержать <b>только</b> сетевой вызов.
-     * Перезагрузка дерева ({@link #loadTree()}) выполняется отдельно — после
-     * успешного {@code action}, в FX-потоке.
-     */
-    private void runAsync(ThrowingRunnable action, String successMessage) {
-        new Thread(() -> {
-            try {
-                action.run();
-                // Успех: логируем и перезагружаем дерево — обе операции в FX-потоке
-                Platform.runLater(() -> {
-                    log.info(successMessage);
-                    loadTree();
-                });
-            } catch (Exception e) {
-                log.warn("{} — ошибка: {}", successMessage, e.getMessage());
-                Platform.runLater(() -> {
-                    Alert.AlertType type = isBusinessError(e.getMessage())
-                            ? Alert.AlertType.WARNING
-                            : Alert.AlertType.ERROR;
-                    String title = type == Alert.AlertType.WARNING
-                            ? "Действие невозможно"
-                            : "Ошибка";
-                    showAlert(title, e.getMessage() != null ? e.getMessage() : "Неизвестная ошибка", type);
-                });
-            }
-        }, "TemplateTree-action").start();
-    }
-
-    private boolean isBusinessError(String message) {
-        if (message == null) return false;
-        String lower = message.toLowerCase();
-        return lower.contains("уже существует")
-                || lower.contains("нельзя")
-                || lower.contains("невозможно")
-                || lower.contains("не найден")
-                || lower.contains("не найдена");
+    private void runAsync(TemplateControllerHelper.ThrowingRunnable action, String successMessage) {
+        TemplateControllerHelper.runAsync(owner(), action, successMessage, this::loadTree);
     }
 
     private void showAlert(String title, String message, Alert.AlertType type) {
-        Alert alert = new Alert(type);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-
-        Window owner = getOwnerWindow();
-        if (owner != null) {
-            alert.initOwner(owner);
-            alert.initModality(Modality.WINDOW_MODAL);
-        }
-        alert.showAndWait();
+        TemplateControllerHelper.showAlert(owner(), title, message, type);
     }
 
-    /**
-     * Функциональный интерфейс, позволяющий бросать checked-исключения.
-     * <p>
-     * Используется в {@link #runAsync(ThrowingRunnable, String)} — методы клиентов
-     * объявлены как {@code throws Exception}, а {@link Runnable#run()} это запрещает.
-     */
-    @FunctionalInterface
-    private interface ThrowingRunnable {
-        void run() throws Exception;
+    private Dialog<ButtonType> buildDialog(String title) {
+        return TemplateControllerHelper.buildDialog(title, owner());
+    }
+
+    private GridPane buildGrid() {
+        return TemplateControllerHelper.buildGrid();
+    }
+
+    private boolean confirmDelete(String header, String additionalHint) {
+        return TemplateControllerHelper.confirmDelete(owner(), header, additionalHint);
     }
 }

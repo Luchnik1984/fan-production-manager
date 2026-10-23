@@ -193,9 +193,11 @@ public class LoginController {
             controller.setCurrentUserRole(userRole);
             controller.setCurrentUserEmail(userEmail);
 
-            Scene scene = new Scene(root, 1024, 768);
+            Scene scene = new Scene(root, 1280, 800);
             mainStage.setScene(scene);
             mainStage.setTitle("Fan Production Manager - Главное окно");
+            mainStage.setMinWidth(1100);
+            mainStage.setMinHeight(700);
             mainStage.show();
 
             primaryStage.close();
