@@ -5,7 +5,8 @@
 <?import javafx.scene.layout.*?>
 
 <VBox spacing="0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.fanproduction.gui.controller.TemplateDetailController">
+      fx:controller="com.fanproduction.gui.controller.TemplateDetailController"
+      minWidth="750">
 
     <!-- ========== Состояние "нет шаблона" ========== -->
     <StackPane fx:id="noTemplatePane" visible="false" managed="false"
@@ -15,6 +16,7 @@
                    style="-fx-font-size: 14px; -fx-text-fill: #888;"/>
             <Button fx:id="createTemplateButton" text="➕ Создать шаблон"
                     onAction="#handleCreateTemplate"
+                    minWidth="180"
                     style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;"/>
         </VBox>
     </StackPane>
@@ -26,29 +28,30 @@
         <HBox spacing="10" alignment="CENTER_LEFT">
             <VBox spacing="2" HBox.hgrow="ALWAYS">
                 <Label fx:id="templateNameLabel" text=""
-                       style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+                       style="-fx-font-size: 16px; -fx-font-weight: bold;" wrapText="true"/>
                 <Label fx:id="templateDescriptionLabel" text=""
                        style="-fx-font-size: 11px; -fx-text-fill: #666;" wrapText="true"/>
             </VBox>
             <Button fx:id="editTemplateButton" text="✏ Редактировать шаблон"
-                    onAction="#handleEditTemplate"/>
-            <Button fx:id="refreshButton" text="🔄" onAction="#handleRefresh"/>
+                    onAction="#handleEditTemplate" minWidth="180"/>
+            <Button fx:id="refreshButton" text="🔄 Обновить"
+                    onAction="#handleRefresh" minWidth="110"/>
         </HBox>
 
         <Separator/>
 
         <!-- Блок "Текущая версия" + кнопки редакторов -->
-        <HBox spacing="15" alignment="CENTER_LEFT">
+        <HBox spacing="10" alignment="CENTER_LEFT">
             <Label text="Текущая версия:" style="-fx-font-weight: bold;"/>
             <Label fx:id="currentVersionLabel" text="—"
                    style="-fx-font-family: monospace;"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Button fx:id="openFieldsEditorButton" text="📝 Редактор полей"
-                    onAction="#handleOpenFieldsEditor"/>
+                    onAction="#handleOpenFieldsEditor" minWidth="160"/>
             <Button fx:id="openRuleEditorButton" text="⚙ Редактор правила"
-                    onAction="#handleOpenRuleEditor"/>
+                    onAction="#handleOpenRuleEditor" minWidth="160"/>
             <Button fx:id="previewButton" text="👁 Предпросмотр"
-                    onAction="#handlePreview"/>
+                    onAction="#handlePreview" minWidth="150"/>
         </HBox>
 
         <Separator/>
@@ -68,24 +71,26 @@
             </columnResizePolicy>
         </TableView>
 
-        <!-- Lifecycle-кнопки -->
-        <ToolBar>
-            <Button fx:id="createVersionButton" text="➕ Создать версию"
-                    onAction="#handleCreateVersion"/>
-            <Separator/>
-            <Button fx:id="publishButton" text="📢 Опубликовать"
-                    onAction="#handlePublish"/>
-            <Button fx:id="deprecateButton" text="⬇ Деприкейт"
-                    onAction="#handleDeprecate"/>
-            <Button fx:id="archiveButton" text="📦 Архивировать"
-                    onAction="#handleArchive"/>
-            <Button fx:id="deleteVersionButton" text="🗑 Удалить"
-                    onAction="#handleDeleteVersion"/>
-            <Separator/>
-            <Button fx:id="cloneButton" text="📋 Клонировать"
-                    onAction="#handleClone"/>
-            <Region HBox.hgrow="ALWAYS"/>
-            <Label fx:id="statusLabel" text="" style="-fx-text-fill: #666;"/>
-        </ToolBar>
+        <!-- Lifecycle-кнопки — в две строки, чтобы всё помещалось -->
+        <VBox spacing="5">
+            <HBox spacing="8">
+                <Button fx:id="createVersionButton" text="➕ Создать версию"
+                        onAction="#handleCreateVersion" minWidth="170"/>
+                <Button fx:id="cloneButton" text="📋 Клонировать"
+                        onAction="#handleClone" minWidth="140"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="statusLabel" text="" style="-fx-text-fill: #666;"/>
+            </HBox>
+            <HBox spacing="8">
+                <Button fx:id="publishButton" text="📢 Опубликовать"
+                        onAction="#handlePublish" minWidth="150"/>
+                <Button fx:id="deprecateButton" text="⬇ Деприкейт"
+                        onAction="#handleDeprecate" minWidth="130"/>
+                <Button fx:id="archiveButton" text="📦 Архивировать"
+                        onAction="#handleArchive" minWidth="150"/>
+                <Button fx:id="deleteVersionButton" text="🗑 Удалить"
+                        onAction="#handleDeleteVersion" minWidth="120"/>
+            </HBox>
+        </VBox>
     </VBox>
 </VBox>

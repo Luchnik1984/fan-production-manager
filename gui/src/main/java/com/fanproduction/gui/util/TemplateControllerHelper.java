@@ -8,6 +8,7 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Region;
 import javafx.stage.Modality;
 import javafx.stage.Window;
 import org.slf4j.Logger;
@@ -109,13 +110,23 @@ public final class TemplateControllerHelper {
     /**
      * Показать алерт (ERROR / WARNING / INFORMATION / CONFIRMATION).
      * <p>
-     * Для {@link Alert.AlertType#CONFIRMATION} используйте {@link #confirm}.
+     * Для длинных сообщений (список ошибок валидации и т.п.) диалог
+     * делается resizable, с минимальной шириной 500px и переносом строк —
+     * чтобы текст не обрезался.
      */
     public static void showAlert(Window owner, String title, String message, Alert.AlertType type) {
         Alert alert = new Alert(type);
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
+
+        // Длинные сообщения (валидация) — делаем читаемыми
+        if (message != null && message.length() > 80) {
+            alert.setResizable(true);
+            alert.getDialogPane().setMinWidth(600);
+            alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+        }
+
         if (owner != null) {
             alert.initOwner(owner);
             alert.initModality(Modality.WINDOW_MODAL);
