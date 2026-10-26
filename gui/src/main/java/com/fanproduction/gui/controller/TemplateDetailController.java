@@ -320,16 +320,20 @@ public class TemplateDetailController {
         Dialog<ButtonType> dialog = buildTemplateFormDialog(
                 "Создать шаблон", nameField, descField);
 
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(
+                dialog.getDialogPane().getButtonTypes().get(0));
+        okButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            if (nameField.getText().trim().isEmpty()) {
+                showAlert("Ошибка", "Наименование шаблона обязательно",
+                        Alert.AlertType.WARNING);
+                event.consume();
+            }
+        });
+
         dialog.showAndWait().ifPresent(button -> {
             if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) return;
 
             String name = nameField.getText().trim();
-            if (name.isEmpty()) {
-                showAlert("Ошибка", "Наименование шаблона обязательно",
-                        Alert.AlertType.WARNING);
-                return;
-            }
-
             String description = descField.getText().trim();
 
             runAsync(() -> FanTemplateClient.createTemplate(
@@ -355,14 +359,19 @@ public class TemplateDetailController {
         Dialog<ButtonType> dialog = buildTemplateFormDialog(
                 "Редактировать шаблон", nameField, descField);
 
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(
+                dialog.getDialogPane().getButtonTypes().get(0));
+        okButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            if (nameField.getText().trim().isEmpty()) {
+                showAlert("Ошибка", "Наименование обязательно", Alert.AlertType.WARNING);
+                event.consume();
+            }
+        });
+
         dialog.showAndWait().ifPresent(button -> {
             if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) return;
 
             String name = nameField.getText().trim();
-            if (name.isEmpty()) {
-                showAlert("Ошибка", "Наименование обязательно", Alert.AlertType.WARNING);
-                return;
-            }
             String description = descField.getText().trim();
 
             runAsync(() -> FanTemplateClient.updateTemplate(
@@ -541,19 +550,43 @@ public class TemplateDetailController {
         });
     }
 
+    @javafx.fxml.FXML
+    private void handleOpenFieldsEditor() {
+        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        if (selected == null || !"DRAFT".equals(selected.getStatus())) return;
+
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
+                    getClass().getResource("/com/fanproduction/gui/view/TemplateEditorView.fxml"));
+            javafx.scene.Parent root = loader.load();
+
+            TemplateEditorController controller = loader.getController();
+            controller.init(selected, () -> {
+                // После сохранения — перезагрузить панель шаблона
+                if (currentSeries != null) {
+                    showForSeries(currentSeries);
+                }
+            });
+
+            javafx.stage.Stage editorStage = new javafx.stage.Stage();
+            editorStage.setTitle("Редактор полей — v" + selected.getVersion());
+            editorStage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+            editorStage.initOwner(owner());
+            editorStage.setScene(new javafx.scene.Scene(root, 950, 700));
+            editorStage.setMinWidth(800);
+            editorStage.setMinHeight(600);
+            editorStage.show();
+        } catch (Exception e) {
+            log.error("Не удалось открыть редактор полей", e);
+            showAlert("Ошибка",
+                    "Не удалось открыть редактор полей: " + e.getMessage(),
+                    Alert.AlertType.ERROR);
+        }
+    }
 
     // ==========================================================
     // ЗАГЛУШКИ (US9.3 / US9.4 / US9.5)
     // ==========================================================
-    @javafx.fxml.FXML
-    private void handleOpenFieldsEditor() {
-        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
-        if (selected == null) return;
-        showAlert("Скоро",
-                "Редактор полей шаблона появится в US9.3.\n" +
-                        "Выбрана версия: v" + selected.getVersion() + " [" + selected.getStatus() + "]",
-                Alert.AlertType.INFORMATION);
-    }
 
     @javafx.fxml.FXML
     private void handleOpenRuleEditor() {

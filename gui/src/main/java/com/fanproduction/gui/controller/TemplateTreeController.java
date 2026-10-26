@@ -291,16 +291,21 @@ public class TemplateTreeController {
 
         dialog.getDialogPane().setContent(grid);
 
+        // Валидация ДО закрытия: пустое designation → диалог остаётся открытым
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(
+                dialog.getDialogPane().getButtonTypes().get(0));
+        okButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            if (designationField.getText().trim().isEmpty()) {
+                showAlert("Ошибка", "Обозначение типа обязательно", Alert.AlertType.WARNING);
+                event.consume();
+            }
+        });
+
         dialog.showAndWait().ifPresent(button -> {
             if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) return;
 
             String name = nameField.getText().trim();
             String designation = designationField.getText().trim();
-
-            if (designation.isEmpty()) {
-                showAlert("Ошибка", "Обозначение типа обязательно", Alert.AlertType.WARNING);
-                return;
-            }
 
             runAsync(() -> {
                 if (existing == null) {
