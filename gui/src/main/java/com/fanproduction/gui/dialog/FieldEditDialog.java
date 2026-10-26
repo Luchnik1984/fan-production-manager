@@ -5,35 +5,36 @@ import com.fanproduction.gui.dto.config.OnSelectActionDto;
 import com.fanproduction.gui.dto.fan.FieldDefinitionDto;
 import com.fanproduction.gui.dto.fan.FieldType;
 import com.fanproduction.gui.util.TemplateControllerHelper;
+import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Window;
+
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
  * Диалог редактирования одного поля шаблона (Спринт 9, US9.3).
  * <p>
- * Две вкладки:
- * <ul>
- *   <li><b>Основные</b> — key, label, type, required, defaultValue, hint, displayOrder.</li>
- *   <li><b>Дополнительно</b> — зависит от type:
- *     <ul>
- *       <li>COMBOBOX → options (список через запятую).</li>
- *       <li>SELECTABLE → referenceType, targetFieldName, role, addToProduct.</li>
- *       <li>COMPUTED → formula.</li>
- *       <li>Общее → pullFrom, visibleIf, requiredIf, onSelect.</li>
- *     </ul>
- *   </li>
- * </ul>
+ * <b>Валидация до закрытия:</b> кнопка «ОК» перехватывается через
+ * {@link Button#addEventFilter}. Если валидация не прошла — диалог
+ * остаётся открытым; при ошибке на вкладке «Дополнительно» — она
+ * автоматически активируется и нужное поле подсвечивается.
  * <p>
- * Редактор программный (не FXML) — из-за условной видимости секции «Дополнительно».
+ * <b>Словарь типов:</b> справа от формы — краткое описание выбранного
+ * {@link FieldType} и что надо заполнить.
+ * <p>
+ * <b>Уникальность key:</b> проверяется через {@code isKeyDuplicate}, переданный
+ * снаружи (в контексте всего шаблона), — <b>до</b> закрытия диалога.
  */
 public class FieldEditDialog {
 
@@ -45,8 +46,8 @@ public class FieldEditDialog {
     private final Dialog<ButtonType> dialog;
     private final boolean isNew;
     private final int displayOrder;
+    private final Predicate<String> isKeyDuplicate;
 
-    // ========== Основные ==========
     private final TextField keyField = new TextField();
     private final TextField labelField = new TextField();
     private final ComboBox<FieldType> typeCombo = new ComboBox<>();
@@ -55,7 +56,6 @@ public class FieldEditDialog {
     private final TextField hintField = new TextField();
     private final TextField orderField = new TextField();
 
-    // ========== Дополнительно ==========
     private final TextField optionsField = new TextField();
     private final ComboBox<String> referenceTypeCombo = new ComboBox<>();
     private final TextField targetFieldNameField = new TextField();
@@ -77,60 +77,83 @@ public class FieldEditDialog {
     private final TextField onSelectRoleField = new TextField();
     private final TextField onSelectQuantityField = new TextField();
 
-    // ========== Секции, зависящие от type ==========
-    private VBox typeSpecificSection;
-    private Node comboBoxParams;
-    private Node selectableParams;
-    private Node computedParams;
+    private VBox comboBoxParams;
+    private VBox selectableParams;
+    private VBox computedParams;
 
-    public FieldEditDialog(Window owner, FieldDefinitionDto existing, int defaultDisplayOrder) {
+    private TabPane tabs;
+    private Tab mainTab;
+    private Tab advancedTab;
+
+    private Label typeDictionaryLabel;
+
+    private FieldDefinitionDto result;
+
+    public FieldEditDialog(Window owner,
+                           FieldDefinitionDto existing,
+                           int defaultDisplayOrder,
+                           Predicate<String> isKeyDuplicate) {
         this.isNew = (existing == null);
         this.displayOrder = existing != null && existing.getDisplayOrder() != null
                 ? existing.getDisplayOrder() : defaultDisplayOrder;
+        this.isKeyDuplicate = isKeyDuplicate != null ? isKeyDuplicate : key -> false;
 
         this.dialog = TemplateControllerHelper.buildDialog(
                 isNew ? "Добавить поле" : "Редактировать поле: " + existing.getKey(), owner);
         dialog.setResizable(true);
-        dialog.getDialogPane().setPrefWidth(750);
-        dialog.getDialogPane().setPrefHeight(620);
+        dialog.getDialogPane().setPrefWidth(950);
+        dialog.getDialogPane().setPrefHeight(650);
 
-        TabPane tabs = new TabPane();
+        tabs = new TabPane();
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-        Tab mainTab = new Tab("Основные", buildMainTab());
+        mainTab = new Tab("Основные", buildMainTab());
         mainTab.setClosable(false);
         tabs.getTabs().add(mainTab);
 
-        Tab advancedTab = new Tab("Дополнительно", buildAdvancedTab());
+        advancedTab = new Tab("Дополнительно", buildAdvancedTab());
         advancedTab.setClosable(false);
         tabs.getTabs().add(advancedTab);
 
         dialog.getDialogPane().setContent(tabs);
 
-        // Заполнить значениями существующего поля
         if (existing != null) {
             fromField(existing);
         } else {
             resetDefaults();
         }
 
-        // Реакция на смену type — переключение видимости секции «Параметры типа»
-        typeCombo.valueProperty().addListener((obs, old, val) -> updateTypeSpecificVisibility(val));
+        typeCombo.valueProperty().addListener((obs, old, val) -> {
+            updateTypeSpecificVisibility(val);
+            updateTypeDictionary(val);
+            updateTypeTabHint(val);
+        });
         updateTypeSpecificVisibility(typeCombo.getValue());
+        updateTypeDictionary(typeCombo.getValue());
+        updateTypeTabHint(typeCombo.getValue());
+
+        // ============================================================
+        // Валидация ДО закрытия (включая уникальность key)
+        // ============================================================
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(
+                dialog.getDialogPane().getButtonTypes().get(0));
+        okButton.addEventFilter(ActionEvent.ACTION, event -> {
+            FieldDefinitionDto collected = collectAndValidate();
+            if (collected == null) {
+                event.consume();
+            } else {
+                this.result = collected;
+            }
+        });
     }
 
-    /**
-     * Показать диалог. Возвращает отредактированное поле или {@code null} (Отмена).
-     */
     public FieldDefinitionDto showAndGet() {
-        return dialog.showAndWait()
-                .filter(b -> b.getButtonData() == ButtonBar.ButtonData.OK_DONE)
-                .map(b -> collectAndValidate())
-                .orElse(null);
+        dialog.showAndWait();
+        return result;
     }
 
     // ==========================================================
-    // ВКЛАДКИ
+    // ВКЛАДКА «ОСНОВНЫЕ»: форма + словарь типов справа
     // ==========================================================
 
     private Node buildMainTab() {
@@ -163,24 +186,168 @@ public class FieldEditDialog {
         grid.add(new Label("Порядок отображения:"), 0, row);
         grid.add(orderField, 1, row++);
 
-        return wrapInScroll(grid);
+        // Словарь типов справа
+        typeDictionaryLabel = new Label();
+        typeDictionaryLabel.setWrapText(true);
+        typeDictionaryLabel.setStyle(
+                "-fx-background-color: #F5F5F5; -fx-padding: 15; " +
+                        "-fx-border-color: #E0E0E0; -fx-border-radius: 3; " +
+                        "-fx-font-size: 11px;");
+
+        ScrollPane dictScroll = new ScrollPane(typeDictionaryLabel);
+        dictScroll.setFitToWidth(true);
+        dictScroll.setPrefWidth(300);
+        dictScroll.setMinWidth(250);
+        dictScroll.setStyle("-fx-background-color: transparent;");
+
+        VBox dictContainer = new VBox(5,
+                new Label("Описание типа:"),
+                dictScroll);
+        dictContainer.getChildren().get(0).setStyle("-fx-font-weight: bold;");
+        VBox.setVgrow(dictScroll, Priority.ALWAYS);
+
+        VBox leftBox = wrapInScrollVBox(grid);
+        leftBox.setPadding(new Insets(0, 15, 0, 0));
+        HBox.setHgrow(leftBox, Priority.ALWAYS);
+
+        HBox split = new HBox(10, leftBox, dictContainer);
+        split.setPadding(new Insets(10));
+
+        return split;
     }
+
+    private VBox wrapInScrollVBox(Node node) {
+        return new VBox(node);
+    }
+
+    private void updateTypeDictionary(FieldType type) {
+        if (typeDictionaryLabel == null) return;
+        typeDictionaryLabel.setText(describeType(type));
+    }
+
+    private String describeType(FieldType type) {
+        if (type == null) return "Выберите тип поля.";
+        return switch (type) {
+            case TEXT -> """
+                    TEXT — обычное текстовое поле.
+                    
+                    Пример: «P», «40-20», «VRK-PatAIR».
+                    
+                    • Обязательные поля на этой вкладке:
+                      ключ, наименование.
+                    • Параметров на вкладке «Дополнительно» нет.
+                    """;
+            case NUMBER -> """
+                    NUMBER — целое число.
+                    
+                    Пример: 4 (полюсность), 8 (количество лопаток).
+                    
+                    • Обязательные поля на этой вкладке:
+                      ключ, наименование.
+                    • Параметров на вкладке «Дополнительно» нет.
+                    """;
+            case DOUBLE -> """
+                    DOUBLE — дробное число.
+                    
+                    Пример: 5.5 (мощность кВт), 22.2 (размер колеса).
+                    
+                    • Обязательные поля на этой вкладке:
+                      ключ, наименование.
+                    • Параметров на вкладке «Дополнительно» нет.
+                    """;
+            case BOOLEAN -> """
+                    BOOLEAN — галочка (да / нет).
+                    
+                    Пример: isPartnerProduction, fireproof.
+                    
+                    • Обязательные поля на этой вкладке:
+                      ключ, наименование.
+                    • Параметров на вкладке «Дополнительно» нет.
+                    """;
+            case COMBOBOX -> """
+                    COMBOBOX — выпадающий список.
+                    
+                    Пример: полюсность (2/4/6/8), напряжение (220/380).
+                    
+                    ⚠ На вкладке «Дополнительно» ОБЯЗАТЕЛЬНО:
+                      • options — варианты через запятую
+                        (например: «2, 4, 6, 8»).
+                    """;
+            case SELECTABLE -> """
+                    SELECTABLE — выбор связанной сущности
+                    (электродвигатель, колесо, компонент).
+                    
+                    Пример: motorWheelId (мотор-колесо),
+                             hubComponentId (ступица).
+                    
+                    ⚠ На вкладке «Дополнительно» ОБЯЗАТЕЛЬНО:
+                      • referenceType — тип сущности
+                        (MOTOR, MOTOR_WHEEL, RADIAL_WHEEL,
+                        AXIAL_WHEEL, COMPONENT).
+                    • Дополнительно (необязательно):
+                      targetFieldName — куда сохранять
+                        отображаемое имя,
+                      role — роль компонента,
+                      addToProduct — добавлять в product_components.
+                    """;
+            case COMPUTED -> """
+                    COMPUTED — вычисляемое поле (формула DSL).
+                    
+                    Пример: wheelSizeMarking = FLOOR(DIVIDE(FIELD('wheelSize'), 10))
+                    
+                    ⚠ На вкладке «Дополнительно» ОБЯЗАТЕЛЬНО:
+                      • formula — выражение на DSL.
+                    
+                    Функции DSL: DIVIDE, MULTIPLY, ADD, SUBTRACT,
+                    FLOOR, CEIL, ROUND, CONCAT, UPPER, LOWER, TRIM,
+                    FORMAT_NUMBER, IF, EQUALS, NOT_EQUALS, GREATER,
+                    LESS, AND, OR, NOT, EMPTY, NOT_EMPTY, DEFAULT,
+                    COALESCE, MAP.
+                    """;
+            case SEPARATOR -> """
+                    SEPARATOR — заголовок-разделитель.
+                    
+                    Используется для визуального разделения
+                    формы карточки на секции.
+                    
+                    • Значение поля используется как заголовок.
+                    • В правиле маркировки SEPARATOR не участвует.
+                    """;
+            case HIDDEN -> """
+                    HIDDEN — скрытое поле.
+                    
+                    Используется для служебных значений,
+                    которые не показываются пользователю,
+                    но участвуют в маркировке (через FIELD(...)).
+                    """;
+        };
+    }
+
+    private void updateTypeTabHint(FieldType type) {
+        if (advancedTab == null) return;
+        boolean needsAdvanced = type == FieldType.COMBOBOX
+                || type == FieldType.SELECTABLE
+                || type == FieldType.COMPUTED;
+        advancedTab.setText(needsAdvanced
+                ? "Дополнительно ⚠"
+                : "Дополнительно");
+    }
+
+    // ==========================================================
+    // ВКЛАДКА «ДОПОЛНИТЕЛЬНО»
+    // ==========================================================
 
     private Node buildAdvancedTab() {
         VBox content = new VBox(15);
         content.setPadding(new Insets(15));
 
-        // --- Секция «Параметры типа» ---
         Label typeSectionTitle = new Label("Параметры типа");
         typeSectionTitle.setStyle("-fx-font-weight: bold;");
 
-        typeSpecificSection = new VBox(10);
-        comboBoxParams = buildComboBoxParams();
-        selectableParams = buildSelectableParams();
-        computedParams = buildComputedParams();
-        typeSpecificSection.getChildren().addAll(comboBoxParams, selectableParams, computedParams);
+        comboBoxParams = wrapSection(buildComboBoxParams());
+        selectableParams = wrapSection(buildSelectableParams());
+        computedParams = wrapSection(buildComputedParams());
 
-        // --- Секция «Условия видимости и обязательности» ---
         Label conditionsTitle = new Label("Условия");
         conditionsTitle.setStyle("-fx-font-weight: bold;");
 
@@ -194,7 +361,6 @@ public class FieldEditDialog {
                         "Требовать заполнения поля только при выполнении условия")
         );
 
-        // --- Секция «Side-effects» ---
         Label sideTitle = new Label("Side-effects");
         sideTitle.setStyle("-fx-font-weight: bold;");
 
@@ -215,13 +381,19 @@ public class FieldEditDialog {
         sideGrid.add(onSelectQuantityField, 1, row++);
 
         content.getChildren().addAll(
-                typeSectionTitle, typeSpecificSection,
+                typeSectionTitle, comboBoxParams, selectableParams, computedParams,
                 new Separator(),
                 conditionsTitle, conditionsBox,
                 new Separator(),
                 sideTitle, sideGrid);
 
         return wrapInScroll(content);
+    }
+
+    private VBox wrapSection(Node content) {
+        VBox box = new VBox(content);
+        box.setPadding(new Insets(5, 0, 5, 0));
+        return box;
     }
 
     private Node buildComboBoxParams() {
@@ -324,7 +496,7 @@ public class FieldEditDialog {
     }
 
     // ==========================================================
-    // ЗАПОЛНЕНИЕ И СБОР
+    // ЗАПОЛНЕНИЕ
     // ==========================================================
 
     private void resetDefaults() {
@@ -347,7 +519,6 @@ public class FieldEditDialog {
         orderField.setText(f.getDisplayOrder() != null
                 ? String.valueOf(f.getDisplayOrder()) : String.valueOf(displayOrder));
 
-        // Type-specific
         if (f.getOptions() != null) {
             optionsField.setText(String.join(", ", f.getOptions()));
         }
@@ -357,18 +528,15 @@ public class FieldEditDialog {
         addToProductCheck.setSelected(Boolean.TRUE.equals(f.getAddToProduct()));
         formulaArea.setText(f.getFormula() != null ? f.getFormula() : "");
 
-        // pullFrom
         if (f.getPullFrom() != null && !f.getPullFrom().isEmpty()) {
             pullFromField.setText(f.getPullFrom().entrySet().stream()
                     .map(e -> e.getKey() + "=" + e.getValue())
                     .collect(Collectors.joining(", ")));
         }
 
-        // Conditions
         fillCondition(f.getVisibleIf(), visibleIfFieldField, visibleIfOperatorCombo, visibleIfValueField);
         fillCondition(f.getRequiredIf(), requiredIfFieldField, requiredIfOperatorCombo, requiredIfValueField);
 
-        // onSelect
         if (f.getOnSelect() != null) {
             onSelectActionField.setText(f.getOnSelect().getAction() != null ? f.getOnSelect().getAction() : "");
             onSelectRoleField.setText(f.getOnSelect().getRole() != null ? f.getOnSelect().getRole() : "");
@@ -393,33 +561,57 @@ public class FieldEditDialog {
         }
     }
 
-    /**
-     * Собрать DTO из полей формы и валидировать.
-     * Возвращает {@code null} при ошибке (после показа алерта).
-     */
+    // ==========================================================
+    // ВАЛИДАЦИЯ
+    // ==========================================================
+
     private FieldDefinitionDto collectAndValidate() {
         String key = keyField.getText().trim();
         String label = labelField.getText().trim();
         FieldType type = typeCombo.getValue();
 
-        if (key.isEmpty()) { alert("Ключ поля обязателен"); return null; }
-        if (label.isEmpty()) { alert("Наименование обязательно"); return null; }
-        if (type == null) { alert("Тип обязателен"); return null; }
+        if (key.isEmpty()) {
+            alert("Ключ поля обязателен");
+            focusField(keyField, mainTab);
+            return null;
+        }
+        if (isKeyDuplicate.test(key)) {
+            alert("Поле с ключом '" + key + "' уже существует");
+            focusField(keyField, mainTab);
+            return null;
+        }
+        if (label.isEmpty()) {
+            alert("Наименование обязательно");
+            focusField(labelField, mainTab);
+            return null;
+        }
+        if (type == null) {
+            alert("Тип обязателен");
+            focusField(typeCombo, mainTab);
+            return null;
+        }
 
-        if (type == FieldType.COMBOBOX
-                && optionsField.getText().trim().isEmpty()) {
-            alert("Для COMBOBOX необходимо указать options");
+        if (type == FieldType.COMBOBOX && optionsField.getText().trim().isEmpty()) {
+            alert("Для COMBOBOX необходимо указать options " +
+                    "(вкладка «Дополнительно» → «Параметры типа» → options)");
+            tabs.getSelectionModel().select(advancedTab);
+            focusField(optionsField, advancedTab);
             return null;
         }
         if (type == FieldType.SELECTABLE
                 && (referenceTypeCombo.getValue() == null
                 || referenceTypeCombo.getValue().isEmpty())) {
-            alert("Для SELECTABLE необходимо указать referenceType");
+            alert("Для SELECTABLE необходимо указать referenceType " +
+                    "(вкладка «Дополнительно» → «Параметры типа» → referenceType)");
+            tabs.getSelectionModel().select(advancedTab);
+            focusField(referenceTypeCombo, advancedTab);
             return null;
         }
-        if (type == FieldType.COMPUTED
-                && formulaArea.getText().trim().isEmpty()) {
-            alert("Для COMPUTED необходимо указать formula");
+        if (type == FieldType.COMPUTED && formulaArea.getText().trim().isEmpty()) {
+            alert("Для COMPUTED необходимо указать formula " +
+                    "(вкладка «Дополнительно» → «Параметры типа» → formula)");
+            tabs.getSelectionModel().select(advancedTab);
+            focusField(formulaArea, advancedTab);
             return null;
         }
 
@@ -436,7 +628,6 @@ public class FieldEditDialog {
             dto.setDisplayOrder(displayOrder);
         }
 
-        // Type-specific
         if (type == FieldType.COMBOBOX) {
             dto.setOptions(parseList(optionsField.getText()));
         }
@@ -455,11 +646,23 @@ public class FieldEditDialog {
                 visibleIfFieldField, visibleIfOperatorCombo, visibleIfValueField));
         dto.setRequiredIf(parseCondition(
                 requiredIfFieldField, requiredIfOperatorCombo, requiredIfValueField));
-
-        OnSelectActionDto onSelect = parseOnSelect();
-        dto.setOnSelect(onSelect);
+        dto.setOnSelect(parseOnSelect());
 
         return dto;
+    }
+
+    /**
+     * Переключиться на вкладку и сфокусироваться на поле.
+     * <p>
+     * Если вкладка уже выбрана — просто фокусируемся (без повторного select).
+     */
+    private void focusField(Node field, Tab tab) {
+        if (tab != null) {
+            tabs.getSelectionModel().select(tab);
+        }
+        if (field != null) {
+            field.requestFocus();
+        }
     }
 
     // ==========================================================

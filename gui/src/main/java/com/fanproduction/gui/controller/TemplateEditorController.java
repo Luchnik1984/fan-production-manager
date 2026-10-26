@@ -172,15 +172,13 @@ public class TemplateEditorController {
     @javafx.fxml.FXML
     private void handleAdd() {
         int nextOrder = fieldsList.size() + 1;
-        FieldEditDialog dialog = new FieldEditDialog(owner(), null, nextOrder);
+        FieldEditDialog dialog = new FieldEditDialog(
+                owner(),
+                null,
+                nextOrder,
+                key -> isKeyDuplicate(key, -1));
         FieldDefinitionDto result = dialog.showAndGet();
         if (result == null) return;
-
-        if (isKeyDuplicate(result.getKey(), -1)) {
-            showAlert("Ошибка", "Поле с ключом '" + result.getKey() + "' уже существует",
-                    Alert.AlertType.WARNING);
-            return;
-        }
 
         fieldsList.add(result);
         normalizeDisplayOrders();
@@ -194,15 +192,13 @@ public class TemplateEditorController {
         if (selected == null) return;
         int idx = fieldsList.indexOf(selected);
 
-        FieldEditDialog dialog = new FieldEditDialog(owner(), selected, idx + 1);
+        FieldEditDialog dialog = new FieldEditDialog(
+                owner(),
+                selected,
+                idx + 1,
+                key -> isKeyDuplicate(key, idx));
         FieldDefinitionDto result = dialog.showAndGet();
         if (result == null) return;
-
-        if (isKeyDuplicate(result.getKey(), idx)) {
-            showAlert("Ошибка", "Поле с ключом '" + result.getKey() + "' уже существует",
-                    Alert.AlertType.WARNING);
-            return;
-        }
 
         fieldsList.set(idx, result);
         normalizeDisplayOrders();

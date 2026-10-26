@@ -320,16 +320,20 @@ public class TemplateDetailController {
         Dialog<ButtonType> dialog = buildTemplateFormDialog(
                 "Создать шаблон", nameField, descField);
 
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(
+                dialog.getDialogPane().getButtonTypes().get(0));
+        okButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            if (nameField.getText().trim().isEmpty()) {
+                showAlert("Ошибка", "Наименование шаблона обязательно",
+                        Alert.AlertType.WARNING);
+                event.consume();
+            }
+        });
+
         dialog.showAndWait().ifPresent(button -> {
             if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) return;
 
             String name = nameField.getText().trim();
-            if (name.isEmpty()) {
-                showAlert("Ошибка", "Наименование шаблона обязательно",
-                        Alert.AlertType.WARNING);
-                return;
-            }
-
             String description = descField.getText().trim();
 
             runAsync(() -> FanTemplateClient.createTemplate(
@@ -355,14 +359,19 @@ public class TemplateDetailController {
         Dialog<ButtonType> dialog = buildTemplateFormDialog(
                 "Редактировать шаблон", nameField, descField);
 
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(
+                dialog.getDialogPane().getButtonTypes().get(0));
+        okButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            if (nameField.getText().trim().isEmpty()) {
+                showAlert("Ошибка", "Наименование обязательно", Alert.AlertType.WARNING);
+                event.consume();
+            }
+        });
+
         dialog.showAndWait().ifPresent(button -> {
             if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) return;
 
             String name = nameField.getText().trim();
-            if (name.isEmpty()) {
-                showAlert("Ошибка", "Наименование обязательно", Alert.AlertType.WARNING);
-                return;
-            }
             String description = descField.getText().trim();
 
             runAsync(() -> FanTemplateClient.updateTemplate(
