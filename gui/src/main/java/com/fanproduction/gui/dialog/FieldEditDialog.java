@@ -433,15 +433,28 @@ public class FieldEditDialog {
         formulaArea.setPromptText("FLOOR(DIVIDE(FIELD('wheelSize'), 10))");
         formulaArea.setPrefRowCount(4);
         formulaArea.setWrapText(true);
+
+        // Кнопка «📖 Справка» — открывает DslReferenceDialog
+        Button helpButton = new Button("📖");
+        helpButton.setTooltip(new Tooltip("Справочник по DSL"));
+        helpButton.setOnAction(e -> new DslReferenceDialog(
+                dialog.getOwner(), formulaArea).show());
+
+        HBox formulaBox = new HBox(5, formulaArea, helpButton);
+        HBox.setHgrow(formulaArea, Priority.ALWAYS);
+        formulaArea.setMaxWidth(Double.MAX_VALUE);
+
         grid.add(new Label("formula:*"), 0, 0);
-        grid.add(formulaArea, 1, 0);
+        grid.add(formulaBox, 1, 0);
 
         Label hint = new Label(
                 """
                         Примеры DSL:
                           MAP(FIELD('voltage'), {380: 'D', 220: 'E'})
                           FLOOR(DIVIDE(FIELD('wheelSize'), 10))
-                          CONCAT(FIELD('series'), '-', FIELD('size'))""");
+                          CONCAT(FIELD('series'), '-', FIELD('size'))
+                        
+                        Нажмите «📖» справа от поля, чтобы открыть полный справочник.""");
         hint.setStyle("-fx-text-fill: #888; -fx-font-family: monospace; -fx-font-size: 10px;");
         grid.add(hint, 1, 1);
 
