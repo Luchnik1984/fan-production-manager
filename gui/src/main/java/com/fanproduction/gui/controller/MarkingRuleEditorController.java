@@ -1,7 +1,10 @@
 package com.fanproduction.gui.controller;
 
 import com.fanproduction.gui.client.FanTemplateVersionClient;
-import com.fanproduction.gui.dialog.BlockEditDialog;
+import com.fanproduction.gui.dialog.ConditionEditDialog;
+import com.fanproduction.gui.dialog.FieldBlockEditDialog;
+import com.fanproduction.gui.dialog.LiteralEditDialog;
+import com.fanproduction.gui.dialog.SeparatorEditDialog;
 import com.fanproduction.gui.dialog.DslReferenceDialog;
 import com.fanproduction.gui.dto.fan.MarkingRuleDto;
 import com.fanproduction.gui.dto.fan.MarkingRuleElementDto;
@@ -222,14 +225,29 @@ public class MarkingRuleEditorController {
     }
 
     private void addBlock(RuleElementType type) {
-        BlockEditDialog dialog = new BlockEditDialog(
-                owner(), type, null, version.getFieldsJson());
-        MarkingRuleElementDto block = dialog.showAndGet();
+        MarkingRuleElementDto block = openBlockDialog(type, null);
         if (block == null) return;
 
         blocks.add(block);
         blocksList.getSelectionModel().selectLast();
         markDirty();
+    }
+
+    /**
+     * Открыть специализированный диалог редактирования блока по его типу.
+     * <p>
+     * Возвращает новый {@link MarkingRuleElementDto} или {@code null} при отмене.
+     */
+    private MarkingRuleElementDto openBlockDialog(RuleElementType type,
+                                                  MarkingRuleElementDto existing) {
+        return switch (type) {
+            case LITERAL -> new LiteralEditDialog(owner(), existing).showAndGet();
+            case SEPARATOR -> new SeparatorEditDialog(owner(), existing).showAndGet();
+            case FIELD -> new FieldBlockEditDialog(owner(), existing,
+                    version.getFieldsJson()).showAndGet();
+            case CONDITION -> new ConditionEditDialog(owner(), existing,
+                    version.getFieldsJson()).showAndGet();
+        };
     }
 
     @javafx.fxml.FXML
@@ -238,9 +256,7 @@ public class MarkingRuleEditorController {
         if (selected == null) return;
         int idx = blocks.indexOf(selected);
 
-        BlockEditDialog dialog = new BlockEditDialog(
-                owner(), selected.getType(), selected, version.getFieldsJson());
-        MarkingRuleElementDto result = dialog.showAndGet();
+        MarkingRuleElementDto result = openBlockDialog(selected.getType(), selected);
         if (result == null) return;
 
         blocks.set(idx, result);
