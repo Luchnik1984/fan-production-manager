@@ -11,18 +11,18 @@
         <Insets bottom="15" left="15" right="15" top="15"/>
     </padding>
 
-    <HBox spacing="10" alignment="CENTER_LEFT">
+    <HBox fx:id="topBar" spacing="10" alignment="CENTER_LEFT">
         <Label fx:id="titleLabel" text="Редактор правила маркировки"
                style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
         <Region HBox.hgrow="ALWAYS"/>
         <Button fx:id="helpButton" text="📖 Справочник DSL" onAction="#handleOpenHelp"/>
-        <Label fx:id="statusLabel" text="" style="-fx-text-fill: #666;"/>
+        <Label fx:id="statusLabel" text="" style="-fx-text-fill: #777;"/>
     </HBox>
 
     <Separator/>
 
     <!-- Панель добавления блоков -->
-    <HBox spacing="8" alignment="CENTER_LEFT"
+    <HBox fx:id="addBlocksBar" spacing="8" alignment="CENTER_LEFT"
           style="-fx-background-color: #F5F5F5; -fx-padding: 8; -fx-border-color: #E0E0E0;">
         <Label text="Добавить блок:" style="-fx-font-weight: bold;"/>
         <Button fx:id="addLiteralButton" text="+ Литерал" onAction="#handleAddLiteral"/>
@@ -50,8 +50,8 @@
     </HBox>
 
     <!-- Нижняя панель: сохранение / проверка / закрытие -->
-    <Separator/>
-    <HBox spacing="10" alignment="CENTER_RIGHT">
+    <Separator fx:id="bottomSeparator"/>
+    <HBox fx:id="bottomActionBar" spacing="10" alignment="CENTER_RIGHT">
         <Button fx:id="validateButton" text="✔ Проверить" onAction="#handleValidate"/>
         <Button fx:id="saveButton" text="💾 Сохранить черновик" onAction="#handleSave"
                 style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;"/>

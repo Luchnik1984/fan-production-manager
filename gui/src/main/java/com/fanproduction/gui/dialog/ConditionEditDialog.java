@@ -1,17 +1,21 @@
 package com.fanproduction.gui.dialog;
 
+import com.fanproduction.gui.controller.MarkingRuleEditorController;
 import com.fanproduction.gui.dto.config.ConditionDto;
 import com.fanproduction.gui.dto.fan.FieldDefinitionDto;
 import com.fanproduction.gui.dto.fan.MarkingRuleElementDto;
 import com.fanproduction.gui.dto.fan.RuleElementType;
 import com.fanproduction.gui.util.TemplateControllerHelper;
 import javafx.event.ActionEvent;
+import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
+import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Window;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -19,20 +23,17 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Диалог редактирования блока CONDITION правила маркировки (US9.4.c).
+ * Диалог редактирования блока CONDITION правила маркировки (US9.4.e).
  * <p>
- * Позволяет задать условие: field + operator + value/values.
- * <p>
- * <b>В 9.4.c:</b> THEN/ELSE-ветки отсутствуют (плейсхолдер-подсказка).
- * <b>В 9.4.e</b> сюда будут добавлены вкладки «THEN» и «ELSE» для
- * вложенных последовательностей блоков.
- * <p>
- * Операторы:
+ * Вкладки:
  * <ul>
- *   <li>{@code EQUALS} / {@code NOT_EQUALS} — требуют value;</li>
- *   <li>{@code IN} — требует список values через запятую;</li>
- *   <li>{@code EMPTY} / {@code NOT_EMPTY} — без значения.</li>
+ *   <li><b>Условие</b> — field / operator / value (или values для IN).</li>
+ *   <li><b>THEN</b> — вложенный {@link MarkingRuleEditorController} (compact mode).</li>
+ *   <li><b>ELSE</b> — вложенный {@link MarkingRuleEditorController} (compact mode).</li>
  * </ul>
+ * <p>
+ * Вложенные редакторы поддерживают CONDITION рекурсивно (без ограничения
+ * глубины в UI; сервер тоже рекурсивный).
  */
 public class ConditionEditDialog {
 
@@ -52,16 +53,71 @@ public class ConditionEditDialog {
     private final ComboBox<String> operatorCombo = new ComboBox<>();
     private final TextField valueField = new TextField();
 
+    private final List<FieldDefinitionDto> templateFields;
+
+    /** Вложенный редактор THEN. */
+    private MarkingRuleEditorController thenController;
+    /** Вложенный редактор ELSE. */
+    private MarkingRuleEditorController elseController;
+
     private MarkingRuleElementDto result;
 
     public ConditionEditDialog(Window owner,
                                MarkingRuleElementDto existing,
                                List<FieldDefinitionDto> templateFields) {
+        this.templateFields = templateFields;
         this.dialog = TemplateControllerHelper.buildDialog(
                 existing == null ? "Добавить условие" : "Редактировать условие", owner);
-        dialog.setResizable(false);
-        dialog.getDialogPane().setPrefWidth(650);
+        dialog.setResizable(true);
+        dialog.getDialogPane().setPrefWidth(850);
+        dialog.getDialogPane().setPrefHeight(650);
 
+        TabPane tabs = new TabPane();
+        tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+
+        Tab conditionTab = new Tab("Условие", buildConditionTab());
+        conditionTab.setClosable(false);
+        tabs.getTabs().add(conditionTab);
+
+        Tab thenTab = new Tab("THEN", buildBranchTab(true));
+        thenTab.setClosable(false);
+        tabs.getTabs().add(thenTab);
+
+        Tab elseTab = new Tab("ELSE", buildBranchTab(false));
+        elseTab.setClosable(false);
+        tabs.getTabs().add(elseTab);
+
+        dialog.getDialogPane().setContent(tabs);
+
+        if (existing != null) {
+            fromExisting(existing);
+        } else {
+            operatorCombo.setValue("NOT_EMPTY");
+        }
+        updateValueField(operatorCombo.getValue());
+
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(
+                dialog.getDialogPane().getButtonTypes().get(0));
+        okButton.addEventFilter(ActionEvent.ACTION, event -> {
+            MarkingRuleElementDto collected = collectAndValidate();
+            if (collected == null) {
+                event.consume();
+            } else {
+                this.result = collected;
+            }
+        });
+    }
+
+    public MarkingRuleElementDto showAndGet() {
+        dialog.showAndWait();
+        return result;
+    }
+
+    // ==========================================================
+    // ВКЛАДКА «УСЛОВИЕ»
+    // ==========================================================
+
+    private VBox buildConditionTab() {
         Set<String> fieldOptions = collectAvailableFieldKeys(templateFields);
         fieldCombo.getItems().setAll(fieldOptions);
         fieldCombo.setPrefWidth(350);
@@ -85,53 +141,22 @@ public class ConditionEditDialog {
 
         Label hint = new Label(
                 """
-                        Для IN — значения через запятую: «У1, У2, УХЛ».
+                        Для EQUALS / NOT_EQUALS — значение.
+                        Для IN — список через запятую: «У1, У2, УХЛ».
                         Для EMPTY / NOT_EMPTY — значение не требуется.
-                        
-                        THEN / ELSE-ветки будут реализованы в US9.4.e.""");
+                        Ветки THEN и ELSE — на отдельных вкладках.""");
         hint.setStyle("-fx-text-fill: #888; -fx-font-size: 10px;");
         hint.setWrapText(true);
-        grid.add(hint, 0, row, 3, 1);
+        grid.add(hint, 0, row++, 3, 1);
+
+        Button helpButton = new Button("📖 Справка по операторам");
+        helpButton.setOnAction(e -> new DslReferenceDialog(dialog.getOwner(), null)
+                .show("Операторы условий"));
+        grid.add(helpButton, 0, row, 3, 1);
 
         VBox content = new VBox(grid);
         content.setPadding(new Insets(10));
-        dialog.getDialogPane().setContent(content);
-
-        if (existing != null && existing.getCondition() != null) {
-            fromCondition(existing.getCondition());
-        } else {
-            operatorCombo.setValue("NOT_EMPTY");
-        }
-        updateValueField(operatorCombo.getValue());
-
-        Button okButton = (Button) dialog.getDialogPane().lookupButton(
-                dialog.getDialogPane().getButtonTypes().get(0));
-        okButton.addEventFilter(ActionEvent.ACTION, event -> {
-            MarkingRuleElementDto collected = collectAndValidate();
-            if (collected == null) {
-                event.consume();
-            } else {
-                this.result = collected;
-            }
-        });
-    }
-
-    public MarkingRuleElementDto showAndGet() {
-        dialog.showAndWait();
-        return result;
-    }
-
-    private Set<String> collectAvailableFieldKeys(List<FieldDefinitionDto> templateFields) {
-        Set<String> result = new LinkedHashSet<>();
-        if (templateFields != null) {
-            for (FieldDefinitionDto f : templateFields) {
-                if (f.getKey() != null) {
-                    result.add(f.getKey());
-                }
-            }
-        }
-        result.addAll(SYSTEM_COMPUTED_FIELDS);
-        return result;
+        return content;
     }
 
     private void updateValueField(String operator) {
@@ -149,16 +174,91 @@ public class ConditionEditDialog {
         }
     }
 
-    private void fromCondition(ConditionDto c) {
-        fieldCombo.setValue(c.getField());
-        operatorCombo.setValue(c.getOperator());
-        if (c.getValue() != null) {
-            valueField.setText(String.valueOf(c.getValue()));
-        } else if (c.getValues() != null) {
-            valueField.setText(c.getValues().stream()
-                    .map(String::valueOf)
-                    .collect(Collectors.joining(", ")));
+    // ==========================================================
+    // ВКЛАДКИ THEN / ELSE
+    // ==========================================================
+
+    /**
+     * Построить вкладку ветки (THEN или ELSE) — вложенный MarkingRuleEditorView
+     * в compact-режиме.
+     */
+    private VBox buildBranchTab(boolean isThen) {
+        VBox container = new VBox(10);
+        container.setPadding(new Insets(10));
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(
+                    "/com/fanproduction/gui/view/MarkingRuleEditorView.fxml"));
+            Parent root = loader.load();
+
+            MarkingRuleEditorController controller = loader.getController();
+
+            com.fanproduction.gui.dto.response.FanTemplateVersionDto fakeVersion =
+                    new com.fanproduction.gui.dto.response.FanTemplateVersionDto();
+            fakeVersion.setFieldsJson(templateFields);
+
+            controller.init(fakeVersion, null);
+            controller.setCompactMode(true);
+
+            if (isThen) {
+                this.thenController = controller;
+            } else {
+                this.elseController = controller;
+            }
+
+            // Обернуть в ScrollPane — на случай, если высоты диалога не хватает
+            // (тогда появится вертикальный скролл, все кнопки будут доступны).
+            javafx.scene.control.ScrollPane scroll = new javafx.scene.control.ScrollPane(root);
+            scroll.setFitToWidth(true);
+            scroll.setFitToHeight(false);
+            scroll.setStyle("-fx-background-color: transparent;");
+            javafx.scene.layout.VBox.setVgrow(scroll, javafx.scene.layout.Priority.ALWAYS);
+
+            container.getChildren().add(scroll);
+        } catch (Exception e) {
+            Label error = new Label("Не удалось открыть вложенный редактор: " + e.getMessage());
+            error.setStyle("-fx-text-fill: red;");
+            error.setWrapText(true);
+            container.getChildren().add(error);
         }
+
+        return container;
+    }
+
+    // ==========================================================
+    // ЗАПОЛНЕНИЕ / СБОР
+    // ==========================================================
+
+    private void fromExisting(MarkingRuleElementDto block) {
+        ConditionDto c = block.getCondition();
+        if (c != null) {
+            fieldCombo.setValue(c.getField());
+            operatorCombo.setValue(c.getOperator());
+            if (c.getValue() != null) {
+                valueField.setText(String.valueOf(c.getValue()));
+            } else if (c.getValues() != null) {
+                valueField.setText(c.getValues().stream()
+                        .map(String::valueOf)
+                        .collect(Collectors.joining(", ")));
+            }
+        }
+        if (thenController != null && block.getThen() != null) {
+            thenController.setBlocks(block.getThen());
+        }
+        if (elseController != null && block.getOtherwise() != null) {
+            elseController.setBlocks(block.getOtherwise());
+        }
+    }
+
+    private Set<String> collectAvailableFieldKeys(List<FieldDefinitionDto> fields) {
+        Set<String> result = new LinkedHashSet<>();
+        if (fields != null) {
+            for (FieldDefinitionDto f : fields) {
+                if (f.getKey() != null) result.add(f.getKey());
+            }
+        }
+        result.addAll(SYSTEM_COMPUTED_FIELDS);
+        return result;
     }
 
     private MarkingRuleElementDto collectAndValidate() {
@@ -168,7 +268,6 @@ public class ConditionEditDialog {
                     "Ошибка", "Выберите поле", Alert.AlertType.WARNING);
             return null;
         }
-
         String operator = operatorCombo.getValue();
         if (operator == null || operator.isEmpty()) {
             TemplateControllerHelper.showAlert(dialog.getOwner(),
@@ -202,14 +301,16 @@ public class ConditionEditDialog {
             }
             c.setValue(valueText);
         }
-        // EMPTY / NOT_EMPTY — без значения
 
         MarkingRuleElementDto dto = new MarkingRuleElementDto();
         dto.setType(RuleElementType.CONDITION);
         dto.setCondition(c);
-        // THEN / ELSE — пустые. Заполнение в US9.4.e.
-        dto.setThen(null);
-        dto.setOtherwise(null);
+        dto.setThen(thenController != null
+                ? new ArrayList<>(thenController.getBlocks())
+                : new ArrayList<>());
+        dto.setOtherwise(elseController != null
+                ? new ArrayList<>(elseController.getBlocks())
+                : new ArrayList<>());
         return dto;
     }
 }

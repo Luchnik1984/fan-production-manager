@@ -64,6 +64,45 @@ public class DslReferenceDialog {
         stage.showAndWait();
     }
 
+    /**
+     * Показать справочник и сразу перейти к указанному разделу.
+     * <p>
+     * Пример: {@code show("Операторы условий")} — открывает справочник
+     * на разделе «Операторы условий».
+     *
+     * @param sectionTitle точное имя раздела верхнего уровня (см. {@link DslReferenceContent})
+     */
+    public void show(String sectionTitle) {
+        showSection(sectionTitle);
+        stage.showAndWait();
+    }
+
+    /**
+     * Перейти к разделу (без показа окна).
+     * <p>
+     * Если раздел не найден — ничего не делает. Используется в
+     * {@link #show(String)} и потенциально для навигации из внешних
+     * контроллеров.
+     */
+    public void showSection(String sectionTitle) {
+        if (sectionTitle == null) return;
+
+        TreeItem<String> root = sectionsTree.getRoot();
+        if (root == null) return;
+
+        for (TreeItem<String> sectionItem : root.getChildren()) {
+            if (sectionTitle.equals(sectionItem.getValue())) {
+                sectionItem.setExpanded(true);
+                sectionsTree.getSelectionModel().select(sectionItem);
+                int row = sectionsTree.getRow(sectionItem);
+                if (row >= 0) {
+                    sectionsTree.scrollTo(row);
+                }
+                return;
+            }
+        }
+    }
+
     // ==========================================================
     // UI
     // ==========================================================

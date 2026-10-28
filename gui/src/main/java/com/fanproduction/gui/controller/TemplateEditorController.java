@@ -6,7 +6,6 @@ import com.fanproduction.gui.dto.fan.FieldDefinitionDto;
 import com.fanproduction.gui.dto.request.fan.UpdateFanTemplateVersionRequest;
 import com.fanproduction.gui.dto.response.FanTemplateVersionDto;
 import com.fanproduction.gui.util.TemplateControllerHelper;
-import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -291,37 +290,13 @@ public class TemplateEditorController {
 
     @javafx.fxml.FXML
     private void handleValidate() {
-        validateButton.setDisable(true);
-        statusLabel.setText("Проверка…");
-
-        new Thread(() -> {
-            try {
-                List<String> errors = FanTemplateVersionClient.validateVersion(version.getId());
-                Platform.runLater(() -> {
-                    validateButton.setDisable(false);
-                    statusLabel.setText("Полей: " + fieldsList.size());
-                    if (errors == null || errors.isEmpty()) {
-                        showAlert("Валидация",
-                                "Ошибок не найдено. Шаблон готов к публикации.",
-                                Alert.AlertType.INFORMATION);
-                    } else {
-                        StringBuilder sb = new StringBuilder("Найдены ошибки:\n");
-                        for (String err : errors) {
-                            sb.append("• ").append(err).append("\n");
-                        }
-                        showAlert("Ошибки валидации", sb.toString(), Alert.AlertType.WARNING);
-                    }
-                });
-            } catch (Exception e) {
-                Platform.runLater(() -> {
-                    validateButton.setDisable(false);
-                    statusLabel.setText("Полей: " + fieldsList.size());
-                    showAlert("Ошибка",
-                            "Не удалось выполнить валидацию: " + e.getMessage(),
-                            Alert.AlertType.ERROR);
-                });
-            }
-        }, "TemplateEditor-validate").start();
+        TemplateControllerHelper.validateVersionAsync(
+                owner(),
+                validateButton,
+                version.getId(),
+                "Полей: " + fieldsList.size(),
+                statusLabel::setText,
+                null);
     }
 
     @javafx.fxml.FXML

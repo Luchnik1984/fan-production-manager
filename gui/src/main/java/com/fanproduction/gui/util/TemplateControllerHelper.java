@@ -1,18 +1,18 @@
 package com.fanproduction.gui.util;
 
+import com.fanproduction.gui.client.FanTemplateVersionClient;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Dialog;
+import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Region;
 import javafx.stage.Modality;
 import javafx.stage.Window;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 /**
  * Утилиты контроллеров конструктора шаблонов (Спринт 9, US9.1–US9.5).
@@ -199,6 +199,68 @@ public final class TemplateControllerHelper {
                 || lower.contains("не найдена")
                 || lower.contains("только")
                 || lower.contains("уже есть");
+    }
+
+    /**
+     * Асинхронно проверить DRAFT-версию шаблона через сервер ({@code /validate}).
+     * <p>
+     * Управляет состоянием кнопки проверки (disable → «Проверка…» → восстановление)
+     * и показывает результат:
+     * <ul>
+     *   <li>список ошибок пуст → INFO «Ошибок не найдено».</li>
+     *   <li>список ошибок не пуст → WARNING «Найдены ошибки: …».</li>
+     *   <li>исключение → ERROR «Не удалось выполнить валидацию».</li>
+     * </ul>
+     * <p>
+     * {@code onFinally} вызывается после восстановления кнопки и статуса
+     * (в FX-потоке) — например, чтобы выставить «Блоков: N» / «Полей: N».
+     *
+     * @param owner         owner-окно
+     * @param validateButton кнопка «Проверить» (для disable/enable)
+     * @param versionId     ID DRAFT-версии
+     * @param baseStatus    базовый статус (например, «Блоков: 5»), восстанавливается после проверки
+     * @param onStatusChange колбэк для установки статуса (null — не менять)
+     * @param onFinally     колбэк после завершения (null — не вызывать)
+     */
+    public static void validateVersionAsync(Window owner,
+                                            Button validateButton,
+                                            Long versionId,
+                                            String baseStatus,
+                                            java.util.function.Consumer<String> onStatusChange,
+                                            Runnable onFinally) {
+        if (validateButton != null) validateButton.setDisable(true);
+        if (onStatusChange != null) onStatusChange.accept("Проверка…");
+
+        new Thread(() -> {
+            try {
+                List<String> errors = FanTemplateVersionClient.validateVersion(versionId);
+                javafx.application.Platform.runLater(() -> {
+                    if (validateButton != null) validateButton.setDisable(false);
+                    if (onStatusChange != null) onStatusChange.accept(baseStatus);
+
+                    if (errors == null || errors.isEmpty()) {
+                        showAlert(owner, "Валидация",
+                                "Ошибок не найдено. Шаблон готов к публикации.",
+                                Alert.AlertType.INFORMATION);
+                    } else {
+                        StringBuilder sb = new StringBuilder("Найдены ошибки:\n");
+                        for (String err : errors) sb.append("• ").append(err).append("\n");
+                        showAlert(owner, "Ошибки валидации", sb.toString(),
+                                Alert.AlertType.WARNING);
+                    }
+                    if (onFinally != null) onFinally.run();
+                });
+            } catch (Exception e) {
+                javafx.application.Platform.runLater(() -> {
+                    if (validateButton != null) validateButton.setDisable(false);
+                    if (onStatusChange != null) onStatusChange.accept(baseStatus);
+                    showAlert(owner, "Ошибка",
+                            "Не удалось выполнить валидацию: " + e.getMessage(),
+                            Alert.AlertType.ERROR);
+                    if (onFinally != null) onFinally.run();
+                });
+            }
+        }, "TemplateController-validate").start();
     }
 
     // ==========================================================
