@@ -3,6 +3,7 @@ package com.fanproduction.gui.controller;
 import com.fanproduction.gui.client.FanSeriesClient;
 import com.fanproduction.gui.client.FanSpeciesClient;
 import com.fanproduction.gui.client.FanTypeClient;
+import com.fanproduction.gui.client.FanTemplateClient;
 import com.fanproduction.gui.dto.request.fan.CreateFanSeriesRequest;
 import com.fanproduction.gui.dto.request.fan.CreateFanSpeciesRequest;
 import com.fanproduction.gui.dto.request.fan.CreateFanTypeRequest;
@@ -12,6 +13,8 @@ import com.fanproduction.gui.dto.request.fan.UpdateFanTypeRequest;
 import com.fanproduction.gui.dto.response.FanSeriesDto;
 import com.fanproduction.gui.dto.response.FanSpeciesDto;
 import com.fanproduction.gui.dto.response.FanTypeDto;
+import com.fanproduction.gui.dto.response.FanTemplateDto;
+import com.fanproduction.gui.dto.response.FanTemplateVersionDto;
 import com.fanproduction.gui.util.FanTreeBuilder;
 import com.fanproduction.gui.util.TemplateControllerHelper;
 import javafx.application.Platform;
@@ -141,6 +144,94 @@ public class TemplateTreeController {
         detailPane.getChildren().setAll(templateDetailView);
     }
 
+    /**
+     * Открыть редактор правила маркировки прямо из дерева (shortcut).
+     * <p>
+     * Проверяет, что:
+     * <ul>
+     *   <li>У серии есть шаблон;</li>
+     *   <li>У шаблона есть DRAFT-версия.</li>
+     * </ul>
+     * Если DRAFT нет — предлагает создать новую версию (или сообщает,
+     * если нет даже шаблона).
+     * <p>
+     * Открывает {@link MarkingRuleEditorController} в отдельном Stage,
+     * минуя панель шаблона.
+     */
+    private void handleOpenRuleEditorFromTree(FanSeriesDto series) {
+        new Thread(() -> {
+            try {
+                FanTemplateDto template;
+                try {
+                    template = FanTemplateClient.getTemplateBySeries(series.getId());
+                } catch (Exception e) {
+                    String msg = e.getMessage();
+                    if (msg != null && msg.contains("не найден")) {
+                        Platform.runLater(() -> showAlert("Нет шаблона",
+                                "Для серии «" + series.getDisplayName() + "» ещё нет шаблона.\n" +
+                                        "Создайте его на панели шаблона (выберите серию в дереве).",
+                                Alert.AlertType.INFORMATION));
+                        return;
+                    }
+                    throw e;
+                }
+
+                FanTemplateVersionDto draft = FanTemplateClient.getDraftVersion(template.getId());
+                if (draft == null) {
+                    Platform.runLater(() -> showAlert("Нет DRAFT-версии",
+                            "У шаблона серии «" + series.getDisplayName() + "» нет DRAFT-версии.\n" +
+                                    "Откройте панель шаблона и создайте новую версию.",
+                            Alert.AlertType.INFORMATION));
+                    return;
+                }
+
+                Platform.runLater(() -> openMarkingRuleEditor(draft));
+            } catch (Exception e) {
+                log.warn("Ошибка при открытии редактора правила для серии {}: {}",
+                        series.getId(), e.getMessage());
+                Platform.runLater(() -> showAlert("Ошибка",
+                        "Не удалось открыть редактор правила: " + e.getMessage(),
+                        Alert.AlertType.ERROR));
+            }
+        }, "TemplateTree-openRule").start();
+    }
+
+    /**
+     * Открыть редактор правила маркировки для указанной DRAFT-версии.
+     */
+    private void openMarkingRuleEditor(FanTemplateVersionDto draft) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(
+                    "/com/fanproduction/gui/view/MarkingRuleEditorView.fxml"));
+            Parent root = loader.load();
+
+            MarkingRuleEditorController controller = loader.getController();
+            controller.init(draft, () -> {
+                // После сохранения — перезагрузить панель шаблона, если серия выбрана
+                if (templateDetailController != null
+                        && hierarchyTree.getSelectionModel().getSelectedItem() != null
+                        && hierarchyTree.getSelectionModel().getSelectedItem().getValue()
+                        instanceof FanSeriesDto current) {
+                    templateDetailController.showForSeries(current);
+                }
+            });
+
+            javafx.stage.Stage stage = new javafx.stage.Stage();
+            stage.setTitle("Редактор правила — v" + draft.getVersion());
+            stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+            stage.initOwner(owner());
+            stage.setScene(new javafx.scene.Scene(root, 1000, 720));
+            stage.setMinWidth(900);
+            stage.setMinHeight(650);
+            stage.show();
+        } catch (Exception e) {
+            log.error("Не удалось открыть редактор правила", e);
+            showAlert("Ошибка",
+                    "Не удалось открыть редактор правила: " + e.getMessage(),
+                    Alert.AlertType.ERROR);
+        }
+    }
+
     // ==========================================================
     // CELL FACTORY + СЛУШАТЕЛЬ ВЫБОРА
     // ==========================================================
@@ -212,6 +303,7 @@ public class TemplateTreeController {
         MenuItem edit = new MenuItem("Редактировать");
         MenuItem delete = new MenuItem("Удалить");
         MenuItem openTemplate = new MenuItem("Открыть шаблон");
+        MenuItem openRule = new MenuItem("⚙ Открыть редактор правила");
 
         hierarchyTree.setOnContextMenuRequested(event -> {
             TreeItem<Object> item = hierarchyTree.getSelectionModel().getSelectedItem();
@@ -234,11 +326,13 @@ public class TemplateTreeController {
                 edit.setOnAction(e -> handleEditSpecies(species));
                 delete.setOnAction(e -> handleDeleteSpecies(species));
                 menu.getItems().addAll(createChild, edit, delete);
-            } else if (value instanceof FanSeriesDto series) {
+            }else if (value instanceof FanSeriesDto series) {
                 edit.setOnAction(e -> handleEditSeries(series));
                 delete.setOnAction(e -> handleDeleteSeries(series));
                 openTemplate.setOnAction(e -> loadTemplateDetail(series));
-                menu.getItems().addAll(openTemplate, edit, delete);
+                openRule.setOnAction(e -> handleOpenRuleEditorFromTree(series));
+
+                menu.getItems().addAll(openTemplate, openRule, edit, delete);
             }
 
             if (!menu.getItems().isEmpty()) {

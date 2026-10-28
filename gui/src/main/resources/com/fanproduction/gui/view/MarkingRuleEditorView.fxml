@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="10" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.fanproduction.gui.controller.MarkingRuleEditorController"
+      minWidth="900" minHeight="650">
+    <padding>
+        <Insets bottom="15" left="15" right="15" top="15"/>
+    </padding>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label fx:id="titleLabel" text="Редактор правила маркировки"
+               style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button fx:id="helpButton" text="📖 Справочник DSL" onAction="#handleOpenHelp"/>
+        <Label fx:id="statusLabel" text="" style="-fx-text-fill: #666;"/>
+    </HBox>
+
+    <Separator/>
+
+    <!-- Панель добавления блоков -->
+    <HBox spacing="8" alignment="CENTER_LEFT"
+          style="-fx-background-color: #F5F5F5; -fx-padding: 8; -fx-border-color: #E0E0E0;">
+        <Label text="Добавить блок:" style="-fx-font-weight: bold;"/>
+        <Button fx:id="addLiteralButton" text="+ Литерал" onAction="#handleAddLiteral"/>
+        <Button fx:id="addSeparatorButton" text="+ Разделитель" onAction="#handleAddSeparator"/>
+        <Button fx:id="addFieldButton" text="+ Поле" onAction="#handleAddField"/>
+        <Button fx:id="addConditionButton" text="+ Условие" onAction="#handleAddCondition"/>
+    </HBox>
+
+    <!-- Список блоков -->
+    <ListView fx:id="blocksList" VBox.vgrow="ALWAYS">
+        <placeholder>
+            <Label text="Правило пусто. Добавьте первый блок кнопками выше."
+                   style="-fx-text-fill: #888; -fx-font-style: italic;"/>
+        </placeholder>
+    </ListView>
+
+    <!-- Управление выбранным блоком -->
+    <HBox spacing="8" alignment="CENTER_LEFT">
+        <Button fx:id="editBlockButton" text="✏ Редактировать" onAction="#handleEditBlock"/>
+        <Button fx:id="deleteBlockButton" text="🗑 Удалить" onAction="#handleDeleteBlock"/>
+        <Separator orientation="VERTICAL"/>
+        <Button fx:id="moveUpButton" text="▲ Вверх" onAction="#handleMoveUp"/>
+        <Button fx:id="moveDownButton" text="▼ Вниз" onAction="#handleMoveDown"/>
+        <Region HBox.hgrow="ALWAYS"/>
+    </HBox>
+
+    <!-- Нижняя панель: сохранение / проверка / закрытие -->
+    <Separator/>
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button fx:id="validateButton" text="✔ Проверить" onAction="#handleValidate"/>
+        <Button fx:id="saveButton" text="💾 Сохранить черновик" onAction="#handleSave"
+                style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        <Button fx:id="closeButton" text="Закрыть" onAction="#handleClose"/>
+    </HBox>
+</VBox>
