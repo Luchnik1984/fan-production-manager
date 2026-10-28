@@ -16,13 +16,13 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Диалог редактирования блока FIELD правила маркировки (US9.4.c).
+ * Диалог редактирования блока FIELD правила маркировки.
  * <p>
  * FIELD — значение поля карточки или системного вычисляемого поля.
  * <p>
  * Список доступных полей:
  * <ul>
- *   <li>поля шаблона (из {@code version.getFieldsJson()});</li>
+ *   <li>Поля шаблона (из {@code version.getFieldsJson()});</li>
  *   <li>14 системных вычисляемых полей из ComputedFieldsLibrary (сервер).</li>
  * </ul>
  * <p>

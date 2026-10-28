@@ -71,6 +71,10 @@ public class MarkingRuleEditorController {
     @javafx.fxml.FXML private Button saveButton;
     @javafx.fxml.FXML private Button closeButton;
     @javafx.fxml.FXML private Button helpButton;
+    @javafx.fxml.FXML private javafx.scene.layout.HBox topBar;
+    @javafx.fxml.FXML private javafx.scene.layout.HBox addBlocksBar;
+    @javafx.fxml.FXML private javafx.scene.layout.HBox bottomActionBar;
+    @javafx.fxml.FXML private javafx.scene.control.Separator bottomSeparator;
 
     // ==========================================================
     // СОСТОЯНИЕ
@@ -78,6 +82,8 @@ public class MarkingRuleEditorController {
 
     private final ObservableList<MarkingRuleElementDto> blocks = FXCollections.observableArrayList();
     private FanTemplateVersionDto version;
+    /** Compact-режим: используется во вложенных редакторах (THEN/ELSE в ConditionEditDialog). */
+    private boolean compactMode = false;
     /** DataFormat для drag-and-drop блоков правила (передаём индекс блока). */
     private static final DataFormat BLOCK_INDEX_FORMAT = new DataFormat("application/x-block-index");
     private Runnable onSaved;
@@ -193,7 +199,11 @@ public class MarkingRuleEditorController {
                     } else if (b.getCondition().getValues() != null) {
                         val = " " + b.getCondition().getValues();
                     }
-                    yield "IF " + field + " " + op + val + " THEN [...] ELSE [...]";
+                    int thenCount = b.getThen() != null ? b.getThen().size() : 0;
+                    int elseCount = b.getOtherwise() != null ? b.getOtherwise().size() : 0;
+                    String thenInfo = thenCount > 0 ? "[" + thenCount + "]" : "—";
+                    String elseInfo = elseCount > 0 ? "[" + elseCount + "]" : "—";
+                    yield "IF " + field + " " + op + val + " THEN " + thenInfo + " ELSE " + elseInfo;
                 }
             };
         }
@@ -508,6 +518,55 @@ public class MarkingRuleEditorController {
 
         blocksList.getSelectionModel().select(toIndex);
         markDirty();
+    }
+
+    /**
+     * Включить/выключить compact-режим.
+     * <p>
+     * В compact-режиме (для вложенных редакторов THEN/ELSE):
+     * <ul>
+     *   <li>Скрываются верхняя панель (title, help, status) и нижняя (save/validate/close).</li>
+     *   <li>Остаётся панель добавления блоков + список + панель управления ▲▼.</li>
+     * </ul>
+     * <p>
+     * Метод безопасен: вызывать после {@code init(...)} (когда FXML-поля
+     * уже проинициализированы).
+     */
+    public void setCompactMode(boolean compactMode) {
+        this.compactMode = compactMode;
+        if (compactMode) {
+            hideNode(topBar);
+            hideNode(bottomActionBar);
+            hideNode(bottomSeparator);
+        }
+    }
+
+    private void hideNode(javafx.scene.Node node) {
+        if (node == null) return;
+        node.setVisible(false);
+        node.setManaged(false);
+    }
+
+    /**
+     * Получить копию текущего списка блоков (для встраивания во вложенные редакторы).
+     */
+    public List<MarkingRuleElementDto> getBlocks() {
+        return new ArrayList<>(blocks);
+    }
+
+    /**
+     * Заменить текущий список блоков (для встраивания во вложенные редакторы).
+     * <p>
+     * Копирует входной список — защита от мутации исходного.
+     */
+    public void setBlocks(List<MarkingRuleElementDto> newBlocks) {
+        blocks.clear();
+        if (newBlocks != null) {
+            for (MarkingRuleElementDto b : newBlocks) {
+                blocks.add(copyBlock(b));
+            }
+        }
+        updateButtonsState();
     }
 
 }
