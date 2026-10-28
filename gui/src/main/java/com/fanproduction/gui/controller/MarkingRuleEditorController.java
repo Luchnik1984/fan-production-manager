@@ -18,6 +18,10 @@ import javafx.collections.ObservableList;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.stage.Window;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.DataFormat;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -74,6 +78,8 @@ public class MarkingRuleEditorController {
 
     private final ObservableList<MarkingRuleElementDto> blocks = FXCollections.observableArrayList();
     private FanTemplateVersionDto version;
+    /** DataFormat для drag-and-drop блоков правила (передаём индекс блока). */
+    private static final DataFormat BLOCK_INDEX_FORMAT = new DataFormat("application/x-block-index");
     private Runnable onSaved;
 
     // ==========================================================
@@ -141,11 +147,14 @@ public class MarkingRuleEditorController {
             HBox.setHgrow(contentLabel, javafx.scene.layout.Priority.ALWAYS);
             root.setStyle("-fx-padding: 6;");
             root.getChildren().addAll(indexLabel, typeLabel, contentLabel);
+
+            setupDragAndDrop();
         }
 
         @Override
         protected void updateItem(MarkingRuleElementDto item, boolean empty) {
             super.updateItem(item, empty);
+            setStyle("");  // сброс стиля drop-зоны при переиспользовании ячейки
             if (empty || item == null) {
                 setText(null);
                 setGraphic(null);
@@ -197,6 +206,62 @@ public class MarkingRuleEditorController {
                 case FIELD -> "-fx-text-fill: #1565C0; -fx-font-family: monospace;";
                 case CONDITION -> "-fx-text-fill: #7B1FA2; -fx-font-family: monospace;";
             };
+        }
+
+        private void setupDragAndDrop() {
+            setOnDragDetected(event -> {
+                if (isEmpty() || getItem() == null) return;
+                Dragboard db = startDragAndDrop(TransferMode.MOVE);
+                ClipboardContent content = new ClipboardContent();
+                content.put(BLOCK_INDEX_FORMAT, getIndex());
+                db.setContent(content);
+                db.setDragView(snapshot(null, null));
+                event.consume();
+            });
+
+            setOnDragOver(event -> {
+                if (event.getGestureSource() != this
+                        && event.getDragboard().hasContent(BLOCK_INDEX_FORMAT)) {
+                    event.acceptTransferModes(TransferMode.MOVE);
+                    setStyle("-fx-border-color: #1976D2; -fx-border-width: 0 0 2 0;");
+                }
+                event.consume();
+            });
+
+            setOnDragEntered(event -> {
+                if (event.getGestureSource() != this
+                        && event.getDragboard().hasContent(BLOCK_INDEX_FORMAT)) {
+                    setStyle("-fx-background-color: #E3F2FD; -fx-border-color: #1976D2; -fx-border-width: 0 0 2 0;");
+                }
+            });
+
+            setOnDragExited(event -> setStyle(""));
+
+            setOnDragDropped(event -> {
+                if (!event.getDragboard().hasContent(BLOCK_INDEX_FORMAT)) {
+                    event.setDropCompleted(false);
+                    event.consume();
+                    return;
+                }
+                int fromIndex = (Integer) event.getDragboard().getContent(BLOCK_INDEX_FORMAT);
+                int toIndex = getIndex();
+
+                if (fromIndex >= 0 && toIndex >= 0
+                        && fromIndex != toIndex
+                        && fromIndex < blocks.size()
+                        && toIndex < blocks.size()) {
+                    moveBlock(fromIndex, toIndex);
+                    event.setDropCompleted(true);
+                } else {
+                    event.setDropCompleted(false);
+                }
+                event.consume();
+            });
+
+            setOnDragDone(event -> {
+                setStyle("");
+                event.consume();
+            });
         }
     }
 
@@ -426,4 +491,23 @@ public class MarkingRuleEditorController {
         for (MarkingRuleElementDto b : src) list.add(copyBlock(b));
         return list;
     }
+
+    /**
+     * Переместить блок из одной позиции в другую (drag-and-drop).
+     * <p>
+     * Корректно работает для любого направления (вверх/вниз).
+     * После перемещения — выделить перемещённый блок.
+     */
+    private void moveBlock(int fromIndex, int toIndex) {
+        if (fromIndex < 0 || toIndex < 0) return;
+        if (fromIndex >= blocks.size() || toIndex >= blocks.size()) return;
+        if (fromIndex == toIndex) return;
+
+        MarkingRuleElementDto block = blocks.remove(fromIndex);
+        blocks.add(toIndex, block);
+
+        blocksList.getSelectionModel().select(toIndex);
+        markDirty();
+    }
+
 }
