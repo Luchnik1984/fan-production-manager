@@ -141,13 +141,18 @@ public class ConditionEditDialog {
 
         Label hint = new Label(
                 """
-                        Для IN — значения через запятую: «У1, У2, УХЛ».
+                        Для EQUALS / NOT_EQUALS — значение.
+                        Для IN — список через запятую: «У1, У2, УХЛ».
                         Для EMPTY / NOT_EMPTY — значение не требуется.
-                        
-                        Ветки THEN и ELSE редактируются на отдельных вкладках.""");
+                        Ветки THEN и ELSE — на отдельных вкладках.""");
         hint.setStyle("-fx-text-fill: #888; -fx-font-size: 10px;");
         hint.setWrapText(true);
-        grid.add(hint, 0, row, 3, 1);
+        grid.add(hint, 0, row++, 3, 1);
+
+        Button helpButton = new Button("📖 Справка по операторам");
+        helpButton.setOnAction(e -> new DslReferenceDialog(dialog.getOwner(), null)
+                .show("Операторы условий"));
+        grid.add(helpButton, 0, row, 3, 1);
 
         VBox content = new VBox(grid);
         content.setPadding(new Insets(10));
