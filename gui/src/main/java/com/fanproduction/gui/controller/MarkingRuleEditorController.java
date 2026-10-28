@@ -515,6 +515,13 @@ public class MarkingRuleEditorController {
             hideNode(topBar);
             hideNode(bottomActionBar);
             hideNode(bottomSeparator);
+
+            // В compact-режиме ListView не должен растягиваться на всю высоту
+            // (иначе нижние панели уходят за пределы видимой области).
+            if (blocksList != null) {
+                blocksList.setMaxHeight(220);
+                blocksList.setPrefHeight(200);
+            }
         }
     }
 

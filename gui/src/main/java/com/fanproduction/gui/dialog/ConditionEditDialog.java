@@ -188,13 +188,11 @@ public class ConditionEditDialog {
 
             MarkingRuleEditorController controller = loader.getController();
 
-            // Фиктивная версия для вложенного редактора: нам нужны только
-            // поля шаблона (templateFields) для FIELD/CONDITION-диалогов.
             com.fanproduction.gui.dto.response.FanTemplateVersionDto fakeVersion =
                     new com.fanproduction.gui.dto.response.FanTemplateVersionDto();
             fakeVersion.setFieldsJson(templateFields);
 
-            controller.init(fakeVersion, null);  // onSaved = null — сохранение только в памяти диалога
+            controller.init(fakeVersion, null);
             controller.setCompactMode(true);
 
             if (isThen) {
@@ -203,7 +201,15 @@ public class ConditionEditDialog {
                 this.elseController = controller;
             }
 
-            container.getChildren().add(root);
+            // Обернуть в ScrollPane — на случай, если высоты диалога не хватает
+            // (тогда появится вертикальный скролл, все кнопки будут доступны).
+            javafx.scene.control.ScrollPane scroll = new javafx.scene.control.ScrollPane(root);
+            scroll.setFitToWidth(true);
+            scroll.setFitToHeight(false);
+            scroll.setStyle("-fx-background-color: transparent;");
+            javafx.scene.layout.VBox.setVgrow(scroll, javafx.scene.layout.Priority.ALWAYS);
+
+            container.getChildren().add(scroll);
         } catch (Exception e) {
             Label error = new Label("Не удалось открыть вложенный редактор: " + e.getMessage());
             error.setStyle("-fx-text-fill: red;");
