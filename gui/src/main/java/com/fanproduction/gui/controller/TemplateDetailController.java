@@ -584,18 +584,38 @@ public class TemplateDetailController {
         }
     }
 
-    // ==========================================================
-    // ЗАГЛУШКИ (US9.3 / US9.4 / US9.5)
-    // ==========================================================
-
     @javafx.fxml.FXML
     private void handleOpenRuleEditor() {
         FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
-        if (selected == null) return;
-        showAlert("Скоро",
-                "Редактор правила маркировки появится в US9.4.\n" +
-                        "Выбрана версия: v" + selected.getVersion() + " [" + selected.getStatus() + "]",
-                Alert.AlertType.INFORMATION);
+        if (selected == null || !"DRAFT".equals(selected.getStatus())) return;
+
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
+                    getClass().getResource("/com/fanproduction/gui/view/MarkingRuleEditorView.fxml"));
+            javafx.scene.Parent root = loader.load();
+
+            MarkingRuleEditorController controller = loader.getController();
+            controller.init(selected, () -> {
+                // После сохранения — перезагрузить панель шаблона
+                if (currentSeries != null) {
+                    showForSeries(currentSeries);
+                }
+            });
+
+            javafx.stage.Stage editorStage = new javafx.stage.Stage();
+            editorStage.setTitle("Редактор правила — v" + selected.getVersion());
+            editorStage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+            editorStage.initOwner(owner());
+            editorStage.setScene(new javafx.scene.Scene(root, 1000, 720));
+            editorStage.setMinWidth(900);
+            editorStage.setMinHeight(650);
+            editorStage.show();
+        } catch (Exception e) {
+            log.error("Не удалось открыть редактор правила", e);
+            showAlert("Ошибка",
+                    "Не удалось открыть редактор правила: " + e.getMessage(),
+                    Alert.AlertType.ERROR);
+        }
     }
 
     @javafx.fxml.FXML
