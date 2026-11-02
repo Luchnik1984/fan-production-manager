@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="10" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.fanproduction.gui.controller.TemplatePreviewController"
+      minWidth="900" minHeight="650">
+    <padding>
+        <Insets bottom="15" left="15" right="15" top="15"/>
+    </padding>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label fx:id="titleLabel" text="Предпросмотр шаблона"
+               style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Label fx:id="statusLabel" style="-fx-text-fill: #777;"/>
+    </HBox>
+
+    <Separator/>
+
+    <SplitPane dividerPositions="0.55" VBox.vgrow="ALWAYS">
+        <!-- Левая панель: тестовые значения полей -->
+        <VBox spacing="10">
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Тестовые значения" style="-fx-font-weight: bold;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="resetButton" text="🗑 Очистить" onAction="#handleReset"/>
+            </HBox>
+            <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent;">
+                <GridPane fx:id="fieldsGrid" hgap="10" vgap="10">
+                    <padding>
+                        <Insets bottom="10" left="10" right="10" top="10"/>
+                    </padding>
+                    <columnConstraints>
+                        <ColumnConstraints minWidth="120" prefWidth="150" hgrow="NEVER"/>
+                        <ColumnConstraints minWidth="200" prefWidth="300" hgrow="ALWAYS"/>
+                    </columnConstraints>
+                </GridPane>
+            </ScrollPane>
+        </VBox>
+
+        <!-- Правая панель: результат маркировки -->
+        <VBox spacing="10">
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Результат маркировки" style="-fx-font-weight: bold;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <CheckBox fx:id="autoUpdateCheck" text="Авто-обновление" selected="true"/>
+                <Button fx:id="computeButton" text="▶ Вычислить" onAction="#handleCompute"
+                        style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;"/>
+            </HBox>
+
+            <TextArea fx:id="markingArea" editable="false" wrapText="true"
+                      style="-fx-font-family: monospace; -fx-font-size: 14px;"
+                      VBox.vgrow="ALWAYS" prefRowCount="6"/>
+
+            <Label text="Ошибки валидации:" style="-fx-font-weight: bold;"/>
+            <TextArea fx:id="validationArea" editable="false" wrapText="true"
+                      style="-fx-font-family: monospace; -fx-font-size: 11px; -fx-text-fill: #B71C1C;"
+                      prefRowCount="8" VBox.vgrow="SOMETIMES"/>
+            <Button fx:id="validateButton" text="✔ Проверить шаблон" onAction="#handleValidate"/>
+        </VBox>
+    </SplitPane>
+
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button fx:id="closeButton" text="Закрыть" onAction="#handleClose"/>
+    </HBox>
+</VBox>

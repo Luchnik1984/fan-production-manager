@@ -125,10 +125,9 @@ public class MarkingRuleEditorController {
         int idx = blocksList.getSelectionModel().getSelectedIndex();
         boolean hasSelection = selected != null;
 
-        editBlockButton.setDisable(!hasSelection);
-        deleteBlockButton.setDisable(!hasSelection);
-        moveUpButton.setDisable(!hasSelection || idx <= 0);
-        moveDownButton.setDisable(!hasSelection || idx >= blocks.size() - 1);
+        TemplateControllerHelper.updateCrudButtons(
+                hasSelection, idx, blocks.size(),
+                editBlockButton, deleteBlockButton, moveUpButton, moveDownButton);
     }
 
     // ==========================================================

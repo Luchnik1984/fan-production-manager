@@ -622,10 +622,29 @@ public class TemplateDetailController {
     private void handlePreview() {
         FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         if (selected == null) return;
-        showAlert("Скоро",
-                "Предпросмотр шаблона появится в US9.5.\n" +
-                        "Выбрана версия: v" + selected.getVersion() + " [" + selected.getStatus() + "]",
-                Alert.AlertType.INFORMATION);
+
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
+                    getClass().getResource("/com/fanproduction/gui/view/TemplatePreviewView.fxml"));
+            javafx.scene.Parent root = loader.load();
+
+            TemplatePreviewController controller = loader.getController();
+            controller.init(selected);
+
+            javafx.stage.Stage stage = new javafx.stage.Stage();
+            stage.setTitle("Предпросмотр — v" + selected.getVersion());
+            stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+            stage.initOwner(owner());
+            stage.setScene(new javafx.scene.Scene(root, 1000, 720));
+            stage.setMinWidth(900);
+            stage.setMinHeight(650);
+            stage.show();
+        } catch (Exception e) {
+            log.error("Не удалось открыть предпросмотр", e);
+            showAlert("Ошибка",
+                    "Не удалось открыть предпросмотр: " + e.getMessage(),
+                    Alert.AlertType.ERROR);
+        }
     }
 
 

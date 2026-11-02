@@ -21,7 +21,7 @@ import java.util.List;
  * {@code TemplateDetailController} и будущими {@code TemplateEditorController},
  * {@code MarkingRuleEditorController}, {@code TemplatePreviewController}:
  * <ul>
- *   <li>Создание диалогов / алертов ({@link #buildDialog}, {@link #showAlert}, {@link #confirm}).</li>
+ *   <li>Создание диалогов / предупреждений ({@link #buildDialog}, {@link #showAlert}, {@link #confirm}).</li>
  *   <li>Асинхронные действия с обратной связью ({@link #runAsync}).</li>
  *   <li>Классификация ошибок «бизнес vs техническая» ({@link #isBusinessError}).</li>
  *   <li>Резолвинг owner-окна из узла ({@link #resolveOwner(Node)}).</li>
@@ -108,7 +108,7 @@ public final class TemplateControllerHelper {
     }
 
     /**
-     * Показать алерт (ERROR / WARNING / INFORMATION / CONFIRMATION).
+     * Показать предупреждение (ERROR / WARNING / INFORMATION / CONFIRMATION).
      * <p>
      * Для длинных сообщений (список ошибок валидации и т.п.) диалог
      * делается resizable, с минимальной шириной 500px и переносом строк —
@@ -134,6 +134,33 @@ public final class TemplateControllerHelper {
         alert.showAndWait();
     }
 
+    /**
+     * Обновить состояние CRUD-кнопок (edit / delete / up / down).
+     * <p>
+     * Используется в {@code TemplateEditorController} и {@code MarkingRuleEditorController}
+     * для одинакового поведения кнопок управления выбранным элементом.
+     *
+     * @param hasSelection  есть ли выбранный элемент
+     * @param selectedIndex индекс выбранного элемента (0..size-1) или -1, если не выбран
+     * @param listSize      общее количество элементов
+     * @param editButton    кнопка «Редактировать» (может быть {@code null})
+     * @param deleteButton  кнопка «Удалить» (может быть {@code null})
+     * @param moveUpButton  кнопка «Вверх» (может быть {@code null})
+     * @param moveDownButton кнопка «Вниз» (может быть {@code null})
+     */
+    public static void updateCrudButtons(boolean hasSelection,
+                                         int selectedIndex,
+                                         int listSize,
+                                         Button editButton,
+                                         Button deleteButton,
+                                         Button moveUpButton,
+                                         Button moveDownButton) {
+        if (editButton != null) editButton.setDisable(!hasSelection);
+        if (deleteButton != null) deleteButton.setDisable(!hasSelection);
+        if (moveUpButton != null) moveUpButton.setDisable(!hasSelection || selectedIndex <= 0);
+        if (moveDownButton != null) moveDownButton.setDisable(!hasSelection || selectedIndex >= listSize - 1);
+    }
+
     // ==========================================================
     // ASYNC
     // ==========================================================
@@ -147,7 +174,7 @@ public final class TemplateControllerHelper {
      *   <li>В FX-потоке вызывается {@code onSuccess} (если не null).</li>
      * </ul>
      * <p>
-     * При ошибке в FX-потоке показывается алерт:
+     * При ошибке в FX-потоке показывается предупреждение:
      * {@code WARNING} для бизнес-ошибок (см. {@link #isBusinessError}),
      * {@code ERROR} для технических.
      * <p>
@@ -207,9 +234,9 @@ public final class TemplateControllerHelper {
      * Управляет состоянием кнопки проверки (disable → «Проверка…» → восстановление)
      * и показывает результат:
      * <ul>
-     *   <li>список ошибок пуст → INFO «Ошибок не найдено».</li>
-     *   <li>список ошибок не пуст → WARNING «Найдены ошибки: …».</li>
-     *   <li>исключение → ERROR «Не удалось выполнить валидацию».</li>
+     *   <li>Список ошибок пуст → INFO «Ошибок не найдено».</li>
+     *   <li>Список ошибок не пуст → WARNING «Найдены ошибки: …».</li>
+     *   <li>Исключение → ERROR «Не удалось выполнить валидацию».</li>
      * </ul>
      * <p>
      * {@code onFinally} вызывается после восстановления кнопки и статуса

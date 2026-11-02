@@ -158,10 +158,9 @@ public class TemplateEditorController {
         int idx = fieldsTable.getSelectionModel().getSelectedIndex();
         boolean hasSelection = selected != null;
 
-        editButton.setDisable(!hasSelection);
-        deleteButton.setDisable(!hasSelection);
-        moveUpButton.setDisable(!hasSelection || idx <= 0);
-        moveDownButton.setDisable(!hasSelection || idx >= fieldsList.size() - 1);
+        TemplateControllerHelper.updateCrudButtons(
+                hasSelection, idx, fieldsList.size(),
+                editButton, deleteButton, moveUpButton, moveDownButton);
     }
 
     // ==========================================================
