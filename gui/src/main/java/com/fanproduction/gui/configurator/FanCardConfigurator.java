@@ -1,6 +1,7 @@
 package com.fanproduction.gui.configurator;
 
 import com.fanproduction.gui.client.FanTemplateVersionClient;
+import com.fanproduction.gui.util.FieldValueExtractor;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.scene.Node;
@@ -222,19 +223,10 @@ public class FanCardConfigurator implements CardFieldConfigurator {
             String key = entry.getKey();
             if (key.equals(excludeKey)) continue;
             if ("name".equals(key)) continue;
-            Object value = extractValue(entry.getValue());
+            Object value =  FieldValueExtractor.extract(entry.getValue());
             if (value != null) result.put(key, value);
         }
         return result;
     }
 
-    private Object extractValue(Node control) {
-        if (control instanceof TextField tf) {
-            String text = tf.getText() != null ? tf.getText().trim() : "";
-            return text.isEmpty() ? null : text;
-        }
-        if (control instanceof ComboBox<?> cb) return cb.getValue();
-        if (control instanceof CheckBox ch) return ch.isSelected();
-        return null;
-    }
 }
