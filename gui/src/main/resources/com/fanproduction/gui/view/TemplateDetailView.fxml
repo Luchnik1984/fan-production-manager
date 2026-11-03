@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
@@ -79,14 +78,14 @@
                 <Button fx:id="cloneButton" text="📋 Клонировать"
                         onAction="#handleClone" minWidth="140"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Label fx:id="statusLabel" text="" style="-fx-text-fill: #666;"/>
+                <Label fx:id="statusLabel" text="" style="-fx-text-fill: #777;"/>
             </HBox>
             <HBox spacing="8">
                 <Button fx:id="publishButton" text="📢 Опубликовать"
                         onAction="#handlePublish" minWidth="150"/>
-                <Button fx:id="deprecateButton" text="⬇ Деприкейт"
+                <Button fx:id="deprecateButton" text="⬇ Версия устарела"
                         onAction="#handleDeprecate" minWidth="130"/>
-                <Button fx:id="archiveButton" text="📦 Архивировать"
+                <Button fx:id="archiveButton" text="📦 В архив"
                         onAction="#handleArchive" minWidth="150"/>
                 <Button fx:id="deleteVersionButton" text="🗑 Удалить"
                         onAction="#handleDeleteVersion" minWidth="120"/>
