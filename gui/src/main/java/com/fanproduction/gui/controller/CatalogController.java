@@ -20,6 +20,9 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class CatalogController {
 
     @FXML
@@ -389,10 +392,13 @@ public class CatalogController {
     }
 
     /**
-     * Открыть диалог выбора версии шаблона FAN.
+     * Открыть диалог выбора версии FAN-шаблона и создать FAN-карточку.
      * <p>
-     * После выбора версии откроется форма CardFormController с cardType=FAN.
-     * Логика CardFormController для FAN будет расширена в US8.4.b.
+     * Защита от устаревших версий: между выбором версии и открытием формы
+     * проверяем, что версия всё ещё в статусе PUBLISHED или LEGACY. Если статус
+     * изменился (например, кто-то параллельно опубликовал новую версию и старая
+     * стала LEGACY, или её архивировали) — показываем предупреждение и переоткрываем
+     * диалог выбора.
      */
     private void openFanSelectionDialog(Stage ownerStage) {
         FanTemplateSelectionDialog selectionDialog = new FanTemplateSelectionDialog(ownerStage);
@@ -403,7 +409,28 @@ public class CatalogController {
             return; // пользователь отменил
         }
 
-        // Открываем форму FAN с уже известным templateVersionId
+        // Проверить актуальный статус версии перед созданием карточки
+        String status = checkVersionStatus(selectedVersionId);
+        if (status == null) {
+            // Версия не найдена — вероятно, удалена
+            showAlert("Ошибка",
+                    "Выбранная версия шаблона больше не существует. Выберите другую.",
+                    Alert.AlertType.WARNING);
+            openFanSelectionDialog(ownerStage);
+            return;
+        }
+
+        if (!"PUBLISHED".equals(status) && !"LEGACY".equals(status)) {
+            // Статус изменился — версия больше не доступна для создания карточек
+            showAlert("Версия недоступна",
+                    "Статус выбранной версии изменился на " + status + ".\n" +
+                            "Создавать карточки можно только по версиям PUBLISHED или LEGACY.\n" +
+                            "Выберите другую версию.",
+                    Alert.AlertType.WARNING);
+            openFanSelectionDialog(ownerStage);
+            return;
+        }
+
         CardFormController form = new CardFormController(
                 ownerStage,
                 "FAN",
@@ -412,6 +439,23 @@ public class CatalogController {
                 this::handleRefresh
         );
         form.show();
+    }
+
+    /**
+     * Проверить статус версии шаблона через сервер.
+     * <p>
+     * @param versionId ID версии
+     * @return статус версии (PUBLISHED / LEGACY / DRAFT / ...) или {@code null}, если версия не найдена
+     */
+    private String checkVersionStatus(Long versionId) {
+        try {
+            com.fanproduction.gui.dto.response.FanTemplateVersionDto version =
+                    com.fanproduction.gui.client.FanTemplateVersionClient.getVersionById(versionId);
+            return version != null ? version.getStatus() : null;
+        } catch (Exception e) {
+            log.warn("Не удалось проверить статус версии {}: {}", versionId, e.getMessage());
+            return null;
+        }
     }
 
     @FXML

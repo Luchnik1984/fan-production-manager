@@ -430,8 +430,9 @@ public class TemplateDetailController {
         FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         if (selected == null || !"LEGACY".equals(selected.getStatus())) return;
 
-        if (!confirm("Пометить версию v" + selected.getVersion() + " как DEPRECATED?",
-                "Новые карточки по этой версии создавать будет нельзя.")) return;
+        if (!confirm("Пометить версию v" + selected.getVersion() + " как устаревшую?",
+                "Новые карточки по этой версии создавать будет нельзя. " +
+                        "Существующие карточки продолжат работать")) return;
 
         runAsync(() -> FanTemplateVersionClient.deprecateVersion(selected.getId()),
                 "Версия помечена как DEPRECATED");

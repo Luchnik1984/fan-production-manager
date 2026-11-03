@@ -95,6 +95,9 @@ mvn -pl application exec:java "-Dexec.mainClass=com.fanproduction.application.te
 ```bash
   mvn clean install 
 ```
+```bash
+mvn clean install -DskipTests
+```
 
 ### Запуск API
 ```bash

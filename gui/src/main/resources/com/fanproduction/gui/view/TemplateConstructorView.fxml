@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
@@ -13,7 +12,7 @@
         <Separator/>
         <Button fx:id="refreshButton" text="🔄 Обновить" onAction="#handleRefresh"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Label fx:id="statusLabel" text="Загрузка…" style="-fx-text-fill: #666;"/>
+        <Label fx:id="statusLabel" text="Загрузка…" style="-fx-text-fill: #777;"/>
     </ToolBar>
 
     <!-- Основная панель: дерево слева, детали справа -->

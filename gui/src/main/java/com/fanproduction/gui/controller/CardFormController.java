@@ -137,7 +137,7 @@ public class CardFormController {
                     + " (v" + fanFormMetadata.getVersion()
                     + ", " + fanFormMetadata.getStatus() + ")";
         }
-        stage.setTitle(title + " - " + displayName);
+        stage.setTitle(title + " — " + displayName);
 
         VBox mainLayout = new VBox(15);
         mainLayout.setPadding(new Insets(20));
