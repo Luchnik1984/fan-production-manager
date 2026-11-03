@@ -15,7 +15,7 @@
         <Label fx:id="titleLabel" text="Редактор полей"
                style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Label fx:id="statusLabel" style="-fx-text-fill: #666;"/>
+        <Label fx:id="statusLabel" style="-fx-text-fill: #667;"/>
     </HBox>
 
     <Separator/>

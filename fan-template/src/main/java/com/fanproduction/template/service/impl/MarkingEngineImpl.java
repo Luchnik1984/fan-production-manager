@@ -10,6 +10,7 @@ import com.fanproduction.template.model.MarkingRuleElement;
 import com.fanproduction.template.service.ComputedFieldsLibrary;
 import com.fanproduction.template.service.MarkingContext;
 import com.fanproduction.template.service.MarkingEngine;
+import com.fanproduction.template.service.TemplateMetadataResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,18 +20,6 @@ import java.util.Map;
 
 /**
  * Реализация движка вычисления маркировки.
- * <p>
- * <b>Сжатие разделителей (US8.5.b-fix):</b>
- * <ul>
- *   <li>SEPARATOR откладывается в {@code pendingSeparator} и не пишется сразу.</li>
- *   <li>Перед следующим непустым значением разделитель записывается в буфер.</li>
- *   <li>Если следующее значение пустое — разделитель сохраняется в ожидании
- *       следующего непустого значения.</li>
- *   <li>Висший разделитель в конце последовательности отбрасывается.</li>
- *   <li><b>Ведущий разделитель сохраняется</b> — это критично для CONDITION,
- *       которые возвращают ветку с ведущим разделителем (например, {@code "-10"}),
- *       чтобы родитель склеил корректно.</li>
- * </ul>
  */
 @Slf4j
 @Service
@@ -39,6 +28,7 @@ public class MarkingEngineImpl implements MarkingEngine {
 
     private final FormulaEngine formulaEngine;
     private final ComputedFieldsLibrary computedFieldsLibrary;
+    private final TemplateMetadataResolver metadataResolver;
 
     // ==========================================================
     // PUBLIC API
@@ -58,6 +48,20 @@ public class MarkingEngineImpl implements MarkingEngine {
                            List<FieldDefinition> fields) {
         MarkingContext context = new MarkingContext(
                 values, fields, formulaEngine, computedFieldsLibrary);
+        return evaluate(rule, context);
+    }
+
+    @Override
+    public String evaluate(MarkingRule rule,
+                           Map<String, Object> values,
+                           List<FieldDefinition> fields,
+                           Long templateVersionId) {
+        Map<String, String> metadataValues = templateVersionId != null
+                ? metadataResolver.resolve(templateVersionId)
+                : Map.of();
+
+        MarkingContext context = new MarkingContext(
+                values, metadataValues, fields, formulaEngine, computedFieldsLibrary);
         return evaluate(rule, context);
     }
 
@@ -122,7 +126,6 @@ public class MarkingEngineImpl implements MarkingEngine {
             }
         }
 
-        // Висший разделитель в конце отбрасывается (не записан в sb)
         return sb.toString();
     }
 

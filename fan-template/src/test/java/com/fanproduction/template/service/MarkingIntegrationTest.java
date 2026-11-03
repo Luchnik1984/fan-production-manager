@@ -42,7 +42,7 @@ class MarkingIntegrationTest {
         computedFields.init();
 
         FormulaEngine formulaEngine = new FormulaEngineImpl(functions, computedFields);
-        engine = new MarkingEngineImpl(formulaEngine, computedFields);
+        engine = new MarkingEngineImpl(formulaEngine, computedFields,null);
     }
 
     // ==========================================================

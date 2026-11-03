@@ -9,41 +9,36 @@ import java.util.Map;
 /**
  * Движок вычисления маркировки.
  * <p>
- * Обходит правило {@link MarkingRule} и собирает строку маркировки,
- * подставляя значения полей из {@link MarkingContext}.
- * <p>
- * Типы элементов правила:
- * <ul>
- *   <li>{@code LITERAL}   — фиксированный текст.</li>
- *   <li>{@code SEPARATOR} — символ-разделитель.</li>
- *   <li>{@code FIELD}     — значение поля (обычное или вычисляемое).</li>
- *   <li>{@code CONDITION} — условный блок с {@code then} / {@code otherwise}.</li>
- * </ul>
+ * Обходит правило {@link MarkingRule} и собирает строку маркировки.
  * <p>
  * См. FR4.5.3.
  */
 public interface MarkingEngine {
 
-    /**
-     * Вычислить маркировку по правилу и контексту.
-     *
-     * @param rule    правило маркировки
-     * @param context контекст с значениями полей
-     * @return строка маркировки
-     */
     String evaluate(MarkingRule rule, MarkingContext context);
 
     /**
-     * Удобная обёртка: вычисление маркировки по значениям и определениям полей.
+     * Вычисление маркировки по значениям полей (без метаданных).
      * <p>
-     * Создаёт {@link MarkingContext} внутри.
-     *
-     * @param rule   правило маркировки
-     * @param values значения полей
-     * @param fields определения полей шаблона
-     * @return строка маркировки
+     * Используется в тестах и в местах, где нет templateVersionId.
      */
     String evaluate(MarkingRule rule,
                     Map<String, Object> values,
                     List<FieldDefinition> fields);
+
+    /**
+     * Вычисление маркировки с метаданными шаблона (US9.8).
+     * <p>
+     * Позволяет использовать {@code FIELD('typeDesignation')},
+     * {@code FIELD('typeName')}, {@code FIELD('seriesName')},
+     * {@code FIELD('speciesName')} в правиле маркировки.
+     *
+     * @param templateVersionId ID версии шаблона (для резолва метаданных).
+     *                          Если {@code null} — метаданные не используются
+     *                          (поведение как у {@link #evaluate(MarkingRule, Map, List)}).
+     */
+    String evaluate(MarkingRule rule,
+                    Map<String, Object> values,
+                    List<FieldDefinition> fields,
+                    Long templateVersionId);
 }

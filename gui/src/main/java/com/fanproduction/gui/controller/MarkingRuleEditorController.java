@@ -146,7 +146,7 @@ public class MarkingRuleEditorController {
         {
             typeLabel.setStyle("-fx-font-weight: bold; -fx-font-family: monospace; " +
                     "-fx-min-width: 100; -fx-pref-width: 100;");
-            indexLabel.setStyle("-fx-text-fill: #666; -fx-min-width: 40; -fx-pref-width: 40;");
+            indexLabel.setStyle("-fx-text-fill: #667; -fx-min-width: 40; -fx-pref-width: 40;");
             contentLabel.setWrapText(true);
             HBox.setHgrow(contentLabel, javafx.scene.layout.Priority.ALWAYS);
             root.setStyle("-fx-padding: 6;");

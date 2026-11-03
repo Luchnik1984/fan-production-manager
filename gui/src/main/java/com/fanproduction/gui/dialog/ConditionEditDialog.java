@@ -5,6 +5,7 @@ import com.fanproduction.gui.dto.config.ConditionDto;
 import com.fanproduction.gui.dto.fan.FieldDefinitionDto;
 import com.fanproduction.gui.dto.fan.MarkingRuleElementDto;
 import com.fanproduction.gui.dto.fan.RuleElementType;
+import com.fanproduction.gui.util.FieldKeysCatalog;
 import com.fanproduction.gui.util.TemplateControllerHelper;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXMLLoader;
@@ -17,7 +18,6 @@ import javafx.stage.Window;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -39,14 +39,6 @@ public class ConditionEditDialog {
 
     private static final List<String> CONDITION_OPERATORS = List.of(
             "EQUALS", "NOT_EQUALS", "NOT_EMPTY", "EMPTY", "IN");
-
-    private static final List<String> SYSTEM_COMPUTED_FIELDS = List.of(
-            "wheelSizeMarking", "voltageCode", "executionMarking",
-            "sizeMarking", "powerMarking", "bladeMarking",
-            "wheelDiameter", "wheelFormulaAxial", "wheelFormulaRadial",
-            "fireproofMarking", "explosionMarking",
-            "climateTypeMarking", "positionMarking", "connectionTypeMarking"
-    );
 
     private final Dialog<ButtonType> dialog;
     private final ComboBox<String> fieldCombo = new ComboBox<>();
@@ -118,7 +110,7 @@ public class ConditionEditDialog {
     // ==========================================================
 
     private VBox buildConditionTab() {
-        Set<String> fieldOptions = collectAvailableFieldKeys(templateFields);
+        Set<String> fieldOptions = FieldKeysCatalog.collect(templateFields);
         fieldCombo.getItems().setAll(fieldOptions);
         fieldCombo.setPrefWidth(350);
         fieldCombo.setPromptText("Выберите поле");
@@ -250,16 +242,6 @@ public class ConditionEditDialog {
         }
     }
 
-    private Set<String> collectAvailableFieldKeys(List<FieldDefinitionDto> fields) {
-        Set<String> result = new LinkedHashSet<>();
-        if (fields != null) {
-            for (FieldDefinitionDto f : fields) {
-                if (f.getKey() != null) result.add(f.getKey());
-            }
-        }
-        result.addAll(SYSTEM_COMPUTED_FIELDS);
-        return result;
-    }
 
     private MarkingRuleElementDto collectAndValidate() {
         String field = fieldCombo.getValue();

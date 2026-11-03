@@ -86,7 +86,7 @@ public class FanCardServiceImpl implements FanCardService {
 
         applyValuesToCard(card, values, "Вентилятор " + template.getName());
 
-        String marking = computeMarking(card, rule, fields, values);
+        String marking = computeMarking(card, rule, fields, values, templateVersionId);
         ensureMarkingUnique(marking, null);
 
         card.setFullMarking(marking);
@@ -126,7 +126,7 @@ public class FanCardServiceImpl implements FanCardService {
 
         applyValuesToCard(card, values, card.getName());
 
-        String newMarking = computeMarking(card, rule, fields, values);
+        String newMarking = computeMarking(card, rule, fields, values, version.getId());
         ensureMarkingUnique(newMarking, cardId);
 
         card.setFullMarking(newMarking);
@@ -161,7 +161,7 @@ public class FanCardServiceImpl implements FanCardService {
         validateTemplateContent(fields, rule);
 
         String oldMarking = card.getFullMarking();
-        String newMarking = computeMarking(card, rule, fields, null );
+        String newMarking = computeMarking(card, rule, fields, null, version.getId() );
         ensureMarkingUnique(newMarking, cardId);
 
         card.setFullMarking(newMarking);
@@ -353,7 +353,8 @@ public class FanCardServiceImpl implements FanCardService {
     private String computeMarking(FanCardEntity card,
                                   MarkingRule rule,
                                   List<FieldDefinition> fields,
-                                  Map<String, Object> valuesFromForm) {
+                                  Map<String, Object> valuesFromForm,
+                                  Long templateVersionId) {
         // 1. Ручное редактирование
         if (valuesFromForm != null) {
             Object manual = valuesFromForm.get("fullMarking");
@@ -371,7 +372,7 @@ public class FanCardServiceImpl implements FanCardService {
 
         String marking;
         try {
-            marking = markingEngine.evaluate(rule, markingValues, fields);
+            marking = markingEngine.evaluate(rule, markingValues, fields, templateVersionId);
         } catch (Exception e) {
             throw new FanCardCreationException(
                     "Ошибка вычисления маркировки: " + e.getMessage(), e);

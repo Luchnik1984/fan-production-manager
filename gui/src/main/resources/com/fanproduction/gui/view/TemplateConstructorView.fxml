@@ -12,7 +12,7 @@
         <Separator/>
         <Button fx:id="refreshButton" text="🔄 Обновить" onAction="#handleRefresh"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Label fx:id="statusLabel" text="Загрузка…" style="-fx-text-fill: #777;"/>
+        <Label fx:id="statusLabel" text="Загрузка…" style="-fx-text-fill: #667;"/>
     </ToolBar>
 
     <!-- Основная панель: дерево слева, детали справа -->
