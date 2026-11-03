@@ -3,6 +3,7 @@ package com.fanproduction.gui.dialog;
 import com.fanproduction.gui.dto.fan.FieldDefinitionDto;
 import com.fanproduction.gui.dto.fan.MarkingRuleElementDto;
 import com.fanproduction.gui.dto.fan.RuleElementType;
+import com.fanproduction.gui.util.FieldKeysCatalog;
 import com.fanproduction.gui.util.TemplateControllerHelper;
 import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
@@ -11,7 +12,6 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Window;
 
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -30,14 +30,6 @@ import java.util.Set;
  */
 public class FieldBlockEditDialog {
 
-    private static final List<String> SYSTEM_COMPUTED_FIELDS = List.of(
-            "wheelSizeMarking", "voltageCode", "executionMarking",
-            "sizeMarking", "powerMarking", "bladeMarking",
-            "wheelDiameter", "wheelFormulaAxial", "wheelFormulaRadial",
-            "fireproofMarking", "explosionMarking",
-            "climateTypeMarking", "positionMarking", "connectionTypeMarking"
-    );
-
     private final Dialog<ButtonType> dialog;
     private final ComboBox<String> fieldKeyCombo = new ComboBox<>();
 
@@ -51,7 +43,7 @@ public class FieldBlockEditDialog {
         dialog.setResizable(false);
         dialog.getDialogPane().setPrefWidth(600);
 
-        Set<String> options = collectAvailableFieldKeys(templateFields);
+        Set<String> options = FieldKeysCatalog.collect(templateFields);
         fieldKeyCombo.getItems().setAll(options);
         fieldKeyCombo.setPrefWidth(350);
         fieldKeyCombo.setEditable(false);
@@ -65,10 +57,13 @@ public class FieldBlockEditDialog {
         Label hint = new Label(
                 """
                         Поля шаблона — из «Редактора полей».
-                        Системные вычисляемые — встроены в программу \
-                        (wheelSizeMarking, voltageCode, executionMarking, …).
-                        
-                        В правиле маркировки значение поля подставится как текст.""");
+                        Системные поля типа/серии (US9.8):
+                          • typeDesignation — обозначение типа (например, «VRK-PatAIR»);
+                          • typeName — имя типа (например, «Вентилятор канальный»);
+                          • seriesName — имя серии (например, «PRV»);
+                          • speciesName — имя вида (например, «Прямоугольный»).
+                        Системные вычисляемые поля:
+                          • wheelSizeMarking, voltageCode, executionMarking, sizeMarking, …""");
         hint.setStyle("-fx-text-fill: #888; -fx-font-size: 10px;");
         hint.setWrapText(true);
         grid.add(hint, 1, row);
@@ -98,18 +93,6 @@ public class FieldBlockEditDialog {
         return result;
     }
 
-    private Set<String> collectAvailableFieldKeys(List<FieldDefinitionDto> templateFields) {
-        Set<String> result = new LinkedHashSet<>();
-        if (templateFields != null) {
-            for (FieldDefinitionDto f : templateFields) {
-                if (f.getKey() != null) {
-                    result.add(f.getKey());
-                }
-            }
-        }
-        result.addAll(SYSTEM_COMPUTED_FIELDS);
-        return result;
-    }
 
     private MarkingRuleElementDto collectAndValidate() {
         String key = fieldKeyCombo.getValue();

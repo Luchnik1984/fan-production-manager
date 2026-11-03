@@ -29,7 +29,7 @@
                 <Label fx:id="templateNameLabel" text=""
                        style="-fx-font-size: 16px; -fx-font-weight: bold;" wrapText="true"/>
                 <Label fx:id="templateDescriptionLabel" text=""
-                       style="-fx-font-size: 11px; -fx-text-fill: #666;" wrapText="true"/>
+                       style="-fx-font-size: 11px; -fx-text-fill: #667;" wrapText="true"/>
             </VBox>
             <Button fx:id="editTemplateButton" text="✏ Редактировать шаблон"
                     onAction="#handleEditTemplate" minWidth="180"/>

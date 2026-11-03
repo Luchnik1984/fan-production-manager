@@ -15,8 +15,10 @@ import java.util.stream.Collectors;
 /**
  * Контекст вычисления маркировки.
  * <p>
- * Инкапсулирует логику разрешения значения поля:
+ * Порядок разрешения значения поля:
  * <ol>
+ *   <li>Системные метаданные шаблона (typeDesignation / typeName / seriesName / speciesName)
+ *       — если ключ есть в {@code metadataValues}.</li>
  *   <li>Если поле — COMPUTED с формулой, значение вычисляется через {@link FormulaEngine}.</li>
  *   <li>Иначе — берётся прямое значение из {@code values}.</li>
  *   <li>Иначе — берётся из системных вычисляемых полей ({@link ComputedFieldsLibrary}).</li>
@@ -34,6 +36,9 @@ public class MarkingContext {
     @Getter
     private final Map<String, Object> values;
 
+    /** Системные метаданные шаблона (typeDesignation, typeName, seriesName, speciesName). */
+    private final Map<String, String> metadataValues;
+
     /** Определения полей по ключу. */
     private final Map<String, FieldDefinition> fieldsByKey;
 
@@ -43,11 +48,33 @@ public class MarkingContext {
     /** Кеш вычисленных значений (только строковые). */
     private final Map<String, String> cache = new HashMap<>();
 
+    // ==========================================================
+    // КОНСТРУКТОРЫ
+    // ==========================================================
+
+    /**
+     * Базовый конструктор (без метаданных — обратная совместимость).
+     */
     public MarkingContext(Map<String, Object> values,
                           List<FieldDefinition> fields,
                           FormulaEngine formulaEngine,
                           ComputedFieldsLibrary computedFieldsLibrary) {
+        this(values, null, fields, formulaEngine, computedFieldsLibrary);
+    }
+
+    /**
+     * Конструктор с метаданными (US9.8).
+     *
+     * @param metadataValues карта вида {typeDesignation, typeName, seriesName, speciesName}.
+     *                       Может быть {@code null} — тогда метаданные не используются.
+     */
+    public MarkingContext(Map<String, Object> values,
+                          Map<String, String> metadataValues,
+                          List<FieldDefinition> fields,
+                          FormulaEngine formulaEngine,
+                          ComputedFieldsLibrary computedFieldsLibrary) {
         this.values = values != null ? values : Map.of();
+        this.metadataValues = metadataValues != null ? metadataValues : Map.of();
         this.fieldsByKey = fields != null
                 ? fields.stream().collect(Collectors.toMap(
                 FieldDefinition::key,
@@ -58,24 +85,25 @@ public class MarkingContext {
         this.computedFieldsLibrary = computedFieldsLibrary;
     }
 
+    // ==========================================================
+    // PUBLIC API
+    // ==========================================================
+
     /**
      * Получить значение поля как строку.
      * <p>
      * Порядок разрешения:
      * <ol>
-     *   <li>COMPUTED-поле с формулой — через {@link FormulaEngine}.</li>
-     *   <li>Прямое значение из {@code values} (приведённое к строке).</li>
+     *   <li>Метаданные шаблона (typeDesignation / typeName / seriesName / speciesName).</li>
+     *   <li>COMPUTED-поле с формулой.</li>
+     *   <li>Прямое значение из {@code values}.</li>
      *   <li>Системное вычисляемое поле из {@link ComputedFieldsLibrary}.</li>
      *   <li>Иначе — {@code null}.</li>
      * </ol>
-     *
-     * @param key ключ поля
-     * @return строковое значение или {@code null}
      */
     public String getFieldValueAsString(String key) {
         if (key == null || key.isBlank()) return null;
 
-        // Кеш
         if (cache.containsKey(key)) {
             return cache.get(key);
         }
@@ -88,25 +116,28 @@ public class MarkingContext {
     /**
      * Получить «сырое» значение поля (без преобразований).
      * <p>
-     * Используется для CONDITION, где нужны настоящие типы
-     * (Number, Boolean, String).
-     *
-     * @param key ключ поля
-     * @return значение или {@code null}
+     * Используется для CONDITION, где нужны настоящие типы (Number, Boolean, String).
      */
     public Object getFieldValue(String key) {
         if (key == null || key.isBlank()) return null;
 
+        // 1. Метаданные (возвращаем как строку — CONDITION сравнивает через FormulaFunctions.valuesEqual)
+        if (metadataValues.containsKey(key)) {
+            return metadataValues.get(key);
+        }
+
+        // 2. Прямое значение из values
         Object direct = values.get(key);
         if (direct != null) return direct;
 
-        // Если поля нет в values, но есть COMPUTED-формула — вычисляем через getFieldValueAsString
+        // 3. COMPUTED-поле с формулой
         FieldDefinition field = fieldsByKey.get(key);
         if (field != null && field.type() == FieldType.COMPUTED
                 && field.formula() != null && !field.formula().isBlank()) {
             return getFieldValueAsString(key);
         }
 
+        // 4. Системное вычисляемое поле
         if (computedFieldsLibrary.isRegistered(key)) {
             return computedFieldsLibrary.evaluate(key, values);
         }
@@ -114,9 +145,6 @@ public class MarkingContext {
         return null;
     }
 
-    /**
-     * Есть ли определение поля для данного ключа.
-     */
     public boolean hasFieldDefinition(String key) {
         return key != null && fieldsByKey.containsKey(key);
     }
@@ -126,7 +154,13 @@ public class MarkingContext {
     // ==========================================================
 
     private String resolve(String key) {
-        // 1. COMPUTED-поле с формулой
+        // 1. Метаданные шаблона (typeDesignation, typeName, seriesName, speciesName)
+        if (metadataValues.containsKey(key)) {
+            String value = metadataValues.get(key);
+            return value != null && !value.isEmpty() ? value : null;
+        }
+
+        // 2. COMPUTED-поле с формулой
         FieldDefinition field = fieldsByKey.get(key);
         if (field != null
                 && field.type() == FieldType.COMPUTED
@@ -135,18 +169,18 @@ public class MarkingContext {
             return formulaEngine.evaluateFieldDefinition(field, values);
         }
 
-        // 2. Прямое значение из values
+        // 3. Прямое значение из values
         Object direct = values.get(key);
         if (direct != null) {
             return FormulaFunctions.toStringValue(direct);
         }
 
-        // 3. Системное вычисляемое поле
+        // 4. Системное вычисляемое поле
         if (computedFieldsLibrary.isRegistered(key)) {
             return computedFieldsLibrary.evaluate(key, values);
         }
 
-        // 4. Значение отсутствует
+        // 5. Значение отсутствует
         return null;
     }
 }

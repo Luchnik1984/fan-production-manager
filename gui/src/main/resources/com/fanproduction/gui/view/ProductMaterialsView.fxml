@@ -39,5 +39,5 @@
         </columnResizePolicy>
     </TableView>
 
-    <Label fx:id="statusLabel" text="Готово" style="-fx-text-fill: #666;" />
+    <Label fx:id="statusLabel" text="Готово" style="-fx-text-fill: #667;" />
 </VBox>

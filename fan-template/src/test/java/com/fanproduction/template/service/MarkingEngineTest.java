@@ -41,7 +41,7 @@ class MarkingEngineTest {
 
         FormulaEngine formulaEngine = new FormulaEngineImpl(functions, computedFields);
 
-        engine = new MarkingEngineImpl(formulaEngine, computedFields);
+        engine = new MarkingEngineImpl(formulaEngine, computedFields,null);
     }
 
     // ==========================================================

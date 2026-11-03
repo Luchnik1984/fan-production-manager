@@ -48,7 +48,7 @@ public class MarkingPreviewServiceImpl implements MarkingPreviewService {
         Map<String, Object> safeValues = values != null ? values : Map.of();
 
         try {
-            String marking = markingEngine.evaluate(rule, safeValues, fields);
+            String marking = markingEngine.evaluate(rule, safeValues, fields, templateVersionId);
             return marking != null ? marking : "";
         } catch (Exception e) {
             log.warn("Ошибка вычисления маркировки для preview (versionId={}): {}",

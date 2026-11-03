@@ -16,7 +16,7 @@
                style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
         <Region HBox.hgrow="ALWAYS"/>
         <Button fx:id="helpButton" text="📖 Справочник DSL" onAction="#handleOpenHelp"/>
-        <Label fx:id="statusLabel" text="" style="-fx-text-fill: #777;"/>
+        <Label fx:id="statusLabel" text="" style="-fx-text-fill: #667;"/>
     </HBox>
 
     <Separator/>
