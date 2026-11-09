@@ -34,9 +34,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -122,7 +120,7 @@ class FanCardServiceTest {
 
             when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
             when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
-            when(markingEngine.evaluate(any(), any(), eq(sampleFields)))
+            when(markingEngine.evaluate(any(), any(), eq(sampleFields),  anyLong()))
                     .thenReturn("VRK-PatAIR-P");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
@@ -155,7 +153,7 @@ class FanCardServiceTest {
 
             when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
             when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
-            when(markingEngine.evaluate(any(), any(), any())).thenReturn("MARKING");
+            when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("MARKING");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
             when(fanCardRepository.save(any(FanCardEntity.class)))
@@ -184,7 +182,7 @@ class FanCardServiceTest {
 
             when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
             when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
-            when(markingEngine.evaluate(any(), any(), any())).thenReturn("M");
+            when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("M");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
             when(fanCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -202,7 +200,7 @@ class FanCardServiceTest {
 
             when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
             when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
-            when(markingEngine.evaluate(any(), any(), any())).thenReturn("VRK-PatAIR-P");
+            when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("VRK-PatAIR-P");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
             when(fanCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -266,7 +264,7 @@ class FanCardServiceTest {
 
             when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
             when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
-            when(markingEngine.evaluate(any(), any(), any())).thenReturn("VRK-PatAIR-P");
+            when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("VRK-PatAIR-P");
             when(fanCardRepository.findByFullMarkingIgnoreCase("VRK-PatAIR-P"))
                     .thenReturn(Optional.of(existing));
 
@@ -283,7 +281,7 @@ class FanCardServiceTest {
 
             when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
             when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
-            when(markingEngine.evaluate(any(), any(), any())).thenReturn("M");
+            when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("M");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
             when(fanCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -328,7 +326,7 @@ class FanCardServiceTest {
 
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
             when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(markingEngine.evaluate(any(), any(), any())).thenReturn("NEW-MARKING");
+            when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("NEW-MARKING");
             when(fanCardRepository.findByFullMarkingIgnoreCase("NEW-MARKING"))
                     .thenReturn(Optional.empty());
             when(fanCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -351,7 +349,7 @@ class FanCardServiceTest {
 
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
             when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(markingEngine.evaluate(any(), any(), any())).thenReturn("M");
+            when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("M");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
             when(fanCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -368,7 +366,7 @@ class FanCardServiceTest {
 
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
             when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(markingEngine.evaluate(any(), any(), any())).thenReturn("M");
+            when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("M");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
             when(fanCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -386,7 +384,7 @@ class FanCardServiceTest {
 
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
             when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(markingEngine.evaluate(any(), any(), any())).thenReturn("OLD-MARKING");
+            when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("OLD-MARKING");
             when(fanCardRepository.findByFullMarkingIgnoreCase("OLD-MARKING"))
                     .thenReturn(Optional.of(existingCard));  // та же карточка
             when(fanCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -407,7 +405,7 @@ class FanCardServiceTest {
 
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
             when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(markingEngine.evaluate(any(), any(), any())).thenReturn("NEW-MARKING");
+            when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("NEW-MARKING");
             when(fanCardRepository.findByFullMarkingIgnoreCase("NEW-MARKING"))
                     .thenReturn(Optional.empty());
             when(fanCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -434,7 +432,7 @@ class FanCardServiceTest {
 
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
             when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(markingEngine.evaluate(any(), any(), any())).thenReturn("NEW-MARKING");
+            when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("NEW-MARKING");
             when(fanCardRepository.findByFullMarkingIgnoreCase("NEW-MARKING"))
                     .thenReturn(Optional.of(anotherCard));
 
@@ -474,7 +472,7 @@ class FanCardServiceTest {
 
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
             when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(markingEngine.evaluate(any(), any(), any())).thenReturn("M");
+            when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("M");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
             when(fanCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -514,7 +512,7 @@ class FanCardServiceTest {
 
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
             when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(markingEngine.evaluate(any(), any(), any())).thenReturn("NEW");
+            when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("NEW");
             when(fanCardRepository.findByFullMarkingIgnoreCase("NEW"))
                     .thenReturn(Optional.empty());
             when(fanCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -531,7 +529,7 @@ class FanCardServiceTest {
         void auditMentionsRecalculation() {
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
             when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(markingEngine.evaluate(any(), any(), any())).thenReturn("NEW");
+            when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("NEW");
             when(fanCardRepository.findByFullMarkingIgnoreCase("NEW"))
                     .thenReturn(Optional.empty());
             when(fanCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -572,7 +570,7 @@ class FanCardServiceTest {
 
             when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
             when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
-            when(markingEngine.evaluate(any(), any(), any())).thenReturn("M");
+            when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("M");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
             when(fanCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
