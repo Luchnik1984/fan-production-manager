@@ -174,7 +174,8 @@ public class TemplateEditorController {
                 owner(),
                 null,
                 nextOrder,
-                key -> isKeyDuplicate(key, -1));
+                key -> isKeyDuplicate(key, -1),
+                fieldsList);
         FieldDefinitionDto result = dialog.showAndGet();
         if (result == null) return;
 
@@ -194,7 +195,8 @@ public class TemplateEditorController {
                 owner(),
                 selected,
                 idx + 1,
-                key -> isKeyDuplicate(key, idx));
+                key -> isKeyDuplicate(key, idx),
+                fieldsList);
         FieldDefinitionDto result = dialog.showAndGet();
         if (result == null) return;
 
