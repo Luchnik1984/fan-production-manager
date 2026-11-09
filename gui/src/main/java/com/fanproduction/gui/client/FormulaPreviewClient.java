@@ -2,7 +2,7 @@ package com.fanproduction.gui.client;
 
 import com.fanproduction.gui.dto.request.preview.FormulaPreviewRequest;
 import com.fanproduction.gui.dto.response.ApiResponse;
-import com.fanproduction.gui.dto.response.FormulaPreviewResponse;
+import com.fanproduction.gui.dto.response.preview.FormulaPreviewResponse;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.util.Map;

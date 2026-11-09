@@ -1,4 +1,4 @@
-package com.fanproduction.gui.dto.response;
+package com.fanproduction.gui.dto.response.preview;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
