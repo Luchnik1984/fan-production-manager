@@ -179,4 +179,17 @@ public class MarkingEngineImpl implements MarkingEngine {
             }
         };
     }
+
+    @Override
+    public boolean evaluateCondition(Condition condition, Map<String, Object> values) {
+        if (condition == null) {
+            return false;
+        }
+        // Пустой MarkingContext: fields = пустой список, metadata = пустой Map,
+        // values — тестовые значения. Системные вычисляемые поля (voltageCode,
+        // wheelSizeMarking, ...) резолвятся через computedFieldsLibrary.
+        MarkingContext context = new MarkingContext(
+                values, null, List.of(), formulaEngine, computedFieldsLibrary);
+        return evaluateConditionExpression(condition, context);
+    }
 }
