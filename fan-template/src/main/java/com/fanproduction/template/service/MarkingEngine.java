@@ -1,5 +1,6 @@
 package com.fanproduction.template.service;
 
+import com.fanproduction.template.model.Condition;
 import com.fanproduction.template.model.FieldDefinition;
 import com.fanproduction.template.model.MarkingRule;
 
@@ -41,4 +42,17 @@ public interface MarkingEngine {
                     Map<String, Object> values,
                     List<FieldDefinition> fields,
                     Long templateVersionId);
+
+    /**
+     * Вычислить условие CONDITION на тестовых значениях (US9.9.c).
+     * <p>
+     * Не требует {@link MarkingRule}: используется в {@code ConditionEditDialog}
+     * для интерактивной проверки условия. COMPUTED-поля шаблона не участвуют
+     * (fields пустой); доступны только values + системные вычисляемые поля.
+     *
+     * @param condition условие (field / operator / value / values)
+     * @param values    тестовые значения полей
+     * @return {@code true}, если условие истинно (ветка THEN)
+     */
+    boolean evaluateCondition(Condition condition, Map<String, Object> values);
 }
