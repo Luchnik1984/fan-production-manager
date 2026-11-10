@@ -4,9 +4,7 @@ import com.fanproduction.gui.dto.config.ConditionDto;
 import com.fanproduction.gui.dto.fan.FieldDefinitionDto;
 import com.fanproduction.gui.util.FieldKeysCatalog;
 import javafx.collections.FXCollections;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 
@@ -79,6 +77,11 @@ public class ConditionEditor extends VBox {
         valueField.setPromptText("Значение (для EQUALS / NOT_EQUALS / IN)");
         valueField.setPrefWidth(200);
 
+        Button clearButton = new Button("✖ Очистить");
+        clearButton.setTooltip(new Tooltip("Сбросить все три поля"));
+        clearButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #E53935;");
+        clearButton.setOnAction(e -> clear());
+
         int col = 0;
         boolean hasLabel = labelPrefix != null && !labelPrefix.isBlank();
         if (hasLabel) {
@@ -87,6 +90,7 @@ public class ConditionEditor extends VBox {
         grid.add(fieldCombo, col++, 0);
         grid.add(operatorCombo, col++, 0);
         grid.add(valueField, col++, 0);
+        grid.add(clearButton, col++, 0);
 
         Label hint = new Label("EQUALS / NOT_EQUALS — значение; "
                 + "IN — список через запятую; "
@@ -191,8 +195,26 @@ public class ConditionEditor extends VBox {
     }
 
     public void clear() {
-        fieldCombo.setValue(null);
-        operatorCombo.setValue(null);
+        resetCombo(fieldCombo);
+        resetCombo(operatorCombo);
         valueField.clear();
+    }
+
+    /**
+     * Сбрасывает ComboBox в состояние «ничего не выбрано» с показом promptText.
+     * <p>
+     * {@code setValue(null)} в JavaFX 17 не всегда перерисовывает кнопку
+     * ComboBox так, чтобы promptText появился. Трюк с двойным
+     * {@code setPromptText(null) → setPromptText(prev)} заставляет
+     * skin пересоздать button cell.
+     */
+    private void resetCombo(ComboBox<?> combo) {
+        combo.getSelectionModel().clearSelection();
+        combo.setValue(null);
+        String prompt = combo.getPromptText();
+        if (prompt != null) {
+            combo.setPromptText(null);
+            combo.setPromptText(prompt);
+        }
     }
 }

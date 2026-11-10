@@ -9,6 +9,7 @@ import com.fanproduction.gui.dto.fan.FieldDefinitionDto;
 import com.fanproduction.gui.dto.fan.FieldType;
 import com.fanproduction.gui.util.FieldKeysCatalog;
 import com.fanproduction.gui.util.TemplateControllerHelper;
+import com.fanproduction.gui.util.ComboBoxUtils;
 import com.fanproduction.gui.component.PreviewPanel;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
@@ -408,6 +409,8 @@ public class FieldEditDialog {
         int row = 0;
         onSelectActionCombo.getItems().setAll(ON_SELECT_ACTIONS);
         onSelectActionCombo.setPrefWidth(220);
+        onSelectActionCombo.setPromptText("Действие при выборе");   // ← задаём ДО installClearOption
+        ComboBoxUtils.installClearOption(onSelectActionCombo, "— не выбрано —");
         onSelectRoleField.setPromptText("Ступица");
         onSelectQuantityField.setPromptText("1.0");
 
@@ -453,12 +456,15 @@ public class FieldEditDialog {
 
         referenceTypeCombo.getItems().setAll(REFERENCE_TYPES);
         referenceTypeCombo.setPrefWidth(220);
+        referenceTypeCombo.setPromptText("Тип связанной сущности"); // ← задаём ДО installClearOption
+        ComboBoxUtils.installClearOption(referenceTypeCombo, "— не выбрано —");
 
         targetFieldNameCombo.setPrefWidth(320);
         targetFieldNameCombo.setMaxWidth(Double.MAX_VALUE);
         targetFieldNameCombo.setPromptText("Поле для сохранения отображаемого имени");
         targetFieldNameCombo.setEditable(false);
         targetFieldNameCombo.setItems(templateFieldKeysCache);
+        ComboBoxUtils.installClearOption(targetFieldNameCombo, "— не выбрано —");
 
         roleField.setPromptText("Роль компонента (например, Ступица колеса)");
 
@@ -530,8 +536,9 @@ public class FieldEditDialog {
         title.setStyle("-fx-font-weight: bold;");
 
         Label hint = new Label(
-                "При выборе значения в этом поле — значения из связанной сущности " +
-                        "автоматически подставятся в указанные поля шаблона.");
+                """
+                        При выборе значения в этом поле — значения из связанной сущности \
+                        автоматически подставятся в указанные поля шаблона.""");
         hint.setStyle("-fx-text-fill: #888; -fx-font-size: 10px;");
         hint.setWrapText(true);
 

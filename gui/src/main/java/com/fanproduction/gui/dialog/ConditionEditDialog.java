@@ -199,6 +199,17 @@ public class ConditionEditDialog {
         }
 
         ConditionDto c = conditionEditor.getCondition();
+        if (c == null) {
+            TemplateControllerHelper.showAlert(dialog.getOwner(),
+                    """
+                            Ошибка""",
+                    "Заполните условие: выберите поле и оператор. " +
+                            "Если условие больше не нужно — нажмите «Отмена» и удалите блок " +
+                            "в списке правила (кнопка 🗑).",
+                    Alert.AlertType.WARNING);
+            return null;
+        }
+
         MarkingRuleElementDto dto = new MarkingRuleElementDto();
         dto.setType(RuleElementType.CONDITION);
         dto.setCondition(c);
