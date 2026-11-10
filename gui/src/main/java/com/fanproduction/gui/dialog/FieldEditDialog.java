@@ -3,12 +3,14 @@ package com.fanproduction.gui.dialog;
 import com.fanproduction.core.dto.FieldInfoDto;
 import com.fanproduction.gui.client.CardTypeFieldsClient;
 import com.fanproduction.gui.client.FormulaPreviewClient;
-import com.fanproduction.gui.dto.config.ConditionDto;
+import com.fanproduction.gui.component.ConditionEditor;
 import com.fanproduction.gui.dto.config.OnSelectActionDto;
 import com.fanproduction.gui.dto.fan.FieldDefinitionDto;
 import com.fanproduction.gui.dto.fan.FieldType;
 import com.fanproduction.gui.util.FieldKeysCatalog;
 import com.fanproduction.gui.util.TemplateControllerHelper;
+import com.fanproduction.gui.util.ComboBoxUtils;
+import com.fanproduction.gui.component.PreviewPanel;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -124,13 +126,8 @@ public class FieldEditDialog {
     private final ObservableList<String> templateFieldKeysCache = FXCollections.observableArrayList();
 
     // --- Conditions ---
-    private final ComboBox<String> visibleIfFieldCombo = new ComboBox<>();
-    private final ComboBox<String> visibleIfOperatorCombo = new ComboBox<>();
-    private final TextField visibleIfValueField = new TextField();
-
-    private final ComboBox<String> requiredIfFieldCombo = new ComboBox<>();
-    private final ComboBox<String> requiredIfOperatorCombo = new ComboBox<>();
-    private final TextField requiredIfValueField = new TextField();
+    private ConditionEditor visibleIfEditor;
+    private ConditionEditor requiredIfEditor;
 
     // --- onSelect ---
     private final ComboBox<String> onSelectActionCombo = new ComboBox<>();
@@ -142,7 +139,7 @@ public class FieldEditDialog {
     private VBox selectableParams;
     private VBox computedParams;
     private VBox pullFromSection;
-    private VBox formulaPreviewBlock;
+    private PreviewPanel formulaPreviewBlock;
 
     private final TabPane tabs;
     private final Tab mainTab;
@@ -397,15 +394,12 @@ public class FieldEditDialog {
         Label conditionsTitle = new Label("Условия");
         conditionsTitle.setStyle("-fx-font-weight: bold;");
 
+        visibleIfEditor = new ConditionEditor(
+                "Показывать, только если:", templateFields, 220);
+        requiredIfEditor = new ConditionEditor(
+                "Обязательно, только если:", templateFields, 220);
         VBox conditionsBox = new VBox(10);
-        conditionsBox.getChildren().addAll(
-                buildConditionRow("Показывать, только если:",
-                        visibleIfFieldCombo, visibleIfOperatorCombo, visibleIfValueField,
-                        "Условие видимости поля (visibleIf)"),
-                buildConditionRow("Обязательно, только если:",
-                        requiredIfFieldCombo, requiredIfOperatorCombo, requiredIfValueField,
-                        "Условие обязательности поля (requiredIf)")
-        );
+        conditionsBox.getChildren().addAll(visibleIfEditor, requiredIfEditor);
 
         Label sideTitle = new Label("Действие при выборе");
         sideTitle.setStyle("-fx-font-weight: bold;");
@@ -415,14 +409,16 @@ public class FieldEditDialog {
         int row = 0;
         onSelectActionCombo.getItems().setAll(ON_SELECT_ACTIONS);
         onSelectActionCombo.setPrefWidth(220);
+        onSelectActionCombo.setPromptText("Действие при выборе");   // ← задаём ДО installClearOption
+        ComboBoxUtils.installClearOption(onSelectActionCombo, "— не выбрано —");
         onSelectRoleField.setPromptText("Ступица");
         onSelectQuantityField.setPromptText("1.0");
 
-        sideGrid.add(new Label("onSelect action:"), 0, row);
+        sideGrid.add(new Label("Действия:"), 0, row);
         sideGrid.add(onSelectActionCombo, 1, row++);
-        sideGrid.add(new Label("onSelect role:"), 0, row);
+        sideGrid.add(new Label("Роли:"), 0, row);
         sideGrid.add(onSelectRoleField, 1, row++);
-        sideGrid.add(new Label("onSelect quantity:"), 0, row);
+        sideGrid.add(new Label("Количества:"), 0, row);
         sideGrid.add(onSelectQuantityField, 1, row++);
 
         content.getChildren().addAll(
@@ -460,12 +456,15 @@ public class FieldEditDialog {
 
         referenceTypeCombo.getItems().setAll(REFERENCE_TYPES);
         referenceTypeCombo.setPrefWidth(220);
+        referenceTypeCombo.setPromptText("Тип связанной сущности"); // ← задаём ДО installClearOption
+        ComboBoxUtils.installClearOption(referenceTypeCombo, "— не выбрано —");
 
         targetFieldNameCombo.setPrefWidth(320);
         targetFieldNameCombo.setMaxWidth(Double.MAX_VALUE);
         targetFieldNameCombo.setPromptText("Поле для сохранения отображаемого имени");
         targetFieldNameCombo.setEditable(false);
         targetFieldNameCombo.setItems(templateFieldKeysCache);
+        ComboBoxUtils.installClearOption(targetFieldNameCombo, "— не выбрано —");
 
         roleField.setPromptText("Роль компонента (например, Ступица колеса)");
 
@@ -514,120 +513,16 @@ public class FieldEditDialog {
         hint.setWrapText(true);
         grid.add(hint, 1, 1);
 
-        formulaPreviewBlock = buildFormulaPreviewBlock();
+        formulaPreviewBlock = new PreviewPanel(
+                "Проверить формулу",
+                "▶ Вычислить",
+                templateFields,
+                values -> FormulaPreviewClient.preview(formulaArea.getText().trim(), values),
+                result -> result != null ? "Результат: " + result : "Результат: (пусто)"
+        );
 
         container.getChildren().addAll(grid, formulaPreviewBlock);
         return container;
-    }
-
-    /**
-     * Блок «Проверить формулу»: GridPane с TextField для каждого поля шаблона
-     * + кнопка «▶ Вычислить» + Label для результата.
-     */
-    private VBox buildFormulaPreviewBlock() {
-        VBox box = new VBox(8);
-        box.setStyle("-fx-background-color: #F9F9F9; -fx-padding: 10; " +
-                "-fx-border-color: #E0E0E0; -fx-border-radius: 3;");
-
-        Label title = new Label("Проверить формулу");
-        title.setStyle("-fx-font-weight: bold;");
-
-        // GridPane для тестовых значений
-        GridPane valuesGrid = new GridPane();
-        valuesGrid.setHgap(10);
-        valuesGrid.setVgap(6);
-        valuesGrid.setPadding(new Insets(5, 0, 5, 0));
-
-        // Собираем поля шаблона (без системных вычисляемых)
-        List<FieldDefinitionDto> fieldsForValues = templateFields.stream()
-                .filter(f -> f.getType() != FieldType.SEPARATOR
-                        && f.getType() != FieldType.HIDDEN
-                        && f.getType() != FieldType.COMPUTED)
-                .toList();
-
-        if (fieldsForValues.isEmpty()) {
-            Label empty = new Label("Нет полей шаблона для тестовых значений");
-            empty.setStyle("-fx-text-fill: #888; -fx-font-style: italic;");
-            valuesGrid.add(empty, 0, 0);
-        } else {
-            int row = 0;
-            for (FieldDefinitionDto field : fieldsForValues) {
-                Label lbl = new Label(field.getLabel() + " (" + field.getKey() + "):");
-                lbl.setStyle("-fx-font-size: 11px;");
-                TextField tf = new TextField();
-                tf.setPromptText("тестовое значение");
-                tf.setPrefWidth(200);
-                // Привязка к имени поля через userData
-                tf.setUserData(field.getKey());
-                valuesGrid.add(lbl, 0, row);
-                valuesGrid.add(tf, 1, row);
-                row++;
-            }
-        }
-
-        ScrollPane valuesScroll = new ScrollPane(valuesGrid);
-        valuesScroll.setFitToWidth(true);
-        valuesScroll.setPrefHeight(140);
-        valuesScroll.setStyle("-fx-background-color: transparent;");
-
-        // Кнопка + результат
-        Button computeButton = new Button("▶ Вычислить");
-        computeButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;");
-
-        Label resultLabel = new Label();
-        resultLabel.setWrapText(true);
-        resultLabel.setStyle("-fx-font-family: monospace; -fx-font-size: 12px;");
-        resultLabel.setMaxWidth(Double.MAX_VALUE);
-
-        computeButton.setOnAction(e -> {
-            String formula = formulaArea.getText().trim();
-            if (formula.isEmpty()) {
-                resultLabel.setText("⚠ Формула пуста");
-                resultLabel.setStyle("-fx-text-fill: #E53935; -fx-font-family: monospace;");
-                return;
-            }
-
-            // Собираем тестовые значения из TextField'ов
-            Map<String, Object> values = new HashMap<>();
-            for (Node n : valuesGrid.getChildren()) {
-                if (n instanceof TextField tf) {
-                    String key = (String) tf.getUserData();
-                    String text = tf.getText() != null ? tf.getText().trim() : "";
-                    if (key != null && !text.isEmpty()) {
-                        values.put(key, text);
-                    }
-                }
-            }
-
-            computeButton.setDisable(true);
-            resultLabel.setText("Вычисление…");
-            resultLabel.setStyle("-fx-text-fill: #666; -fx-font-family: monospace;");
-
-            final String finalFormula = formula;
-            new Thread(() -> {
-                try {
-                    String res = FormulaPreviewClient.preview(finalFormula, values);
-                    Platform.runLater(() -> {
-                        computeButton.setDisable(false);
-                        resultLabel.setText("Результат: " + (res != null ? res : "(пусто)"));
-                        resultLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-family: monospace; -fx-font-weight: bold;");
-                    });
-                } catch (Exception ex) {
-                    log.warn("Ошибка предпросмотра формулы: {}", ex.getMessage());
-                    Platform.runLater(() -> {
-                        computeButton.setDisable(false);
-                        resultLabel.setText("Ошибка: " + ex.getMessage());
-                        resultLabel.setStyle("-fx-text-fill: #E53935; -fx-font-family: monospace;");
-                    });
-                }
-            }, "FieldEditDialog-formulaPreview").start();
-        });
-
-        HBox actionBar = new HBox(10, computeButton);
-        actionBar.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-
-        box.getChildren().addAll(title, valuesScroll, actionBar, resultLabel);
-        return box;
     }
 
     // ==========================================================
@@ -641,8 +536,9 @@ public class FieldEditDialog {
         title.setStyle("-fx-font-weight: bold;");
 
         Label hint = new Label(
-                "При выборе значения в этом поле — значения из связанной сущности " +
-                        "автоматически подставятся в указанные поля шаблона.");
+                """
+                        При выборе значения в этом поле — значения из связанной сущности \
+                        автоматически подставятся в указанные поля шаблона.""");
         hint.setStyle("-fx-text-fill: #888; -fx-font-size: 10px;");
         hint.setWrapText(true);
 
@@ -768,39 +664,6 @@ public class FieldEditDialog {
     }
 
     // ==========================================================
-    // CONDITIONS
-    // ==========================================================
-
-    private Node buildConditionRow(String label,
-                                   ComboBox<String> fieldCombo,
-                                   ComboBox<String> operatorCombo,
-                                   TextField valueField,
-                                   String hint) {
-        GridPane grid = TemplateControllerHelper.buildGrid();
-        grid.setPadding(new Insets(0));
-
-        fieldCombo.setItems(templateFieldKeysCache);
-        fieldCombo.setPrefWidth(220);
-        fieldCombo.setEditable(false);
-        fieldCombo.setPromptText("Имя поля шаблона");
-
-        operatorCombo.getItems().setAll(CONDITION_OPERATORS);
-        operatorCombo.setPrefWidth(150);
-
-        valueField.setPromptText("Значение (для EQUALS / NOT_EQUALS / IN)");
-
-        int row = 0;
-        grid.add(new Label(label), 0, row);
-        grid.add(fieldCombo, 1, row);
-        grid.add(operatorCombo, 2, row);
-        grid.add(valueField, 3, row++);
-        Label h = new Label(hint);
-        h.setStyle("-fx-text-fill: #888; -fx-font-size: 10px;");
-        grid.add(h, 1, row, 3, 1);
-        return grid;
-    }
-
-    // ==========================================================
     // ВИДИМОСТЬ
     // ==========================================================
 
@@ -865,30 +728,14 @@ public class FieldEditDialog {
             }
         }
 
-        fillCondition(f.getVisibleIf(), visibleIfFieldCombo, visibleIfOperatorCombo, visibleIfValueField);
-        fillCondition(f.getRequiredIf(), requiredIfFieldCombo, requiredIfOperatorCombo, requiredIfValueField);
+        visibleIfEditor.setCondition(f.getVisibleIf());
+        requiredIfEditor.setCondition(f.getRequiredIf());
 
         if (f.getOnSelect() != null) {
             onSelectActionCombo.setValue(f.getOnSelect().getAction());
             onSelectRoleField.setText(f.getOnSelect().getRole() != null ? f.getOnSelect().getRole() : "");
             onSelectQuantityField.setText(f.getOnSelect().getQuantity() != null
                     ? String.valueOf(f.getOnSelect().getQuantity()) : "");
-        }
-    }
-
-    private void fillCondition(ConditionDto condition,
-                               ComboBox<String> fieldCombo,
-                               ComboBox<String> operatorCombo,
-                               TextField valueField) {
-        if (condition == null) return;
-        fieldCombo.setValue(condition.getField());
-        operatorCombo.setValue(condition.getOperator());
-        if (condition.getValue() != null) {
-            valueField.setText(String.valueOf(condition.getValue()));
-        } else if (condition.getValues() != null) {
-            valueField.setText(condition.getValues().stream()
-                    .map(String::valueOf)
-                    .collect(Collectors.joining(", ")));
         }
     }
 
@@ -995,8 +842,8 @@ public class FieldEditDialog {
             dto.setFormula(emptyToNull(formulaArea.getText()));
         }
 
-        dto.setVisibleIf(parseCondition(visibleIfFieldCombo, visibleIfOperatorCombo, visibleIfValueField));
-        dto.setRequiredIf(parseCondition(requiredIfFieldCombo, requiredIfOperatorCombo, requiredIfValueField));
+        dto.setVisibleIf(visibleIfEditor.getCondition());
+        dto.setRequiredIf(requiredIfEditor.getCondition());
         dto.setOnSelect(parseOnSelect());
 
         return dto;
@@ -1034,34 +881,6 @@ public class FieldEditDialog {
             }
         }
         return result.isEmpty() ? null : result;
-    }
-
-    private ConditionDto parseCondition(ComboBox<String> fieldCombo,
-                                        ComboBox<String> operatorCombo,
-                                        TextField valueField) {
-        String field = fieldCombo.getValue() != null ? fieldCombo.getValue().trim() : "";
-        if (field.isEmpty()) return null;
-
-        String operator = operatorCombo.getValue();
-        if (operator == null || operator.isEmpty()) return null;
-
-        ConditionDto c = new ConditionDto();
-        c.setField(field);
-        c.setOperator(operator);
-
-        String valueText = valueField.getText() != null ? valueField.getText().trim() : "";
-        if (!valueText.isEmpty()) {
-            if ("IN".equals(operator)) {
-                c.setValues(Arrays.stream(valueText.split(","))
-                        .map(String::trim)
-                        .filter(s -> !s.isEmpty())
-                        .map(s -> (Object) s)
-                        .collect(Collectors.toList()));
-            } else {
-                c.setValue(valueText);
-            }
-        }
-        return c;
     }
 
     private OnSelectActionDto parseOnSelect() {
