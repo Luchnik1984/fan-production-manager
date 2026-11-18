@@ -1,21 +1,21 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.gui.client.FanSeriesClient;
-import com.fanproduction.gui.client.FanSpeciesClient;
-import com.fanproduction.gui.client.FanTypeClient;
+import com.fanproduction.gui.client.ProductSeriesClient;
+import com.fanproduction.gui.client.ProductSpeciesClient;
+import com.fanproduction.gui.client.ProductTypeClient;
 import com.fanproduction.gui.client.FanTemplateClient;
-import com.fanproduction.gui.dto.request.fan.CreateFanSeriesRequest;
-import com.fanproduction.gui.dto.request.fan.CreateFanSpeciesRequest;
-import com.fanproduction.gui.dto.request.fan.CreateFanTypeRequest;
-import com.fanproduction.gui.dto.request.fan.UpdateFanSeriesRequest;
-import com.fanproduction.gui.dto.request.fan.UpdateFanSpeciesRequest;
-import com.fanproduction.gui.dto.request.fan.UpdateFanTypeRequest;
-import com.fanproduction.gui.dto.response.FanSeriesDto;
-import com.fanproduction.gui.dto.response.FanSpeciesDto;
-import com.fanproduction.gui.dto.response.FanTypeDto;
+import com.fanproduction.gui.dto.request.fan.CreateProductSeriesRequest;
+import com.fanproduction.gui.dto.request.fan.CreateProductSpeciesRequest;
+import com.fanproduction.gui.dto.request.fan.CreateProductTypeRequest;
+import com.fanproduction.gui.dto.request.fan.UpdateProductSeriesRequest;
+import com.fanproduction.gui.dto.request.fan.UpdateProductSpeciesRequest;
+import com.fanproduction.gui.dto.request.fan.UpdateProductTypeRequest;
+import com.fanproduction.gui.dto.response.ProductSeriesDto;
+import com.fanproduction.gui.dto.response.ProductSpeciesDto;
+import com.fanproduction.gui.dto.response.ProductTypeDto;
 import com.fanproduction.gui.dto.response.FanTemplateDto;
 import com.fanproduction.gui.dto.response.FanTemplateVersionDto;
-import com.fanproduction.gui.util.FanTreeBuilder;
+import com.fanproduction.gui.util.ProductTreeBuilder;
 import com.fanproduction.gui.util.TemplateControllerHelper;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -95,7 +95,7 @@ public class TemplateTreeController {
 
         new Thread(() -> {
             try {
-                List<FanTypeDto> tree = FanTypeClient.getTree();
+                List<ProductTypeDto> tree = ProductTypeClient.getTree();
                 Platform.runLater(() -> applyTree(tree));
             } catch (Exception e) {
                 log.warn("Не удалось загрузить дерево: {}", e.getMessage());
@@ -109,8 +109,8 @@ public class TemplateTreeController {
         }, "TemplateTree-loader").start();
     }
 
-    private void applyTree(List<FanTypeDto> types) {
-        TreeItem<Object> root = FanTreeBuilder.buildTree(types);
+    private void applyTree(List<ProductTypeDto> types) {
+        TreeItem<Object> root = ProductTreeBuilder.buildTree(types);
         hierarchyTree.setRoot(root);
         hierarchyTree.setShowRoot(false);
         statusLabel.setText("Типов: " + (types != null ? types.size() : 0));
@@ -121,10 +121,10 @@ public class TemplateTreeController {
      * <p>
      * Панель {@code TemplateDetailView} создаётся лениво — при первом выборе
      * серии. При последующих выборах переиспользуется тот же контроллер:
-     * внутри {@link TemplateDetailController#showForSeries(FanSeriesDto)}
+     * внутри {@link TemplateDetailController#showForSeries(ProductSeriesDto)}
      * сбрасывается состояние и запускается новая загрузка.
      */
-    private void loadTemplateDetail(FanSeriesDto series) {
+    private void loadTemplateDetail(ProductSeriesDto series) {
         if (templateDetailView == null) {
             try {
                 FXMLLoader loader = new FXMLLoader(getClass().getResource(
@@ -158,7 +158,7 @@ public class TemplateTreeController {
      * Открывает {@link MarkingRuleEditorController} в отдельном Stage,
      * минуя панель шаблона.
      */
-    private void handleOpenRuleEditorFromTree(FanSeriesDto series) {
+    private void handleOpenRuleEditorFromTree(ProductSeriesDto series) {
         new Thread(() -> {
             try {
                 FanTemplateDto template;
@@ -211,7 +211,7 @@ public class TemplateTreeController {
                 if (templateDetailController != null
                         && hierarchyTree.getSelectionModel().getSelectedItem() != null
                         && hierarchyTree.getSelectionModel().getSelectedItem().getValue()
-                        instanceof FanSeriesDto current) {
+                        instanceof ProductSeriesDto current) {
                     templateDetailController.showForSeries(current);
                 }
             });
@@ -245,13 +245,13 @@ public class TemplateTreeController {
                     setText(null);
                     setGraphic(null);
                     setStyle("");
-                } else if (item instanceof FanTypeDto type) {
+                } else if (item instanceof ProductTypeDto type) {
                     setText(type.getDisplayName());
                     setStyle("-fx-font-weight: bold;");
-                } else if (item instanceof FanSpeciesDto species) {
+                } else if (item instanceof ProductSpeciesDto species) {
                     setText(species.getDisplayName());
                     setStyle("-fx-text-fill: #444;");
-                } else if (item instanceof FanSeriesDto series) {
+                } else if (item instanceof ProductSeriesDto series) {
                     setText(series.getDisplayName());
                     setStyle("");
                 } else {
@@ -265,7 +265,7 @@ public class TemplateTreeController {
     private void setupTreeSelectionListener() {
         hierarchyTree.getSelectionModel().selectedItemProperty().addListener(
                 (obs, old, newItem) -> {
-                    if (newItem != null && newItem.getValue() instanceof FanSeriesDto series) {
+                    if (newItem != null && newItem.getValue() instanceof ProductSeriesDto series) {
                         loadTemplateDetail(series);
                     } else if (newItem != null) {
                         showDetailPlaceholder("Выбран " + describeNode(newItem.getValue()) + ". " +
@@ -279,8 +279,8 @@ public class TemplateTreeController {
     }
 
     private String describeNode(Object value) {
-        if (value instanceof FanTypeDto) return "тип";
-        if (value instanceof FanSpeciesDto) return "вид";
+        if (value instanceof ProductTypeDto) return "тип";
+        if (value instanceof ProductSpeciesDto) return "вид";
         return "элемент";
     }
 
@@ -314,19 +314,19 @@ public class TemplateTreeController {
             Object value = item.getValue();
             menu.getItems().clear();
 
-            if (value instanceof FanTypeDto type) {
+            if (value instanceof ProductTypeDto type) {
                 createChild.setText("Создать вид");
                 createChild.setOnAction(e -> handleCreateSpecies(type));
                 edit.setOnAction(e -> handleEditType(type));
                 delete.setOnAction(e -> handleDeleteType(type));
                 menu.getItems().addAll(createChild, edit, delete);
-            } else if (value instanceof FanSpeciesDto species) {
+            } else if (value instanceof ProductSpeciesDto species) {
                 createChild.setText("Создать серию");
                 createChild.setOnAction(e -> handleCreateSeries(species));
                 edit.setOnAction(e -> handleEditSpecies(species));
                 delete.setOnAction(e -> handleDeleteSpecies(species));
                 menu.getItems().addAll(createChild, edit, delete);
-            }else if (value instanceof FanSeriesDto series) {
+            }else if (value instanceof ProductSeriesDto series) {
                 edit.setOnAction(e -> handleEditSeries(series));
                 delete.setOnAction(e -> handleDeleteSeries(series));
                 openTemplate.setOnAction(e -> loadTemplateDetail(series));
@@ -350,18 +350,18 @@ public class TemplateTreeController {
         showTypeDialog(null);
     }
 
-    private void handleEditType(FanTypeDto type) {
+    private void handleEditType(ProductTypeDto type) {
         showTypeDialog(type);
     }
 
-    private void handleDeleteType(FanTypeDto type) {
+    private void handleDeleteType(ProductTypeDto type) {
         if (confirmDelete("Удалить тип «" + type.getDisplayName() + "»?",
                 "Если у типа есть виды, удаление невозможно.")) {
-            runAsync(() -> FanTypeClient.deleteType(type.getId()), "Тип удалён");
+            runAsync(() -> ProductTypeClient.deleteType(type.getId()), "Тип удалён");
         }
     }
 
-    private void showTypeDialog(FanTypeDto existing) {
+    private void showTypeDialog(ProductTypeDto existing) {
         Dialog<ButtonType> dialog = buildDialog(
                 existing == null ? "Создать тип" : "Редактировать тип");
 
@@ -403,11 +403,11 @@ public class TemplateTreeController {
 
             runAsync(() -> {
                 if (existing == null) {
-                    FanTypeClient.createType(new CreateFanTypeRequest(
+                    ProductTypeClient.createType(new CreateProductTypeRequest(
                             name.isEmpty() ? null : name, designation));
                 } else {
-                    FanTypeClient.updateType(existing.getId(),
-                            new UpdateFanTypeRequest(
+                    ProductTypeClient.updateType(existing.getId(),
+                            new UpdateProductTypeRequest(
                                     name.isEmpty() ? null : name, designation));
                 }
             }, existing == null ? "Тип создан" : "Тип обновлён");
@@ -418,22 +418,22 @@ public class TemplateTreeController {
     // ВИД
     // ==========================================================
 
-    private void handleCreateSpecies(FanTypeDto parentType) {
+    private void handleCreateSpecies(ProductTypeDto parentType) {
         showSpeciesDialog(parentType.getId(), null);
     }
 
-    private void handleEditSpecies(FanSpeciesDto species) {
+    private void handleEditSpecies(ProductSpeciesDto species) {
         showSpeciesDialog(species.getTypeId(), species);
     }
 
-    private void handleDeleteSpecies(FanSpeciesDto species) {
+    private void handleDeleteSpecies(ProductSpeciesDto species) {
         if (confirmDelete("Удалить вид «" + species.getDisplayName() + "»?",
                 "Если у вида есть серии, удаление невозможно.")) {
-            runAsync(() -> FanSpeciesClient.deleteSpecies(species.getId()), "Вид удалён");
+            runAsync(() -> ProductSpeciesClient.deleteSpecies(species.getId()), "Вид удалён");
         }
     }
 
-    private void showSpeciesDialog(Long typeId, FanSpeciesDto existing) {
+    private void showSpeciesDialog(Long typeId, ProductSpeciesDto existing) {
         Dialog<ButtonType> dialog = buildDialog(
                 existing == null ? "Создать вид" : "Редактировать вид");
 
@@ -458,11 +458,11 @@ public class TemplateTreeController {
 
             runAsync(() -> {
                 if (existing == null) {
-                    FanSpeciesClient.createSpecies(new CreateFanSpeciesRequest(
+                    ProductSpeciesClient.createSpecies(new CreateProductSpeciesRequest(
                             typeId, name.isEmpty() ? null : name));
                 } else {
-                    FanSpeciesClient.updateSpecies(existing.getId(),
-                            new UpdateFanSpeciesRequest(
+                    ProductSpeciesClient.updateSpecies(existing.getId(),
+                            new UpdateProductSpeciesRequest(
                                     name.isEmpty() ? null : name));
                 }
             }, existing == null ? "Вид создан" : "Вид обновлён");
@@ -473,21 +473,21 @@ public class TemplateTreeController {
     // СЕРИЯ
     // ==========================================================
 
-    private void handleCreateSeries(FanSpeciesDto parentSpecies) {
+    private void handleCreateSeries(ProductSpeciesDto parentSpecies) {
         showSeriesDialog(parentSpecies.getId(), null);
     }
 
-    private void handleEditSeries(FanSeriesDto series) {
+    private void handleEditSeries(ProductSeriesDto series) {
         showSeriesDialog(series.getSpeciesId(), series);
     }
 
-    private void handleDeleteSeries(FanSeriesDto series) {
+    private void handleDeleteSeries(ProductSeriesDto series) {
         if (confirmDelete("Удалить серию «" + series.getDisplayName() + "»?", null)) {
-            runAsync(() -> FanSeriesClient.deleteSeries(series.getId()), "Серия удалена");
+            runAsync(() -> ProductSeriesClient.deleteSeries(series.getId()), "Серия удалена");
         }
     }
 
-    private void showSeriesDialog(Long speciesId, FanSeriesDto existing) {
+    private void showSeriesDialog(Long speciesId, ProductSeriesDto existing) {
         Dialog<ButtonType> dialog = buildDialog(
                 existing == null ? "Создать серию" : "Редактировать серию");
 
@@ -512,11 +512,11 @@ public class TemplateTreeController {
 
             runAsync(() -> {
                 if (existing == null) {
-                    FanSeriesClient.createSeries(new CreateFanSeriesRequest(
+                    ProductSeriesClient.createSeries(new CreateProductSeriesRequest(
                             speciesId, name.isEmpty() ? null : name));
                 } else {
-                    FanSeriesClient.updateSeries(existing.getId(),
-                            new UpdateFanSeriesRequest(
+                    ProductSeriesClient.updateSeries(existing.getId(),
+                            new UpdateProductSeriesRequest(
                                     name.isEmpty() ? null : name));
                 }
             }, existing == null ? "Серия создана" : "Серия обновлена");

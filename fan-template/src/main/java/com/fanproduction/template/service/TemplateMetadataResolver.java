@@ -1,15 +1,15 @@
 package com.fanproduction.template.service;
 
-import com.fanproduction.template.entity.FanSeries;
-import com.fanproduction.template.entity.FanSpecies;
+import com.fanproduction.template.entity.ProductSeries;
+import com.fanproduction.template.entity.ProductSpecies;
 import com.fanproduction.template.entity.FanTemplate;
 import com.fanproduction.template.entity.FanTemplateVersion;
-import com.fanproduction.template.entity.FanType;
-import com.fanproduction.template.repository.FanSeriesRepository;
-import com.fanproduction.template.repository.FanSpeciesRepository;
+import com.fanproduction.template.entity.ProductType;
+import com.fanproduction.template.repository.ProductSeriesRepository;
+import com.fanproduction.template.repository.ProductSpeciesRepository;
 import com.fanproduction.template.repository.FanTemplateRepository;
 import com.fanproduction.template.repository.FanTemplateVersionRepository;
-import com.fanproduction.template.repository.FanTypeRepository;
+import com.fanproduction.template.repository.ProductTypeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -45,9 +45,9 @@ public class TemplateMetadataResolver {
 
     private final FanTemplateVersionRepository versionRepository;
     private final FanTemplateRepository templateRepository;
-    private final FanSeriesRepository seriesRepository;
-    private final FanSpeciesRepository speciesRepository;
-    private final FanTypeRepository typeRepository;
+    private final ProductSeriesRepository seriesRepository;
+    private final ProductSpeciesRepository speciesRepository;
+    private final ProductTypeRepository typeRepository;
 
     /**
      * Резолвит метаданные шаблона по ID версии.
@@ -76,13 +76,13 @@ public class TemplateMetadataResolver {
         }
 
         // 2. template → series
-        FanSeries series = seriesRepository.findById(template.getSeriesId()).orElse(null);
+        ProductSeries series = seriesRepository.findById(template.getSeriesId()).orElse(null);
         if (series != null) {
             result.put("seriesName", emptyToNull(series.getName()));
         }
 
         // 3. series → species
-        FanSpecies species = null;
+        ProductSpecies species = null;
         if (series != null) {
             species = speciesRepository.findById(series.getSpeciesId()).orElse(null);
             if (species != null) {
@@ -92,7 +92,7 @@ public class TemplateMetadataResolver {
 
         // 4. species → type
         if (species != null) {
-            FanType type = typeRepository.findById(species.getTypeId()).orElse(null);
+            ProductType type = typeRepository.findById(species.getTypeId()).orElse(null);
             if (type != null) {
                 result.put("typeDesignation", emptyToNull(type.getDesignation()));
                 result.put("typeName", emptyToNull(type.getName()));

@@ -94,7 +94,7 @@ public interface ProductCardService {
      * <p>
      * Например, {@code fanType = "Вентилятор канальный"}.
      */
-    Page<BaseProductCard> getFanCardsByFanType(String fanType, Pageable pageable);
+    Page<BaseProductCard> getFanCardsByProductType(String fanType, Pageable pageable);
 
     /**
      * Создать карточку продукции со связями (компоненты и материалы)

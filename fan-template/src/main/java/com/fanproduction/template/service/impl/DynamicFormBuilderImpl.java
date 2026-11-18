@@ -4,17 +4,17 @@ import com.fanproduction.template.dto.DynamicFormFieldDto;
 import com.fanproduction.template.dto.DynamicFormMetadataDto;
 import com.fanproduction.template.entity.FanTemplate;
 import com.fanproduction.template.entity.FanTemplateVersion;
-import com.fanproduction.template.entity.FanSeries;
-import com.fanproduction.template.entity.FanSpecies;
-import com.fanproduction.template.entity.FanType;
+import com.fanproduction.template.entity.ProductSeries;
+import com.fanproduction.template.entity.ProductSpecies;
+import com.fanproduction.template.entity.ProductType;
 import com.fanproduction.template.enums.FieldType;
 import com.fanproduction.template.exception.TemplateValidationException;
 import com.fanproduction.template.model.FieldDefinition;
 import com.fanproduction.template.repository.FanTemplateRepository;
 import com.fanproduction.template.repository.FanTemplateVersionRepository;
-import com.fanproduction.template.repository.FanSeriesRepository;
-import com.fanproduction.template.repository.FanSpeciesRepository;
-import com.fanproduction.template.repository.FanTypeRepository;
+import com.fanproduction.template.repository.ProductSeriesRepository;
+import com.fanproduction.template.repository.ProductSpeciesRepository;
+import com.fanproduction.template.repository.ProductTypeRepository;
 import com.fanproduction.template.service.DynamicFormBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,9 +35,9 @@ public class DynamicFormBuilderImpl implements DynamicFormBuilder {
 
     private final FanTemplateRepository fanTemplateRepository;
     private final FanTemplateVersionRepository fanTemplateVersionRepository;
-    private final FanSeriesRepository fanSeriesRepository;
-    private final FanSpeciesRepository fanSpeciesRepository;
-    private final FanTypeRepository fanTypeRepository;
+    private final ProductSeriesRepository productSeriesRepository;
+    private final ProductSpeciesRepository productSpeciesRepository;
+    private final ProductTypeRepository productTypeRepository;
 
     @Override
     public DynamicFormMetadataDto buildFormMetadata(Long templateVersionId) {
@@ -62,17 +62,17 @@ public class DynamicFormBuilderImpl implements DynamicFormBuilder {
         Long seriesId = null;
         String seriesName = null;
 
-        FanSeries series = fanSeriesRepository.findById(template.getSeriesId()).orElse(null);
+        ProductSeries series = productSeriesRepository.findById(template.getSeriesId()).orElse(null);
         if (series != null) {
             seriesId = series.getId();
             seriesName = series.getName();
 
-            FanSpecies species = fanSpeciesRepository.findById(series.getSpeciesId()).orElse(null);
+            ProductSpecies species = productSpeciesRepository.findById(series.getSpeciesId()).orElse(null);
             if (species != null) {
                 speciesId = species.getId();
                 speciesName = species.getName();
 
-                FanType type = fanTypeRepository.findById(species.getTypeId()).orElse(null);
+                ProductType type = productTypeRepository.findById(species.getTypeId()).orElse(null);
                 if (type != null) {
                     typeId = type.getId();
                     typeName = type.getName();

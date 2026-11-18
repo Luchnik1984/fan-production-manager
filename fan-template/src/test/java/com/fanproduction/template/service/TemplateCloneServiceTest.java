@@ -9,7 +9,7 @@ import com.fanproduction.template.enums.TemplateStatus;
 import com.fanproduction.template.exception.TemplateValidationException;
 import com.fanproduction.template.model.FieldDefinition;
 import com.fanproduction.template.model.MarkingRule;
-import com.fanproduction.template.repository.FanSeriesRepository;
+import com.fanproduction.template.repository.ProductSeriesRepository;
 import com.fanproduction.template.repository.FanTemplateRepository;
 import com.fanproduction.template.repository.FanTemplateVersionRepository;
 import com.fanproduction.template.service.impl.TemplateCloneServiceImpl;
@@ -48,7 +48,7 @@ class TemplateCloneServiceTest {
     private FanTemplateVersionRepository fanTemplateVersionRepository;
 
     @Mock
-    private FanSeriesRepository fanSeriesRepository;
+    private ProductSeriesRepository productSeriesRepository;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -93,7 +93,7 @@ class TemplateCloneServiceTest {
         @DisplayName("Клонирование через current_version_id")
         void cloneFromCurrentVersion() {
             when(fanTemplateRepository.findById(100L)).thenReturn(Optional.of(sourceTemplate));
-            when(fanSeriesRepository.existsById(2L)).thenReturn(true);
+            when(productSeriesRepository.existsById(2L)).thenReturn(true);
             when(fanTemplateRepository.existsBySeriesId(2L)).thenReturn(false);
             when(fanTemplateVersionRepository.findById(200L))
                     .thenReturn(Optional.of(sourceVersion));
@@ -118,7 +118,7 @@ class TemplateCloneServiceTest {
         @DisplayName("Кастомное имя нового шаблона")
         void cloneWithCustomName() {
             when(fanTemplateRepository.findById(100L)).thenReturn(Optional.of(sourceTemplate));
-            when(fanSeriesRepository.existsById(2L)).thenReturn(true);
+            when(productSeriesRepository.existsById(2L)).thenReturn(true);
             when(fanTemplateRepository.existsBySeriesId(2L)).thenReturn(false);
             when(fanTemplateVersionRepository.findById(200L))
                     .thenReturn(Optional.of(sourceVersion));
@@ -151,7 +151,7 @@ class TemplateCloneServiceTest {
             draft.setMarkingRuleJson(sourceVersion.getMarkingRuleJson());
 
             when(fanTemplateRepository.findById(100L)).thenReturn(Optional.of(sourceTemplate));
-            when(fanSeriesRepository.existsById(2L)).thenReturn(true);
+            when(productSeriesRepository.existsById(2L)).thenReturn(true);
             when(fanTemplateRepository.existsBySeriesId(2L)).thenReturn(false);
             when(fanTemplateVersionRepository.findFirstByTemplateIdAndStatus(
                     100L, TemplateStatus.DRAFT)).thenReturn(Optional.of(draft));
@@ -174,7 +174,7 @@ class TemplateCloneServiceTest {
         void fieldsAndRuleCopiedToNewVersion() {
 
             when(fanTemplateRepository.findById(100L)).thenReturn(Optional.of(sourceTemplate));
-            when(fanSeriesRepository.existsById(2L)).thenReturn(true);
+            when(productSeriesRepository.existsById(2L)).thenReturn(true);
             when(fanTemplateRepository.existsBySeriesId(2L)).thenReturn(false);
             when(fanTemplateVersionRepository.findById(200L))
                     .thenReturn(Optional.of(sourceVersion));
@@ -205,7 +205,7 @@ class TemplateCloneServiceTest {
         @DisplayName("Аудит публикуется")
         void auditPublished() {
             when(fanTemplateRepository.findById(100L)).thenReturn(Optional.of(sourceTemplate));
-            when(fanSeriesRepository.existsById(2L)).thenReturn(true);
+            when(productSeriesRepository.existsById(2L)).thenReturn(true);
             when(fanTemplateRepository.existsBySeriesId(2L)).thenReturn(false);
             when(fanTemplateVersionRepository.findById(200L))
                     .thenReturn(Optional.of(sourceVersion));
@@ -254,7 +254,7 @@ class TemplateCloneServiceTest {
         @DisplayName("Целевая серия не найдена → исключение")
         void targetSeriesNotFound() {
             when(fanTemplateRepository.findById(100L)).thenReturn(Optional.of(sourceTemplate));
-            when(fanSeriesRepository.existsById(999L)).thenReturn(false);
+            when(productSeriesRepository.existsById(999L)).thenReturn(false);
 
             assertThatThrownBy(() -> service.cloneTemplate(100L, 999L, null, "admin"))
                     .isInstanceOf(TemplateValidationException.class)
@@ -267,7 +267,7 @@ class TemplateCloneServiceTest {
         @DisplayName("У целевой серии уже есть шаблон → исключение")
         void targetSeriesHasTemplate() {
             when(fanTemplateRepository.findById(100L)).thenReturn(Optional.of(sourceTemplate));
-            when(fanSeriesRepository.existsById(2L)).thenReturn(true);
+            when(productSeriesRepository.existsById(2L)).thenReturn(true);
             when(fanTemplateRepository.existsBySeriesId(2L)).thenReturn(true);
 
             assertThatThrownBy(() -> service.cloneTemplate(100L, 2L, null, "admin"))
@@ -283,7 +283,7 @@ class TemplateCloneServiceTest {
             sourceTemplate.setCurrentVersionId(null);
 
             when(fanTemplateRepository.findById(100L)).thenReturn(Optional.of(sourceTemplate));
-            when(fanSeriesRepository.existsById(2L)).thenReturn(true);
+            when(productSeriesRepository.existsById(2L)).thenReturn(true);
             when(fanTemplateRepository.existsBySeriesId(2L)).thenReturn(false);
             when(fanTemplateVersionRepository.findFirstByTemplateIdAndStatus(
                     100L, TemplateStatus.DRAFT)).thenReturn(Optional.empty());

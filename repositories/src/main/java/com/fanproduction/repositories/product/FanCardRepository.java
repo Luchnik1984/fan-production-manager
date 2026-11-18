@@ -27,7 +27,7 @@ public interface FanCardRepository extends JpaRepository<FanCardEntity, Long> {
     /**
      * Поиск по типу вентилятора (осевой, радиальный, канальный)
      */
-    List<FanCardEntity> findByFanType(String fanType);
+    List<FanCardEntity> findByProductType(String fanType);
 
 
     /**
@@ -52,5 +52,5 @@ public interface FanCardRepository extends JpaRepository<FanCardEntity, Long> {
      * <p>
      * Пример значения: {@code "Вентилятор канальный"}.
      */
-    Page<FanCardEntity> findByFanType(String fanType, Pageable pageable);
+    Page<FanCardEntity> findByProductType(String fanType, Pageable pageable);
 }

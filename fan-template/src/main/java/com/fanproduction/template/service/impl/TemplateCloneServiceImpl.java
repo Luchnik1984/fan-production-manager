@@ -7,7 +7,7 @@ import com.fanproduction.template.entity.FanTemplate;
 import com.fanproduction.template.entity.FanTemplateVersion;
 import com.fanproduction.template.enums.TemplateStatus;
 import com.fanproduction.template.exception.TemplateValidationException;
-import com.fanproduction.template.repository.FanSeriesRepository;
+import com.fanproduction.template.repository.ProductSeriesRepository;
 import com.fanproduction.template.repository.FanTemplateRepository;
 import com.fanproduction.template.repository.FanTemplateVersionRepository;
 import com.fanproduction.template.service.TemplateCloneService;
@@ -29,7 +29,7 @@ public class TemplateCloneServiceImpl implements TemplateCloneService {
 
     private final FanTemplateRepository fanTemplateRepository;
     private final FanTemplateVersionRepository fanTemplateVersionRepository;
-    private final FanSeriesRepository fanSeriesRepository;
+    private final ProductSeriesRepository productSeriesRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -44,7 +44,7 @@ public class TemplateCloneServiceImpl implements TemplateCloneService {
                         "Шаблон-источник не найден: " + sourceTemplateId));
 
         // 2. Целевая серия
-        if (!fanSeriesRepository.existsById(targetSeriesId)) {
+        if (!productSeriesRepository.existsById(targetSeriesId)) {
             throw new TemplateValidationException("Целевая серия не найдена: " + targetSeriesId);
         }
 

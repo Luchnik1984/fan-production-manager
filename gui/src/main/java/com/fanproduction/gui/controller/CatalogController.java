@@ -2,12 +2,12 @@ package com.fanproduction.gui.controller;
 
 import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.gui.client.ProductCardClient;
-import com.fanproduction.gui.client.FanTypeClient;
+import com.fanproduction.gui.client.ProductTypeClient;
 import com.fanproduction.gui.component.FanTemplateSelectionDialog;
 import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fanproduction.gui.dto.CatalogFilterOption;
-import com.fanproduction.gui.dto.response.FanTypeShortDto;
+import com.fanproduction.gui.dto.response.ProductTypeShortDto;
 import com.fanproduction.gui.service.TableColumnConfigurator;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -64,7 +64,7 @@ public class CatalogController {
     private int totalElements = 0;
     private static final int PAGE_SIZE = 20;
     private String currentCardTypeFilter = null;
-    private String currentFanTypeFilter = null;
+    private String currentProductTypeFilter = null;
 
     @FXML
     private void initialize() {
@@ -90,27 +90,27 @@ public class CatalogController {
         typeFilterComboBox.valueProperty().addListener((obs, old, newVal) -> {
             if (newVal !=null) {
                 currentCardTypeFilter = newVal.cardType();
-                currentFanTypeFilter = newVal.fanType();
+                currentProductTypeFilter = newVal.fanType();
             } else {
                 currentCardTypeFilter = null;
-                currentFanTypeFilter = null;
+                currentProductTypeFilter = null;
             }
             handleSearch();
         });
 
         // Асинхронно подгружаем типы вентиляторов
-        loadFanTypesIntoFilter();
+        loadProductTypesIntoFilter();
     }
 
     /**
      * Асинхронно загрузить динамические типы вентиляторов и добавить в ComboBox.
      */
-    private void loadFanTypesIntoFilter() {
+    private void loadProductTypesIntoFilter() {
         new Thread(() -> {
             try {
-                List<FanTypeShortDto> fanTypes = FanTypeClient.getShortList();
+                List<ProductTypeShortDto> fanTypes = ProductTypeClient.getShortList();
                 Platform.runLater(() -> {
-                    for (FanTypeShortDto ft : fanTypes) {
+                    for (ProductTypeShortDto ft : fanTypes) {
                         typeFilterComboBox.getItems().add(
                                 new CatalogFilterOption(ft.getDisplayName(), "FAN", ft.getFilterValue()));
                     }
@@ -128,7 +128,7 @@ public class CatalogController {
         new Thread(() -> {
             try {
                 ApiResponse<Map<String, Object>> response = ProductCardClient.getAllCards(
-                        currentPage, PAGE_SIZE, currentCardTypeFilter, currentFanTypeFilter);
+                        currentPage, PAGE_SIZE, currentCardTypeFilter, currentProductTypeFilter);
 
                 Platform.runLater(() -> {
                     if (response.isSuccess() && response.getData() != null) {

@@ -169,8 +169,8 @@ public class ProductCardServiceImpl implements ProductCardService {
     }
 
     @Override
-    public Page<BaseProductCard> getFanCardsByFanType(String fanType, Pageable pageable) {
-        return fanCardRepository.findByFanType(fanType, pageable)
+    public Page<BaseProductCard> getFanCardsByProductType(String fanType, Pageable pageable) {
+        return fanCardRepository.findByProductType(fanType, pageable)
                 .map(card -> card);
     }
 

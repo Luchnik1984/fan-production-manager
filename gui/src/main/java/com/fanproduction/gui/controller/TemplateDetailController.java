@@ -2,16 +2,16 @@ package com.fanproduction.gui.controller;
 
 import com.fanproduction.gui.client.FanTemplateClient;
 import com.fanproduction.gui.client.FanTemplateVersionClient;
-import com.fanproduction.gui.client.FanTypeClient;
+import com.fanproduction.gui.client.ProductTypeClient;
 import com.fanproduction.gui.dto.request.fan.CloneFanTemplateRequest;
 import com.fanproduction.gui.dto.request.fan.CreateFanTemplateRequest;
 import com.fanproduction.gui.dto.request.fan.CreateFanTemplateVersionRequest;
 import com.fanproduction.gui.dto.request.fan.UpdateFanTemplateRequest;
-import com.fanproduction.gui.dto.response.FanSeriesDto;
+import com.fanproduction.gui.dto.response.ProductSeriesDto;
 import com.fanproduction.gui.dto.response.FanTemplateDto;
 import com.fanproduction.gui.dto.response.FanTemplateVersionDto;
-import com.fanproduction.gui.dto.response.FanTypeDto;
-import com.fanproduction.gui.util.FanTreeBuilder;
+import com.fanproduction.gui.dto.response.ProductTypeDto;
+import com.fanproduction.gui.util.ProductTreeBuilder;
 import com.fanproduction.gui.util.TemplateControllerHelper;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
@@ -33,7 +33,7 @@ import java.util.Objects;
  * <p>
  * Отвечает за:
  * <ul>
- *   <li>Загрузку шаблона по выбранной серии ({@link #showForSeries(FanSeriesDto)}).</li>
+ *   <li>Загрузку шаблона по выбранной серии ({@link #showForSeries(ProductSeriesDto)}).</li>
  *   <li>Список версий с их статусами.</li>
  *   <li>Управление жизненным циклом версий (publish / deprecate / archive / delete / create).</li>
  *   <li>Клонирование шаблона для другой серии.</li>
@@ -45,7 +45,7 @@ import java.util.Objects;
  * <b>Race condition:</b> при быстром клике по разным сериям загрузки могут
  * завершаться в произвольном порядке. Поле {@link #generation} защищает от
  * «устаревшего» результата: применяется только результат последнего вызова
- * {@link #showForSeries(FanSeriesDto)}.
+ * {@link #showForSeries(ProductSeriesDto)}.
  * <p>
  * Общие утилиты ({@code runAsync}, {@code showAlert}, {@code buildDialog},
  * {@code confirm}) — из {@link TemplateControllerHelper}.
@@ -95,7 +95,7 @@ public class TemplateDetailController {
 
     private final ObservableList<FanTemplateVersionDto> versionsList = FXCollections.observableArrayList();
 
-    private FanSeriesDto currentSeries;
+    private ProductSeriesDto currentSeries;
     private FanTemplateDto currentTemplate;
 
     /** Поколение загрузок — защита от race condition при быстром клике. */
@@ -168,7 +168,7 @@ public class TemplateDetailController {
      * Потокобезопасен, можно вызывать из FX-потока (что делает
      * {@link TemplateTreeController}). Сама загрузка — в фоне.
      */
-    public void showForSeries(FanSeriesDto series) {
+    public void showForSeries(ProductSeriesDto series) {
         if (series == null) {
             return;
         }
@@ -194,7 +194,7 @@ public class TemplateDetailController {
     // АСИНХРОННАЯ ЗАГРУЗКА
     // ==========================================================
 
-    private void loadAsync(FanSeriesDto series, long myGeneration) {
+    private void loadAsync(ProductSeriesDto series, long myGeneration) {
         try {
             FanTemplateDto template;
             try {
@@ -487,11 +487,11 @@ public class TemplateDetailController {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setText(null);
-                } else if (item instanceof FanTypeDto t) {
+                } else if (item instanceof ProductTypeDto t) {
                     setText("📁 " + t.getDisplayName());
-                } else if (item instanceof com.fanproduction.gui.dto.response.FanSpeciesDto s) {
+                } else if (item instanceof com.fanproduction.gui.dto.response.ProductSpeciesDto s) {
                     setText("  📁 " + s.getDisplayName());
-                } else if (item instanceof FanSeriesDto s) {
+                } else if (item instanceof ProductSeriesDto s) {
                     setText("    📄 " + s.getDisplayName());
                 } else {
                     setText(item.toString());
@@ -518,8 +518,8 @@ public class TemplateDetailController {
 
         new Thread(() -> {
             try {
-                List<FanTypeDto> types = FanTypeClient.getTree();
-                TreeItem<Object> root = FanTreeBuilder.buildTree(types);
+                List<ProductTypeDto> types = ProductTypeClient.getTree();
+                TreeItem<Object> root = ProductTreeBuilder.buildTree(types);
                 Platform.runLater(() -> treeView.setRoot(root));
             } catch (Exception e) {
                 Platform.runLater(() -> errorLabel.setText(
@@ -532,13 +532,13 @@ public class TemplateDetailController {
         okButton.setDisable(true);
         treeView.getSelectionModel().selectedItemProperty().addListener(
                 (obs, o, n) -> okButton.setDisable(
-                        n == null || !(n.getValue() instanceof FanSeriesDto)));
+                        n == null || !(n.getValue() instanceof ProductSeriesDto)));
 
         dialog.showAndWait().ifPresent(button -> {
             if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) return;
 
             TreeItem<Object> sel = treeView.getSelectionModel().getSelectedItem();
-            if (sel == null || !(sel.getValue() instanceof FanSeriesDto targetSeries)) return;
+            if (sel == null || !(sel.getValue() instanceof ProductSeriesDto targetSeries)) return;
 
             String newName = nameField.getText().trim();
 

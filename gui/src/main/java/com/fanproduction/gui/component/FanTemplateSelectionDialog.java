@@ -1,13 +1,13 @@
 package com.fanproduction.gui.component;
 
 import com.fanproduction.gui.client.FanTemplateClient;
-import com.fanproduction.gui.client.FanTypeClient;
-import com.fanproduction.gui.dto.response.FanSeriesDto;
-import com.fanproduction.gui.dto.response.FanSpeciesDto;
+import com.fanproduction.gui.client.ProductTypeClient;
+import com.fanproduction.gui.dto.response.ProductSeriesDto;
+import com.fanproduction.gui.dto.response.ProductSpeciesDto;
 import com.fanproduction.gui.dto.response.FanTemplateDto;
 import com.fanproduction.gui.dto.response.FanTemplateVersionDto;
-import com.fanproduction.gui.dto.response.FanTypeDto;
-import com.fanproduction.gui.util.FanTreeBuilder;
+import com.fanproduction.gui.dto.response.ProductTypeDto;
+import com.fanproduction.gui.util.ProductTreeBuilder;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -128,9 +128,9 @@ public class FanTemplateSelectionDialog {
         statusLabel.setText("Загрузка дерева...");
         new Thread(() -> {
             try {
-                List<FanTypeDto> tree = FanTypeClient.getTree();
+                List<ProductTypeDto> tree = ProductTypeClient.getTree();
                 Platform.runLater(() -> {
-                    TreeItem<Object> rootItem = FanTreeBuilder.buildTree(tree);
+                    TreeItem<Object> rootItem = ProductTreeBuilder.buildTree(tree);
                     treeView.setRoot(rootItem);
                     treeView.setCellFactory(tv -> new TreeCell<>() {
                         @Override
@@ -138,11 +138,11 @@ public class FanTemplateSelectionDialog {
                             super.updateItem(item, empty);
                             if (empty || item == null) {
                                 setText(null);
-                            } else if (item instanceof FanTypeDto t) {
+                            } else if (item instanceof ProductTypeDto t) {
                                 setText(t.getDisplayName());
-                            } else if (item instanceof FanSpeciesDto s) {
+                            } else if (item instanceof ProductSpeciesDto s) {
                                 setText(s.getDisplayName());
-                            } else if (item instanceof FanSeriesDto s) {
+                            } else if (item instanceof ProductSeriesDto s) {
                                 setText(s.getDisplayName());
                             } else {
                                 setText(item.toString());
@@ -158,7 +158,7 @@ public class FanTemplateSelectionDialog {
     }
 
     private void onTreeSelection(TreeItem<Object> item) {
-        if (item == null || !(item.getValue() instanceof FanSeriesDto series)) {
+        if (item == null || !(item.getValue() instanceof ProductSeriesDto series)) {
             selectedSeriesId = null;
             versionsList.getItems().clear();
             selectButton.setDisable(true);
