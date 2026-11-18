@@ -1,4 +1,4 @@
--- V30__create_audit_settings_table.sql
+-- V25__create_audit_settings_table.sql
 -- Создание таблицы настроек аудита
 
 CREATE TABLE IF NOT EXISTS audit_settings (

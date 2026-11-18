@@ -1,4 +1,4 @@
--- V18__create_motor_wheel_card_table.sql
+-- V16__create_motor_wheel_card_table.sql
 -- Создание таблицы для мотор-колёс
 
 CREATE TABLE IF NOT EXISTS motor_wheel_card (

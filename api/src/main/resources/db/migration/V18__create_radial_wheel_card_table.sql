@@ -1,4 +1,4 @@
--- V20__create_radial_wheel_card_table.sql
+-- V18__create_radial_wheel_card_table.sql
 -- Создание таблицы для радиальных колёс
 
 CREATE TABLE IF NOT EXISTS radial_wheel_card (
