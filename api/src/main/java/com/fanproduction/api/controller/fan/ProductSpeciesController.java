@@ -24,7 +24,7 @@ import java.util.List;
 @PreAuthorize("hasRole('ADMIN')")
 public class ProductSpeciesController extends BaseController {
 
-    private final ProductHierarchyService fanHierarchyService;
+    private final ProductHierarchyService productHierarchyService;
 
     /**
      * Виды по типу.
@@ -33,7 +33,7 @@ public class ProductSpeciesController extends BaseController {
      */
     @GetMapping
     public ApiResponse<List<ProductSpeciesDto>> getSpeciesByType(@RequestParam Long typeId) {
-        return ApiResponse.success(fanHierarchyService.getSpeciesByType(typeId));
+        return ApiResponse.success(productHierarchyService.getSpeciesByType(typeId));
     }
 
     /**
@@ -41,7 +41,7 @@ public class ProductSpeciesController extends BaseController {
      */
     @GetMapping("/{id}")
     public ApiResponse<ProductSpeciesDto> getSpeciesById(@PathVariable Long id) {
-        return ApiResponse.success(fanHierarchyService.getSpeciesById(id));
+        return ApiResponse.success(productHierarchyService.getSpeciesById(id));
     }
 
     /**
@@ -50,7 +50,7 @@ public class ProductSpeciesController extends BaseController {
     @PostMapping
     public ApiResponse<ProductSpeciesDto> createSpecies(
             @Valid @RequestBody CreateProductSpeciesRequest request) {
-        ProductSpeciesDto created = fanHierarchyService.createSpecies(
+        ProductSpeciesDto created = productHierarchyService.createSpecies(
                 request.typeId(),
                 request.name(),
                 getCurrentUser()
@@ -65,7 +65,7 @@ public class ProductSpeciesController extends BaseController {
     public ApiResponse<ProductSpeciesDto> updateSpecies(
             @PathVariable Long id,
             @Valid @RequestBody UpdateProductSpeciesRequest request) {
-        ProductSpeciesDto updated = fanHierarchyService.updateSpecies(
+        ProductSpeciesDto updated = productHierarchyService.updateSpecies(
                 id,
                 request.name(),
                 getCurrentUser()
@@ -78,7 +78,7 @@ public class ProductSpeciesController extends BaseController {
      */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteSpecies(@PathVariable Long id) {
-        fanHierarchyService.deleteSpecies(id, getCurrentUser());
+        productHierarchyService.deleteSpecies(id, getCurrentUser());
         return ApiResponse.success("Вид удалён", null);
     }
 }

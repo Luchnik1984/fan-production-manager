@@ -41,4 +41,14 @@ public interface ProductTypeRepository extends JpaRepository<ProductType, Long> 
      * Используется для отображения в UI.
      */
     List<ProductType> findAllByOrderByDesignationAsc();
+
+    /**
+     * Типы указанного раздела, отсортированные по обозначению.
+     */
+    List<ProductType> findAllBySectionIdOrderByDesignationAsc(Long sectionId);
+
+    /**
+     * Количество типов в разделе — защита от удаления непустого раздела.
+     */
+    long countBySectionId(Long sectionId);
 }

@@ -2,14 +2,17 @@ package com.fanproduction.template.service.impl;
 
 import com.fanproduction.core.enums.AuditAction;
 import com.fanproduction.core.event.AuditEvent;
+import com.fanproduction.template.dto.ProductSectionDto;
 import com.fanproduction.template.dto.ProductSeriesDto;
 import com.fanproduction.template.dto.ProductSpeciesDto;
 import com.fanproduction.template.dto.ProductTypeDto;
 import com.fanproduction.template.dto.ProductTypeShortDto;
+import com.fanproduction.template.entity.ProductSection;
 import com.fanproduction.template.entity.ProductSeries;
 import com.fanproduction.template.entity.ProductSpecies;
 import com.fanproduction.template.entity.ProductType;
 import com.fanproduction.template.exception.TemplateValidationException;
+import com.fanproduction.template.repository.ProductSectionRepository;
 import com.fanproduction.template.repository.ProductSeriesRepository;
 import com.fanproduction.template.repository.ProductSpeciesRepository;
 import com.fanproduction.template.repository.ProductTypeRepository;
@@ -37,7 +40,205 @@ public class ProductHierarchyServiceImpl implements ProductHierarchyService {
     private final ProductTypeRepository productTypeRepository;
     private final ProductSpeciesRepository productSpeciesRepository;
     private final ProductSeriesRepository productSeriesRepository;
+    private final ProductSectionRepository productSectionRepository;
     private final ApplicationEventPublisher eventPublisher;
+
+    // ==========================================================
+    // SECTION
+    // ==========================================================
+
+    @Override
+    public List<ProductSectionDto> getSectionTree() {
+        List<ProductSection> allSections = productSectionRepository.findAllByOrderBySortOrderAscIdAsc();
+
+        Map<Long, List<ProductSection>> childrenByParent = allSections.stream()
+                .filter(section -> section.getParentId() != null)
+                .collect(Collectors.groupingBy(ProductSection::getParentId));
+
+        List<ProductSection> roots = allSections.stream()
+                .filter(section -> section.getParentId() == null)
+                .toList();
+
+        // Типы с видами и сериями — строим один раз и раскладываем по разделам.
+        Map<Long, List<ProductTypeDto>> typesBySection = getTree().stream()
+                .filter(type -> type.sectionId() != null)
+                .collect(Collectors.groupingBy(ProductTypeDto::sectionId));
+
+        return roots.stream()
+                .map(root -> toSectionDto(root, childrenByParent, typesBySection))
+                .toList();
+    }
+
+    @Override
+    public List<ProductSectionDto> getAllSections() {
+        return productSectionRepository.findAllByOrderBySortOrderAscIdAsc().stream()
+                .map(section -> toSectionDto(section, Map.of(), Map.of()))
+                .toList();
+    }
+
+    @Override
+    public ProductSectionDto getSectionById(Long id) {
+        ProductSection section = productSectionRepository.findById(id)
+                .orElseThrow(() -> new TemplateValidationException("Раздел не найден: " + id));
+        return toSectionDto(section, Map.of(), Map.of());
+    }
+
+    @Override
+    @Transactional
+    public ProductSectionDto createSection(Long parentId, String name, Integer sortOrder, String createdBy) {
+        validateNotEmpty(name, "Наименование раздела");
+        String cleanName = name.trim();
+
+        if (parentId != null && !productSectionRepository.existsById(parentId)) {
+            throw new TemplateValidationException("Родительский раздел не найден: " + parentId);
+        }
+        if (sectionNameExists(parentId, cleanName, null)) {
+            throw new TemplateValidationException("Раздел с именем '" + cleanName + "' уже существует");
+        }
+
+        ProductSection section = new ProductSection();
+        section.setParentId(parentId);
+        section.setName(cleanName);
+        section.setSortOrder(sortOrder != null ? sortOrder : nextSectionSortOrder(parentId));
+        section.setIsSystem(false);
+        section.setCreatedBy(createdBy);
+
+        ProductSection saved = productSectionRepository.save(section);
+
+        publishAudit(createdBy, AuditAction.TEMPLATE_CREATE, "Создан раздел продукции: " + saved.getName());
+        log.info("Раздел продукции создан: id={}, name={}", saved.getId(), saved.getName());
+
+        return toSectionDto(saved, Map.of(), Map.of());
+    }
+
+    @Override
+    @Transactional
+    public ProductSectionDto updateSection(Long id, String name, Integer sortOrder, String updatedBy) {
+        ProductSection section = productSectionRepository.findById(id)
+                .orElseThrow(() -> new TemplateValidationException("Раздел не найден: " + id));
+
+        if (name != null) {
+            validateNotEmpty(name, "Наименование раздела");
+            String cleanName = name.trim();
+            if (!cleanName.equalsIgnoreCase(section.getName())) {
+                if (sectionNameExists(section.getParentId(), cleanName, id)) {
+                    throw new TemplateValidationException("Раздел с именем '" + cleanName + "' уже существует");
+                }
+                section.setName(cleanName);
+            }
+        }
+        if (sortOrder != null) {
+            section.setSortOrder(sortOrder);
+        }
+
+        ProductSection saved = productSectionRepository.save(section);
+        publishAudit(updatedBy, AuditAction.TEMPLATE_UPDATE, "Обновлён раздел продукции: " + saved.getName());
+
+        return toSectionDto(saved, Map.of(), Map.of());
+    }
+
+    @Override
+    @Transactional
+    public void moveSection(Long id, Long newParentId, String movedBy) {
+        ProductSection section = productSectionRepository.findById(id)
+                .orElseThrow(() -> new TemplateValidationException("Раздел не найден: " + id));
+
+        if (Objects.equals(id, newParentId)) {
+            throw new TemplateValidationException("Раздел нельзя переместить в самого себя");
+        }
+
+        if (newParentId != null) {
+            if (!productSectionRepository.existsById(newParentId)) {
+                throw new TemplateValidationException("Целевой раздел не найден: " + newParentId);
+            }
+            // Проверка на цикл: новый родитель не должен быть потомком раздела.
+            Long cursor = newParentId;
+            int guard = 0;
+            while (cursor != null) {
+                if (Objects.equals(cursor, id)) {
+                    throw new TemplateValidationException(
+                            "Нельзя переместить раздел внутрь его же подраздела — это создаст цикл");
+                }
+                ProductSection parent = productSectionRepository.findById(cursor).orElse(null);
+                cursor = parent != null ? parent.getParentId() : null;
+                if (++guard > 100) {
+                    throw new TemplateValidationException("Слишком глубокая вложенность разделов");
+                }
+            }
+        }
+
+        section.setParentId(newParentId);
+        productSectionRepository.save(section);
+        publishAudit(movedBy, AuditAction.TEMPLATE_UPDATE,
+                "Раздел продукции перемещён: " + section.getName());
+    }
+
+    @Override
+    @Transactional
+    public void deleteSection(Long id, String deletedBy) {
+        ProductSection section = productSectionRepository.findById(id)
+                .orElseThrow(() -> new TemplateValidationException("Раздел не найден: " + id));
+
+        if (Boolean.TRUE.equals(section.getIsSystem())) {
+            throw new TemplateValidationException("Системный раздел нельзя удалить: " + section.getName());
+        }
+
+        long children = productSectionRepository.countByParentId(id);
+        if (children > 0) {
+            throw new TemplateValidationException(
+                    "Нельзя удалить раздел '" + section.getName() + "': в нём есть подразделы (" + children + ")");
+        }
+
+        long types = productTypeRepository.countBySectionId(id);
+        if (types > 0) {
+            throw new TemplateValidationException(
+                    "Нельзя удалить раздел '" + section.getName() + "': в нём есть типы продукции (" + types + ")");
+        }
+
+        productSectionRepository.delete(section);
+        publishAudit(deletedBy, AuditAction.TEMPLATE_DELETE, "Удалён раздел продукции: " + section.getName());
+    }
+
+    private boolean sectionNameExists(Long parentId, String name, Long excludeId) {
+        ProductSection existing = (parentId == null
+                ? productSectionRepository.findByParentIdIsNullAndNameIgnoreCase(name)
+                : productSectionRepository.findByParentIdAndNameIgnoreCase(parentId, name))
+                .orElse(null);
+        return existing != null && (excludeId == null || !Objects.equals(existing.getId(), excludeId));
+    }
+
+    private int nextSectionSortOrder(Long parentId) {
+        List<ProductSection> siblings = parentId == null
+                ? productSectionRepository.findByParentIdIsNullOrderBySortOrderAscIdAsc()
+                : productSectionRepository.findByParentIdOrderBySortOrderAscIdAsc(parentId);
+        return siblings.stream()
+                .map(ProductSection::getSortOrder)
+                .filter(Objects::nonNull)
+                .max(Integer::compareTo)
+                .map(max -> max + 10)
+                .orElse(10);
+    }
+
+    private ProductSectionDto toSectionDto(ProductSection section,
+                                           Map<Long, List<ProductSection>> childrenByParent,
+                                           Map<Long, List<ProductTypeDto>> typesBySection) {
+        List<ProductSectionDto> children = childrenByParent
+                .getOrDefault(section.getId(), List.of()).stream()
+                .map(child -> toSectionDto(child, childrenByParent, typesBySection))
+                .toList();
+
+        return new ProductSectionDto(
+                section.getId(),
+                section.getParentId(),
+                section.getName(),
+                section.getSortOrder(),
+                section.getIsSystem(),
+                section.getCreatedAt(),
+                section.getCreatedBy(),
+                typesBySection.getOrDefault(section.getId(), List.of()),
+                children
+        );
+    }
 
     // ==========================================================
     // TYPE
@@ -60,6 +261,12 @@ public class ProductHierarchyServiceImpl implements ProductHierarchyService {
     @Override
     @Transactional
     public ProductTypeDto createType(String name, String designation, String createdBy) {
+        return createType(name, designation, null, createdBy);
+    }
+
+    @Override
+    @Transactional
+    public ProductTypeDto createType(String name, String designation, Long sectionId, String createdBy) {
         validateNotEmpty(designation, "Обозначение типа");
 
         if (productTypeRepository.existsByDesignationIgnoreCase(designation)) {
@@ -67,18 +274,23 @@ public class ProductHierarchyServiceImpl implements ProductHierarchyService {
                     "Тип с обозначением '" + designation.trim() + "' уже существует");
         }
 
+        if (sectionId != null && !productSectionRepository.existsById(sectionId)) {
+            throw new TemplateValidationException("Раздел не найден: " + sectionId);
+        }
+
         ProductType type = new ProductType();
         type.setName(trimOrNull(name));
         type.setDesignation(designation.trim());
         type.setIsSystem(false);
+        type.setSectionId(sectionId);
         type.setCreatedBy(createdBy);
 
         ProductType saved = productTypeRepository.save(type);
 
         publishAudit(createdBy, AuditAction.TEMPLATE_CREATE,
-                "Создан тип вентилятора: " + saved.getDesignation());
+                "Создан тип продукции: " + saved.getDesignation());
 
-        log.info("Тип вентилятора создан: id={}, designation={}", saved.getId(), saved.getDesignation());
+        log.info("Тип продукции создан: id={}, designation={}", saved.getId(), saved.getDesignation());
 
         return toTypeDto(saved, null);
     }
@@ -443,6 +655,9 @@ public class ProductHierarchyServiceImpl implements ProductHierarchyService {
                 type.getDesignation(),
                 displayName,
                 type.getIsSystem(),
+                type.getSectionId(),
+                type.getCodePrefix(),
+                type.getSystemCardType(),
                 type.getCreatedAt(),
                 type.getCreatedBy(),
                 species

@@ -25,14 +25,14 @@ import java.util.List;
 @PreAuthorize("hasRole('ADMIN')")
 public class ProductTypeController extends BaseController {
 
-    private final ProductHierarchyService fanHierarchyService;
+    private final ProductHierarchyService productHierarchyService;
 
     /**
      * Все типы (без вложенных видов и серий).
      */
     @GetMapping
     public ApiResponse<List<ProductTypeDto>> getAllTypes() {
-        return ApiResponse.success(fanHierarchyService.getAllTypes());
+        return ApiResponse.success(productHierarchyService.getAllTypes());
     }
 
     /**
@@ -40,7 +40,7 @@ public class ProductTypeController extends BaseController {
      */
     @GetMapping("/tree")
     public ApiResponse<List<ProductTypeDto>> getTree() {
-        return ApiResponse.success(fanHierarchyService.getTree());
+        return ApiResponse.success(productHierarchyService.getTree());
     }
 
     /**
@@ -48,7 +48,7 @@ public class ProductTypeController extends BaseController {
      */
     @GetMapping("/{id}")
     public ApiResponse<ProductTypeDto> getTypeById(@PathVariable Long id) {
-        return ApiResponse.success(fanHierarchyService.getTypeById(id));
+        return ApiResponse.success(productHierarchyService.getTypeById(id));
     }
 
     /**
@@ -60,7 +60,7 @@ public class ProductTypeController extends BaseController {
     @GetMapping("/short-list")
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<List<ProductTypeShortDto>> getShortList() {
-        return ApiResponse.success(fanHierarchyService.getShortList());
+        return ApiResponse.success(productHierarchyService.getShortList());
     }
 
     /**
@@ -68,9 +68,10 @@ public class ProductTypeController extends BaseController {
      */
     @PostMapping
     public ApiResponse<ProductTypeDto> createType(@Valid @RequestBody CreateProductTypeRequest request) {
-        ProductTypeDto created = fanHierarchyService.createType(
+        ProductTypeDto created = productHierarchyService.createType(
                 request.name(),
                 request.designation(),
+                request.sectionId(),
                 getCurrentUser()
         );
         return ApiResponse.success("Тип создан", created);
@@ -83,7 +84,7 @@ public class ProductTypeController extends BaseController {
     public ApiResponse<ProductTypeDto> updateType(
             @PathVariable Long id,
             @Valid @RequestBody UpdateProductTypeRequest request) {
-        ProductTypeDto updated = fanHierarchyService.updateType(
+        ProductTypeDto updated = productHierarchyService.updateType(
                 id,
                 request.name(),
                 request.designation(),
@@ -97,7 +98,7 @@ public class ProductTypeController extends BaseController {
      */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteType(@PathVariable Long id) {
-        fanHierarchyService.deleteType(id, getCurrentUser());
+        productHierarchyService.deleteType(id, getCurrentUser());
         return ApiResponse.success("Тип удалён", null);
     }
 }

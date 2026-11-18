@@ -46,6 +46,27 @@ public class ProductType {
     @Column(name = "is_system", nullable = false)
     private Boolean isSystem = false;
 
+    /**
+     * Раздел продукции, к которому относится тип.
+     * {@code null} — тип ещё не распределён по разделам.
+     */
+    @Column(name = "section_id")
+    private Long sectionId;
+
+    /**
+     * Префикс номера изделия для журнала: ED, MW, RW, AW, VRK.
+     * Уникальный. Для динамических типов задаётся администратором.
+     */
+    @Column(name = "code_prefix", length = 4)
+    private String codePrefix;
+
+    /**
+     * Хардкод-тип: MOTOR, MOTOR_WHEEL, RADIAL_WHEEL, AXIAL_WHEEL.
+     * {@code null} — динамический тип (поля и маркировка задаются шаблоном).
+     */
+    @Column(name = "system_card_type", length = 30)
+    private String systemCardType;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

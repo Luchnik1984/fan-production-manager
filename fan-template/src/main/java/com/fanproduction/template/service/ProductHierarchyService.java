@@ -1,6 +1,7 @@
 package com.fanproduction.template.service;
 
 
+import com.fanproduction.template.dto.ProductSectionDto;
 import com.fanproduction.template.dto.ProductSeriesDto;
 import com.fanproduction.template.dto.ProductSpeciesDto;
 import com.fanproduction.template.dto.ProductTypeDto;
@@ -23,6 +24,58 @@ import java.util.List;
  */
 public interface ProductHierarchyService {
 
+    // ========== Section ==========
+
+    /**
+     * Дерево разделов: Раздел → Подраздел → Тип → Вид → Серия.
+     * <p>
+     * В каждом узле {@code sections} содержит подразделы, а {@code types} —
+     * типы продукции этого раздела вместе с видами и сериями.
+     */
+    List<ProductSectionDto> getSectionTree();
+
+    /**
+     * Плоский список всех разделов (без вложенных типов и подразделов).
+     * Используется для выпадающих списков.
+     */
+    List<ProductSectionDto> getAllSections();
+
+    /**
+     * Найти раздел по ID.
+     */
+    ProductSectionDto getSectionById(Long id);
+
+    /**
+     * Создать раздел.
+     *
+     * @param parentId  родительский раздел ({@code null} — корневой)
+     * @param name      наименование (обязательное, уникальное среди соседей)
+     * @param sortOrder порядок отображения ({@code null} — в конец)
+     * @param createdBy email создателя (для аудита)
+     */
+    ProductSectionDto createSection(Long parentId, String name, Integer sortOrder, String createdBy);
+
+    /**
+     * Обновить наименование и порядок раздела.
+     */
+    ProductSectionDto updateSection(Long id, String name, Integer sortOrder, String updatedBy);
+
+    /**
+     * Переместить раздел в другого родителя.
+     * <p>
+     * Запрещено перемещать раздел внутрь самого себя или своего потомка —
+     * это создало бы цикл в дереве.
+     */
+    void moveSection(Long id, Long newParentId, String movedBy);
+
+    /**
+     * Удалить раздел.
+     * <p>
+     * Запрещено для системных разделов, а также если в разделе есть
+     * подразделы или типы продукции.
+     */
+    void deleteSection(Long id, String deletedBy);
+
     // ========== Type ==========
 
     /**
@@ -44,6 +97,16 @@ public interface ProductHierarchyService {
      * @param createdBy   email создателя (для аудита)
      */
     ProductTypeDto createType(String name, String designation, String createdBy);
+
+    /**
+     * Создать тип в конкретном разделе продукции.
+     *
+     * @param name        наименование (может быть пустым)
+     * @param designation обозначение (обязательное, уникальное)
+     * @param sectionId   раздел продукции ({@code null} — не распределён)
+     * @param createdBy   email создателя (для аудита)
+     */
+    ProductTypeDto createType(String name, String designation, Long sectionId, String createdBy);
 
     /**
      * Обновить тип.

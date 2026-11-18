@@ -24,7 +24,7 @@ import java.util.List;
 @PreAuthorize("hasRole('ADMIN')")
 public class ProductSeriesController extends BaseController {
 
-    private final ProductHierarchyService fanHierarchyService;
+    private final ProductHierarchyService productHierarchyService;
 
     /**
      * Серии по виду.
@@ -33,7 +33,7 @@ public class ProductSeriesController extends BaseController {
      */
     @GetMapping
     public ApiResponse<List<ProductSeriesDto>> getSeriesBySpecies(@RequestParam Long speciesId) {
-        return ApiResponse.success(fanHierarchyService.getSeriesBySpecies(speciesId));
+        return ApiResponse.success(productHierarchyService.getSeriesBySpecies(speciesId));
     }
 
     /**
@@ -41,7 +41,7 @@ public class ProductSeriesController extends BaseController {
      */
     @GetMapping("/{id}")
     public ApiResponse<ProductSeriesDto> getSeriesById(@PathVariable Long id) {
-        return ApiResponse.success(fanHierarchyService.getSeriesById(id));
+        return ApiResponse.success(productHierarchyService.getSeriesById(id));
     }
 
     /**
@@ -50,7 +50,7 @@ public class ProductSeriesController extends BaseController {
     @PostMapping
     public ApiResponse<ProductSeriesDto> createSeries(
             @Valid @RequestBody CreateProductSeriesRequest request) {
-        ProductSeriesDto created = fanHierarchyService.createSeries(
+        ProductSeriesDto created = productHierarchyService.createSeries(
                 request.speciesId(),
                 request.name(),
                 getCurrentUser()
@@ -65,7 +65,7 @@ public class ProductSeriesController extends BaseController {
     public ApiResponse<ProductSeriesDto> updateSeries(
             @PathVariable Long id,
             @Valid @RequestBody UpdateProductSeriesRequest request) {
-        ProductSeriesDto updated = fanHierarchyService.updateSeries(
+        ProductSeriesDto updated = productHierarchyService.updateSeries(
                 id,
                 request.name(),
                 getCurrentUser()
@@ -78,7 +78,7 @@ public class ProductSeriesController extends BaseController {
      */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteSeries(@PathVariable Long id) {
-        fanHierarchyService.deleteSeries(id, getCurrentUser());
+        productHierarchyService.deleteSeries(id, getCurrentUser());
         return ApiResponse.success("Серия удалена", null);
     }
 }
