@@ -40,6 +40,10 @@ public enum AuditAction {
     TEMPLATE_DEPRECATE,
     TEMPLATE_CLONE,
 
+    // ========== Обратимость жизненного цикла версий (US10.3) ==========
+    TEMPLATE_RESTORE,
+    TEMPLATE_UN_DEPRECATE,
+
     // ========== Миграция и клонирование карточек (FR12) ==========
     CARD_MIGRATED_TO_TEMPLATE_VERSION,
     CARD_CLONED_TO_TEMPLATE_VERSION

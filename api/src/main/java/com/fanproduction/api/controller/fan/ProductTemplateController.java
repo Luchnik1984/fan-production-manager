@@ -173,11 +173,24 @@ public class ProductTemplateController extends BaseController {
      * Создать новую DRAFT-версию.
      * <p>
      * Запрещено, если у шаблона уже есть DRAFT.
+     *
+     * @param sourceVersionId версия-источник для копирования (US10.3).
+     *                        Если задана, новая версия создаётся как копия
+     *                        выбранной — в том числе LEGACY, DEPRECATED или
+     *                        ARCHIVED. Если не задана — работает автокопирование
+     *                        из текущей/последней версии.
      */
     @PostMapping("/{id}/versions")
     public ApiResponse<ProductTemplateVersionDto> createNewVersion(
             @PathVariable Long id,
+            @RequestParam(required = false) Long sourceVersionId,
             @RequestBody(required = false) CreateProductTemplateVersionRequest request) {
+        if (sourceVersionId != null) {
+            ProductTemplateVersionDto created = productTemplateService.createVersionFrom(
+                    id, sourceVersionId, getCurrentUser());
+            return ApiResponse.success("Версия создана на основе выбранной", created);
+        }
+
         List<com.fanproduction.template.model.FieldDefinition> fields =
                 request != null ? request.fields() : null;
         com.fanproduction.template.model.MarkingRule rule =

@@ -141,6 +141,30 @@ public class ProductTemplateVersionController extends BaseController {
     }
 
     /**
+     * Восстановить версию из архива: ARCHIVED → DEPRECATED.
+     * <p>
+     * Нужно, если версия была заархивирована по ошибке.
+     */
+    @PostMapping("/{id}/restore")
+    public ApiResponse<ProductTemplateVersionDto> restore(@PathVariable Long id) {
+        ProductTemplateVersionDto restored = productTemplateService.restoreVersion(
+                id, getCurrentUser());
+        return ApiResponse.success("Версия восстановлена из архива", restored);
+    }
+
+    /**
+     * Снять деприкейт: DEPRECATED → LEGACY.
+     * <p>
+     * Разрешено, только если активных версий шаблона меньше лимита (20).
+     */
+    @PostMapping("/{id}/un-deprecate")
+    public ApiResponse<ProductTemplateVersionDto> undeprecate(@PathVariable Long id) {
+        ProductTemplateVersionDto restored = productTemplateService.undeprecateVersion(
+                id, getCurrentUser());
+        return ApiResponse.success("Деприкейт снят", restored);
+    }
+
+    /**
      * Удалить DRAFT или ARCHIVED версию.
      */
     @DeleteMapping("/{id}")

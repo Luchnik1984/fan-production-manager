@@ -32,6 +32,22 @@ import java.util.Set;
 @Transactional(readOnly = true)
 public class ProductTemplateServiceImpl implements ProductTemplateService {
 
+    /**
+     * Максимум активных версий на шаблон (DRAFT + PUBLISHED + LEGACY).
+     * Защищает от «размножения» версий: старые нужно архивировать.
+     */
+    private static final int MAX_ACTIVE_VERSIONS = 20;
+
+    /**
+     * Статусы, которые считаются активными (участвуют в лимите и в выборе
+     * версии для новых карточек).
+     */
+    private static final Set<TemplateStatus> ACTIVE_STATUSES = Set.of(
+            TemplateStatus.DRAFT,
+            TemplateStatus.PUBLISHED,
+            TemplateStatus.LEGACY
+    );
+
     private final ProductTemplateRepository productTemplateRepository;
     private final ProductTemplateVersionRepository productTemplateVersionRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -198,6 +214,8 @@ public class ProductTemplateServiceImpl implements ProductTemplateService {
                     "У шаблона уже есть черновик (DRAFT). Сначала опубликуйте или удалите его.");
         }
 
+        ensureActiveVersionsLimit(templateId, "создать новую версию");
+
         // Автокопирование: если fields/markingRule не переданы — копируем из источника
         List<FieldDefinition> effectiveFields = fields;
         MarkingRule effectiveRule = markingRule;
@@ -284,11 +302,15 @@ public class ProductTemplateServiceImpl implements ProductTemplateService {
 
         ProductTemplate template = findTemplateOrThrow(version.getTemplateId());
 
+        // Сначала снимаем PUBLISHED со старой версии и принудительно сбрасываем
+        // изменение в БД: уникальный частичный индекс
+        // idx_product_template_version_single_published не даст держать две
+        // PUBLISHED-версии даже внутри одной транзакции.
         productTemplateVersionRepository
                 .findFirstByTemplateIdAndStatus(template.getId(), TemplateStatus.PUBLISHED)
                 .ifPresent(oldPublished -> {
                     oldPublished.setStatus(TemplateStatus.LEGACY);
-                    productTemplateVersionRepository.save(oldPublished);
+                    productTemplateVersionRepository.saveAndFlush(oldPublished);
                 });
 
         version.setStatus(TemplateStatus.PUBLISHED);
@@ -346,6 +368,102 @@ public class ProductTemplateServiceImpl implements ProductTemplateService {
 
     @Override
     @Transactional
+    public ProductTemplateVersionDto restoreVersion(Long versionId, String updatedBy) {
+        ProductTemplateVersion version = findVersionOrThrow(versionId);
+
+        if (version.getStatus() != TemplateStatus.ARCHIVED) {
+            throw new TemplateValidationException(
+                    "Восстановить можно только ARCHIVED-версию. Текущий статус: " + version.getStatus());
+        }
+
+        version.setStatus(TemplateStatus.DEPRECATED);
+        ProductTemplateVersion saved = productTemplateVersionRepository.save(version);
+
+        publishAudit(updatedBy, AuditAction.TEMPLATE_RESTORE,
+                "Версия v" + saved.getVersion() + " восстановлена из архива (ARCHIVED → DEPRECATED)");
+
+        log.info("Версия восстановлена из архива: versionId={}, version={}", versionId, saved.getVersion());
+
+        return toVersionDto(saved);
+    }
+
+    @Override
+    @Transactional
+    public ProductTemplateVersionDto undeprecateVersion(Long versionId, String updatedBy) {
+        ProductTemplateVersion version = findVersionOrThrow(versionId);
+
+        if (version.getStatus() != TemplateStatus.DEPRECATED) {
+            throw new TemplateValidationException(
+                    "Снять деприкейт можно только с DEPRECATED-версии. Текущий статус: " + version.getStatus());
+        }
+
+        ensureActiveVersionsLimit(version.getTemplateId(), "снять деприкейт");
+
+        version.setStatus(TemplateStatus.LEGACY);
+        ProductTemplateVersion saved = productTemplateVersionRepository.save(version);
+
+        publishAudit(updatedBy, AuditAction.TEMPLATE_UN_DEPRECATE,
+                "Версия v" + saved.getVersion() + " возвращена в LEGACY (DEPRECATED → LEGACY)");
+
+        log.info("Деприкейт снят: versionId={}, version={}", versionId, saved.getVersion());
+
+        return toVersionDto(saved);
+    }
+
+    @Override
+    @Transactional
+    public ProductTemplateVersionDto createVersionFrom(Long templateId, Long sourceVersionId, String createdBy) {
+        ProductTemplate template = findTemplateOrThrow(templateId);
+
+        if (productTemplateVersionRepository.existsByTemplateIdAndStatus(templateId, TemplateStatus.DRAFT)) {
+            throw new TemplateValidationException(
+                    "У шаблона уже есть черновик (DRAFT). Сначала опубликуйте или удалите его.");
+        }
+
+        ProductTemplateVersion source;
+        if (sourceVersionId != null) {
+            source = findVersionOrThrow(sourceVersionId);
+            if (!Objects.equals(source.getTemplateId(), templateId)) {
+                throw new TemplateValidationException(
+                        "Версия v" + source.getVersion() + " принадлежит другому шаблону");
+            }
+        } else {
+            source = resolveSourceForNewVersion(template);
+            if (source == null) {
+                throw new TemplateValidationException(
+                        "У шаблона нет версий — нечего копировать. Создайте версию с нуля.");
+            }
+        }
+
+        ensureActiveVersionsLimit(templateId, "создать версию на основе выбранной");
+
+        int nextVersionNumber = productTemplateVersionRepository.findMaxVersion(templateId)
+                .orElse(0) + 1;
+
+        ProductTemplateVersion version = new ProductTemplateVersion();
+        version.setTemplateId(templateId);
+        version.setVersion(nextVersionNumber);
+        version.setStatus(TemplateStatus.DRAFT);
+        version.setFieldsJson(source.getFieldsJson() != null ? source.getFieldsJson() : List.of());
+        version.setMarkingRuleJson(source.getMarkingRuleJson() != null
+                ? source.getMarkingRuleJson()
+                : MarkingRule.empty());
+        version.setCreatedBy(createdBy);
+
+        ProductTemplateVersion saved = productTemplateVersionRepository.save(version);
+
+        publishAudit(createdBy, AuditAction.TEMPLATE_CLONE,
+                "Создана версия v" + nextVersionNumber + " на основе v" + source.getVersion()
+                        + " (" + source.getStatus() + ") шаблона '" + template.getName() + "'");
+
+        log.info("Версия создана на основе выбранной: templateId={}, newVersion={}, sourceVersion={}",
+                templateId, nextVersionNumber, source.getVersion());
+
+        return toVersionDto(saved);
+    }
+
+    @Override
+    @Transactional
     public void deleteVersion(Long versionId, String deletedBy) {
         ProductTemplateVersion version = findVersionOrThrow(versionId);
 
@@ -393,6 +511,25 @@ public class ProductTemplateServiceImpl implements ProductTemplateService {
         List<ProductTemplateVersion> versions = productTemplateVersionRepository
                 .findByTemplateIdOrderByVersionDesc(template.getId());
         return versions.isEmpty() ? null : versions.get(0);
+    }
+
+    /**
+     * Проверить лимит активных версий шаблона.
+     *
+     * @param templateId ID шаблона
+     * @param action     описание действия для сообщения об ошибке
+     * @throws TemplateValidationException если лимит уже достигнут
+     */
+    private void ensureActiveVersionsLimit(Long templateId, String action) {
+        long active = productTemplateVersionRepository
+                .findByTemplateIdAndStatusIn(templateId, ACTIVE_STATUSES)
+                .size();
+        if (active >= MAX_ACTIVE_VERSIONS) {
+            throw new TemplateValidationException(
+                    "Нельзя " + action + ": у шаблона уже " + active
+                            + " активных версий (лимит " + MAX_ACTIVE_VERSIONS + "). "
+                            + "Архивируйте устаревшие версии.");
+        }
     }
 
     private ProductTemplate findTemplateOrThrow(Long id) {
