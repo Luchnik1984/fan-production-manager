@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 /**
  * Запрос на клонирование шаблона для другой серии.
  */
-public record CloneFanTemplateRequest(
+public record CloneProductTemplateRequest(
         @NotNull(message = "ID целевой серии обязателен")
         Long targetSeriesId,
 

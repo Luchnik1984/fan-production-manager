@@ -9,9 +9,9 @@ import java.util.List;
  * Запрос на создание новой DRAFT-версии шаблона.
  * <p>
  * Если {@code fields} или {@code markingRule} = null — сервер скопирует
- * из предыдущей версии (см. FanTemplateServiceAutocloneTest).
+ * из предыдущей версии (см. ProductTemplateServiceAutocloneTest).
  */
-public record CreateFanTemplateVersionRequest(
+public record CreateProductTemplateVersionRequest(
         List<FieldDefinitionDto> fields,
         MarkingRuleDto markingRule
 ) {

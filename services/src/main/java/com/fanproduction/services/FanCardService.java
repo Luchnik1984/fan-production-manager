@@ -40,7 +40,7 @@ public interface FanCardService {
      * <p>
      * Маркировка пересчитывается по текущей версии шаблона карточки.
      * <p>
-     * Технические поля {@code templateVersionId} и {@code fanTemplateId}
+     * Технические поля {@code templateVersionId} и {@code productTemplateId}
      * не меняются.
      *
      * @param cardId    ID карточки

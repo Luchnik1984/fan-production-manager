@@ -2,16 +2,16 @@ package com.fanproduction.template.service.impl;
 
 import com.fanproduction.template.dto.DynamicFormFieldDto;
 import com.fanproduction.template.dto.DynamicFormMetadataDto;
-import com.fanproduction.template.entity.FanTemplate;
-import com.fanproduction.template.entity.FanTemplateVersion;
+import com.fanproduction.template.entity.ProductTemplate;
+import com.fanproduction.template.entity.ProductTemplateVersion;
 import com.fanproduction.template.entity.ProductSeries;
 import com.fanproduction.template.entity.ProductSpecies;
 import com.fanproduction.template.entity.ProductType;
 import com.fanproduction.template.enums.FieldType;
 import com.fanproduction.template.exception.TemplateValidationException;
 import com.fanproduction.template.model.FieldDefinition;
-import com.fanproduction.template.repository.FanTemplateRepository;
-import com.fanproduction.template.repository.FanTemplateVersionRepository;
+import com.fanproduction.template.repository.ProductTemplateRepository;
+import com.fanproduction.template.repository.ProductTemplateVersionRepository;
 import com.fanproduction.template.repository.ProductSeriesRepository;
 import com.fanproduction.template.repository.ProductSpeciesRepository;
 import com.fanproduction.template.repository.ProductTypeRepository;
@@ -33,8 +33,8 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class DynamicFormBuilderImpl implements DynamicFormBuilder {
 
-    private final FanTemplateRepository fanTemplateRepository;
-    private final FanTemplateVersionRepository fanTemplateVersionRepository;
+    private final ProductTemplateRepository productTemplateRepository;
+    private final ProductTemplateVersionRepository productTemplateVersionRepository;
     private final ProductSeriesRepository productSeriesRepository;
     private final ProductSpeciesRepository productSpeciesRepository;
     private final ProductTypeRepository productTypeRepository;
@@ -45,11 +45,11 @@ public class DynamicFormBuilderImpl implements DynamicFormBuilder {
             throw new TemplateValidationException("ID версии шаблона не может быть пустым");
         }
 
-        FanTemplateVersion version = fanTemplateVersionRepository.findById(templateVersionId)
+        ProductTemplateVersion version = productTemplateVersionRepository.findById(templateVersionId)
                 .orElseThrow(() -> new TemplateValidationException(
                         "Версия шаблона не найдена: " + templateVersionId));
 
-        FanTemplate template = fanTemplateRepository.findById(version.getTemplateId())
+        ProductTemplate template = productTemplateRepository.findById(version.getTemplateId())
                 .orElseThrow(() -> new TemplateValidationException(
                         "Шаблон не найден: " + version.getTemplateId()));
 

@@ -1,18 +1,18 @@
 package com.fanproduction.template.service;
 
 import com.fanproduction.core.event.AuditEvent;
-import com.fanproduction.template.dto.FanTemplateVersionDto;
-import com.fanproduction.template.entity.FanTemplate;
-import com.fanproduction.template.entity.FanTemplateVersion;
+import com.fanproduction.template.dto.ProductTemplateVersionDto;
+import com.fanproduction.template.entity.ProductTemplate;
+import com.fanproduction.template.entity.ProductTemplateVersion;
 import com.fanproduction.template.enums.FieldType;
 import com.fanproduction.template.enums.RuleElementType;
 import com.fanproduction.template.enums.TemplateStatus;
 import com.fanproduction.template.model.FieldDefinition;
 import com.fanproduction.template.model.MarkingRule;
 import com.fanproduction.template.model.MarkingRuleElement;
-import com.fanproduction.template.repository.FanTemplateRepository;
-import com.fanproduction.template.repository.FanTemplateVersionRepository;
-import com.fanproduction.template.service.impl.FanTemplateServiceImpl;
+import com.fanproduction.template.repository.ProductTemplateRepository;
+import com.fanproduction.template.repository.ProductTemplateVersionRepository;
+import com.fanproduction.template.service.impl.ProductTemplateServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -37,14 +37,14 @@ import static org.mockito.Mockito.when;
  * Юнит-тесты автокопирования полей и правила при создании новой версии.
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("FanTemplateService — автокопирование при createNewVersion")
-class FanTemplateServiceAutocloneTest {
+@DisplayName("ProductTemplateService — автокопирование при createNewVersion")
+class ProductTemplateServiceAutocloneTest {
 
     @Mock
-    private FanTemplateRepository fanTemplateRepository;
+    private ProductTemplateRepository productTemplateRepository;
 
     @Mock
-    private FanTemplateVersionRepository fanTemplateVersionRepository;
+    private ProductTemplateVersionRepository productTemplateVersionRepository;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -53,10 +53,10 @@ class FanTemplateServiceAutocloneTest {
     private TemplateValidationService templateValidationService;
 
     @InjectMocks
-    private FanTemplateServiceImpl service;
+    private ProductTemplateServiceImpl service;
 
-    private FanTemplate template;
-    private FanTemplateVersion currentVersion;
+    private ProductTemplate template;
+    private ProductTemplateVersion currentVersion;
 
     private final List<FieldDefinition> sampleFields = List.of(
             new FieldDefinition("series", "Серия", FieldType.TEXT,
@@ -70,13 +70,13 @@ class FanTemplateServiceAutocloneTest {
 
     @BeforeEach
     void setUp() {
-        template = new FanTemplate();
+        template = new ProductTemplate();
         template.setId(1L);
         template.setSeriesId(100L);
         template.setName("Шаблон P-серии");
         template.setCurrentVersionId(10L);
 
-        currentVersion = new FanTemplateVersion();
+        currentVersion = new ProductTemplateVersion();
         currentVersion.setId(10L);
         currentVersion.setTemplateId(1L);
         currentVersion.setVersion(1);
@@ -96,16 +96,16 @@ class FanTemplateServiceAutocloneTest {
         @Test
         @DisplayName("fields и markingRule = null → копируются из current_version")
         void bothNull() {
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
-            when(fanTemplateVersionRepository.existsByTemplateIdAndStatus(
+            when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            when(productTemplateVersionRepository.existsByTemplateIdAndStatus(
                     1L, TemplateStatus.DRAFT)).thenReturn(false);
-            when(fanTemplateVersionRepository.findById(10L))
+            when(productTemplateVersionRepository.findById(10L))
                     .thenReturn(Optional.of(currentVersion));
-            when(fanTemplateVersionRepository.findMaxVersion(1L)).thenReturn(Optional.of(1));
-            when(fanTemplateVersionRepository.save(any(FanTemplateVersion.class)))
+            when(productTemplateVersionRepository.findMaxVersion(1L)).thenReturn(Optional.of(1));
+            when(productTemplateVersionRepository.save(any(ProductTemplateVersion.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 
-            FanTemplateVersionDto result = service.createNewVersion(
+            ProductTemplateVersionDto result = service.createNewVersion(
                     1L, null, null, "admin@test");
 
             assertThat(result.fieldsJson()).isEqualTo(sampleFields);
@@ -123,16 +123,16 @@ class FanTemplateServiceAutocloneTest {
                             null, null, null, null, null, 1, null)
             );
 
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
-            when(fanTemplateVersionRepository.existsByTemplateIdAndStatus(
+            when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            when(productTemplateVersionRepository.existsByTemplateIdAndStatus(
                     1L, TemplateStatus.DRAFT)).thenReturn(false);
-            when(fanTemplateVersionRepository.findById(10L))
+            when(productTemplateVersionRepository.findById(10L))
                     .thenReturn(Optional.of(currentVersion));
-            when(fanTemplateVersionRepository.findMaxVersion(1L)).thenReturn(Optional.of(1));
-            when(fanTemplateVersionRepository.save(any(FanTemplateVersion.class)))
+            when(productTemplateVersionRepository.findMaxVersion(1L)).thenReturn(Optional.of(1));
+            when(productTemplateVersionRepository.save(any(ProductTemplateVersion.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 
-            FanTemplateVersionDto result = service.createNewVersion(
+            ProductTemplateVersionDto result = service.createNewVersion(
                     1L, customFields, null, "admin@test");
 
             assertThat(result.fieldsJson()).isEqualTo(customFields);
@@ -146,16 +146,16 @@ class FanTemplateServiceAutocloneTest {
                     new MarkingRuleElement(RuleElementType.LITERAL, "NEW", null, null, null, null)
             ));
 
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
-            when(fanTemplateVersionRepository.existsByTemplateIdAndStatus(
+            when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            when(productTemplateVersionRepository.existsByTemplateIdAndStatus(
                     1L, TemplateStatus.DRAFT)).thenReturn(false);
-            when(fanTemplateVersionRepository.findById(10L))
+            when(productTemplateVersionRepository.findById(10L))
                     .thenReturn(Optional.of(currentVersion));
-            when(fanTemplateVersionRepository.findMaxVersion(1L)).thenReturn(Optional.of(1));
-            when(fanTemplateVersionRepository.save(any(FanTemplateVersion.class)))
+            when(productTemplateVersionRepository.findMaxVersion(1L)).thenReturn(Optional.of(1));
+            when(productTemplateVersionRepository.save(any(ProductTemplateVersion.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 
-            FanTemplateVersionDto result = service.createNewVersion(
+            ProductTemplateVersionDto result = service.createNewVersion(
                     1L, null, customRule, "admin@test");
 
             assertThat(result.fieldsJson()).isEqualTo(sampleFields);
@@ -172,21 +172,21 @@ class FanTemplateServiceAutocloneTest {
             );
             MarkingRule customRule = new MarkingRule(List.of());
 
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
-            when(fanTemplateVersionRepository.existsByTemplateIdAndStatus(
+            when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            when(productTemplateVersionRepository.existsByTemplateIdAndStatus(
                     1L, TemplateStatus.DRAFT)).thenReturn(false);
-            when(fanTemplateVersionRepository.findMaxVersion(1L)).thenReturn(Optional.of(1));
-            when(fanTemplateVersionRepository.save(any(FanTemplateVersion.class)))
+            when(productTemplateVersionRepository.findMaxVersion(1L)).thenReturn(Optional.of(1));
+            when(productTemplateVersionRepository.save(any(ProductTemplateVersion.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 
-            FanTemplateVersionDto result = service.createNewVersion(
+            ProductTemplateVersionDto result = service.createNewVersion(
                     1L, customFields, customRule, "admin@test");
 
             assertThat(result.fieldsJson()).isEqualTo(customFields);
             assertThat(result.markingRuleJson()).isEqualTo(customRule);
 
             // Проверяем, что репозиторий источника не вызывался
-            verify(fanTemplateVersionRepository, never()).findById(10L);
+            verify(productTemplateVersionRepository, never()).findById(10L);
         }
     }
 
@@ -203,7 +203,7 @@ class FanTemplateServiceAutocloneTest {
         void noCurrentVersion() {
             template.setCurrentVersionId(null);
 
-            FanTemplateVersion lastVersion = new FanTemplateVersion();
+            ProductTemplateVersion lastVersion = new ProductTemplateVersion();
             lastVersion.setId(20L);
             lastVersion.setTemplateId(1L);
             lastVersion.setVersion(3);
@@ -211,16 +211,16 @@ class FanTemplateServiceAutocloneTest {
             lastVersion.setFieldsJson(sampleFields);
             lastVersion.setMarkingRuleJson(sampleRule);
 
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
-            when(fanTemplateVersionRepository.existsByTemplateIdAndStatus(
+            when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            when(productTemplateVersionRepository.existsByTemplateIdAndStatus(
                     1L, TemplateStatus.DRAFT)).thenReturn(false);
-            when(fanTemplateVersionRepository.findByTemplateIdOrderByVersionDesc(1L))
+            when(productTemplateVersionRepository.findByTemplateIdOrderByVersionDesc(1L))
                     .thenReturn(List.of(lastVersion));
-            when(fanTemplateVersionRepository.findMaxVersion(1L)).thenReturn(Optional.of(3));
-            when(fanTemplateVersionRepository.save(any(FanTemplateVersion.class)))
+            when(productTemplateVersionRepository.findMaxVersion(1L)).thenReturn(Optional.of(3));
+            when(productTemplateVersionRepository.save(any(ProductTemplateVersion.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 
-            FanTemplateVersionDto result = service.createNewVersion(
+            ProductTemplateVersionDto result = service.createNewVersion(
                     1L, null, null, "admin@test");
 
             assertThat(result.fieldsJson()).isEqualTo(sampleFields);
@@ -232,7 +232,7 @@ class FanTemplateServiceAutocloneTest {
         void brokenCurrentVersionId() {
             template.setCurrentVersionId(999L);
 
-            FanTemplateVersion lastVersion = new FanTemplateVersion();
+            ProductTemplateVersion lastVersion = new ProductTemplateVersion();
             lastVersion.setId(20L);
             lastVersion.setTemplateId(1L);
             lastVersion.setVersion(2);
@@ -240,17 +240,17 @@ class FanTemplateServiceAutocloneTest {
             lastVersion.setFieldsJson(sampleFields);
             lastVersion.setMarkingRuleJson(sampleRule);
 
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
-            when(fanTemplateVersionRepository.existsByTemplateIdAndStatus(
+            when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            when(productTemplateVersionRepository.existsByTemplateIdAndStatus(
                     1L, TemplateStatus.DRAFT)).thenReturn(false);
-            when(fanTemplateVersionRepository.findById(999L)).thenReturn(Optional.empty());
-            when(fanTemplateVersionRepository.findByTemplateIdOrderByVersionDesc(1L))
+            when(productTemplateVersionRepository.findById(999L)).thenReturn(Optional.empty());
+            when(productTemplateVersionRepository.findByTemplateIdOrderByVersionDesc(1L))
                     .thenReturn(List.of(lastVersion));
-            when(fanTemplateVersionRepository.findMaxVersion(1L)).thenReturn(Optional.of(2));
-            when(fanTemplateVersionRepository.save(any(FanTemplateVersion.class)))
+            when(productTemplateVersionRepository.findMaxVersion(1L)).thenReturn(Optional.of(2));
+            when(productTemplateVersionRepository.save(any(ProductTemplateVersion.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 
-            FanTemplateVersionDto result = service.createNewVersion(
+            ProductTemplateVersionDto result = service.createNewVersion(
                     1L, null, null, "admin@test");
 
             assertThat(result.fieldsJson()).isEqualTo(sampleFields);
@@ -264,13 +264,13 @@ class FanTemplateServiceAutocloneTest {
     @Test
     @DisplayName("Аудит содержит пометку об автокопировании")
     void auditMentionsAutoclone() {
-        when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
-        when(fanTemplateVersionRepository.existsByTemplateIdAndStatus(
+        when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+        when(productTemplateVersionRepository.existsByTemplateIdAndStatus(
                 1L, TemplateStatus.DRAFT)).thenReturn(false);
-        when(fanTemplateVersionRepository.findById(10L))
+        when(productTemplateVersionRepository.findById(10L))
                 .thenReturn(Optional.of(currentVersion));
-        when(fanTemplateVersionRepository.findMaxVersion(1L)).thenReturn(Optional.of(1));
-        when(fanTemplateVersionRepository.save(any(FanTemplateVersion.class)))
+        when(productTemplateVersionRepository.findMaxVersion(1L)).thenReturn(Optional.of(1));
+        when(productTemplateVersionRepository.save(any(ProductTemplateVersion.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
         service.createNewVersion(1L, null, null, "admin@test");
@@ -285,11 +285,11 @@ class FanTemplateServiceAutocloneTest {
     @Test
     @DisplayName("Аудит БЕЗ пометки, когда всё передано явно")
     void auditNoAutocloneMention() {
-        when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
-        when(fanTemplateVersionRepository.existsByTemplateIdAndStatus(
+        when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+        when(productTemplateVersionRepository.existsByTemplateIdAndStatus(
                 1L, TemplateStatus.DRAFT)).thenReturn(false);
-        when(fanTemplateVersionRepository.findMaxVersion(1L)).thenReturn(Optional.of(1));
-        when(fanTemplateVersionRepository.save(any(FanTemplateVersion.class)))
+        when(productTemplateVersionRepository.findMaxVersion(1L)).thenReturn(Optional.of(1));
+        when(productTemplateVersionRepository.save(any(ProductTemplateVersion.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
         service.createNewVersion(1L, sampleFields, sampleRule, "admin@test");

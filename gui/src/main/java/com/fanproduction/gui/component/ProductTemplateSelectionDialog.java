@@ -1,11 +1,11 @@
 package com.fanproduction.gui.component;
 
-import com.fanproduction.gui.client.FanTemplateClient;
+import com.fanproduction.gui.client.ProductTemplateClient;
 import com.fanproduction.gui.client.ProductTypeClient;
 import com.fanproduction.gui.dto.response.ProductSeriesDto;
 import com.fanproduction.gui.dto.response.ProductSpeciesDto;
-import com.fanproduction.gui.dto.response.FanTemplateDto;
-import com.fanproduction.gui.dto.response.FanTemplateVersionDto;
+import com.fanproduction.gui.dto.response.ProductTemplateDto;
+import com.fanproduction.gui.dto.response.ProductTemplateVersionDto;
 import com.fanproduction.gui.dto.response.ProductTypeDto;
 import com.fanproduction.gui.util.ProductTreeBuilder;
 import javafx.application.Platform;
@@ -32,23 +32,23 @@ import java.util.List;
  * <p>
  * Результат: {@link #getSelectedVersionId()}.
  */
-public class FanTemplateSelectionDialog {
+public class ProductTemplateSelectionDialog {
 
     private final Stage dialog;
     private final TreeView<Object> treeView;
-    private final ListView<FanTemplateVersionDto> versionsList;
+    private final ListView<ProductTemplateVersionDto> versionsList;
     private final Button selectButton;
     private final Label statusLabel;
 
     @Getter
     private Long selectedVersionId;
     @Getter
-    private FanTemplateVersionDto selectedVersion;
+    private ProductTemplateVersionDto selectedVersion;
 
     private Long selectedSeriesId;
-    private FanTemplateDto selectedTemplate;
+    private ProductTemplateDto selectedTemplate;
 
-    public FanTemplateSelectionDialog(Stage owner) {
+    public ProductTemplateSelectionDialog(Stage owner) {
         this.dialog = new Stage();
         dialog.initModality(Modality.WINDOW_MODAL);
         dialog.initOwner(owner);
@@ -66,7 +66,7 @@ public class FanTemplateSelectionDialog {
 
         versionsList.setCellFactory(lv -> new ListCell<>() {
             @Override
-            protected void updateItem(FanTemplateVersionDto item, boolean empty) {
+            protected void updateItem(ProductTemplateVersionDto item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setText(null);
@@ -172,14 +172,14 @@ public class FanTemplateSelectionDialog {
 
         new Thread(() -> {
             try {
-                FanTemplateDto template = FanTemplateClient.getTemplateBySeries(selectedSeriesId);
+                ProductTemplateDto template = ProductTemplateClient.getTemplateBySeries(selectedSeriesId);
                 if (template == null) {
                     Platform.runLater(() -> statusLabel.setText("Для серии нет шаблона"));
                     return;
                 }
                 selectedTemplate = template;
-                List<FanTemplateVersionDto> versions =
-                        FanTemplateClient.getAvailableVersions(template.getId());
+                List<ProductTemplateVersionDto> versions =
+                        ProductTemplateClient.getAvailableVersions(template.getId());
 
                 Platform.runLater(() -> {
                     versionsList.getItems().setAll(versions);
@@ -195,7 +195,7 @@ public class FanTemplateSelectionDialog {
         }).start();
     }
 
-    private void onVersionSelection(FanTemplateVersionDto version) {
+    private void onVersionSelection(ProductTemplateVersionDto version) {
         if (version == null) {
             selectButton.setDisable(true);
             return;

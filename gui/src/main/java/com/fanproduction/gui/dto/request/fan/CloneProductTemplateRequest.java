@@ -3,7 +3,7 @@ package com.fanproduction.gui.dto.request.fan;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-public record CloneFanTemplateRequest(
+public record CloneProductTemplateRequest(
         @NotNull(message = "ID целевой серии обязателен")
         Long targetSeriesId,
 

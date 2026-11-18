@@ -15,7 +15,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class FanTemplateDto {
+public class ProductTemplateDto {
     private Long id;
     private Long seriesId;
     private String name;
@@ -23,5 +23,5 @@ public class FanTemplateDto {
     private Long currentVersionId;
     private LocalDateTime createdAt;
     private String createdBy;
-    private List<FanTemplateVersionDto> versions;
+    private List<ProductTemplateVersionDto> versions;
 }

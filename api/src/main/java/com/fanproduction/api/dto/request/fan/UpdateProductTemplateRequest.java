@@ -1,8 +1,13 @@
-package com.fanproduction.gui.dto.request.fan;
+package com.fanproduction.api.dto.request.fan;
 
 import jakarta.validation.constraints.Size;
 
-public record UpdateFanTemplateRequest(
+/**
+ * Запрос на обновление метаданных шаблона.
+ * <p>
+ * Не затрагивает версии — только name/description.
+ */
+public record UpdateProductTemplateRequest(
         @Size(max = 200, message = "Наименование не длиннее 200 символов")
         String name,
 

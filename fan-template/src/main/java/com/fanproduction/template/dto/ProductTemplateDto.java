@@ -9,7 +9,7 @@ import java.util.List;
  * Поле {@code versions} может быть {@code null} в операциях, где список версий не нужен
  * (например, в списке всех шаблонов).
  */
-public record FanTemplateDto(
+public record ProductTemplateDto(
         Long id,
         Long seriesId,
         String name,
@@ -17,6 +17,6 @@ public record FanTemplateDto(
         Long currentVersionId,
         LocalDateTime createdAt,
         String createdBy,
-        List<FanTemplateVersionDto> versions
+        List<ProductTemplateVersionDto> versions
 ) {
 }

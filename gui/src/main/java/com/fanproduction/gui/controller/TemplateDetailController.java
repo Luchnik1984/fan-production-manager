@@ -1,15 +1,15 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.gui.client.FanTemplateClient;
-import com.fanproduction.gui.client.FanTemplateVersionClient;
+import com.fanproduction.gui.client.ProductTemplateClient;
+import com.fanproduction.gui.client.ProductTemplateVersionClient;
 import com.fanproduction.gui.client.ProductTypeClient;
-import com.fanproduction.gui.dto.request.fan.CloneFanTemplateRequest;
-import com.fanproduction.gui.dto.request.fan.CreateFanTemplateRequest;
-import com.fanproduction.gui.dto.request.fan.CreateFanTemplateVersionRequest;
-import com.fanproduction.gui.dto.request.fan.UpdateFanTemplateRequest;
+import com.fanproduction.gui.dto.request.fan.CloneProductTemplateRequest;
+import com.fanproduction.gui.dto.request.fan.CreateProductTemplateRequest;
+import com.fanproduction.gui.dto.request.fan.CreateProductTemplateVersionRequest;
+import com.fanproduction.gui.dto.request.fan.UpdateProductTemplateRequest;
 import com.fanproduction.gui.dto.response.ProductSeriesDto;
-import com.fanproduction.gui.dto.response.FanTemplateDto;
-import com.fanproduction.gui.dto.response.FanTemplateVersionDto;
+import com.fanproduction.gui.dto.response.ProductTemplateDto;
+import com.fanproduction.gui.dto.response.ProductTemplateVersionDto;
 import com.fanproduction.gui.dto.response.ProductTypeDto;
 import com.fanproduction.gui.util.ProductTreeBuilder;
 import com.fanproduction.gui.util.TemplateControllerHelper;
@@ -71,12 +71,12 @@ public class TemplateDetailController {
     @javafx.fxml.FXML private Button openRuleEditorButton;
     @javafx.fxml.FXML private Button previewButton;
 
-    @javafx.fxml.FXML private TableView<FanTemplateVersionDto> versionsTable;
-    @javafx.fxml.FXML private TableColumn<FanTemplateVersionDto, String> versionColumn;
-    @javafx.fxml.FXML private TableColumn<FanTemplateVersionDto, String> statusColumn;
-    @javafx.fxml.FXML private TableColumn<FanTemplateVersionDto, String> createdAtColumn;
-    @javafx.fxml.FXML private TableColumn<FanTemplateVersionDto, String> publishedAtColumn;
-    @javafx.fxml.FXML private TableColumn<FanTemplateVersionDto, String> createdByColumn;
+    @javafx.fxml.FXML private TableView<ProductTemplateVersionDto> versionsTable;
+    @javafx.fxml.FXML private TableColumn<ProductTemplateVersionDto, String> versionColumn;
+    @javafx.fxml.FXML private TableColumn<ProductTemplateVersionDto, String> statusColumn;
+    @javafx.fxml.FXML private TableColumn<ProductTemplateVersionDto, String> createdAtColumn;
+    @javafx.fxml.FXML private TableColumn<ProductTemplateVersionDto, String> publishedAtColumn;
+    @javafx.fxml.FXML private TableColumn<ProductTemplateVersionDto, String> createdByColumn;
 
     @javafx.fxml.FXML private Button createVersionButton;
     @javafx.fxml.FXML private Button publishButton;
@@ -93,10 +93,10 @@ public class TemplateDetailController {
     private static final DateTimeFormatter DATE_FORMATTER =
             DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
-    private final ObservableList<FanTemplateVersionDto> versionsList = FXCollections.observableArrayList();
+    private final ObservableList<ProductTemplateVersionDto> versionsList = FXCollections.observableArrayList();
 
     private ProductSeriesDto currentSeries;
-    private FanTemplateDto currentTemplate;
+    private ProductTemplateDto currentTemplate;
 
     /** Поколение загрузок — защита от race condition при быстром клике. */
     private long generation = 0L;
@@ -196,9 +196,9 @@ public class TemplateDetailController {
 
     private void loadAsync(ProductSeriesDto series, long myGeneration) {
         try {
-            FanTemplateDto template;
+            ProductTemplateDto template;
             try {
-                template = FanTemplateClient.getTemplateBySeries(series.getId());
+                template = ProductTemplateClient.getTemplateBySeries(series.getId());
             } catch (Exception e) {
                 String msg = e.getMessage();
                 if (msg != null && msg.contains("не найден")) {
@@ -211,7 +211,7 @@ public class TemplateDetailController {
                 throw e;
             }
 
-            List<FanTemplateVersionDto> versions = FanTemplateClient.getVersionsByTemplate(template.getId());
+            List<ProductTemplateVersionDto> versions = ProductTemplateClient.getVersionsByTemplate(template.getId());
             Platform.runLater(() -> {
                 if (myGeneration != generation) return;
                 showTemplateState(template, versions);
@@ -242,7 +242,7 @@ public class TemplateDetailController {
         statusLabel.setText("Нет шаблона");
     }
 
-    private void showTemplateState(FanTemplateDto template, List<FanTemplateVersionDto> versions) {
+    private void showTemplateState(ProductTemplateDto template, List<ProductTemplateVersionDto> versions) {
         this.currentTemplate = template;
 
         templateNameLabel.setText(template.getName());
@@ -250,7 +250,7 @@ public class TemplateDetailController {
 
         versionsList.setAll(versions);
 
-        FanTemplateVersionDto currentVersion = versions.stream()
+        ProductTemplateVersionDto currentVersion = versions.stream()
                 .filter(v -> Objects.equals(v.getId(), template.getCurrentVersionId()))
                 .findFirst().orElse(null);
         if (currentVersion != null) {
@@ -274,7 +274,7 @@ public class TemplateDetailController {
     // ==========================================================
 
     private void updateButtonsState() {
-        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         boolean hasSelection = selected != null;
         String status = hasSelection ? selected.getStatus() : null;
 
@@ -336,8 +336,8 @@ public class TemplateDetailController {
             String name = nameField.getText().trim();
             String description = descField.getText().trim();
 
-            runAsync(() -> FanTemplateClient.createTemplate(
-                    new CreateFanTemplateRequest(
+            runAsync(() -> ProductTemplateClient.createTemplate(
+                    new CreateProductTemplateRequest(
                             currentSeries.getId(),
                             name,
                             description.isEmpty() ? null : description,
@@ -374,9 +374,9 @@ public class TemplateDetailController {
             String name = nameField.getText().trim();
             String description = descField.getText().trim();
 
-            runAsync(() -> FanTemplateClient.updateTemplate(
+            runAsync(() -> ProductTemplateClient.updateTemplate(
                             currentTemplate.getId(),
-                            new UpdateFanTemplateRequest(name,
+                            new UpdateProductTemplateRequest(name,
                                     description.isEmpty() ? null : description)),
                     "Шаблон обновлён");
         });
@@ -406,53 +406,53 @@ public class TemplateDetailController {
 
         dialog.showAndWait().ifPresent(button -> {
             if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) return;
-            runAsync(() -> FanTemplateClient.createNewVersion(
+            runAsync(() -> ProductTemplateClient.createNewVersion(
                             currentTemplate.getId(),
-                            new CreateFanTemplateVersionRequest(null, null)),
+                            new CreateProductTemplateVersionRequest(null, null)),
                     "Версия создана");
         });
     }
 
     @javafx.fxml.FXML
     private void handlePublish() {
-        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         if (selected == null || !"DRAFT".equals(selected.getStatus())) return;
 
         if (!confirm("Опубликовать версию v" + selected.getVersion() + "?",
                 "Предыдущая PUBLISHED (если была) станет LEGACY.")) return;
 
-        runAsync(() -> FanTemplateVersionClient.publishVersion(selected.getId()),
+        runAsync(() -> ProductTemplateVersionClient.publishVersion(selected.getId()),
                 "Версия опубликована");
     }
 
     @javafx.fxml.FXML
     private void handleDeprecate() {
-        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         if (selected == null || !"LEGACY".equals(selected.getStatus())) return;
 
         if (!confirm("Пометить версию v" + selected.getVersion() + " как устаревшую?",
                 "Новые карточки по этой версии создавать будет нельзя. " +
                         "Существующие карточки продолжат работать")) return;
 
-        runAsync(() -> FanTemplateVersionClient.deprecateVersion(selected.getId()),
+        runAsync(() -> ProductTemplateVersionClient.deprecateVersion(selected.getId()),
                 "Версия помечена как DEPRECATED");
     }
 
     @javafx.fxml.FXML
     private void handleArchive() {
-        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         if (selected == null || !"DEPRECATED".equals(selected.getStatus())) return;
 
         if (!confirm("Архивировать версию v" + selected.getVersion() + "?",
                 "Версия будет скрыта из UI. Существующие карточки продолжат работать.")) return;
 
-        runAsync(() -> FanTemplateVersionClient.archiveVersion(selected.getId()),
+        runAsync(() -> ProductTemplateVersionClient.archiveVersion(selected.getId()),
                 "Версия архивирована");
     }
 
     @javafx.fxml.FXML
     private void handleDeleteVersion() {
-        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         if (selected == null) return;
         String status = selected.getStatus();
         if (!"DRAFT".equals(status) && !"ARCHIVED".equals(status)) return;
@@ -460,7 +460,7 @@ public class TemplateDetailController {
         if (!confirm("Удалить версию v" + selected.getVersion() + "?",
                 "Это действие необратимо.")) return;
 
-        runAsync(() -> FanTemplateVersionClient.deleteVersion(selected.getId()),
+        runAsync(() -> ProductTemplateVersionClient.deleteVersion(selected.getId()),
                 "Версия удалена");
     }
 
@@ -542,9 +542,9 @@ public class TemplateDetailController {
 
             String newName = nameField.getText().trim();
 
-            runAsync(() -> FanTemplateClient.cloneTemplate(
+            runAsync(() -> ProductTemplateClient.cloneTemplate(
                             currentTemplate.getId(),
-                            new CloneFanTemplateRequest(
+                            new CloneProductTemplateRequest(
                                     targetSeries.getId(),
                                     newName.isEmpty() ? null : newName)),
                     "Шаблон клонирован");
@@ -553,7 +553,7 @@ public class TemplateDetailController {
 
     @javafx.fxml.FXML
     private void handleOpenFieldsEditor() {
-        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         if (selected == null || !"DRAFT".equals(selected.getStatus())) return;
 
         try {
@@ -587,7 +587,7 @@ public class TemplateDetailController {
 
     @javafx.fxml.FXML
     private void handleOpenRuleEditor() {
-        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         if (selected == null || !"DRAFT".equals(selected.getStatus())) return;
 
         try {
@@ -621,7 +621,7 @@ public class TemplateDetailController {
 
     @javafx.fxml.FXML
     private void handlePreview() {
-        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         if (selected == null) return;
 
         try {

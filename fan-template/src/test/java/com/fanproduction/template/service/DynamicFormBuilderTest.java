@@ -4,8 +4,8 @@ import com.fanproduction.template.dto.DynamicFormFieldDto;
 import com.fanproduction.template.dto.DynamicFormMetadataDto;
 import com.fanproduction.template.entity.ProductSeries;
 import com.fanproduction.template.entity.ProductSpecies;
-import com.fanproduction.template.entity.FanTemplate;
-import com.fanproduction.template.entity.FanTemplateVersion;
+import com.fanproduction.template.entity.ProductTemplate;
+import com.fanproduction.template.entity.ProductTemplateVersion;
 import com.fanproduction.template.entity.ProductType;
 import com.fanproduction.template.enums.ConditionOperator;
 import com.fanproduction.template.enums.FieldType;
@@ -15,8 +15,8 @@ import com.fanproduction.template.model.Condition;
 import com.fanproduction.template.model.FieldDefinition;
 import com.fanproduction.template.repository.ProductSeriesRepository;
 import com.fanproduction.template.repository.ProductSpeciesRepository;
-import com.fanproduction.template.repository.FanTemplateRepository;
-import com.fanproduction.template.repository.FanTemplateVersionRepository;
+import com.fanproduction.template.repository.ProductTemplateRepository;
+import com.fanproduction.template.repository.ProductTemplateVersionRepository;
 import com.fanproduction.template.repository.ProductTypeRepository;
 import com.fanproduction.template.service.impl.DynamicFormBuilderImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,10 +44,10 @@ import static org.mockito.Mockito.when;
 class DynamicFormBuilderTest {
 
     @Mock
-    private FanTemplateRepository fanTemplateRepository;
+    private ProductTemplateRepository productTemplateRepository;
 
     @Mock
-    private FanTemplateVersionRepository fanTemplateVersionRepository;
+    private ProductTemplateVersionRepository productTemplateVersionRepository;
 
     @Mock
     private ProductSeriesRepository productSeriesRepository;
@@ -61,17 +61,17 @@ class DynamicFormBuilderTest {
     @InjectMocks
     private DynamicFormBuilderImpl builder;
 
-    private FanTemplateVersion version;
-    private FanTemplate template;
+    private ProductTemplateVersion version;
+    private ProductTemplate template;
 
     @BeforeEach
     void setUp() {
-        template = new FanTemplate();
+        template = new ProductTemplate();
         template.setId(1L);
         template.setName("Шаблон P-серии");
         template.setSeriesId(100L);
 
-        version = new FanTemplateVersion();
+        version = new ProductTemplateVersion();
         version.setId(10L);
         version.setTemplateId(1L);
         version.setVersion(1);
@@ -223,8 +223,8 @@ class DynamicFormBuilderTest {
         type.setName("Вентилятор канальный");
         type.setDesignation("VRK-PatAIR");
 
-        when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-        when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+        when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+        when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
         when(productSeriesRepository.findById(100L)).thenReturn(Optional.of(series));
         when(productSpeciesRepository.findById(50L)).thenReturn(Optional.of(species));
         when(productTypeRepository.findById(1L)).thenReturn(Optional.of(type));
@@ -243,8 +243,8 @@ class DynamicFormBuilderTest {
     void missingSeriesIsTolerated() {
         version.setFieldsJson(List.of(field("a", 1)));
 
-        when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-        when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+        when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+        when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
         when(productSeriesRepository.findById(100L)).thenReturn(Optional.empty());
 
         DynamicFormMetadataDto result = builder.buildFormMetadata(10L);
@@ -342,7 +342,7 @@ class DynamicFormBuilderTest {
         @Test
         @DisplayName("Версия не найдена → исключение")
         void versionNotFound() {
-            when(fanTemplateVersionRepository.findById(999L)).thenReturn(Optional.empty());
+            when(productTemplateVersionRepository.findById(999L)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> builder.buildFormMetadata(999L))
                     .isInstanceOf(TemplateValidationException.class)
@@ -354,8 +354,8 @@ class DynamicFormBuilderTest {
         void templateNotFound() {
             version.setFieldsJson(List.of());
 
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.empty());
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateRepository.findById(1L)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> builder.buildFormMetadata(10L))
                     .isInstanceOf(TemplateValidationException.class)
@@ -386,8 +386,8 @@ class DynamicFormBuilderTest {
         type.setName("Вентилятор канальный");
         type.setDesignation("VRK-PatAIR");
 
-        lenient().when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-        lenient().when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+        lenient().when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+        lenient().when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
         lenient().when(productSeriesRepository.findById(100L)).thenReturn(Optional.of(series));
         lenient().when(productSpeciesRepository.findById(50L)).thenReturn(Optional.of(species));
         lenient().when(productTypeRepository.findById(1L)).thenReturn(Optional.of(type));

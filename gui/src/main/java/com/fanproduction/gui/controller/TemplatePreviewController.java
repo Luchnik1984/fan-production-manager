@@ -1,9 +1,9 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.gui.client.FanTemplateVersionClient;
+import com.fanproduction.gui.client.ProductTemplateVersionClient;
 import com.fanproduction.gui.dto.response.DynamicFormFieldDto;
 import com.fanproduction.gui.dto.response.DynamicFormMetadataDto;
-import com.fanproduction.gui.dto.response.FanTemplateVersionDto;
+import com.fanproduction.gui.dto.response.ProductTemplateVersionDto;
 import com.fanproduction.gui.service.FieldMetadataService;
 import com.fanproduction.gui.util.FieldValueExtractor;
 import com.fanproduction.gui.util.TemplateControllerHelper;
@@ -27,7 +27,7 @@ import java.util.Map;
  * <p>
  * Строит слева простую форму тестовых значений (без FieldControlFactory —
  * никаких запросов к API, добавлений компонентов и т.п.).
- * Справа — результат маркировки из {@code /api/fan-template-versions/{id}/preview}.
+ * Справа — результат маркировки из {@code /api/product-template-versions/{id}/preview}.
  * <p>
  * Авто-обновление — с debounce 500 мс при изменении любого поля.
  * Кнопка «Вычислить» — принудительно.
@@ -49,7 +49,7 @@ public class TemplatePreviewController {
     @FXML private Button closeButton;
 
     // ========== Состояние ==========
-    private FanTemplateVersionDto version;
+    private ProductTemplateVersionDto version;
     private DynamicFormMetadataDto metadata;
 
     /** Поле → контрол ввода (для сбора значений). */
@@ -64,7 +64,7 @@ public class TemplatePreviewController {
     // INIT
     // ==========================================================
 
-    public void init(FanTemplateVersionDto version) {
+    public void init(ProductTemplateVersionDto version) {
         this.version = version;
         titleLabel.setText("Предпросмотр — v" + version.getVersion()
                 + " [" + version.getStatus() + "]");
@@ -263,7 +263,7 @@ public class TemplatePreviewController {
 
         new Thread(() -> {
             try {
-                String marking = FanTemplateVersionClient.previewMarking(versionId, values);
+                String marking = ProductTemplateVersionClient.previewMarking(versionId, values);
                 Platform.runLater(() -> {
                     computeButton.setDisable(false);
                     markingArea.setText(marking != null && !marking.isEmpty()
@@ -295,7 +295,7 @@ public class TemplatePreviewController {
 
         new Thread(() -> {
             try {
-                List<String> errors = FanTemplateVersionClient.validateVersion(version.getId());
+                List<String> errors = ProductTemplateVersionClient.validateVersion(version.getId());
                 Platform.runLater(() -> {
                     validateButton.setDisable(false);
                     statusLabel.setText("Готово");

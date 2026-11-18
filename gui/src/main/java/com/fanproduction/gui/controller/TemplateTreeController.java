@@ -3,7 +3,7 @@ package com.fanproduction.gui.controller;
 import com.fanproduction.gui.client.ProductSeriesClient;
 import com.fanproduction.gui.client.ProductSpeciesClient;
 import com.fanproduction.gui.client.ProductTypeClient;
-import com.fanproduction.gui.client.FanTemplateClient;
+import com.fanproduction.gui.client.ProductTemplateClient;
 import com.fanproduction.gui.dto.request.fan.CreateProductSeriesRequest;
 import com.fanproduction.gui.dto.request.fan.CreateProductSpeciesRequest;
 import com.fanproduction.gui.dto.request.fan.CreateProductTypeRequest;
@@ -13,8 +13,8 @@ import com.fanproduction.gui.dto.request.fan.UpdateProductTypeRequest;
 import com.fanproduction.gui.dto.response.ProductSeriesDto;
 import com.fanproduction.gui.dto.response.ProductSpeciesDto;
 import com.fanproduction.gui.dto.response.ProductTypeDto;
-import com.fanproduction.gui.dto.response.FanTemplateDto;
-import com.fanproduction.gui.dto.response.FanTemplateVersionDto;
+import com.fanproduction.gui.dto.response.ProductTemplateDto;
+import com.fanproduction.gui.dto.response.ProductTemplateVersionDto;
 import com.fanproduction.gui.util.ProductTreeBuilder;
 import com.fanproduction.gui.util.TemplateControllerHelper;
 import javafx.application.Platform;
@@ -161,9 +161,9 @@ public class TemplateTreeController {
     private void handleOpenRuleEditorFromTree(ProductSeriesDto series) {
         new Thread(() -> {
             try {
-                FanTemplateDto template;
+                ProductTemplateDto template;
                 try {
-                    template = FanTemplateClient.getTemplateBySeries(series.getId());
+                    template = ProductTemplateClient.getTemplateBySeries(series.getId());
                 } catch (Exception e) {
                     String msg = e.getMessage();
                     if (msg != null && msg.contains("не найден")) {
@@ -176,7 +176,7 @@ public class TemplateTreeController {
                     throw e;
                 }
 
-                FanTemplateVersionDto draft = FanTemplateClient.getDraftVersion(template.getId());
+                ProductTemplateVersionDto draft = ProductTemplateClient.getDraftVersion(template.getId());
                 if (draft == null) {
                     Platform.runLater(() -> showAlert("Нет DRAFT-версии",
                             "У шаблона серии «" + series.getDisplayName() + "» нет DRAFT-версии.\n" +
@@ -199,7 +199,7 @@ public class TemplateTreeController {
     /**
      * Открыть редактор правила маркировки для указанной DRAFT-версии.
      */
-    private void openMarkingRuleEditor(FanTemplateVersionDto draft) {
+    private void openMarkingRuleEditor(ProductTemplateVersionDto draft) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource(
                     "/com/fanproduction/gui/view/MarkingRuleEditorView.fxml"));

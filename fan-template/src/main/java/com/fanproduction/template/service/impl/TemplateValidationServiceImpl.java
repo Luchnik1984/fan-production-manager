@@ -1,6 +1,6 @@
 package com.fanproduction.template.service.impl;
 
-import com.fanproduction.template.entity.FanTemplateVersion;
+import com.fanproduction.template.entity.ProductTemplateVersion;
 import com.fanproduction.template.enums.ConditionOperator;
 import com.fanproduction.template.exception.TemplateValidationException;
 import com.fanproduction.template.formula.FormulaEngine;
@@ -52,7 +52,7 @@ public class TemplateValidationServiceImpl implements TemplateValidationService 
     // ==========================================================
 
     @Override
-    public void validate(FanTemplateVersion version) {
+    public void validate(ProductTemplateVersion version) {
         List<String> errors = collectErrors(version);
         if (!errors.isEmpty()) {
             throw new TemplateValidationException(
@@ -61,7 +61,7 @@ public class TemplateValidationServiceImpl implements TemplateValidationService 
     }
 
     @Override
-    public List<String> collectErrors(FanTemplateVersion version) {
+    public List<String> collectErrors(ProductTemplateVersion version) {
         List<String> errors = new ArrayList<>();
 
         if (version == null) {

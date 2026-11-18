@@ -1,7 +1,7 @@
 package com.fanproduction.gui.service;
 
 import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
-import com.fanproduction.gui.client.FanTemplateVersionClient;
+import com.fanproduction.gui.client.ProductTemplateVersionClient;
 import com.fanproduction.gui.dto.response.DynamicFormFieldDto;
 import com.fanproduction.gui.dto.response.DynamicFormMetadataDto;
 
@@ -505,7 +505,7 @@ public class FieldMetadataService {
     /**
      * Загрузить поля FAN-карточки с сервера по версии шаблона.
      * <p>
-     * Вызывает REST {@code GET /api/fan-template-versions/{id}/form},
+     * Вызывает REST {@code GET /api/product-template-versions/{id}/form},
      * конвертирует {@link DynamicFormMetadataDto} → список {@link FieldMetadataDto}.
      * <p>
      * Метод синхронный — вызывать из фонового потока (например, из
@@ -522,7 +522,7 @@ public class FieldMetadataService {
 
         try {
             DynamicFormMetadataDto metadata =
-                    FanTemplateVersionClient.getFormMetadata(templateVersionId);
+                    ProductTemplateVersionClient.getFormMetadata(templateVersionId);
 
             if (metadata.getFields() == null) {
                 return List.of();
@@ -556,7 +556,7 @@ public class FieldMetadataService {
         }
 
         try {
-            DynamicFormMetadataDto loaded = FanTemplateVersionClient.getFormMetadata(templateVersionId);
+            DynamicFormMetadataDto loaded = ProductTemplateVersionClient.getFormMetadata(templateVersionId);
             fanMetadataCache.put(templateVersionId,
                     new CachedMetadata(loaded, System.currentTimeMillis() + CACHE_TTL_MS));
             return loaded;

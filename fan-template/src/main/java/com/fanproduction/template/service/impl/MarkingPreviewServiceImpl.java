@@ -1,10 +1,10 @@
 package com.fanproduction.template.service.impl;
 
-import com.fanproduction.template.entity.FanTemplateVersion;
+import com.fanproduction.template.entity.ProductTemplateVersion;
 import com.fanproduction.template.exception.TemplateValidationException;
 import com.fanproduction.template.model.FieldDefinition;
 import com.fanproduction.template.model.MarkingRule;
-import com.fanproduction.template.repository.FanTemplateVersionRepository;
+import com.fanproduction.template.repository.ProductTemplateVersionRepository;
 import com.fanproduction.template.service.MarkingEngine;
 import com.fanproduction.template.service.MarkingPreviewService;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,7 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class MarkingPreviewServiceImpl implements MarkingPreviewService {
 
-    private final FanTemplateVersionRepository fanTemplateVersionRepository;
+    private final ProductTemplateVersionRepository productTemplateVersionRepository;
     private final MarkingEngine markingEngine;
 
     @Override
@@ -33,7 +33,7 @@ public class MarkingPreviewServiceImpl implements MarkingPreviewService {
             throw new TemplateValidationException("ID версии шаблона не может быть пустым");
         }
 
-        FanTemplateVersion version = fanTemplateVersionRepository.findById(templateVersionId)
+        ProductTemplateVersion version = productTemplateVersionRepository.findById(templateVersionId)
                 .orElseThrow(() -> new TemplateValidationException(
                         "Версия шаблона не найдена: " + templateVersionId));
 

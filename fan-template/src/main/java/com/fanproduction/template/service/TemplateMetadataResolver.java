@@ -2,13 +2,13 @@ package com.fanproduction.template.service;
 
 import com.fanproduction.template.entity.ProductSeries;
 import com.fanproduction.template.entity.ProductSpecies;
-import com.fanproduction.template.entity.FanTemplate;
-import com.fanproduction.template.entity.FanTemplateVersion;
+import com.fanproduction.template.entity.ProductTemplate;
+import com.fanproduction.template.entity.ProductTemplateVersion;
 import com.fanproduction.template.entity.ProductType;
 import com.fanproduction.template.repository.ProductSeriesRepository;
 import com.fanproduction.template.repository.ProductSpeciesRepository;
-import com.fanproduction.template.repository.FanTemplateRepository;
-import com.fanproduction.template.repository.FanTemplateVersionRepository;
+import com.fanproduction.template.repository.ProductTemplateRepository;
+import com.fanproduction.template.repository.ProductTemplateVersionRepository;
 import com.fanproduction.template.repository.ProductTypeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,8 +43,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class TemplateMetadataResolver {
 
-    private final FanTemplateVersionRepository versionRepository;
-    private final FanTemplateRepository templateRepository;
+    private final ProductTemplateVersionRepository versionRepository;
+    private final ProductTemplateRepository templateRepository;
     private final ProductSeriesRepository seriesRepository;
     private final ProductSpeciesRepository speciesRepository;
     private final ProductTypeRepository typeRepository;
@@ -64,13 +64,13 @@ public class TemplateMetadataResolver {
         }
 
         // 1. version → template
-        FanTemplateVersion version = versionRepository.findById(templateVersionId).orElse(null);
+        ProductTemplateVersion version = versionRepository.findById(templateVersionId).orElse(null);
         if (version == null) {
             log.debug("Версия шаблона не найдена: {}", templateVersionId);
             return result;
         }
 
-        FanTemplate template = templateRepository.findById(version.getTemplateId()).orElse(null);
+        ProductTemplate template = templateRepository.findById(version.getTemplateId()).orElse(null);
         if (template == null) {
             return result;
         }

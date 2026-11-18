@@ -2,14 +2,14 @@ package com.fanproduction.template.service.impl;
 
 import com.fanproduction.core.enums.AuditAction;
 import com.fanproduction.core.event.AuditEvent;
-import com.fanproduction.template.dto.FanTemplateDto;
-import com.fanproduction.template.entity.FanTemplate;
-import com.fanproduction.template.entity.FanTemplateVersion;
+import com.fanproduction.template.dto.ProductTemplateDto;
+import com.fanproduction.template.entity.ProductTemplate;
+import com.fanproduction.template.entity.ProductTemplateVersion;
 import com.fanproduction.template.enums.TemplateStatus;
 import com.fanproduction.template.exception.TemplateValidationException;
 import com.fanproduction.template.repository.ProductSeriesRepository;
-import com.fanproduction.template.repository.FanTemplateRepository;
-import com.fanproduction.template.repository.FanTemplateVersionRepository;
+import com.fanproduction.template.repository.ProductTemplateRepository;
+import com.fanproduction.template.repository.ProductTemplateVersionRepository;
 import com.fanproduction.template.service.TemplateCloneService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,19 +27,19 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TemplateCloneServiceImpl implements TemplateCloneService {
 
-    private final FanTemplateRepository fanTemplateRepository;
-    private final FanTemplateVersionRepository fanTemplateVersionRepository;
+    private final ProductTemplateRepository productTemplateRepository;
+    private final ProductTemplateVersionRepository productTemplateVersionRepository;
     private final ProductSeriesRepository productSeriesRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
-    public FanTemplateDto cloneTemplate(Long sourceTemplateId,
+    public ProductTemplateDto cloneTemplate(Long sourceTemplateId,
                                         Long targetSeriesId,
                                         String newName,
                                         String createdBy) {
         // 1. Источник
-        FanTemplate source = fanTemplateRepository.findById(sourceTemplateId)
+        ProductTemplate source = productTemplateRepository.findById(sourceTemplateId)
                 .orElseThrow(() -> new TemplateValidationException(
                         "Шаблон-источник не найден: " + sourceTemplateId));
 
@@ -49,35 +49,35 @@ public class TemplateCloneServiceImpl implements TemplateCloneService {
         }
 
         // 3. Целевая серия не должна иметь шаблон
-        if (fanTemplateRepository.existsBySeriesId(targetSeriesId)) {
+        if (productTemplateRepository.existsBySeriesId(targetSeriesId)) {
             throw new TemplateValidationException(
                     "У целевой серии уже есть шаблон. Используйте редактирование.");
         }
 
         // 4. Источник версии
-        FanTemplateVersion sourceVersion = resolveSourceVersion(sourceTemplateId);
+        ProductTemplateVersion sourceVersion = resolveSourceVersion(sourceTemplateId);
         if (sourceVersion == null) {
             throw new TemplateValidationException(
                     "У шаблона-источника нет ни одной версии. Клонирование невозможно.");
         }
 
-        // 5. Новый FanTemplate
-        FanTemplate target = new FanTemplate();
+        // 5. Новый ProductTemplate
+        ProductTemplate target = new ProductTemplate();
         target.setSeriesId(targetSeriesId);
         target.setName(resolveTargetName(newName, source));
         target.setDescription(source.getDescription());
         target.setCreatedBy(createdBy);
-        FanTemplate savedTarget = fanTemplateRepository.save(target);
+        ProductTemplate savedTarget = productTemplateRepository.save(target);
 
         // 6. Первая DRAFT-версия с копией полей и правила
-        FanTemplateVersion newVersion = new FanTemplateVersion();
+        ProductTemplateVersion newVersion = new ProductTemplateVersion();
         newVersion.setTemplateId(savedTarget.getId());
         newVersion.setVersion(1);
         newVersion.setStatus(TemplateStatus.DRAFT);
         newVersion.setFieldsJson(sourceVersion.getFieldsJson());
         newVersion.setMarkingRuleJson(sourceVersion.getMarkingRuleJson());
         newVersion.setCreatedBy(createdBy);
-        fanTemplateVersionRepository.save(newVersion);
+        productTemplateVersionRepository.save(newVersion);
 
         // 7. Аудит
         publishAudit(createdBy, AuditAction.TEMPLATE_CLONE,
@@ -104,11 +104,11 @@ public class TemplateCloneServiceImpl implements TemplateCloneService {
      *   <li>Последняя по номеру версии — в остальных случаях.</li>
      * </ol>
      */
-    private FanTemplateVersion resolveSourceVersion(Long templateId) {
+    private ProductTemplateVersion resolveSourceVersion(Long templateId) {
         // Текущая опубликованная
-        FanTemplate source = fanTemplateRepository.findById(templateId).orElse(null);
+        ProductTemplate source = productTemplateRepository.findById(templateId).orElse(null);
         if (source != null && source.getCurrentVersionId() != null) {
-            FanTemplateVersion current = fanTemplateVersionRepository
+            ProductTemplateVersion current = productTemplateVersionRepository
                     .findById(source.getCurrentVersionId())
                     .orElse(null);
             if (current != null) {
@@ -117,7 +117,7 @@ public class TemplateCloneServiceImpl implements TemplateCloneService {
         }
 
         // DRAFT
-        FanTemplateVersion draft = fanTemplateVersionRepository
+        ProductTemplateVersion draft = productTemplateVersionRepository
                 .findFirstByTemplateIdAndStatus(templateId, TemplateStatus.DRAFT)
                 .orElse(null);
         if (draft != null) {
@@ -125,7 +125,7 @@ public class TemplateCloneServiceImpl implements TemplateCloneService {
         }
 
         // Последняя по номеру
-        List<FanTemplateVersion> versions = fanTemplateVersionRepository
+        List<ProductTemplateVersion> versions = productTemplateVersionRepository
                 .findByTemplateIdOrderByVersionDesc(templateId);
         return versions.isEmpty() ? null : versions.get(0);
     }
@@ -134,7 +134,7 @@ public class TemplateCloneServiceImpl implements TemplateCloneService {
     // ВСПОМОГАТЕЛЬНЫЕ
     // ==========================================================
 
-    private String resolveTargetName(String newName, FanTemplate source) {
+    private String resolveTargetName(String newName, ProductTemplate source) {
         if (newName != null && !newName.isBlank()) {
             return newName.trim();
         }
@@ -146,8 +146,8 @@ public class TemplateCloneServiceImpl implements TemplateCloneService {
         eventPublisher.publishEvent(new AuditEvent(this, actor, action, details));
     }
 
-    private FanTemplateDto toTemplateDto(FanTemplate template) {
-        return new FanTemplateDto(
+    private ProductTemplateDto toTemplateDto(ProductTemplate template) {
+        return new ProductTemplateDto(
                 template.getId(),
                 template.getSeriesId(),
                 template.getName(),

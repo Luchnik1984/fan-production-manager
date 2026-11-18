@@ -6,11 +6,11 @@ import com.fanproduction.template.model.MarkingRule;
 import java.util.List;
 
 /**
- * Запрос на обновление DRAFT-версии шаблона.
+ * Запрос на создание новой DRAFT-версии шаблона.
  * <p>
- * Если поле не передано (null) — оно не изменяется.
+ * Если fields/markingRule не переданы — используются пустые.
  */
-public record UpdateFanTemplateVersionRequest(
+public record CreateProductTemplateVersionRequest(
         List<FieldDefinition> fields,
 
         MarkingRule markingRule

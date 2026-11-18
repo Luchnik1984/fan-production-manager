@@ -1,14 +1,14 @@
 package com.fanproduction.api.controller.fan;
 
 import com.fanproduction.api.controller.BaseController;
-import com.fanproduction.api.dto.request.fan.CloneFanTemplateRequest;
-import com.fanproduction.api.dto.request.fan.CreateFanTemplateRequest;
-import com.fanproduction.api.dto.request.fan.CreateFanTemplateVersionRequest;
-import com.fanproduction.api.dto.request.fan.UpdateFanTemplateRequest;
+import com.fanproduction.api.dto.request.fan.CloneProductTemplateRequest;
+import com.fanproduction.api.dto.request.fan.CreateProductTemplateRequest;
+import com.fanproduction.api.dto.request.fan.CreateProductTemplateVersionRequest;
+import com.fanproduction.api.dto.request.fan.UpdateProductTemplateRequest;
 import com.fanproduction.api.dto.response.ApiResponse;
-import com.fanproduction.template.dto.FanTemplateDto;
-import com.fanproduction.template.dto.FanTemplateVersionDto;
-import com.fanproduction.template.service.FanTemplateService;
+import com.fanproduction.template.dto.ProductTemplateDto;
+import com.fanproduction.template.dto.ProductTemplateVersionDto;
+import com.fanproduction.template.service.ProductTemplateService;
 import com.fanproduction.template.service.TemplateCloneService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,12 +23,12 @@ import java.util.List;
  * Доступ: только ADMIN.
  */
 @RestController
-@RequestMapping("/api/fan-templates")
+@RequestMapping("/api/product-templates")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
-public class FanTemplateController extends BaseController {
+public class ProductTemplateController extends BaseController {
 
-    private final FanTemplateService fanTemplateService;
+    private final ProductTemplateService productTemplateService;
     private final TemplateCloneService templateCloneService;
 
     // ==========================================================
@@ -39,41 +39,41 @@ public class FanTemplateController extends BaseController {
      * Все шаблоны (без версий).
      */
     @GetMapping
-    public ApiResponse<List<FanTemplateDto>> getAllTemplates() {
-        return ApiResponse.success(fanTemplateService.getAllTemplates());
+    public ApiResponse<List<ProductTemplateDto>> getAllTemplates() {
+        return ApiResponse.success(productTemplateService.getAllTemplates());
     }
 
     /**
      * Шаблон по ID (без версий).
      */
     @GetMapping("/{id}")
-    public ApiResponse<FanTemplateDto> getTemplateById(@PathVariable Long id) {
-        return ApiResponse.success(fanTemplateService.getTemplateById(id));
+    public ApiResponse<ProductTemplateDto> getTemplateById(@PathVariable Long id) {
+        return ApiResponse.success(productTemplateService.getTemplateById(id));
     }
 
     /**
      * Шаблон по ID со всеми версиями.
      */
     @GetMapping("/{id}/with-versions")
-    public ApiResponse<FanTemplateDto> getTemplateWithVersions(@PathVariable Long id) {
-        return ApiResponse.success(fanTemplateService.getTemplateWithVersions(id));
+    public ApiResponse<ProductTemplateDto> getTemplateWithVersions(@PathVariable Long id) {
+        return ApiResponse.success(productTemplateService.getTemplateWithVersions(id));
     }
 
     /**
      * Шаблон по ID серии.
      */
     @GetMapping("/by-series/{seriesId}")
-    public ApiResponse<FanTemplateDto> getTemplateBySeries(@PathVariable Long seriesId) {
-        return ApiResponse.success(fanTemplateService.getTemplateBySeries(seriesId));
+    public ApiResponse<ProductTemplateDto> getTemplateBySeries(@PathVariable Long seriesId) {
+        return ApiResponse.success(productTemplateService.getTemplateBySeries(seriesId));
     }
 
     /**
      * Создать шаблон (логический + первая DRAFT-версия).
      */
     @PostMapping
-    public ApiResponse<FanTemplateDto> createTemplate(
-            @Valid @RequestBody CreateFanTemplateRequest request) {
-        FanTemplateDto created = fanTemplateService.createTemplate(
+    public ApiResponse<ProductTemplateDto> createTemplate(
+            @Valid @RequestBody CreateProductTemplateRequest request) {
+        ProductTemplateDto created = productTemplateService.createTemplate(
                 request.seriesId(),
                 request.name(),
                 request.description(),
@@ -88,10 +88,10 @@ public class FanTemplateController extends BaseController {
      * Обновить метаданные шаблона (name, description).
      */
     @PutMapping("/{id}")
-    public ApiResponse<FanTemplateDto> updateTemplate(
+    public ApiResponse<ProductTemplateDto> updateTemplate(
             @PathVariable Long id,
-            @Valid @RequestBody UpdateFanTemplateRequest request) {
-        FanTemplateDto updated = fanTemplateService.updateTemplate(
+            @Valid @RequestBody UpdateProductTemplateRequest request) {
+        ProductTemplateDto updated = productTemplateService.updateTemplate(
                 id,
                 request.name(),
                 request.description(),
@@ -105,7 +105,7 @@ public class FanTemplateController extends BaseController {
      */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteTemplate(@PathVariable Long id) {
-        fanTemplateService.deleteTemplate(id, getCurrentUser());
+        productTemplateService.deleteTemplate(id, getCurrentUser());
         return ApiResponse.success("Шаблон удалён", null);
     }
 
@@ -117,10 +117,10 @@ public class FanTemplateController extends BaseController {
      * Клонировать шаблон для другой серии.
      */
     @PostMapping("/{id}/clone")
-    public ApiResponse<FanTemplateDto> cloneTemplate(
+    public ApiResponse<ProductTemplateDto> cloneTemplate(
             @PathVariable Long id,
-            @Valid @RequestBody CloneFanTemplateRequest request) {
-        FanTemplateDto cloned = templateCloneService.cloneTemplate(
+            @Valid @RequestBody CloneProductTemplateRequest request) {
+        ProductTemplateDto cloned = templateCloneService.cloneTemplate(
                 id,
                 request.targetSeriesId(),
                 request.newName(),
@@ -137,32 +137,32 @@ public class FanTemplateController extends BaseController {
      * Все версии шаблона (от новых к старым).
      */
     @GetMapping("/{id}/versions")
-    public ApiResponse<List<FanTemplateVersionDto>> getVersions(@PathVariable Long id) {
-        return ApiResponse.success(fanTemplateService.getVersionsByTemplate(id));
+    public ApiResponse<List<ProductTemplateVersionDto>> getVersions(@PathVariable Long id) {
+        return ApiResponse.success(productTemplateService.getVersionsByTemplate(id));
     }
 
     /**
      * Текущая PUBLISHED-версия.
      */
     @GetMapping("/{id}/versions/published")
-    public ApiResponse<FanTemplateVersionDto> getPublishedVersion(@PathVariable Long id) {
-        return ApiResponse.success(fanTemplateService.getPublishedVersion(id));
+    public ApiResponse<ProductTemplateVersionDto> getPublishedVersion(@PathVariable Long id) {
+        return ApiResponse.success(productTemplateService.getPublishedVersion(id));
     }
 
     /**
      * Версии, доступные для создания карточек (PUBLISHED + LEGACY).
      */
     @GetMapping("/{id}/versions/available")
-    public ApiResponse<List<FanTemplateVersionDto>> getAvailableVersions(@PathVariable Long id) {
-        return ApiResponse.success(fanTemplateService.getAvailableVersions(id));
+    public ApiResponse<List<ProductTemplateVersionDto>> getAvailableVersions(@PathVariable Long id) {
+        return ApiResponse.success(productTemplateService.getAvailableVersions(id));
     }
 
     /**
      * DRAFT-версия (если есть).
      */
     @GetMapping("/{id}/versions/draft")
-    public ApiResponse<FanTemplateVersionDto> getDraftVersion(@PathVariable Long id) {
-        return ApiResponse.success(fanTemplateService.getDraftVersion(id));
+    public ApiResponse<ProductTemplateVersionDto> getDraftVersion(@PathVariable Long id) {
+        return ApiResponse.success(productTemplateService.getDraftVersion(id));
     }
 
     // ==========================================================
@@ -175,15 +175,15 @@ public class FanTemplateController extends BaseController {
      * Запрещено, если у шаблона уже есть DRAFT.
      */
     @PostMapping("/{id}/versions")
-    public ApiResponse<FanTemplateVersionDto> createNewVersion(
+    public ApiResponse<ProductTemplateVersionDto> createNewVersion(
             @PathVariable Long id,
-            @RequestBody(required = false) CreateFanTemplateVersionRequest request) {
+            @RequestBody(required = false) CreateProductTemplateVersionRequest request) {
         List<com.fanproduction.template.model.FieldDefinition> fields =
                 request != null ? request.fields() : null;
         com.fanproduction.template.model.MarkingRule rule =
                 request != null ? request.markingRule() : null;
 
-        FanTemplateVersionDto created = fanTemplateService.createNewVersion(
+        ProductTemplateVersionDto created = productTemplateService.createNewVersion(
                 id,
                 fields,
                 rule,

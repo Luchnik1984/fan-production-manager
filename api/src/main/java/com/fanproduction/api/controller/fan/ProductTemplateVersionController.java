@@ -1,13 +1,13 @@
 package com.fanproduction.api.controller.fan;
 
 import com.fanproduction.api.controller.BaseController;
-import com.fanproduction.api.dto.request.fan.UpdateFanTemplateVersionRequest;
+import com.fanproduction.api.dto.request.fan.UpdateProductTemplateVersionRequest;
 import com.fanproduction.api.dto.request.fan.PreviewMarkingRequest;
 import com.fanproduction.api.dto.response.ApiResponse;
 import com.fanproduction.template.dto.DynamicFormMetadataDto;
-import com.fanproduction.template.dto.FanTemplateVersionDto;
+import com.fanproduction.template.dto.ProductTemplateVersionDto;
 import com.fanproduction.template.service.DynamicFormBuilder;
-import com.fanproduction.template.service.FanTemplateService;
+import com.fanproduction.template.service.ProductTemplateService;
 import com.fanproduction.template.service.MarkingPreviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,12 +21,12 @@ import java.util.List;
  * Доступ: только ADMIN.
  */
 @RestController
-@RequestMapping("/api/fan-template-versions")
+@RequestMapping("/api/product-template-versions")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
-public class FanTemplateVersionController extends BaseController {
+public class ProductTemplateVersionController extends BaseController {
 
-    private final FanTemplateService fanTemplateService;
+    private final ProductTemplateService productTemplateService;
     private final DynamicFormBuilder dynamicFormBuilder;
     private final MarkingPreviewService markingPreviewService;
 
@@ -38,8 +38,8 @@ public class FanTemplateVersionController extends BaseController {
      * Версия по ID.
      */
     @GetMapping("/{id}")
-    public ApiResponse<FanTemplateVersionDto> getVersionById(@PathVariable Long id) {
-        return ApiResponse.success(fanTemplateService.getVersionById(id));
+    public ApiResponse<ProductTemplateVersionDto> getVersionById(@PathVariable Long id) {
+        return ApiResponse.success(productTemplateService.getVersionById(id));
     }
 
     /**
@@ -79,7 +79,7 @@ public class FanTemplateVersionController extends BaseController {
      */
     @GetMapping("/{id}/validate")
     public ApiResponse<List<String>> validateVersion(@PathVariable Long id) {
-        return ApiResponse.success(fanTemplateService.validateVersion(id));
+        return ApiResponse.success(productTemplateService.validateVersion(id));
     }
 
     // ==========================================================
@@ -92,10 +92,10 @@ public class FanTemplateVersionController extends BaseController {
      * Запрещено для версий в других статусах.
      */
     @PutMapping("/{id}/draft")
-    public ApiResponse<FanTemplateVersionDto> updateDraft(
+    public ApiResponse<ProductTemplateVersionDto> updateDraft(
             @PathVariable Long id,
-            @RequestBody UpdateFanTemplateVersionRequest request) {
-        FanTemplateVersionDto updated = fanTemplateService.updateDraftVersion(
+            @RequestBody UpdateProductTemplateVersionRequest request) {
+        ProductTemplateVersionDto updated = productTemplateService.updateDraftVersion(
                 id,
                 request.fields(),
                 request.markingRule(),
@@ -114,8 +114,8 @@ public class FanTemplateVersionController extends BaseController {
      * Предыдущая PUBLISHED автоматически становится LEGACY.
      */
     @PostMapping("/{id}/publish")
-    public ApiResponse<FanTemplateVersionDto> publish(@PathVariable Long id) {
-        FanTemplateVersionDto published = fanTemplateService.publishVersion(
+    public ApiResponse<ProductTemplateVersionDto> publish(@PathVariable Long id) {
+        ProductTemplateVersionDto published = productTemplateService.publishVersion(
                 id, getCurrentUser());
         return ApiResponse.success("Версия опубликована", published);
     }
@@ -124,8 +124,8 @@ public class FanTemplateVersionController extends BaseController {
      * Пометить LEGACY-версию как DEPRECATED.
      */
     @PostMapping("/{id}/deprecate")
-    public ApiResponse<FanTemplateVersionDto> deprecate(@PathVariable Long id) {
-        FanTemplateVersionDto deprecated = fanTemplateService.deprecateVersion(
+    public ApiResponse<ProductTemplateVersionDto> deprecate(@PathVariable Long id) {
+        ProductTemplateVersionDto deprecated = productTemplateService.deprecateVersion(
                 id, getCurrentUser());
         return ApiResponse.success("Версия помечена как DEPRECATED", deprecated);
     }
@@ -134,8 +134,8 @@ public class FanTemplateVersionController extends BaseController {
      * Архивировать DEPRECATED-версию.
      */
     @PostMapping("/{id}/archive")
-    public ApiResponse<FanTemplateVersionDto> archive(@PathVariable Long id) {
-        FanTemplateVersionDto archived = fanTemplateService.archiveVersion(
+    public ApiResponse<ProductTemplateVersionDto> archive(@PathVariable Long id) {
+        ProductTemplateVersionDto archived = productTemplateService.archiveVersion(
                 id, getCurrentUser());
         return ApiResponse.success("Версия заархивирована", archived);
     }
@@ -145,7 +145,7 @@ public class FanTemplateVersionController extends BaseController {
      */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteVersion(@PathVariable Long id) {
-        fanTemplateService.deleteVersion(id, getCurrentUser());
+        productTemplateService.deleteVersion(id, getCurrentUser());
         return ApiResponse.success("Версия удалена", null);
     }
 }

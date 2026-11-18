@@ -161,15 +161,15 @@ public class FanCardEntity extends BaseProductCard {
     // ========== ПОЛЯ КОНСТРУКТОРА ШАБЛОНОВ ==========
 
     /**
-     * Ссылка на логический шаблон (fan_template).
+     * Ссылка на логический шаблон (product_template).
      * Добавлено в US7.4 (миграция V28).
      */
-    @Column(name = "fan_template_id")
-    private Long fanTemplateId;
+    @Column(name = "product_template_id")
+    private Long productTemplateId;
 
     /**
      * Ссылка на конкретную версию шаблона, по которой создана карточка.
-     * FK на fan_template_version добавлен в миграции V28.
+     * FK на product_template_version добавлен в миграции V28.
      */
     @Column(name = "template_version_id")
     private Long templateVersionId;

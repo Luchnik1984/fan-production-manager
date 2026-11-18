@@ -11,7 +11,7 @@ import java.util.List;
  * Если {@code fields} или {@code markingRule} = null — соответствующая
  * часть не меняется.
  */
-public record UpdateFanTemplateVersionRequest(
+public record UpdateProductTemplateVersionRequest(
         List<FieldDefinitionDto> fields,
         MarkingRuleDto markingRule
 ) {

@@ -7,13 +7,13 @@ import com.fanproduction.core.event.AuditEvent;
 import com.fanproduction.repositories.product.FanCardRepository;
 import com.fanproduction.services.FanCardService;
 import com.fanproduction.services.exception.FanCardCreationException;
-import com.fanproduction.template.entity.FanTemplate;
-import com.fanproduction.template.entity.FanTemplateVersion;
+import com.fanproduction.template.entity.ProductTemplate;
+import com.fanproduction.template.entity.ProductTemplateVersion;
 import com.fanproduction.template.enums.TemplateStatus;
 import com.fanproduction.template.model.FieldDefinition;
 import com.fanproduction.template.model.MarkingRule;
-import com.fanproduction.template.repository.FanTemplateRepository;
-import com.fanproduction.template.repository.FanTemplateVersionRepository;
+import com.fanproduction.template.repository.ProductTemplateRepository;
+import com.fanproduction.template.repository.ProductTemplateVersionRepository;
 import com.fanproduction.template.service.MarkingEngine;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,12 +51,12 @@ public class FanCardServiceImpl implements FanCardService {
      */
     private static final Set<String> TECHNICAL_FIELDS = Set.of(
             "templateVersionId",
-            "fanTemplateId"
+            "productTemplateId"
     );
 
     private final FanCardRepository fanCardRepository;
-    private final FanTemplateRepository fanTemplateRepository;
-    private final FanTemplateVersionRepository fanTemplateVersionRepository;
+    private final ProductTemplateRepository productTemplateRepository;
+    private final ProductTemplateVersionRepository productTemplateVersionRepository;
     private final MarkingEngine markingEngine;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -69,8 +69,8 @@ public class FanCardServiceImpl implements FanCardService {
     public FanCardEntity createFromTemplate(Long templateVersionId,
                                             Map<String, Object> values,
                                             String createdBy) {
-        FanTemplateVersion version = loadVersionForCreation(templateVersionId);
-        FanTemplate template = loadTemplate(version.getTemplateId());
+        ProductTemplateVersion version = loadVersionForCreation(templateVersionId);
+        ProductTemplate template = loadTemplate(version.getTemplateId());
 
         List<FieldDefinition> fields = version.getFieldsJson();
         MarkingRule rule = version.getMarkingRuleJson();
@@ -81,7 +81,7 @@ public class FanCardServiceImpl implements FanCardService {
         FanCardEntity card = new FanCardEntity();
         card.setCardType("FAN");
         card.setTemplateVersionId(templateVersionId);
-        card.setFanTemplateId(template.getId());
+        card.setProductTemplateId(template.getId());
         card.setCreatedBy(createdBy);
 
         applyValuesToCard(card, values, "Вентилятор " + template.getName());
@@ -114,7 +114,7 @@ public class FanCardServiceImpl implements FanCardService {
                                           Map<String, Object> values,
                                           String updatedBy) {
         FanCardEntity card = loadCard(cardId);
-        FanTemplateVersion version = loadVersionForCard(card);
+        ProductTemplateVersion version = loadVersionForCard(card);
 
         List<FieldDefinition> fields = version.getFieldsJson();
         MarkingRule rule = version.getMarkingRuleJson();
@@ -153,7 +153,7 @@ public class FanCardServiceImpl implements FanCardService {
     @Transactional
     public FanCardEntity recalculateMarking(Long cardId, String updatedBy) {
         FanCardEntity card = loadCard(cardId);
-        FanTemplateVersion version = loadVersionForCard(card);
+        ProductTemplateVersion version = loadVersionForCard(card);
 
         List<FieldDefinition> fields = version.getFieldsJson();
         MarkingRule rule = version.getMarkingRuleJson();
@@ -196,8 +196,8 @@ public class FanCardServiceImpl implements FanCardService {
         return card;
     }
 
-    private FanTemplateVersion loadVersionForCreation(Long templateVersionId) {
-        FanTemplateVersion version = fanTemplateVersionRepository.findById(templateVersionId)
+    private ProductTemplateVersion loadVersionForCreation(Long templateVersionId) {
+        ProductTemplateVersion version = productTemplateVersionRepository.findById(templateVersionId)
                 .orElseThrow(() -> new FanCardCreationException(
                         "Версия шаблона не найдена: " + templateVersionId));
 
@@ -210,13 +210,13 @@ public class FanCardServiceImpl implements FanCardService {
         return version;
     }
 
-    private FanTemplateVersion loadVersionForCard(FanCardEntity card) {
+    private ProductTemplateVersion loadVersionForCard(FanCardEntity card) {
         if (card.getTemplateVersionId() == null) {
             throw new FanCardCreationException(
                     "У карточки нет привязки к версии шаблона");
         }
 
-        FanTemplateVersion version = fanTemplateVersionRepository
+        ProductTemplateVersion version = productTemplateVersionRepository
                 .findById(card.getTemplateVersionId())
                 .orElseThrow(() -> new FanCardCreationException(
                         "Версия шаблона не найдена: " + card.getTemplateVersionId()));
@@ -229,8 +229,8 @@ public class FanCardServiceImpl implements FanCardService {
         return version;
     }
 
-    private FanTemplate loadTemplate(Long templateId) {
-        return fanTemplateRepository.findById(templateId)
+    private ProductTemplate loadTemplate(Long templateId) {
+        return productTemplateRepository.findById(templateId)
                 .orElseThrow(() -> new FanCardCreationException(
                         "Шаблон не найден: " + templateId));
     }

@@ -1,6 +1,6 @@
 package com.fanproduction.gui.configurator;
 
-import com.fanproduction.gui.client.FanTemplateVersionClient;
+import com.fanproduction.gui.client.ProductTemplateVersionClient;
 import com.fanproduction.gui.util.FieldValueExtractor;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
@@ -107,7 +107,7 @@ public class FanCardConfigurator implements CardFieldConfigurator {
             Map<String, Object> values = collectValues(fieldControlsRef, "fullMarking");
             new Thread(() -> {
                 try {
-                    String preview = FanTemplateVersionClient.previewMarking(templateVersionId, values);
+                    String preview = ProductTemplateVersionClient.previewMarking(templateVersionId, values);
                     if (preview != null && !preview.equals(currentMarking)) {
                         manualOverride = true;
                         log.info("markInitialized: MANUAL OVERRIDE, preview='{}' != current='{}'",
@@ -192,7 +192,7 @@ public class FanCardConfigurator implements CardFieldConfigurator {
 
         new Thread(() -> {
             try {
-                String newMarking = FanTemplateVersionClient.previewMarking(versionId, values);
+                String newMarking = ProductTemplateVersionClient.previewMarking(versionId, values);
                 if (newMarking == null) newMarking = "";
 
                 final String finalMarking = newMarking;

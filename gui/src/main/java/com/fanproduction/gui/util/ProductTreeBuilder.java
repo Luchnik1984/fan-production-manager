@@ -13,7 +13,7 @@ import java.util.List;
  * Используется в:
  * <ul>
  *   <li>{@code TemplateTreeController} — вкладка «Конструктор шаблонов»;</li>
- *   <li>{@code FanTemplateSelectionDialog} — выбор серии при создании FAN-карточки.</li>
+ *   <li>{@code ProductTemplateSelectionDialog} — выбор серии при создании FAN-карточки.</li>
  * </ul>
  * <p>
  * Устраняет дублирование между этими двумя местами.

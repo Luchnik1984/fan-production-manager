@@ -2,17 +2,17 @@ package com.fanproduction.template.service.impl;
 
 import com.fanproduction.core.enums.AuditAction;
 import com.fanproduction.core.event.AuditEvent;
-import com.fanproduction.template.dto.FanTemplateDto;
-import com.fanproduction.template.dto.FanTemplateVersionDto;
-import com.fanproduction.template.entity.FanTemplate;
-import com.fanproduction.template.entity.FanTemplateVersion;
+import com.fanproduction.template.dto.ProductTemplateDto;
+import com.fanproduction.template.dto.ProductTemplateVersionDto;
+import com.fanproduction.template.entity.ProductTemplate;
+import com.fanproduction.template.entity.ProductTemplateVersion;
 import com.fanproduction.template.enums.TemplateStatus;
 import com.fanproduction.template.exception.TemplateValidationException;
 import com.fanproduction.template.model.FieldDefinition;
 import com.fanproduction.template.model.MarkingRule;
-import com.fanproduction.template.repository.FanTemplateRepository;
-import com.fanproduction.template.repository.FanTemplateVersionRepository;
-import com.fanproduction.template.service.FanTemplateService;
+import com.fanproduction.template.repository.ProductTemplateRepository;
+import com.fanproduction.template.repository.ProductTemplateVersionRepository;
+import com.fanproduction.template.service.ProductTemplateService;
 import com.fanproduction.template.service.TemplateValidationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,10 +30,10 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class FanTemplateServiceImpl implements FanTemplateService {
+public class ProductTemplateServiceImpl implements ProductTemplateService {
 
-    private final FanTemplateRepository fanTemplateRepository;
-    private final FanTemplateVersionRepository fanTemplateVersionRepository;
+    private final ProductTemplateRepository productTemplateRepository;
+    private final ProductTemplateVersionRepository productTemplateVersionRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final TemplateValidationService templateValidationService;
 
@@ -42,21 +42,21 @@ public class FanTemplateServiceImpl implements FanTemplateService {
     // ==========================================================
 
     @Override
-    public List<FanTemplateDto> getAllTemplates() {
-        return fanTemplateRepository.findAllByOrderByNameAsc().stream()
+    public List<ProductTemplateDto> getAllTemplates() {
+        return productTemplateRepository.findAllByOrderByNameAsc().stream()
                 .map(template -> toTemplateDto(template, null))
                 .toList();
     }
 
     @Override
-    public FanTemplateDto getTemplateById(Long id) {
+    public ProductTemplateDto getTemplateById(Long id) {
         return toTemplateDto(findTemplateOrThrow(id), null);
     }
 
     @Override
-    public FanTemplateDto getTemplateWithVersions(Long id) {
-        FanTemplate template = findTemplateOrThrow(id);
-        List<FanTemplateVersionDto> versions = fanTemplateVersionRepository
+    public ProductTemplateDto getTemplateWithVersions(Long id) {
+        ProductTemplate template = findTemplateOrThrow(id);
+        List<ProductTemplateVersionDto> versions = productTemplateVersionRepository
                 .findByTemplateIdOrderByVersionDesc(id).stream()
                 .map(this::toVersionDto)
                 .toList();
@@ -64,8 +64,8 @@ public class FanTemplateServiceImpl implements FanTemplateService {
     }
 
     @Override
-    public FanTemplateDto getTemplateBySeries(Long seriesId) {
-        FanTemplate template = fanTemplateRepository.findBySeriesId(seriesId)
+    public ProductTemplateDto getTemplateBySeries(Long seriesId) {
+        ProductTemplate template = productTemplateRepository.findBySeriesId(seriesId)
                 .orElseThrow(() -> new TemplateValidationException(
                         "Шаблон для серии не найден: " + seriesId));
         return toTemplateDto(template, null);
@@ -73,7 +73,7 @@ public class FanTemplateServiceImpl implements FanTemplateService {
 
     @Override
     @Transactional
-    public FanTemplateDto createTemplate(Long seriesId,
+    public ProductTemplateDto createTemplate(Long seriesId,
                                          String name,
                                          String description,
                                          List<FieldDefinition> fields,
@@ -81,25 +81,25 @@ public class FanTemplateServiceImpl implements FanTemplateService {
                                          String createdBy) {
         validateNotEmpty(name, "Наименование шаблона");
 
-        if (fanTemplateRepository.existsBySeriesId(seriesId)) {
+        if (productTemplateRepository.existsBySeriesId(seriesId)) {
             throw new TemplateValidationException("Для серии уже существует шаблон: " + seriesId);
         }
 
-        FanTemplate template = new FanTemplate();
+        ProductTemplate template = new ProductTemplate();
         template.setSeriesId(seriesId);
         template.setName(name.trim());
         template.setDescription(trimOrNull(description));
         template.setCreatedBy(createdBy);
-        FanTemplate savedTemplate = fanTemplateRepository.save(template);
+        ProductTemplate savedTemplate = productTemplateRepository.save(template);
 
-        FanTemplateVersion firstVersion = new FanTemplateVersion();
+        ProductTemplateVersion firstVersion = new ProductTemplateVersion();
         firstVersion.setTemplateId(savedTemplate.getId());
         firstVersion.setVersion(1);
         firstVersion.setStatus(TemplateStatus.DRAFT);
         firstVersion.setFieldsJson(fields != null ? fields : List.of());
         firstVersion.setMarkingRuleJson(markingRule != null ? markingRule : MarkingRule.empty());
         firstVersion.setCreatedBy(createdBy);
-        fanTemplateVersionRepository.save(firstVersion);
+        productTemplateVersionRepository.save(firstVersion);
 
         publishAudit(createdBy, AuditAction.TEMPLATE_CREATE,
                 "Создан шаблон: '" + savedTemplate.getName() + "' (серия ID=" + seriesId + ")");
@@ -109,8 +109,8 @@ public class FanTemplateServiceImpl implements FanTemplateService {
 
     @Override
     @Transactional
-    public FanTemplateDto updateTemplate(Long id, String name, String description, String updatedBy) {
-        FanTemplate template = findTemplateOrThrow(id);
+    public ProductTemplateDto updateTemplate(Long id, String name, String description, String updatedBy) {
+        ProductTemplate template = findTemplateOrThrow(id);
 
         String newName = trimOrNull(name);
         if (newName != null && !newName.equals(template.getName())) {
@@ -121,7 +121,7 @@ public class FanTemplateServiceImpl implements FanTemplateService {
             template.setDescription(newDescription);
         }
 
-        FanTemplate saved = fanTemplateRepository.save(template);
+        ProductTemplate saved = productTemplateRepository.save(template);
         publishAudit(updatedBy, AuditAction.TEMPLATE_UPDATE,
                 "Обновлён шаблон: '" + saved.getName() + "' (ID=" + id + ")");
         return toTemplateDto(saved, null);
@@ -130,8 +130,8 @@ public class FanTemplateServiceImpl implements FanTemplateService {
     @Override
     @Transactional
     public void deleteTemplate(Long id, String deletedBy) {
-        FanTemplate template = findTemplateOrThrow(id);
-        fanTemplateRepository.delete(template);
+        ProductTemplate template = findTemplateOrThrow(id);
+        productTemplateRepository.delete(template);
         publishAudit(deletedBy, AuditAction.TEMPLATE_DELETE,
                 "Удалён шаблон: '" + template.getName() + "' (ID=" + id + ")");
     }
@@ -141,31 +141,31 @@ public class FanTemplateServiceImpl implements FanTemplateService {
     // ==========================================================
 
     @Override
-    public List<FanTemplateVersionDto> getVersionsByTemplate(Long templateId) {
-        if (!fanTemplateRepository.existsById(templateId)) {
+    public List<ProductTemplateVersionDto> getVersionsByTemplate(Long templateId) {
+        if (!productTemplateRepository.existsById(templateId)) {
             throw new TemplateValidationException("Шаблон не найден: " + templateId);
         }
-        return fanTemplateVersionRepository.findByTemplateIdOrderByVersionDesc(templateId).stream()
+        return productTemplateVersionRepository.findByTemplateIdOrderByVersionDesc(templateId).stream()
                 .map(this::toVersionDto)
                 .toList();
     }
 
     @Override
-    public FanTemplateVersionDto getVersionById(Long versionId) {
+    public ProductTemplateVersionDto getVersionById(Long versionId) {
         return toVersionDto(findVersionOrThrow(versionId));
     }
 
     @Override
-    public FanTemplateVersionDto getPublishedVersion(Long templateId) {
-        return fanTemplateVersionRepository
+    public ProductTemplateVersionDto getPublishedVersion(Long templateId) {
+        return productTemplateVersionRepository
                 .findFirstByTemplateIdAndStatus(templateId, TemplateStatus.PUBLISHED)
                 .map(this::toVersionDto)
                 .orElse(null);
     }
 
     @Override
-    public List<FanTemplateVersionDto> getAvailableVersions(Long templateId) {
-        return fanTemplateVersionRepository
+    public List<ProductTemplateVersionDto> getAvailableVersions(Long templateId) {
+        return productTemplateVersionRepository
                 .findByTemplateIdAndStatusIn(templateId,
                         Set.of(TemplateStatus.PUBLISHED, TemplateStatus.LEGACY))
                 .stream()
@@ -174,8 +174,8 @@ public class FanTemplateServiceImpl implements FanTemplateService {
     }
 
     @Override
-    public FanTemplateVersionDto getDraftVersion(Long templateId) {
-        return fanTemplateVersionRepository
+    public ProductTemplateVersionDto getDraftVersion(Long templateId) {
+        return productTemplateVersionRepository
                 .findFirstByTemplateIdAndStatus(templateId, TemplateStatus.DRAFT)
                 .map(this::toVersionDto)
                 .orElse(null);
@@ -187,13 +187,13 @@ public class FanTemplateServiceImpl implements FanTemplateService {
 
     @Override
     @Transactional
-    public FanTemplateVersionDto createNewVersion(Long templateId,
+    public ProductTemplateVersionDto createNewVersion(Long templateId,
                                                   List<FieldDefinition> fields,
                                                   MarkingRule markingRule,
                                                   String createdBy) {
-        FanTemplate template = findTemplateOrThrow(templateId);
+        ProductTemplate template = findTemplateOrThrow(templateId);
 
-        if (fanTemplateVersionRepository.existsByTemplateIdAndStatus(templateId, TemplateStatus.DRAFT)) {
+        if (productTemplateVersionRepository.existsByTemplateIdAndStatus(templateId, TemplateStatus.DRAFT)) {
             throw new TemplateValidationException(
                     "У шаблона уже есть черновик (DRAFT). Сначала опубликуйте или удалите его.");
         }
@@ -203,7 +203,7 @@ public class FanTemplateServiceImpl implements FanTemplateService {
         MarkingRule effectiveRule = markingRule;
 
         if (effectiveFields == null || effectiveRule == null) {
-            FanTemplateVersion source = resolveSourceForNewVersion(template);
+            ProductTemplateVersion source = resolveSourceForNewVersion(template);
             if (source != null) {
                 if (effectiveFields == null) {
                     effectiveFields = source.getFieldsJson();
@@ -214,10 +214,10 @@ public class FanTemplateServiceImpl implements FanTemplateService {
             }
         }
 
-        int nextVersionNumber = fanTemplateVersionRepository.findMaxVersion(templateId)
+        int nextVersionNumber = productTemplateVersionRepository.findMaxVersion(templateId)
                 .orElse(0) + 1;
 
-        FanTemplateVersion version = new FanTemplateVersion();
+        ProductTemplateVersion version = new ProductTemplateVersion();
         version.setTemplateId(templateId);
         version.setVersion(nextVersionNumber);
         version.setStatus(TemplateStatus.DRAFT);
@@ -225,7 +225,7 @@ public class FanTemplateServiceImpl implements FanTemplateService {
         version.setMarkingRuleJson(effectiveRule != null ? effectiveRule : MarkingRule.empty());
         version.setCreatedBy(createdBy);
 
-        FanTemplateVersion saved = fanTemplateVersionRepository.save(version);
+        ProductTemplateVersion saved = productTemplateVersionRepository.save(version);
 
         String auditDetails = "Создана черновая версия v" + nextVersionNumber
                 + " для шаблона '" + template.getName() + "'";
@@ -244,11 +244,11 @@ public class FanTemplateServiceImpl implements FanTemplateService {
 
     @Override
     @Transactional
-    public FanTemplateVersionDto updateDraftVersion(Long versionId,
+    public ProductTemplateVersionDto updateDraftVersion(Long versionId,
                                                     List<FieldDefinition> fields,
                                                     MarkingRule markingRule,
                                                     String updatedBy) {
-        FanTemplateVersion version = findVersionOrThrow(versionId);
+        ProductTemplateVersion version = findVersionOrThrow(versionId);
 
         if (version.getStatus() != TemplateStatus.DRAFT) {
             throw new TemplateValidationException(
@@ -258,7 +258,7 @@ public class FanTemplateServiceImpl implements FanTemplateService {
         if (fields != null) version.setFieldsJson(fields);
         if (markingRule != null) version.setMarkingRuleJson(markingRule);
 
-        FanTemplateVersion saved = fanTemplateVersionRepository.save(version);
+        ProductTemplateVersion saved = productTemplateVersionRepository.save(version);
 
         publishAudit(updatedBy, AuditAction.TEMPLATE_UPDATE,
                 "Обновлён черновик v" + saved.getVersion() + " шаблона ID=" + saved.getTemplateId());
@@ -272,8 +272,8 @@ public class FanTemplateServiceImpl implements FanTemplateService {
 
     @Override
     @Transactional
-    public FanTemplateVersionDto publishVersion(Long versionId, String publishedBy) {
-        FanTemplateVersion version = findVersionOrThrow(versionId);
+    public ProductTemplateVersionDto publishVersion(Long versionId, String publishedBy) {
+        ProductTemplateVersion version = findVersionOrThrow(versionId);
 
         if (version.getStatus() != TemplateStatus.DRAFT) {
             throw new TemplateValidationException(
@@ -282,22 +282,22 @@ public class FanTemplateServiceImpl implements FanTemplateService {
 
         templateValidationService.validate(version);
 
-        FanTemplate template = findTemplateOrThrow(version.getTemplateId());
+        ProductTemplate template = findTemplateOrThrow(version.getTemplateId());
 
-        fanTemplateVersionRepository
+        productTemplateVersionRepository
                 .findFirstByTemplateIdAndStatus(template.getId(), TemplateStatus.PUBLISHED)
                 .ifPresent(oldPublished -> {
                     oldPublished.setStatus(TemplateStatus.LEGACY);
-                    fanTemplateVersionRepository.save(oldPublished);
+                    productTemplateVersionRepository.save(oldPublished);
                 });
 
         version.setStatus(TemplateStatus.PUBLISHED);
         version.setPublishedAt(LocalDateTime.now());
         version.setPublishedBy(publishedBy);
-        FanTemplateVersion saved = fanTemplateVersionRepository.save(version);
+        ProductTemplateVersion saved = productTemplateVersionRepository.save(version);
 
         template.setCurrentVersionId(saved.getId());
-        fanTemplateRepository.save(template);
+        productTemplateRepository.save(template);
 
         publishAudit(publishedBy, AuditAction.TEMPLATE_PUBLISH,
                 "Опубликована версия v" + saved.getVersion()
@@ -308,8 +308,8 @@ public class FanTemplateServiceImpl implements FanTemplateService {
 
     @Override
     @Transactional
-    public FanTemplateVersionDto deprecateVersion(Long versionId, String updatedBy) {
-        FanTemplateVersion version = findVersionOrThrow(versionId);
+    public ProductTemplateVersionDto deprecateVersion(Long versionId, String updatedBy) {
+        ProductTemplateVersion version = findVersionOrThrow(versionId);
 
         if (version.getStatus() != TemplateStatus.LEGACY) {
             throw new TemplateValidationException(
@@ -317,7 +317,7 @@ public class FanTemplateServiceImpl implements FanTemplateService {
         }
 
         version.setStatus(TemplateStatus.DEPRECATED);
-        FanTemplateVersion saved = fanTemplateVersionRepository.save(version);
+        ProductTemplateVersion saved = productTemplateVersionRepository.save(version);
 
         publishAudit(updatedBy, AuditAction.TEMPLATE_DEPRECATE,
                 "Версия v" + saved.getVersion() + " помечена как DEPRECATED");
@@ -327,8 +327,8 @@ public class FanTemplateServiceImpl implements FanTemplateService {
 
     @Override
     @Transactional
-    public FanTemplateVersionDto archiveVersion(Long versionId, String updatedBy) {
-        FanTemplateVersion version = findVersionOrThrow(versionId);
+    public ProductTemplateVersionDto archiveVersion(Long versionId, String updatedBy) {
+        ProductTemplateVersion version = findVersionOrThrow(versionId);
 
         if (version.getStatus() != TemplateStatus.DEPRECATED) {
             throw new TemplateValidationException(
@@ -336,7 +336,7 @@ public class FanTemplateServiceImpl implements FanTemplateService {
         }
 
         version.setStatus(TemplateStatus.ARCHIVED);
-        FanTemplateVersion saved = fanTemplateVersionRepository.save(version);
+        ProductTemplateVersion saved = productTemplateVersionRepository.save(version);
 
         publishAudit(updatedBy, AuditAction.TEMPLATE_UPDATE,
                 "Версия v" + saved.getVersion() + " заархивирована");
@@ -347,7 +347,7 @@ public class FanTemplateServiceImpl implements FanTemplateService {
     @Override
     @Transactional
     public void deleteVersion(Long versionId, String deletedBy) {
-        FanTemplateVersion version = findVersionOrThrow(versionId);
+        ProductTemplateVersion version = findVersionOrThrow(versionId);
 
         if (version.getStatus() != TemplateStatus.DRAFT
                 && version.getStatus() != TemplateStatus.ARCHIVED) {
@@ -355,12 +355,12 @@ public class FanTemplateServiceImpl implements FanTemplateService {
                     "Удалить можно только DRAFT или ARCHIVED. Текущий: " + version.getStatus());
         }
 
-        FanTemplate template = findTemplateOrThrow(version.getTemplateId());
+        ProductTemplate template = findTemplateOrThrow(version.getTemplateId());
         if (Objects.equals(template.getCurrentVersionId(), versionId)) {
             throw new TemplateValidationException("Нельзя удалить текущую опубликованную версию");
         }
 
-        fanTemplateVersionRepository.delete(version);
+        productTemplateVersionRepository.delete(version);
 
         publishAudit(deletedBy, AuditAction.TEMPLATE_DELETE,
                 "Удалена версия v" + version.getVersion() + " шаблона ID=" + version.getTemplateId());
@@ -379,10 +379,10 @@ public class FanTemplateServiceImpl implements FanTemplateService {
      *
      * @return версия-источник или {@code null}, если у шаблона вообще нет версий
      */
-    private FanTemplateVersion resolveSourceForNewVersion(FanTemplate template) {
+    private ProductTemplateVersion resolveSourceForNewVersion(ProductTemplate template) {
         // 1. Текущая опубликованная
         if (template.getCurrentVersionId() != null) {
-            Optional<FanTemplateVersion> current = fanTemplateVersionRepository
+            Optional<ProductTemplateVersion> current = productTemplateVersionRepository
                     .findById(template.getCurrentVersionId());
             if (current.isPresent()) {
                 return current.get();
@@ -390,18 +390,18 @@ public class FanTemplateServiceImpl implements FanTemplateService {
         }
 
         // 2. Последняя по номеру версии
-        List<FanTemplateVersion> versions = fanTemplateVersionRepository
+        List<ProductTemplateVersion> versions = productTemplateVersionRepository
                 .findByTemplateIdOrderByVersionDesc(template.getId());
         return versions.isEmpty() ? null : versions.get(0);
     }
 
-    private FanTemplate findTemplateOrThrow(Long id) {
-        return fanTemplateRepository.findById(id)
+    private ProductTemplate findTemplateOrThrow(Long id) {
+        return productTemplateRepository.findById(id)
                 .orElseThrow(() -> new TemplateValidationException("Шаблон не найден: " + id));
     }
 
-    private FanTemplateVersion findVersionOrThrow(Long id) {
-        return fanTemplateVersionRepository.findById(id)
+    private ProductTemplateVersion findVersionOrThrow(Long id) {
+        return productTemplateVersionRepository.findById(id)
                 .orElseThrow(() -> new TemplateValidationException("Версия шаблона не найдена: " + id));
     }
 
@@ -422,8 +422,8 @@ public class FanTemplateServiceImpl implements FanTemplateService {
         eventPublisher.publishEvent(new AuditEvent(this, actor, action, details));
     }
 
-    private FanTemplateDto toTemplateDto(FanTemplate template, List<FanTemplateVersionDto> versions) {
-        return new FanTemplateDto(
+    private ProductTemplateDto toTemplateDto(ProductTemplate template, List<ProductTemplateVersionDto> versions) {
+        return new ProductTemplateDto(
                 template.getId(),
                 template.getSeriesId(),
                 template.getName(),
@@ -435,8 +435,8 @@ public class FanTemplateServiceImpl implements FanTemplateService {
         );
     }
 
-    private FanTemplateVersionDto toVersionDto(FanTemplateVersion version) {
-        return new FanTemplateVersionDto(
+    private ProductTemplateVersionDto toVersionDto(ProductTemplateVersion version) {
+        return new ProductTemplateVersionDto(
                 version.getId(),
                 version.getTemplateId(),
                 version.getVersion(),
@@ -456,7 +456,7 @@ public class FanTemplateServiceImpl implements FanTemplateService {
 
     @Override
     public List<String> validateVersion(Long versionId) {
-        FanTemplateVersion version = findVersionOrThrow(versionId);
+        ProductTemplateVersion version = findVersionOrThrow(versionId);
         return templateValidationService.collectErrors(version);
     }
 }

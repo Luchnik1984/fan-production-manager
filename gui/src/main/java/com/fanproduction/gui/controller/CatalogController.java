@@ -3,7 +3,7 @@ package com.fanproduction.gui.controller;
 import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.gui.client.ProductCardClient;
 import com.fanproduction.gui.client.ProductTypeClient;
-import com.fanproduction.gui.component.FanTemplateSelectionDialog;
+import com.fanproduction.gui.component.ProductTemplateSelectionDialog;
 import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fanproduction.gui.dto.CatalogFilterOption;
@@ -401,7 +401,7 @@ public class CatalogController {
      * диалог выбора.
      */
     private void openFanSelectionDialog(Stage ownerStage) {
-        FanTemplateSelectionDialog selectionDialog = new FanTemplateSelectionDialog(ownerStage);
+        ProductTemplateSelectionDialog selectionDialog = new ProductTemplateSelectionDialog(ownerStage);
         selectionDialog.show();
 
         Long selectedVersionId = selectionDialog.getSelectedVersionId();
@@ -449,8 +449,8 @@ public class CatalogController {
      */
     private String checkVersionStatus(Long versionId) {
         try {
-            com.fanproduction.gui.dto.response.FanTemplateVersionDto version =
-                    com.fanproduction.gui.client.FanTemplateVersionClient.getVersionById(versionId);
+            com.fanproduction.gui.dto.response.ProductTemplateVersionDto version =
+                    com.fanproduction.gui.client.ProductTemplateVersionClient.getVersionById(versionId);
             return version != null ? version.getStatus() : null;
         } catch (Exception e) {
             log.warn("Не удалось проверить статус версии {}: {}", versionId, e.getMessage());

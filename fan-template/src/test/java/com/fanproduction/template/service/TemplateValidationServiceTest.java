@@ -1,6 +1,6 @@
 package com.fanproduction.template.service;
 
-import com.fanproduction.template.entity.FanTemplateVersion;
+import com.fanproduction.template.entity.ProductTemplateVersion;
 import com.fanproduction.template.enums.ConditionOperator;
 import com.fanproduction.template.enums.FieldType;
 import com.fanproduction.template.enums.RuleElementType;
@@ -54,7 +54,7 @@ class TemplateValidationServiceTest {
     @Test
     @DisplayName("Корректный шаблон проходит валидацию")
     void validTemplate() {
-        FanTemplateVersion version = new FanTemplateVersion();
+        ProductTemplateVersion version = new ProductTemplateVersion();
         version.setFieldsJson(List.of(
                 simpleField("series", FieldType.TEXT, 1),
                 simpleField("ductSize", FieldType.TEXT, 2)
@@ -89,7 +89,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("Пустой список полей → ошибка")
         void emptyFields() {
-            FanTemplateVersion version = new FanTemplateVersion();
+            ProductTemplateVersion version = new ProductTemplateVersion();
             version.setFieldsJson(List.of());
             version.setMarkingRuleJson(MarkingRule.empty());
 
@@ -100,7 +100,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("Пустое правило → ошибка")
         void emptyRule() {
-            FanTemplateVersion version = new FanTemplateVersion();
+            ProductTemplateVersion version = new ProductTemplateVersion();
             version.setFieldsJson(List.of(simpleField("x", FieldType.TEXT, 1)));
             version.setMarkingRuleJson(new MarkingRule(List.of()));
 
@@ -120,7 +120,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("Дубликат key → ошибка")
         void duplicateKey() {
-            FanTemplateVersion version = new FanTemplateVersion();
+            ProductTemplateVersion version = new ProductTemplateVersion();
             version.setFieldsJson(List.of(
                     simpleField("x", FieldType.TEXT, 1),
                     simpleField("x", FieldType.TEXT, 2)
@@ -134,7 +134,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("Поле без key → ошибка")
         void noKey() {
-            FanTemplateVersion version = new FanTemplateVersion();
+            ProductTemplateVersion version = new ProductTemplateVersion();
             version.setFieldsJson(List.of(
                     new FieldDefinition(null, "X", FieldType.TEXT, false,
                             null, null, null, null, null, null,
@@ -149,7 +149,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("COMBOBOX без options → ошибка")
         void comboBoxNoOptions() {
-            FanTemplateVersion version = new FanTemplateVersion();
+            ProductTemplateVersion version = new ProductTemplateVersion();
             version.setFieldsJson(List.of(
                     new FieldDefinition("poles", "Полюсность", FieldType.COMBOBOX,
                             true, null, null, null, null, null, null,
@@ -164,7 +164,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("SELECTABLE без referenceType → ошибка")
         void selectableNoRef() {
-            FanTemplateVersion version = new FanTemplateVersion();
+            ProductTemplateVersion version = new ProductTemplateVersion();
             version.setFieldsJson(List.of(
                     new FieldDefinition("motorId", "ЭД", FieldType.SELECTABLE,
                             false, null, null, null, null, null, null,
@@ -179,7 +179,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("SELECTABLE с недопустимым referenceType → ошибка")
         void selectableInvalidRef() {
-            FanTemplateVersion version = new FanTemplateVersion();
+            ProductTemplateVersion version = new ProductTemplateVersion();
             version.setFieldsJson(List.of(
                     new FieldDefinition("x", "X", FieldType.SELECTABLE,
                             false, null, null, null, "UNKNOWN_TYPE", null, null,
@@ -194,7 +194,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("COMPUTED без formula → ошибка")
         void computedNoFormula() {
-            FanTemplateVersion version = new FanTemplateVersion();
+            ProductTemplateVersion version = new ProductTemplateVersion();
             version.setFieldsJson(List.of(
                     new FieldDefinition("c", "C", FieldType.COMPUTED,
                             false, null, null, null, null, null, null,
@@ -209,7 +209,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("COMPUTED с неверной формулой → ошибка")
         void computedInvalidFormula() {
-            FanTemplateVersion version = new FanTemplateVersion();
+            ProductTemplateVersion version = new ProductTemplateVersion();
             version.setFieldsJson(List.of(
                     new FieldDefinition("c", "C", FieldType.COMPUTED,
                             false, null, null, null, null, null, null,
@@ -224,7 +224,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("pullFrom на несуществующее поле → ошибка")
         void pullFromToMissing() {
-            FanTemplateVersion version = new FanTemplateVersion();
+            ProductTemplateVersion version = new ProductTemplateVersion();
             version.setFieldsJson(List.of(
                     new FieldDefinition("motorId", "ЭД", FieldType.SELECTABLE,
                             false, null, null, null, "MOTOR", null, null,
@@ -239,7 +239,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("pullFrom на существующее поле → без ошибок")
         void pullFromToExisting() {
-            FanTemplateVersion version = new FanTemplateVersion();
+            ProductTemplateVersion version = new ProductTemplateVersion();
             version.setFieldsJson(List.of(
                     new FieldDefinition("motorId", "ЭД", FieldType.SELECTABLE,
                             false, null, null, null, "MOTOR", null, null,
@@ -265,7 +265,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("LITERAL без value → ошибка")
         void literalNoValue() {
-            FanTemplateVersion version = baseVersionWith(
+            ProductTemplateVersion version = baseVersionWith(
                     new MarkingRule(List.of(
                             new MarkingRuleElement(RuleElementType.LITERAL, null, null, null, null, null)
                     )));
@@ -277,7 +277,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("SEPARATOR без value → ошибка")
         void separatorNoValue() {
-            FanTemplateVersion version = baseVersionWith(
+            ProductTemplateVersion version = baseVersionWith(
                     new MarkingRule(List.of(
                             new MarkingRuleElement(RuleElementType.SEPARATOR, null, null, null, null, null)
                     )));
@@ -289,7 +289,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("FIELD без fieldKey → ошибка")
         void fieldNoKey() {
-            FanTemplateVersion version = baseVersionWith(
+            ProductTemplateVersion version = baseVersionWith(
                     new MarkingRule(List.of(
                             new MarkingRuleElement(RuleElementType.FIELD, null, null, null, null, null)
                     )));
@@ -301,7 +301,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("CONDITION без condition → ошибка")
         void conditionNoCondition() {
-            FanTemplateVersion version = baseVersionWith(
+            ProductTemplateVersion version = baseVersionWith(
                     new MarkingRule(List.of(
                             new MarkingRuleElement(RuleElementType.CONDITION, null, null, null, null, null)
                     )));
@@ -313,7 +313,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("CONDITION без field → ошибка")
         void conditionNoField() {
-            FanTemplateVersion version = baseVersionWith(
+            ProductTemplateVersion version = baseVersionWith(
                     new MarkingRule(List.of(
                             new MarkingRuleElement(RuleElementType.CONDITION, null, null,
                                     new Condition(null, ConditionOperator.NOT_EMPTY, null, null),
@@ -327,7 +327,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("CONDITION без operator → ошибка")
         void conditionNoOperator() {
-            FanTemplateVersion version = baseVersionWith(
+            ProductTemplateVersion version = baseVersionWith(
                     new MarkingRule(List.of(
                             new MarkingRuleElement(RuleElementType.CONDITION, null, null,
                                     new Condition("x", null, null, null),
@@ -341,7 +341,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("CONDITION EQUALS без value → ошибка")
         void conditionEqualsNoValue() {
-            FanTemplateVersion version = baseVersionWith(
+            ProductTemplateVersion version = baseVersionWith(
                     new MarkingRule(List.of(
                             new MarkingRuleElement(RuleElementType.CONDITION, null, null,
                                     new Condition("x", ConditionOperator.EQUALS, null, null),
@@ -355,7 +355,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("CONDITION IN без values → ошибка")
         void conditionInNoValues() {
-            FanTemplateVersion version = baseVersionWith(
+            ProductTemplateVersion version = baseVersionWith(
                     new MarkingRule(List.of(
                             new MarkingRuleElement(RuleElementType.CONDITION, null, null,
                                     new Condition("x", ConditionOperator.IN, null, null),
@@ -369,7 +369,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("CONDITION NOT_EMPTY без value → не ошибка")
         void conditionNotEmptyNoValue() {
-            FanTemplateVersion version = baseVersionWith(
+            ProductTemplateVersion version = baseVersionWith(
                     new MarkingRule(List.of(
                             new MarkingRuleElement(RuleElementType.CONDITION, null, null,
                                     new Condition("x", ConditionOperator.NOT_EMPTY, null, null),
@@ -383,7 +383,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("Вложенный CONDITION с ошибкой внутри")
         void nestedConditionError() {
-            FanTemplateVersion version = baseVersionWith(
+            ProductTemplateVersion version = baseVersionWith(
                     new MarkingRule(List.of(
                             new MarkingRuleElement(RuleElementType.CONDITION, null, null,
                                     new Condition("x", ConditionOperator.NOT_EMPTY, null, null),
@@ -399,7 +399,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("Пустой sequence внутри CONDITION — не ошибка")
         void emptyConditionBranches() {
-            FanTemplateVersion version = baseVersionWith(
+            ProductTemplateVersion version = baseVersionWith(
                     new MarkingRule(List.of(
                             new MarkingRuleElement(RuleElementType.CONDITION, null, null,
                                     new Condition("x", ConditionOperator.NOT_EMPTY, null, null),
@@ -421,7 +421,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("validate бросает TemplateValidationException при ошибках")
         void validateThrows() {
-            FanTemplateVersion version = new FanTemplateVersion();
+            ProductTemplateVersion version = new ProductTemplateVersion();
             version.setFieldsJson(List.of());
             version.setMarkingRuleJson(MarkingRule.empty());
 
@@ -434,7 +434,7 @@ class TemplateValidationServiceTest {
         @Test
         @DisplayName("validate не бросает при корректном шаблоне")
         void validateDoesNotThrow() {
-            FanTemplateVersion version = new FanTemplateVersion();
+            ProductTemplateVersion version = new ProductTemplateVersion();
             version.setFieldsJson(List.of(simpleField("x", FieldType.TEXT, 1)));
             version.setMarkingRuleJson(new MarkingRule(List.of(literal("A"))));
 
@@ -454,8 +454,8 @@ class TemplateValidationServiceTest {
         );
     }
 
-    private static FanTemplateVersion baseVersionWith(MarkingRule rule) {
-        FanTemplateVersion version = new FanTemplateVersion();
+    private static ProductTemplateVersion baseVersionWith(MarkingRule rule) {
+        ProductTemplateVersion version = new ProductTemplateVersion();
         version.setFieldsJson(List.of(simpleField("x", FieldType.TEXT, 1)));
         version.setMarkingRuleJson(rule);
         return version;

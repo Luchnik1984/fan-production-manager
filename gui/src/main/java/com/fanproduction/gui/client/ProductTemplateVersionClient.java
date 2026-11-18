@@ -1,31 +1,31 @@
 package com.fanproduction.gui.client;
 
-import com.fanproduction.gui.dto.request.fan.UpdateFanTemplateVersionRequest;
+import com.fanproduction.gui.dto.request.fan.UpdateProductTemplateVersionRequest;
 import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.DynamicFormMetadataDto;
-import com.fanproduction.gui.dto.response.FanTemplateVersionDto;
+import com.fanproduction.gui.dto.response.ProductTemplateVersionDto;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.util.List;
 import java.util.Map;
 
 /**
- * Клиент для REST API версий шаблонов (/api/fan-template-versions).
+ * Клиент для REST API версий шаблонов (/api/product-template-versions).
  */
-public class FanTemplateVersionClient {
+public class ProductTemplateVersionClient {
 
-    private static final String BASE_PATH = "/fan-template-versions";
+    private static final String BASE_PATH = "/product-template-versions";
 
-    private FanTemplateVersionClient() {
+    private ProductTemplateVersionClient() {
     }
 
     // ==========================================================
     // READ
     // ==========================================================
 
-    public static FanTemplateVersionDto getVersionById(Long id) throws Exception {
-        TypeReference<ApiResponse<FanTemplateVersionDto>> typeRef = new TypeReference<>() {};
-        ApiResponse<FanTemplateVersionDto> response = ApiClient.get(BASE_PATH + "/" + id, typeRef);
+    public static ProductTemplateVersionDto getVersionById(Long id) throws Exception {
+        TypeReference<ApiResponse<ProductTemplateVersionDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateVersionDto> response = ApiClient.get(BASE_PATH + "/" + id, typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
         }
@@ -73,10 +73,10 @@ public class FanTemplateVersionClient {
     // UPDATE DRAFT
     // ==========================================================
 
-    public static FanTemplateVersionDto updateDraft(Long versionId,
-                                                    UpdateFanTemplateVersionRequest request) throws Exception {
-        TypeReference<ApiResponse<FanTemplateVersionDto>> typeRef = new TypeReference<>() {};
-        ApiResponse<FanTemplateVersionDto> response = ApiClient.put(
+    public static ProductTemplateVersionDto updateDraft(Long versionId,
+                                                    UpdateProductTemplateVersionRequest request) throws Exception {
+        TypeReference<ApiResponse<ProductTemplateVersionDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateVersionDto> response = ApiClient.put(
                 BASE_PATH + "/" + versionId + "/draft", request, typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
@@ -88,9 +88,9 @@ public class FanTemplateVersionClient {
     // LIFECYCLE
     // ==========================================================
 
-    public static FanTemplateVersionDto publishVersion(Long versionId) throws Exception {
-        TypeReference<ApiResponse<FanTemplateVersionDto>> typeRef = new TypeReference<>() {};
-        ApiResponse<FanTemplateVersionDto> response = ApiClient.post(
+    public static ProductTemplateVersionDto publishVersion(Long versionId) throws Exception {
+        TypeReference<ApiResponse<ProductTemplateVersionDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateVersionDto> response = ApiClient.post(
                 BASE_PATH + "/" + versionId + "/publish", null, typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
@@ -98,9 +98,9 @@ public class FanTemplateVersionClient {
         throw new RuntimeException("Не удалось опубликовать версию: " + response.getMessage());
     }
 
-    public static FanTemplateVersionDto deprecateVersion(Long versionId) throws Exception {
-        TypeReference<ApiResponse<FanTemplateVersionDto>> typeRef = new TypeReference<>() {};
-        ApiResponse<FanTemplateVersionDto> response = ApiClient.post(
+    public static ProductTemplateVersionDto deprecateVersion(Long versionId) throws Exception {
+        TypeReference<ApiResponse<ProductTemplateVersionDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateVersionDto> response = ApiClient.post(
                 BASE_PATH + "/" + versionId + "/deprecate", null, typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
@@ -108,9 +108,9 @@ public class FanTemplateVersionClient {
         throw new RuntimeException("Не удалось деприкейтить версию: " + response.getMessage());
     }
 
-    public static FanTemplateVersionDto archiveVersion(Long versionId) throws Exception {
-        TypeReference<ApiResponse<FanTemplateVersionDto>> typeRef = new TypeReference<>() {};
-        ApiResponse<FanTemplateVersionDto> response = ApiClient.post(
+    public static ProductTemplateVersionDto archiveVersion(Long versionId) throws Exception {
+        TypeReference<ApiResponse<ProductTemplateVersionDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateVersionDto> response = ApiClient.post(
                 BASE_PATH + "/" + versionId + "/archive", null, typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();

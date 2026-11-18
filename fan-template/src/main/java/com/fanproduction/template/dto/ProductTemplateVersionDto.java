@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * DTO версии шаблона.
  */
-public record FanTemplateVersionDto(
+public record ProductTemplateVersionDto(
         Long id,
         Long templateId,
         Integer version,

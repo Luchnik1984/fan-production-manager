@@ -5,16 +5,16 @@ import com.fanproduction.core.enums.AuditAction;
 import com.fanproduction.core.event.AuditEvent;
 import com.fanproduction.repositories.product.FanCardRepository;
 import com.fanproduction.services.exception.FanCardCreationException;
-import com.fanproduction.template.entity.FanTemplate;
-import com.fanproduction.template.entity.FanTemplateVersion;
+import com.fanproduction.template.entity.ProductTemplate;
+import com.fanproduction.template.entity.ProductTemplateVersion;
 import com.fanproduction.template.enums.FieldType;
 import com.fanproduction.template.enums.RuleElementType;
 import com.fanproduction.template.enums.TemplateStatus;
 import com.fanproduction.template.model.FieldDefinition;
 import com.fanproduction.template.model.MarkingRule;
 import com.fanproduction.template.model.MarkingRuleElement;
-import com.fanproduction.template.repository.FanTemplateRepository;
-import com.fanproduction.template.repository.FanTemplateVersionRepository;
+import com.fanproduction.template.repository.ProductTemplateRepository;
+import com.fanproduction.template.repository.ProductTemplateVersionRepository;
 import com.fanproduction.template.service.MarkingEngine;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -51,10 +51,10 @@ class FanCardServiceTest {
     private FanCardRepository fanCardRepository;
 
     @Mock
-    private FanTemplateRepository fanTemplateRepository;
+    private ProductTemplateRepository productTemplateRepository;
 
     @Mock
-    private FanTemplateVersionRepository fanTemplateVersionRepository;
+    private ProductTemplateVersionRepository productTemplateVersionRepository;
 
     @Mock
     private MarkingEngine markingEngine;
@@ -69,8 +69,8 @@ class FanCardServiceTest {
     // ФИКСТУРЫ
     // ==========================================================
 
-    private FanTemplate template;
-    private FanTemplateVersion version;
+    private ProductTemplate template;
+    private ProductTemplateVersion version;
 
     private final List<FieldDefinition> sampleFields = List.of(
             new FieldDefinition("series", "Серия", FieldType.TEXT, true,
@@ -88,13 +88,13 @@ class FanCardServiceTest {
 
     @BeforeEach
     void setUp() {
-        template = new FanTemplate();
+        template = new ProductTemplate();
         template.setId(1L);
         template.setSeriesId(100L);
         template.setName("Шаблон P-серии");
         template.setCurrentVersionId(10L);
 
-        version = new FanTemplateVersion();
+        version = new ProductTemplateVersion();
         version.setId(10L);
         version.setTemplateId(1L);
         version.setVersion(1);
@@ -118,8 +118,8 @@ class FanCardServiceTest {
             values.put("series", "P");
             values.put("ductSize", "40-20");
 
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
             when(markingEngine.evaluate(any(), any(), eq(sampleFields),  anyLong()))
                     .thenReturn("VRK-PatAIR-P");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
@@ -136,7 +136,7 @@ class FanCardServiceTest {
             assertThat(result.getId()).isEqualTo(500L);
             assertThat(result.getCardType()).isEqualTo("FAN");
             assertThat(result.getTemplateVersionId()).isEqualTo(10L);
-            assertThat(result.getFanTemplateId()).isEqualTo(1L);
+            assertThat(result.getProductTemplateId()).isEqualTo(1L);
             assertThat(result.getFullMarking()).isEqualTo("VRK-PatAIR-P");
             assertThat(result.getCreatedBy()).isEqualTo("admin@test");
         }
@@ -151,8 +151,8 @@ class FanCardServiceTest {
             values.put("voltage", 220);                 // системное
             values.put("customField", "custom");        // не системное
 
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
             when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("MARKING");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
@@ -180,8 +180,8 @@ class FanCardServiceTest {
             values.put("poles", "4");        // строка → Integer
             values.put("voltage", "380");    // строка → Integer
 
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
             when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("M");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
@@ -198,8 +198,8 @@ class FanCardServiceTest {
         void publishesAudit() {
             Map<String, Object> values = Map.of("series", "P", "ductSize", "40-20");
 
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
             when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("VRK-PatAIR-P");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
@@ -219,7 +219,7 @@ class FanCardServiceTest {
         @Test
         @DisplayName("Версия шаблона не найдена → исключение")
         void versionNotFound() {
-            when(fanTemplateVersionRepository.findById(999L)).thenReturn(Optional.empty());
+            when(productTemplateVersionRepository.findById(999L)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.createFromTemplate(999L, Map.of(), "admin"))
                     .isInstanceOf(FanCardCreationException.class)
@@ -232,7 +232,7 @@ class FanCardServiceTest {
         @DisplayName("Версия в статусе DRAFT → исключение")
         void draftVersionForbidden() {
             version.setStatus(TemplateStatus.DRAFT);
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
 
             assertThatThrownBy(() -> service.createFromTemplate(
                     10L, Map.of("series", "P", "ductSize", "40"), "admin"))
@@ -243,8 +243,8 @@ class FanCardServiceTest {
         @Test
         @DisplayName("Обязательное поле не заполнено → исключение")
         void requiredFieldMissing() {
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
 
             // Не передаём ductSize
             Map<String, Object> values = Map.of("series", "P");
@@ -262,8 +262,8 @@ class FanCardServiceTest {
             existing.setId(999L);
             existing.setFullMarking("VRK-PatAIR-P");
 
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
             when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("VRK-PatAIR-P");
             when(fanCardRepository.findByFullMarkingIgnoreCase("VRK-PatAIR-P"))
                     .thenReturn(Optional.of(existing));
@@ -279,8 +279,8 @@ class FanCardServiceTest {
         void legacyVersionAllowed() {
             version.setStatus(TemplateStatus.LEGACY);
 
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
             when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("M");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
@@ -309,7 +309,7 @@ class FanCardServiceTest {
             existingCard.setCardType("FAN");
             existingCard.setName("Вентилятор");
             existingCard.setTemplateVersionId(10L);
-            existingCard.setFanTemplateId(1L);
+            existingCard.setProductTemplateId(1L);
             existingCard.setFullMarking("OLD-MARKING");
             existingCard.setSeries("P");
             existingCard.setPoles(4);
@@ -325,7 +325,7 @@ class FanCardServiceTest {
             values.put("poles", 6);
 
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
             when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("NEW-MARKING");
             when(fanCardRepository.findByFullMarkingIgnoreCase("NEW-MARKING"))
                     .thenReturn(Optional.empty());
@@ -348,7 +348,7 @@ class FanCardServiceTest {
             // poles не передаём → должен сброситься в null
 
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
             when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("M");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
@@ -360,12 +360,12 @@ class FanCardServiceTest {
         }
 
         @Test
-        @DisplayName("Технические поля сохраняются (templateVersionId, fanTemplateId)")
+        @DisplayName("Технические поля сохраняются (templateVersionId, productTemplateId)")
         void technicalFieldsPreserved() {
             Map<String, Object> values = Map.of("series", "PS", "ductSize", "60-30");
 
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
             when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("M");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
@@ -374,7 +374,7 @@ class FanCardServiceTest {
             FanCardEntity result = service.updateFromValues(500L, values, "admin");
 
             assertThat(result.getTemplateVersionId()).isEqualTo(10L);
-            assertThat(result.getFanTemplateId()).isEqualTo(1L);
+            assertThat(result.getProductTemplateId()).isEqualTo(1L);
         }
 
         @Test
@@ -383,7 +383,7 @@ class FanCardServiceTest {
             Map<String, Object> values = Map.of("series", "P", "ductSize", "40-20");
 
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
             when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("OLD-MARKING");
             when(fanCardRepository.findByFullMarkingIgnoreCase("OLD-MARKING"))
                     .thenReturn(Optional.of(existingCard));  // та же карточка
@@ -404,7 +404,7 @@ class FanCardServiceTest {
             Map<String, Object> values = Map.of("series", "PS", "ductSize", "60-30");
 
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
             when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("NEW-MARKING");
             when(fanCardRepository.findByFullMarkingIgnoreCase("NEW-MARKING"))
                     .thenReturn(Optional.empty());
@@ -431,7 +431,7 @@ class FanCardServiceTest {
             Map<String, Object> values = Map.of("series", "PS", "ductSize", "60-30");
 
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
             when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("NEW-MARKING");
             when(fanCardRepository.findByFullMarkingIgnoreCase("NEW-MARKING"))
                     .thenReturn(Optional.of(anotherCard));
@@ -471,7 +471,7 @@ class FanCardServiceTest {
             Map<String, Object> values = Map.of("series", "P", "ductSize", "40-20");
 
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
             when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("M");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
@@ -499,7 +499,7 @@ class FanCardServiceTest {
             existingCard.setId(500L);
             existingCard.setCardType("FAN");
             existingCard.setTemplateVersionId(10L);
-            existingCard.setFanTemplateId(1L);
+            existingCard.setProductTemplateId(1L);
             existingCard.setSeries("P");
             existingCard.setDynamicFields(new HashMap<>(Map.of("ductSize", "40-20")));
             existingCard.setFullMarking("OLD");
@@ -511,7 +511,7 @@ class FanCardServiceTest {
             Map<String, Object> expectedDynamic = new HashMap<>(existingCard.getDynamicFields());
 
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
             when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("NEW");
             when(fanCardRepository.findByFullMarkingIgnoreCase("NEW"))
                     .thenReturn(Optional.empty());
@@ -528,7 +528,7 @@ class FanCardServiceTest {
         @DisplayName("Аудит с пометкой «пересчитана»")
         void auditMentionsRecalculation() {
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
             when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("NEW");
             when(fanCardRepository.findByFullMarkingIgnoreCase("NEW"))
                     .thenReturn(Optional.empty());
@@ -568,8 +568,8 @@ class FanCardServiceTest {
         void exactlyOneAuditEvent() {
             Map<String, Object> values = Map.of("series", "P", "ductSize", "40-20");
 
-            when(fanTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
-            when(fanTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
             when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("M");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());

@@ -1,6 +1,6 @@
 package com.fanproduction.template.service;
 
-import com.fanproduction.template.entity.FanTemplateVersion;
+import com.fanproduction.template.entity.ProductTemplateVersion;
 
 import java.util.List;
 
@@ -23,7 +23,7 @@ public interface TemplateValidationService {
      * @param version версия шаблона
      * @throws com.fanproduction.template.exception.TemplateValidationException при ошибках
      */
-    void validate(FanTemplateVersion version);
+    void validate(ProductTemplateVersion version);
 
     /**
      * Собрать список ошибок без бросания исключения.
@@ -33,5 +33,5 @@ public interface TemplateValidationService {
      * @param version версия шаблона
      * @return список сообщений об ошибках (пустой, если всё корректно)
      */
-    List<String> collectErrors(FanTemplateVersion version);
+    List<String> collectErrors(ProductTemplateVersion version);
 }

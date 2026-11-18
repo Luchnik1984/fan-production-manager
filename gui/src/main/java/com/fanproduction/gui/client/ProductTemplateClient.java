@@ -1,51 +1,51 @@
 package com.fanproduction.gui.client;
 
-import com.fanproduction.gui.dto.request.fan.CloneFanTemplateRequest;
-import com.fanproduction.gui.dto.request.fan.CreateFanTemplateRequest;
-import com.fanproduction.gui.dto.request.fan.CreateFanTemplateVersionRequest;
-import com.fanproduction.gui.dto.request.fan.UpdateFanTemplateRequest;
+import com.fanproduction.gui.dto.request.fan.CloneProductTemplateRequest;
+import com.fanproduction.gui.dto.request.fan.CreateProductTemplateRequest;
+import com.fanproduction.gui.dto.request.fan.CreateProductTemplateVersionRequest;
+import com.fanproduction.gui.dto.request.fan.UpdateProductTemplateRequest;
 import com.fanproduction.gui.dto.response.ApiResponse;
-import com.fanproduction.gui.dto.response.FanTemplateDto;
-import com.fanproduction.gui.dto.response.FanTemplateVersionDto;
+import com.fanproduction.gui.dto.response.ProductTemplateDto;
+import com.fanproduction.gui.dto.response.ProductTemplateVersionDto;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.util.List;
 
 /**
- * Клиент для REST API шаблонов FAN (/api/fan-templates) и иерархии.
+ * Клиент для REST API шаблонов FAN (/api/product-templates) и иерархии.
  */
-public class FanTemplateClient {
+public class ProductTemplateClient {
 
-    private static final String BASE_PATH = "/fan-templates";
+    private static final String BASE_PATH = "/product-templates";
 
-    private FanTemplateClient() {
+    private ProductTemplateClient() {
     }
 
     // ==========================================================
     // TEMPLATE — READ
     // ==========================================================
 
-    public static List<FanTemplateDto> getAllTemplates() throws Exception {
-        TypeReference<ApiResponse<List<FanTemplateDto>>> typeRef = new TypeReference<>() {};
-        ApiResponse<List<FanTemplateDto>> response = ApiClient.get(BASE_PATH, typeRef);
+    public static List<ProductTemplateDto> getAllTemplates() throws Exception {
+        TypeReference<ApiResponse<List<ProductTemplateDto>>> typeRef = new TypeReference<>() {};
+        ApiResponse<List<ProductTemplateDto>> response = ApiClient.get(BASE_PATH, typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
         }
         throw new RuntimeException("Не удалось загрузить шаблоны: " + response.getMessage());
     }
 
-    public static FanTemplateDto getTemplateById(Long id) throws Exception {
-        TypeReference<ApiResponse<FanTemplateDto>> typeRef = new TypeReference<>() {};
-        ApiResponse<FanTemplateDto> response = ApiClient.get(BASE_PATH + "/" + id, typeRef);
+    public static ProductTemplateDto getTemplateById(Long id) throws Exception {
+        TypeReference<ApiResponse<ProductTemplateDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateDto> response = ApiClient.get(BASE_PATH + "/" + id, typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
         }
         throw new RuntimeException("Шаблон не найден: " + response.getMessage());
     }
 
-    public static FanTemplateDto getTemplateWithVersions(Long id) throws Exception {
-        TypeReference<ApiResponse<FanTemplateDto>> typeRef = new TypeReference<>() {};
-        ApiResponse<FanTemplateDto> response = ApiClient.get(
+    public static ProductTemplateDto getTemplateWithVersions(Long id) throws Exception {
+        TypeReference<ApiResponse<ProductTemplateDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateDto> response = ApiClient.get(
                 BASE_PATH + "/" + id + "/with-versions", typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
@@ -53,9 +53,9 @@ public class FanTemplateClient {
         throw new RuntimeException("Шаблон не найден: " + response.getMessage());
     }
 
-    public static FanTemplateDto getTemplateBySeries(Long seriesId) throws Exception {
-        TypeReference<ApiResponse<FanTemplateDto>> typeRef = new TypeReference<>() {};
-        ApiResponse<FanTemplateDto> response = ApiClient.get(
+    public static ProductTemplateDto getTemplateBySeries(Long seriesId) throws Exception {
+        TypeReference<ApiResponse<ProductTemplateDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateDto> response = ApiClient.get(
                 BASE_PATH + "/by-series/" + seriesId, typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
@@ -67,18 +67,18 @@ public class FanTemplateClient {
     // TEMPLATE — CREATE / UPDATE / DELETE / CLONE
     // ==========================================================
 
-    public static FanTemplateDto createTemplate(CreateFanTemplateRequest request) throws Exception {
-        TypeReference<ApiResponse<FanTemplateDto>> typeRef = new TypeReference<>() {};
-        ApiResponse<FanTemplateDto> response = ApiClient.post(BASE_PATH, request, typeRef);
+    public static ProductTemplateDto createTemplate(CreateProductTemplateRequest request) throws Exception {
+        TypeReference<ApiResponse<ProductTemplateDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateDto> response = ApiClient.post(BASE_PATH, request, typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
         }
         throw new RuntimeException("Не удалось создать шаблон: " + response.getMessage());
     }
 
-    public static FanTemplateDto updateTemplate(Long id, UpdateFanTemplateRequest request) throws Exception {
-        TypeReference<ApiResponse<FanTemplateDto>> typeRef = new TypeReference<>() {};
-        ApiResponse<FanTemplateDto> response = ApiClient.put(BASE_PATH + "/" + id, request, typeRef);
+    public static ProductTemplateDto updateTemplate(Long id, UpdateProductTemplateRequest request) throws Exception {
+        TypeReference<ApiResponse<ProductTemplateDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateDto> response = ApiClient.put(BASE_PATH + "/" + id, request, typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
         }
@@ -89,9 +89,9 @@ public class FanTemplateClient {
         ApiClient.deleteWithCheck(BASE_PATH + "/" + id);
     }
 
-    public static FanTemplateDto cloneTemplate(Long id, CloneFanTemplateRequest request) throws Exception {
-        TypeReference<ApiResponse<FanTemplateDto>> typeRef = new TypeReference<>() {};
-        ApiResponse<FanTemplateDto> response = ApiClient.post(
+    public static ProductTemplateDto cloneTemplate(Long id, CloneProductTemplateRequest request) throws Exception {
+        TypeReference<ApiResponse<ProductTemplateDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateDto> response = ApiClient.post(
                 BASE_PATH + "/" + id + "/clone", request, typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
@@ -103,9 +103,9 @@ public class FanTemplateClient {
     // VERSIONS — READ
     // ==========================================================
 
-    public static List<FanTemplateVersionDto> getVersionsByTemplate(Long templateId) throws Exception {
-        TypeReference<ApiResponse<List<FanTemplateVersionDto>>> typeRef = new TypeReference<>() {};
-        ApiResponse<List<FanTemplateVersionDto>> response = ApiClient.get(
+    public static List<ProductTemplateVersionDto> getVersionsByTemplate(Long templateId) throws Exception {
+        TypeReference<ApiResponse<List<ProductTemplateVersionDto>>> typeRef = new TypeReference<>() {};
+        ApiResponse<List<ProductTemplateVersionDto>> response = ApiClient.get(
                 BASE_PATH + "/" + templateId + "/versions", typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
@@ -113,9 +113,9 @@ public class FanTemplateClient {
         throw new RuntimeException("Не удалось загрузить версии: " + response.getMessage());
     }
 
-    public static FanTemplateVersionDto getPublishedVersion(Long templateId) throws Exception {
-        TypeReference<ApiResponse<FanTemplateVersionDto>> typeRef = new TypeReference<>() {};
-        ApiResponse<FanTemplateVersionDto> response = ApiClient.get(
+    public static ProductTemplateVersionDto getPublishedVersion(Long templateId) throws Exception {
+        TypeReference<ApiResponse<ProductTemplateVersionDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateVersionDto> response = ApiClient.get(
                 BASE_PATH + "/" + templateId + "/versions/published", typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
@@ -123,9 +123,9 @@ public class FanTemplateClient {
         return null;  // нет опубликованной версии — это не ошибка
     }
 
-    public static List<FanTemplateVersionDto> getAvailableVersions(Long templateId) throws Exception {
-        TypeReference<ApiResponse<List<FanTemplateVersionDto>>> typeRef = new TypeReference<>() {};
-        ApiResponse<List<FanTemplateVersionDto>> response = ApiClient.get(
+    public static List<ProductTemplateVersionDto> getAvailableVersions(Long templateId) throws Exception {
+        TypeReference<ApiResponse<List<ProductTemplateVersionDto>>> typeRef = new TypeReference<>() {};
+        ApiResponse<List<ProductTemplateVersionDto>> response = ApiClient.get(
                 BASE_PATH + "/" + templateId + "/versions/available", typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
@@ -133,9 +133,9 @@ public class FanTemplateClient {
         throw new RuntimeException("Не удалось загрузить версии: " + response.getMessage());
     }
 
-    public static FanTemplateVersionDto getDraftVersion(Long templateId) throws Exception {
-        TypeReference<ApiResponse<FanTemplateVersionDto>> typeRef = new TypeReference<>() {};
-        ApiResponse<FanTemplateVersionDto> response = ApiClient.get(
+    public static ProductTemplateVersionDto getDraftVersion(Long templateId) throws Exception {
+        TypeReference<ApiResponse<ProductTemplateVersionDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateVersionDto> response = ApiClient.get(
                 BASE_PATH + "/" + templateId + "/versions/draft", typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
@@ -151,12 +151,12 @@ public class FanTemplateClient {
      * Создать новую DRAFT-версию.
      * <p>
      * Если {@code request == null} или его поля null — сервер скопирует
-     * из текущей версии (автокопирование в FanTemplateServiceImpl).
+     * из текущей версии (автокопирование в ProductTemplateServiceImpl).
      */
-    public static FanTemplateVersionDto createNewVersion(Long templateId,
-                                                         CreateFanTemplateVersionRequest request) throws Exception {
-        TypeReference<ApiResponse<FanTemplateVersionDto>> typeRef = new TypeReference<>() {};
-        ApiResponse<FanTemplateVersionDto> response = ApiClient.post(
+    public static ProductTemplateVersionDto createNewVersion(Long templateId,
+                                                         CreateProductTemplateVersionRequest request) throws Exception {
+        TypeReference<ApiResponse<ProductTemplateVersionDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateVersionDto> response = ApiClient.post(
                 BASE_PATH + "/" + templateId + "/versions", request, typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();

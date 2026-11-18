@@ -143,8 +143,8 @@ public class ConditionEditDialog {
 
             MarkingRuleEditorController controller = loader.getController();
 
-            com.fanproduction.gui.dto.response.FanTemplateVersionDto fakeVersion =
-                    new com.fanproduction.gui.dto.response.FanTemplateVersionDto();
+            com.fanproduction.gui.dto.response.ProductTemplateVersionDto fakeVersion =
+                    new com.fanproduction.gui.dto.response.ProductTemplateVersionDto();
             fakeVersion.setFieldsJson(templateFields);
 
             controller.init(fakeVersion, null);

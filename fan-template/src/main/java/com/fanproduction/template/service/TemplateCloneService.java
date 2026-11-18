@@ -1,6 +1,6 @@
 package com.fanproduction.template.service;
 
-import com.fanproduction.template.dto.FanTemplateDto;
+import com.fanproduction.template.dto.ProductTemplateDto;
 
 /**
  * Сервис клонирования шаблонов вентиляторов.
@@ -35,7 +35,7 @@ public interface TemplateCloneService {
      *         если источник не найден, целевая серия не найдена,
      *         целевая серия уже имеет шаблон, или у источника нет версий
      */
-    FanTemplateDto cloneTemplate(Long sourceTemplateId,
+    ProductTemplateDto cloneTemplate(Long sourceTemplateId,
                                  Long targetSeriesId,
                                  String newName,
                                  String createdBy);

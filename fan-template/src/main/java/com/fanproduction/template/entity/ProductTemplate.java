@@ -11,15 +11,15 @@ import java.time.LocalDateTime;
  * Логический шаблон карточки вентилятора.
  * <p>
  * Привязан к серии. Один шаблон на серию.
- * Имеет много версий ({@link FanTemplateVersion}).
+ * Имеет много версий ({@link ProductTemplateVersion}).
  * Хранит ссылку на текущую PUBLISHED-версию.
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "fan_template")
-public class FanTemplate {
+@Table(name = "product_template")
+public class ProductTemplate {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -24,8 +24,8 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "fan_template_version")
-public class FanTemplateVersion {
+@Table(name = "product_template_version")
+public class ProductTemplateVersion {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

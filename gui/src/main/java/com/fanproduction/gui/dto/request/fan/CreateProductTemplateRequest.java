@@ -1,7 +1,7 @@
-package com.fanproduction.api.dto.request.fan;
+package com.fanproduction.gui.dto.request.fan;
 
-import com.fanproduction.template.model.FieldDefinition;
-import com.fanproduction.template.model.MarkingRule;
+import com.fanproduction.gui.dto.fan.FieldDefinitionDto;
+import com.fanproduction.gui.dto.fan.MarkingRuleDto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -12,8 +12,10 @@ import java.util.List;
  * Запрос на создание шаблона.
  * <p>
  * Создаётся логический шаблон + первая DRAFT-версия.
+ * Поля {@code fields} и {@code markingRule} могут быть null — тогда
+ * создаётся пустой DRAFT (поля заполняются через {@code updateDraft}).
  */
-public record CreateFanTemplateRequest(
+public record CreateProductTemplateRequest(
         @NotNull(message = "ID серии обязателен")
         Long seriesId,
 
@@ -24,8 +26,8 @@ public record CreateFanTemplateRequest(
         @Size(max = 500, message = "Описание не длиннее 500 символов")
         String description,
 
-        List<FieldDefinition> fields,
+        List<FieldDefinitionDto> fields,
 
-        MarkingRule markingRule
+        MarkingRuleDto markingRule
 ) {
 }

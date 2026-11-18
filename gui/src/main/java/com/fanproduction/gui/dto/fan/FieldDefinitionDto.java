@@ -16,7 +16,7 @@ import java.util.Map;
  * Дублирует серверный {@code com.fanproduction.template.model.FieldDefinition}
  * на клиентской стороне. Используется:
  * <ul>
- *   <li>в {@link com.fanproduction.gui.dto.response.FanTemplateVersionDto}
+ *   <li>в {@link com.fanproduction.gui.dto.response.ProductTemplateVersionDto}
  *       для полей DRAFT-версии;</li>
  *   <li>в Request-DTO при сохранении шаблона ({@code fieldsJson}).</li>
  * </ul>

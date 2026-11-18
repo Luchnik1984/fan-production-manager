@@ -124,7 +124,7 @@ class ProductCardServiceFANTest {
 
         @Test
         @DisplayName("FAN: templateVersionId как строка → парсится в Long")
-        void createFanTemplateVersionIdAsString() {
+        void createProductTemplateVersionIdAsString() {
             FanCardEntity expected = new FanCardEntity();
             expected.setId(500L);
 

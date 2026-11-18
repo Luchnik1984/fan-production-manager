@@ -20,7 +20,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class FanTemplateVersionDto {
+public class ProductTemplateVersionDto {
     private Long id;
     private Long templateId;
     private Integer version;

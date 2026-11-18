@@ -45,7 +45,7 @@ public class CardViewBuilderImpl implements CardViewBuilder {
 
     /** Технические служебные поля — не показываем вообще. */
     private static final Set<String> TECHNICAL_FIELDS = Set.of(
-            "id", "cardType", "templateVersionId", "fanTemplateId", "dynamicFields",
+            "id", "cardType", "templateVersionId", "productTemplateId", "dynamicFields",
             "motorId", "motorWheelId", "radialWheelId", "axialWheelId",
             "isPartnerProduction", "isOwnProduction"
     );
