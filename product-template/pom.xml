@@ -12,8 +12,8 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>fan-template</artifactId>
-    <name>fan-template</name>
+    <artifactId>product-template</artifactId>
+    <name>product-template</name>
     <description>Модуль конструктора шаблонов вентиляторов</description>
 
     <properties>
