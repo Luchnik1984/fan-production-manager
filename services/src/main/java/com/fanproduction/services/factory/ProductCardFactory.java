@@ -18,11 +18,11 @@ import java.util.function.Function;
  * Для системных типов ({@code MOTOR}, {@code MOTOR_WHEEL}, {@code RADIAL_WHEEL},
  * {@code AXIAL_WHEEL}, {@code CUP}, {@code ACCESSORY}) создаются конкретные сущности.
  * <p>
- * Для {@code FAN} используется единая сущность {@link FanCardEntity} —
+ * Для {@code FAN} используется единая сущность {@link DynamicCardEntity} —
  * все вентиляторы создаются через конструктор шаблонов (модуль {@code fan-template})
- * и сервис {@code FanCardService}. В {@link #createCard} ветка FAN не доходит
+ * и сервис {@code DynamicCardService}. В {@link #createCard} ветка FAN не доходит
  * до этой фабрики — обрабатывается раньше в {@code ProductCardServiceImpl}.
- * Регистрация {@code FanCardEntity::new} оставлена для совместимости.
+ * Регистрация {@code DynamicCardEntity::new} оставлена для совместимости.
  * <p>
  * Метод {@link #applyFields} публичен: используется для обновления существующей
  * карточки (не создаёт новую сущность с тем же id).
@@ -44,9 +44,7 @@ public class ProductCardFactory {
         cardSuppliers.put(CardTemplateType.MOTOR_WHEEL, MotorWheelCardEntity::new);
         cardSuppliers.put(CardTemplateType.RADIAL_WHEEL, RadialWheelCardEntity::new);
         cardSuppliers.put(CardTemplateType.AXIAL_WHEEL, AxialWheelCardEntity::new);
-        cardSuppliers.put(CardTemplateType.FAN, FanCardEntity::new);
-        cardSuppliers.put(CardTemplateType.CUP, CupCardEntity::new);
-        cardSuppliers.put(CardTemplateType.ACCESSORY, AccessoryCardEntity::new);
+        cardSuppliers.put(CardTemplateType.DYNAMIC, DynamicCardEntity::new);
     }
 
     /**
@@ -81,7 +79,7 @@ public class ProductCardFactory {
      * <p>
      * Поля, которых нет в {@code fields}, <b>не</b> сбрасываются — семантика
      * «частичное обновление». Для FAN-карточек используется другой путь
-     * ({@code FanCardService.updateFromValues}), где семантика иная
+     * ({@code DynamicCardService.updateFromValues}), где семантика иная
      * (форма отправляется целиком).
      *
      * @param card   существующая карточка

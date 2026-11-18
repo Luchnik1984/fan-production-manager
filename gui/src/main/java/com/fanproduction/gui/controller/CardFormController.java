@@ -97,7 +97,7 @@ public class CardFormController {
      * и делегируем в основной конструктор.
      *
      * @param owner              родительское окно
-     * @param cardType           тип карточки ("FAN")
+     * @param cardType           тип карточки ("DYNAMIC")
      * @param existingCard       существующая карточка (null при создании)
      * @param templateVersionId  ID версии шаблона
      * @param onSaveCallback     callback после сохранения
@@ -124,7 +124,7 @@ public class CardFormController {
     private void initUI() {
         // 0. Для FAN — сначала загружаем метаданные шаблона.
         //    Если не удалось — форма не строится (иначе пользователь увидит пустое окно).
-        if ("FAN".equals(cardType)) {
+        if ("DYNAMIC".equals(cardType)) {
             if (!loadFanMetadata()) {
                 this.failed = true;
                 return;
@@ -132,7 +132,7 @@ public class CardFormController {
         }
         String title = existingCard == null ? "Создание карточки" : "Редактирование карточки";
         String displayName = getTypeDisplayName(cardType);
-        if ("FAN".equals(cardType) && fanFormMetadata != null) {
+        if ("DYNAMIC".equals(cardType) && fanFormMetadata != null) {
             displayName = fanFormMetadata.getTemplateName()
                     + " (v" + fanFormMetadata.getVersion()
                     + ", " + fanFormMetadata.getStatus() + ")";
@@ -305,7 +305,7 @@ public class CardFormController {
         grid.getColumnConstraints().addAll(col1, col2);
 
         List<FieldMetadataDto> fields;
-        if ("FAN".equals(cardType) && fanFields != null) {
+        if ("DYNAMIC".equals(cardType) && fanFields != null) {
             fields = fanFields;
         } else {
             fields = metadataService.getFieldsForType(cardType);
@@ -313,7 +313,7 @@ public class CardFormController {
         int row = 0;
 
         // Поле "Наименование" (для FAN — скрыто, name = fullMarking на сервере)
-        boolean isFan = "FAN".equals(cardType);
+        boolean isFan = "DYNAMIC".equals(cardType);
         Label nameLabel = new Label("Наименование:");
         nameLabel.setStyle("-fx-font-weight: bold;");
         TextField nameField = new TextField();
@@ -592,7 +592,7 @@ public class CardFormController {
 
         // FAN: разворачиваем dynamicFields в плоскую структуру
         // (на сервере они хранятся в отдельном JSONB-поле)
-        if ("FAN".equals(cardType)) {
+        if ("DYNAMIC".equals(cardType)) {
             Object dynamicFieldsObj = fields.get("dynamicFields");
             if (dynamicFieldsObj instanceof Map<?, ?> df) {
                 for (Map.Entry<?, ?> entry : df.entrySet()) {
@@ -711,7 +711,7 @@ public class CardFormController {
         }
 
         // FAN: добавляем templateVersionId в fields
-        if ("FAN".equals(cardType) && fanFormMetadata != null) {
+        if ("DYNAMIC".equals(cardType) && fanFormMetadata != null) {
             fields.put("templateVersionId", fanFormMetadata.getTemplateVersionId());
 
             // Служебные поля для отображения (не участвуют в маркировке)
@@ -725,7 +725,7 @@ public class CardFormController {
         }
 
         // FAN: если name пустое — автозаполняем из fullMarking
-        if ("FAN".equals(cardType) && name.isEmpty()) {
+        if ("DYNAMIC".equals(cardType) && name.isEmpty()) {
             Node fmControl = fieldControls.get("fullMarking");
             if (fmControl instanceof TextField fmField) {
                 String fm = fmField.getText() != null ? fmField.getText().trim() : "";

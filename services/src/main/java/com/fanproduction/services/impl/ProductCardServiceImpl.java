@@ -35,10 +35,10 @@ public class ProductCardServiceImpl implements ProductCardService {
     private final RadialWheelCardRepository radialWheelCardRepository;
     private final AxialWheelCardRepository axialWheelCardRepository;
     private final ProductCardFactory cardFactory;
-    private final FanCardService fanCardService;
+    private final DynamicCardService fanCardService;
     private final ApplicationEventPublisher eventPublisher;
     private final CurrentUserProvider currentUserProvider;
-    private final FanCardRepository fanCardRepository;
+    private final DynamicCardRepository fanCardRepository;
     private final ComponentService componentService;
     private final MaterialService materialService;
     private final ProductCardValidationService validationService;
@@ -50,8 +50,8 @@ public class ProductCardServiceImpl implements ProductCardService {
     @Override
     @Transactional
     public BaseProductCard createCard(CardTemplateType cardType, Map<String, Object> fields, String createdBy) {
-        // FAN — отдельный путь через FanCardService
-        if (cardType == CardTemplateType.FAN) {
+        // FAN — отдельный путь через DynamicCardService
+        if (cardType == CardTemplateType.DYNAMIC) {
             return createFanCard(fields, createdBy);
         }
 
@@ -113,7 +113,7 @@ public class ProductCardServiceImpl implements ProductCardService {
         CardTemplateType cardType = CardTemplateType.valueOf(existingCard.getCardType());
 
         // FAN — отдельный путь
-        if (cardType == CardTemplateType.FAN) {
+        if (cardType == CardTemplateType.DYNAMIC) {
             return fanCardService.updateFromValues(id, fields, getCurrentUser());
         }
 
@@ -169,8 +169,8 @@ public class ProductCardServiceImpl implements ProductCardService {
     }
 
     @Override
-    public Page<BaseProductCard> getFanCardsByProductType(String fanType, Pageable pageable) {
-        return fanCardRepository.findByProductType(fanType, pageable)
+    public Page<BaseProductCard> getDynamicCardsByFanType(String fanType, Pageable pageable) {
+        return fanCardRepository.findByFanType(fanType, pageable)
                 .map(card -> card);
     }
 
@@ -285,7 +285,7 @@ public class ProductCardServiceImpl implements ProductCardService {
                     .orElseThrow(() -> new IllegalArgumentException("Карточка не найдена: " + cardId));
 
             String cardType = card.getCardType();
-            List<FanCardEntity> fanCards;
+            List<DynamicCardEntity> fanCards;
 
             switch (cardType) {
                 case "MOTOR" -> fanCards = productCardRepository.findFanCardsByMotorId(cardId);
@@ -297,7 +297,7 @@ public class ProductCardServiceImpl implements ProductCardService {
                 }
             }
 
-            for (FanCardEntity fanCard : fanCards) {
+            for (DynamicCardEntity fanCard : fanCards) {
                 usage.add(String.format("%s (ID: %d)", fanCard.getName(), fanCard.getId()));
             }
         } catch (Exception e) {

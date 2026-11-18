@@ -9,7 +9,7 @@ import java.util.Map;
  * без сохранения карточки. Используется GUI для real-time обновления
  * поля «Полная маркировка».
  * <p>
- * Отличается от {@code FanCardService.createFromTemplate} тем, что
+ * Отличается от {@code DynamicCardService.createFromTemplate} тем, что
  * не создаёт карточку и не делает проверок уникальности.
  */
 public interface MarkingPreviewService {

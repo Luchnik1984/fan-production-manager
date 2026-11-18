@@ -1,6 +1,6 @@
 package com.fanproduction.services;
 
-import com.fanproduction.core.entity.product.FanCardEntity;
+import com.fanproduction.core.entity.product.DynamicCardEntity;
 
 import java.util.Map;
 
@@ -15,7 +15,7 @@ import java.util.Map;
  *   <li>Пересчёт маркировки без изменения полей (для миграции версий).</li>
  * </ul>
  */
-public interface FanCardService {
+public interface DynamicCardService {
 
     /**
      * Создать карточку FAN по версии шаблона.
@@ -24,10 +24,10 @@ public interface FanCardService {
      * @param values            значения полей из формы
      * @param createdBy         email создателя
      * @return сохранённая карточка
-     * @throws com.fanproduction.services.exception.FanCardCreationException
+     * @throws com.fanproduction.services.exception.DynamicCardCreationException
      *         при ошибках валидации
      */
-    FanCardEntity createFromTemplate(Long templateVersionId,
+    DynamicCardEntity createFromTemplate(Long templateVersionId,
                                      Map<String, Object> values,
                                      String createdBy);
 
@@ -47,10 +47,10 @@ public interface FanCardService {
      * @param values    новые значения полей из формы
      * @param updatedBy email пользователя
      * @return сохранённая карточка
-     * @throws com.fanproduction.services.exception.FanCardCreationException
+     * @throws com.fanproduction.services.exception.DynamicCardCreationException
      *         при ошибках валидации
      */
-    FanCardEntity updateFromValues(Long cardId,
+    DynamicCardEntity updateFromValues(Long cardId,
                                    Map<String, Object> values,
                                    String updatedBy);
 
@@ -71,8 +71,8 @@ public interface FanCardService {
      * @param cardId    ID карточки
      * @param updatedBy email пользователя
      * @return сохранённая карточка
-     * @throws com.fanproduction.services.exception.FanCardCreationException
+     * @throws com.fanproduction.services.exception.DynamicCardCreationException
      *         если карточка не найдена или маркировка не может быть вычислена
      */
-    FanCardEntity recalculateMarking(Long cardId, String updatedBy);
+    DynamicCardEntity recalculateMarking(Long cardId, String updatedBy);
 }

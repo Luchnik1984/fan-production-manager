@@ -352,7 +352,7 @@ public class CardViewBuilderImpl implements CardViewBuilder {
         String cardType = card.getCardType();
 
         // ========== FAN: связанные узлы (электродвигатель, колёса) ==========
-        if ("FAN".equals(cardType)) {
+        if ("DYNAMIC".equals(cardType)) {
             addFanLinkedElements(fields, result);
         }
 

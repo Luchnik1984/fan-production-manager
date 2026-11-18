@@ -6,7 +6,7 @@ package com.fanproduction.template.dto;
  * @param id           ID типа
  * @param displayName  отображаемое имя: «Вентилятор канальный (VRK-PatAIR)»
  * @param filterValue  значение для фильтрации: «Вентилятор канальный»
- *                     (совпадает с {@code fan_card.fan_type})
+ *                     (совпадает с {@code dynamic_card.fan_type})
  */
 public record ProductTypeShortDto(
         Long id,

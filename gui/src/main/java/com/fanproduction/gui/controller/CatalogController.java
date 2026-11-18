@@ -80,7 +80,7 @@ public class CatalogController {
 
         // Системные типы (кроме FAN)
         for (CardTemplateType type : CardTemplateType.values()) {
-            if (type == CardTemplateType.FAN) continue;
+            if (type == CardTemplateType.DYNAMIC) continue;
             typeFilterComboBox.getItems().add(
                     new CatalogFilterOption(type.getDisplayName(), type.name(), null));
         }
@@ -112,7 +112,7 @@ public class CatalogController {
                 Platform.runLater(() -> {
                     for (ProductTypeShortDto ft : fanTypes) {
                         typeFilterComboBox.getItems().add(
-                                new CatalogFilterOption(ft.getDisplayName(), "FAN", ft.getFilterValue()));
+                                new CatalogFilterOption(ft.getDisplayName(), "DYNAMIC", ft.getFilterValue()));
                     }
                 });
             } catch (Exception e) {
@@ -200,7 +200,7 @@ public class CatalogController {
         Map<String, Object> fields = dto.getFields();
 
         // FAN: используем fanType (имя типа из шаблона) + fullMarking
-        if ("FAN".equals(cardType)) {
+        if ("DYNAMIC".equals(cardType)) {
             String fanType = fields != null ? (String) fields.get("fanType") : null;
             String fullMarking = fields != null ? (String) fields.get("fullMarking") : null;
 
@@ -254,7 +254,7 @@ public class CatalogController {
                  "MOTOR_WHEEL",
                  "AXIAL_WHEEL",
                  "RADIAL_WHEEL",
-                 "FAN",
+                 "DYNAMIC",
                  "CUP" -> true;
             default -> false;
         };
@@ -375,7 +375,7 @@ public class CatalogController {
                 return;
             }
 
-            if ("FAN".equals(cardType)) {
+            if ("DYNAMIC".equals(cardType)) {
                 // FAN — сначала выбираем серию и версию шаблона
                 openFanSelectionDialog(ownerStage);
             } else {
@@ -433,7 +433,7 @@ public class CatalogController {
 
         CardFormController form = new CardFormController(
                 ownerStage,
-                "FAN",
+                "DYNAMIC",
                 null,
                 selectedVersionId,
                 this::handleRefresh

@@ -1,12 +1,12 @@
 package com.fanproduction.services.impl;
 
-import com.fanproduction.core.entity.product.FanCardEntity;
+import com.fanproduction.core.entity.product.DynamicCardEntity;
 import com.fanproduction.core.entity.product.FanCardFields;
 import com.fanproduction.core.enums.AuditAction;
 import com.fanproduction.core.event.AuditEvent;
-import com.fanproduction.repositories.product.FanCardRepository;
-import com.fanproduction.services.FanCardService;
-import com.fanproduction.services.exception.FanCardCreationException;
+import com.fanproduction.repositories.product.DynamicCardRepository;
+import com.fanproduction.services.DynamicCardService;
+import com.fanproduction.services.exception.DynamicCardCreationException;
 import com.fanproduction.template.entity.ProductTemplate;
 import com.fanproduction.template.entity.ProductTemplateVersion;
 import com.fanproduction.template.enums.TemplateStatus;
@@ -34,11 +34,11 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class FanCardServiceImpl implements FanCardService {
+public class DynamicCardServiceImpl implements DynamicCardService {
 
     /**
-     * Системные поля {@link FanCardEntity} — те, что хранятся в отдельных колонках
-     * таблицы {@code fan_card}.
+     * Системные поля {@link DynamicCardEntity} — те, что хранятся в отдельных колонках
+     * таблицы {@code dynamic_card}.
      * <p>
      * Ссылка на общий набор {@link FanCardFields#SYSTEM_FIELDS}, вычисляемый
      * автоматически через reflection. Подробности — в javadoc {@link FanCardFields}.
@@ -54,7 +54,7 @@ public class FanCardServiceImpl implements FanCardService {
             "productTemplateId"
     );
 
-    private final FanCardRepository fanCardRepository;
+    private final DynamicCardRepository fanCardRepository;
     private final ProductTemplateRepository productTemplateRepository;
     private final ProductTemplateVersionRepository productTemplateVersionRepository;
     private final MarkingEngine markingEngine;
@@ -66,7 +66,7 @@ public class FanCardServiceImpl implements FanCardService {
 
     @Override
     @Transactional
-    public FanCardEntity createFromTemplate(Long templateVersionId,
+    public DynamicCardEntity createFromTemplate(Long templateVersionId,
                                             Map<String, Object> values,
                                             String createdBy) {
         ProductTemplateVersion version = loadVersionForCreation(templateVersionId);
@@ -78,8 +78,8 @@ public class FanCardServiceImpl implements FanCardService {
         validateTemplateContent(fields, rule);
         validateRequiredFields(values, fields);
 
-        FanCardEntity card = new FanCardEntity();
-        card.setCardType("FAN");
+        DynamicCardEntity card = new DynamicCardEntity();
+        card.setCardType("DYNAMIC");
         card.setTemplateVersionId(templateVersionId);
         card.setProductTemplateId(template.getId());
         card.setCreatedBy(createdBy);
@@ -93,7 +93,7 @@ public class FanCardServiceImpl implements FanCardService {
         card.setCode(generateCode(marking));
         card.setName(marking);
 
-        FanCardEntity saved = fanCardRepository.save(card);
+        DynamicCardEntity saved = fanCardRepository.save(card);
 
         publishAudit(createdBy, AuditAction.CREATE_CARD,
                 "Создана FAN-карточка: " + marking);
@@ -110,10 +110,10 @@ public class FanCardServiceImpl implements FanCardService {
 
     @Override
     @Transactional
-    public FanCardEntity updateFromValues(Long cardId,
+    public DynamicCardEntity updateFromValues(Long cardId,
                                           Map<String, Object> values,
                                           String updatedBy) {
-        FanCardEntity card = loadCard(cardId);
+        DynamicCardEntity card = loadCard(cardId);
         ProductTemplateVersion version = loadVersionForCard(card);
 
         List<FieldDefinition> fields = version.getFieldsJson();
@@ -133,7 +133,7 @@ public class FanCardServiceImpl implements FanCardService {
         card.setCode(generateCode(newMarking));
         card.setName(newMarking);
 
-        FanCardEntity saved = fanCardRepository.save(card);
+        DynamicCardEntity saved = fanCardRepository.save(card);
 
         String auditDetails = oldMarking != null && !oldMarking.equals(newMarking)
                 ? "Обновлена FAN-карточка: маркировка '" + oldMarking + "' → '" + newMarking + "'"
@@ -151,8 +151,8 @@ public class FanCardServiceImpl implements FanCardService {
 
     @Override
     @Transactional
-    public FanCardEntity recalculateMarking(Long cardId, String updatedBy) {
-        FanCardEntity card = loadCard(cardId);
+    public DynamicCardEntity recalculateMarking(Long cardId, String updatedBy) {
+        DynamicCardEntity card = loadCard(cardId);
         ProductTemplateVersion version = loadVersionForCard(card);
 
         List<FieldDefinition> fields = version.getFieldsJson();
@@ -168,7 +168,7 @@ public class FanCardServiceImpl implements FanCardService {
         card.setCode(generateCode(newMarking));
         card.setName(newMarking);
 
-        FanCardEntity saved = fanCardRepository.save(card);
+        DynamicCardEntity saved = fanCardRepository.save(card);
 
         String auditDetails = oldMarking != null && !oldMarking.equals(newMarking)
                 ? "Пересчитана маркировка FAN-карточки: '" + oldMarking + "' → '" + newMarking + "'"
@@ -184,13 +184,13 @@ public class FanCardServiceImpl implements FanCardService {
     // ЗАГРУЗКА И ПРОВЕРКИ
     // ==========================================================
 
-    private FanCardEntity loadCard(Long cardId) {
-        FanCardEntity card = fanCardRepository.findById(cardId)
-                .orElseThrow(() -> new FanCardCreationException(
+    private DynamicCardEntity loadCard(Long cardId) {
+        DynamicCardEntity card = fanCardRepository.findById(cardId)
+                .orElseThrow(() -> new DynamicCardCreationException(
                         "Карточка не найдена: " + cardId));
 
-        if (!"FAN".equals(card.getCardType())) {
-            throw new FanCardCreationException(
+        if (!"DYNAMIC".equals(card.getCardType())) {
+            throw new DynamicCardCreationException(
                     "Карточка не является FAN-карточкой: " + card.getCardType());
         }
         return card;
@@ -198,32 +198,32 @@ public class FanCardServiceImpl implements FanCardService {
 
     private ProductTemplateVersion loadVersionForCreation(Long templateVersionId) {
         ProductTemplateVersion version = productTemplateVersionRepository.findById(templateVersionId)
-                .orElseThrow(() -> new FanCardCreationException(
+                .orElseThrow(() -> new DynamicCardCreationException(
                         "Версия шаблона не найдена: " + templateVersionId));
 
         if (version.getStatus() != TemplateStatus.PUBLISHED
                 && version.getStatus() != TemplateStatus.LEGACY) {
-            throw new FanCardCreationException(
+            throw new DynamicCardCreationException(
                     "Создавать карточки можно только по версиям PUBLISHED или LEGACY. "
                             + "Текущий статус: " + version.getStatus());
         }
         return version;
     }
 
-    private ProductTemplateVersion loadVersionForCard(FanCardEntity card) {
+    private ProductTemplateVersion loadVersionForCard(DynamicCardEntity card) {
         if (card.getTemplateVersionId() == null) {
-            throw new FanCardCreationException(
+            throw new DynamicCardCreationException(
                     "У карточки нет привязки к версии шаблона");
         }
 
         ProductTemplateVersion version = productTemplateVersionRepository
                 .findById(card.getTemplateVersionId())
-                .orElseThrow(() -> new FanCardCreationException(
+                .orElseThrow(() -> new DynamicCardCreationException(
                         "Версия шаблона не найдена: " + card.getTemplateVersionId()));
 
         if (version.getStatus() == TemplateStatus.DRAFT
                 || version.getStatus() == TemplateStatus.ARCHIVED) {
-            throw new FanCardCreationException(
+            throw new DynamicCardCreationException(
                     "Обновление карточек по версии в статусе " + version.getStatus() + " запрещено");
         }
         return version;
@@ -231,16 +231,16 @@ public class FanCardServiceImpl implements FanCardService {
 
     private ProductTemplate loadTemplate(Long templateId) {
         return productTemplateRepository.findById(templateId)
-                .orElseThrow(() -> new FanCardCreationException(
+                .orElseThrow(() -> new DynamicCardCreationException(
                         "Шаблон не найден: " + templateId));
     }
 
     private void validateTemplateContent(List<FieldDefinition> fields, MarkingRule rule) {
         if (fields == null || fields.isEmpty()) {
-            throw new FanCardCreationException("У шаблона нет полей");
+            throw new DynamicCardCreationException("У шаблона нет полей");
         }
         if (rule == null || rule.sequence() == null || rule.sequence().isEmpty()) {
-            throw new FanCardCreationException("У шаблона нет правила маркировки");
+            throw new DynamicCardCreationException("У шаблона нет правила маркировки");
         }
     }
 
@@ -251,7 +251,7 @@ public class FanCardServiceImpl implements FanCardService {
             if (!field.required()) continue;
             Object value = values.get(field.key());
             if (value == null || (value instanceof String s && s.isBlank())) {
-                throw new FanCardCreationException(
+                throw new DynamicCardCreationException(
                         "Обязательное поле не заполнено: " + field.label());
             }
         }
@@ -275,7 +275,7 @@ public class FanCardServiceImpl implements FanCardService {
      *
      * @param defaultName имя по умолчанию, если в {@code values} нет {@code name}
      */
-    private void applyValuesToCard(FanCardEntity card,
+    private void applyValuesToCard(DynamicCardEntity card,
                                    Map<String, Object> values,
                                    String defaultName) {
         Map<String, Object> safeValues = values != null ? values : Map.of();
@@ -316,16 +316,16 @@ public class FanCardServiceImpl implements FanCardService {
         card.setDynamicFields(dynamicFields);
     }
 
-    private void setSystemField(FanCardEntity card, String fieldName, Object value) {
+    private void setSystemField(DynamicCardEntity card, String fieldName, Object value) {
         try {
-            Field field = FanCardEntity.class.getDeclaredField(fieldName);
+            Field field = DynamicCardEntity.class.getDeclaredField(fieldName);
             field.setAccessible(true);
             Object converted = convertValue(value, field.getType());
             field.set(card, converted);
         } catch (NoSuchFieldException e) {
-            log.warn("Поле '{}' не найдено в FanCardEntity, игнорируем", fieldName);
+            log.warn("Поле '{}' не найдено в DynamicCardEntity, игнорируем", fieldName);
         } catch (Exception e) {
-            throw new FanCardCreationException(
+            throw new DynamicCardCreationException(
                     "Ошибка установки поля '" + fieldName + "': " + e.getMessage(), e);
         }
     }
@@ -350,7 +350,7 @@ public class FanCardServiceImpl implements FanCardService {
      * @param valuesFromForm значения из формы (могут содержать fullMarking)
      * @return итоговая маркировка
      */
-    private String computeMarking(FanCardEntity card,
+    private String computeMarking(DynamicCardEntity card,
                                   MarkingRule rule,
                                   List<FieldDefinition> fields,
                                   Map<String, Object> valuesFromForm,
@@ -374,18 +374,18 @@ public class FanCardServiceImpl implements FanCardService {
         try {
             marking = markingEngine.evaluate(rule, markingValues, fields, templateVersionId);
         } catch (Exception e) {
-            throw new FanCardCreationException(
+            throw new DynamicCardCreationException(
                     "Ошибка вычисления маркировки: " + e.getMessage(), e);
         }
 
         if (marking == null || marking.isBlank()) {
-            throw new FanCardCreationException(
+            throw new DynamicCardCreationException(
                     "Не удалось вычислить полную маркировку (пустой результат)");
         }
         return marking;
     }
 
-    private Map<String, Object> buildMarkingValues(FanCardEntity card,
+    private Map<String, Object> buildMarkingValues(DynamicCardEntity card,
                                                    Map<String, Object> dynamicFields) {
         Map<String, Object> result = new HashMap<>();
         if (dynamicFields != null) {
@@ -394,7 +394,7 @@ public class FanCardServiceImpl implements FanCardService {
 
         for (String fieldName : SYSTEM_FIELDS) {
             try {
-                Field field = FanCardEntity.class.getDeclaredField(fieldName);
+                Field field = DynamicCardEntity.class.getDeclaredField(fieldName);
                 field.setAccessible(true);
                 Object value = field.get(card);
                 if (value != null) {
@@ -414,10 +414,10 @@ public class FanCardServiceImpl implements FanCardService {
      *                      (для update/recalculate). При создании — {@code null}.
      */
     private void ensureMarkingUnique(String marking, Long excludeCardId) {
-        Optional<FanCardEntity> existing = fanCardRepository.findByFullMarkingIgnoreCase(marking);
+        Optional<DynamicCardEntity> existing = fanCardRepository.findByFullMarkingIgnoreCase(marking);
         if (existing.isPresent()) {
             if (excludeCardId == null || !existing.get().getId().equals(excludeCardId)) {
-                throw new FanCardCreationException(
+                throw new DynamicCardCreationException(
                         "Карточка с маркировкой '" + marking + "' уже существует");
             }
         }
@@ -451,7 +451,7 @@ public class FanCardServiceImpl implements FanCardService {
                 return str;
             }
         } catch (NumberFormatException e) {
-            throw new FanCardCreationException(
+            throw new DynamicCardCreationException(
                     "Не удалось преобразовать '" + value + "' к типу " + targetType.getSimpleName());
         }
         return value;

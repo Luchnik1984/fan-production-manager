@@ -5,7 +5,7 @@ import lombok.Getter;
 import java.util.List;
 
 /**
- * Типы полей в таблице fan_card, которые ссылаются на сборочные узлы
+ * Типы полей в таблице dynamic_card, которые ссылаются на сборочные узлы
  * (крупные детали: мотор-колесо, радиальное колесо, осевое колесо, электродвигатель)
  */
 @Getter
@@ -43,7 +43,7 @@ public enum AssemblyUnitFieldType {
                  "MOTOR_WHEEL",
                  "RADIAL_WHEEL",
                  "AXIAL_WHEEL"
-                    -> List.of("FAN");
+                    -> List.of("DYNAMIC");
             default -> List.of();
         };
     }

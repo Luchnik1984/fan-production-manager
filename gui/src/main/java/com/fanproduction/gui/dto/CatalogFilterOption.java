@@ -6,7 +6,7 @@ package com.fanproduction.gui.dto;
  * Заменяет простую строку: содержит и отображаемое имя, и параметры для API.
  *
  * @param displayName  отображаемое имя, например «Вентилятор канальный (VRK-PatAIR)»
- * @param cardType     тип карточки для API: {@code "FAN"}, {@code "MOTOR"} и т.д.
+ * @param cardType     тип карточки для API: {@code "DYNAMIC"}, {@code "MOTOR"} и т.д.
  *                     {@code null} — «Все типы».
  * @param fanType      имя типа вентилятора для фильтрации (для FAN).
  *                     {@code null} — без фильтра по типу.

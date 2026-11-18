@@ -14,7 +14,7 @@ import java.util.Map;
  * <p>
  * <b>FAN не валидируется здесь</b> — обязательность полей определяется
  * шаблоном ({@code FieldDefinition.required}) и проверяется в
- * {@code FanCardService}.
+ * {@code DynamicCardService}.
  */
 public interface ProductCardValidationService {
 

@@ -24,8 +24,8 @@ import java.util.Map;
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @Entity
-@Table(name = "fan_card")
-public class FanCardEntity extends BaseProductCard {
+@Table(name = "dynamic_card")
+public class DynamicCardEntity extends BaseProductCard {
 
     // ========== ОБЩИЕ ПОЛЯ ==========
 
@@ -173,6 +173,15 @@ public class FanCardEntity extends BaseProductCard {
      */
     @Column(name = "template_version_id")
     private Long templateVersionId;
+
+    /**
+     * Тип продукции (product_type), к которому относится карточка.
+     * <p>
+     * Добавлено в US10 (миграция V34). Для динамических карточек тип задаётся
+     * при создании и определяет раздел, обозначение и префикс номера изделия.
+     */
+    @Column(name = "product_type_id")
+    private Long productTypeId;
 
     /**
      * Пользовательские поля, определённые в шаблоне.

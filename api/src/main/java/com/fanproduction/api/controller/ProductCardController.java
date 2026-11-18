@@ -89,9 +89,9 @@ public class ProductCardController extends BaseController {
 
         Page<BaseProductCard> cardsPage;
 
-        if ("FAN".equals(cardType) && fanType != null && !fanType.isEmpty()) {
+        if ("DYNAMIC".equals(cardType) && fanType != null && !fanType.isEmpty()) {
             // Фильтр по конкретному типу вентилятора
-            cardsPage = productCardService.getFanCardsByProductType(fanType, pageable);
+            cardsPage = productCardService.getDynamicCardsByFanType(fanType, pageable);
         } else if (cardType != null && !cardType.isEmpty()) {
             CardTemplateType type = CardTemplateType.valueOf(cardType);
             cardsPage = productCardService.getCardsByType(type, pageable);

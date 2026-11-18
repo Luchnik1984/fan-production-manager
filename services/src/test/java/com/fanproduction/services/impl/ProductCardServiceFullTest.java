@@ -2,14 +2,14 @@ package com.fanproduction.services.impl;
 
 import com.fanproduction.core.entity.component.ProductComponentEntity;
 import com.fanproduction.core.entity.product.BaseProductCard;
-import com.fanproduction.core.entity.product.FanCardEntity;
+import com.fanproduction.core.entity.product.DynamicCardEntity;
 import com.fanproduction.core.entity.product.MotorCardEntity;
 import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.core.event.AuditEvent;
 import com.fanproduction.core.security.CurrentUserProvider;
 import com.fanproduction.repositories.product.*;
 import com.fanproduction.services.ComponentService;
-import com.fanproduction.services.FanCardService;
+import com.fanproduction.services.DynamicCardService;
 import com.fanproduction.services.MaterialService;
 import com.fanproduction.services.ProductCardValidationService;
 import com.fanproduction.services.dto.ProductComponentItemData;
@@ -51,8 +51,8 @@ class ProductCardServiceFullTest {
     @Mock private MotorWheelCardRepository motorWheelCardRepository;
     @Mock private RadialWheelCardRepository radialWheelCardRepository;
     @Mock private AxialWheelCardRepository axialWheelCardRepository;
-    @Mock private FanCardRepository fanCardRepository;
-    @Mock private FanCardService fanCardService;
+    @Mock private DynamicCardRepository fanCardRepository;
+    @Mock private DynamicCardService fanCardService;
     @Mock private ComponentService componentService;
     @Mock private MaterialService materialService;
     @Mock private ApplicationEventPublisher eventPublisher;
@@ -135,11 +135,11 @@ class ProductCardServiceFullTest {
         }
 
         @Test
-        @DisplayName("Создать FAN с компонентами — делегирует в FanCardService")
+        @DisplayName("Создать FAN с компонентами — делегирует в DynamicCardService")
         void createFanWithComponents() {
-            FanCardEntity fan = new FanCardEntity();
+            DynamicCardEntity fan = new DynamicCardEntity();
             fan.setId(600L);
-            fan.setCardType("FAN");
+            fan.setCardType("DYNAMIC");
 
             Map<String, Object> fields = new HashMap<>();
             fields.put("templateVersionId", 3L);
@@ -148,7 +148,7 @@ class ProductCardServiceFullTest {
                     .thenReturn(fan);
 
             BaseProductCard result = service.createFullCard(
-                    CardTemplateType.FAN,
+                    CardTemplateType.DYNAMIC,
                     "FAN-карточка",
                     fields,
                     List.of(new ProductComponentItemData(10L, 1.0, "Роль", null)),

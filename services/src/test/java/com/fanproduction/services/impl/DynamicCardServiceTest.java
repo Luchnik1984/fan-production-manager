@@ -1,10 +1,10 @@
 package com.fanproduction.services.impl;
 
-import com.fanproduction.core.entity.product.FanCardEntity;
+import com.fanproduction.core.entity.product.DynamicCardEntity;
 import com.fanproduction.core.enums.AuditAction;
 import com.fanproduction.core.event.AuditEvent;
-import com.fanproduction.repositories.product.FanCardRepository;
-import com.fanproduction.services.exception.FanCardCreationException;
+import com.fanproduction.repositories.product.DynamicCardRepository;
+import com.fanproduction.services.exception.DynamicCardCreationException;
 import com.fanproduction.template.entity.ProductTemplate;
 import com.fanproduction.template.entity.ProductTemplateVersion;
 import com.fanproduction.template.enums.FieldType;
@@ -41,14 +41,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Юнит-тесты {@link FanCardServiceImpl}.
+ * Юнит-тесты {@link DynamicCardServiceImpl}.
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("FanCardService")
-class FanCardServiceTest {
+@DisplayName("DynamicCardService")
+class DynamicCardServiceTest {
 
     @Mock
-    private FanCardRepository fanCardRepository;
+    private DynamicCardRepository fanCardRepository;
 
     @Mock
     private ProductTemplateRepository productTemplateRepository;
@@ -63,7 +63,7 @@ class FanCardServiceTest {
     private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
-    private FanCardServiceImpl service;
+    private DynamicCardServiceImpl service;
 
     // ==========================================================
     // ФИКСТУРЫ
@@ -124,17 +124,17 @@ class FanCardServiceTest {
                     .thenReturn("VRK-PatAIR-P");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
-            when(fanCardRepository.save(any(FanCardEntity.class)))
+            when(fanCardRepository.save(any(DynamicCardEntity.class)))
                     .thenAnswer(inv -> {
-                        FanCardEntity c = inv.getArgument(0);
+                        DynamicCardEntity c = inv.getArgument(0);
                         c.setId(500L);
                         return c;
                     });
 
-            FanCardEntity result = service.createFromTemplate(10L, values, "admin@test");
+            DynamicCardEntity result = service.createFromTemplate(10L, values, "admin@test");
 
             assertThat(result.getId()).isEqualTo(500L);
-            assertThat(result.getCardType()).isEqualTo("FAN");
+            assertThat(result.getCardType()).isEqualTo("DYNAMIC");
             assertThat(result.getTemplateVersionId()).isEqualTo(10L);
             assertThat(result.getProductTemplateId()).isEqualTo(1L);
             assertThat(result.getFullMarking()).isEqualTo("VRK-PatAIR-P");
@@ -156,10 +156,10 @@ class FanCardServiceTest {
             when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("MARKING");
             when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
                     .thenReturn(Optional.empty());
-            when(fanCardRepository.save(any(FanCardEntity.class)))
+            when(fanCardRepository.save(any(DynamicCardEntity.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 
-            FanCardEntity result = service.createFromTemplate(10L, values, "admin");
+            DynamicCardEntity result = service.createFromTemplate(10L, values, "admin");
 
             assertThat(result.getSeries()).isEqualTo("P");
             assertThat(result.getPoles()).isEqualTo(4);
@@ -187,7 +187,7 @@ class FanCardServiceTest {
                     .thenReturn(Optional.empty());
             when(fanCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            FanCardEntity result = service.createFromTemplate(10L, values, "admin");
+            DynamicCardEntity result = service.createFromTemplate(10L, values, "admin");
 
             assertThat(result.getPoles()).isEqualTo(4);
             assertThat(result.getVoltage()).isEqualTo(380);
@@ -222,7 +222,7 @@ class FanCardServiceTest {
             when(productTemplateVersionRepository.findById(999L)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.createFromTemplate(999L, Map.of(), "admin"))
-                    .isInstanceOf(FanCardCreationException.class)
+                    .isInstanceOf(DynamicCardCreationException.class)
                     .hasMessageContaining("Версия шаблона не найдена");
 
             verify(fanCardRepository, never()).save(any());
@@ -236,7 +236,7 @@ class FanCardServiceTest {
 
             assertThatThrownBy(() -> service.createFromTemplate(
                     10L, Map.of("series", "P", "ductSize", "40"), "admin"))
-                    .isInstanceOf(FanCardCreationException.class)
+                    .isInstanceOf(DynamicCardCreationException.class)
                     .hasMessageContaining("PUBLISHED или LEGACY");
         }
 
@@ -250,7 +250,7 @@ class FanCardServiceTest {
             Map<String, Object> values = Map.of("series", "P");
 
             assertThatThrownBy(() -> service.createFromTemplate(10L, values, "admin"))
-                    .isInstanceOf(FanCardCreationException.class)
+                    .isInstanceOf(DynamicCardCreationException.class)
                     .hasMessageContaining("Обязательное поле не заполнено")
                     .hasMessageContaining("Типоразмер");
         }
@@ -258,7 +258,7 @@ class FanCardServiceTest {
         @Test
         @DisplayName("Маркировка уже существует → исключение")
         void markingAlreadyExists() {
-            FanCardEntity existing = new FanCardEntity();
+            DynamicCardEntity existing = new DynamicCardEntity();
             existing.setId(999L);
             existing.setFullMarking("VRK-PatAIR-P");
 
@@ -270,7 +270,7 @@ class FanCardServiceTest {
 
             assertThatThrownBy(() -> service.createFromTemplate(
                     10L, Map.of("series", "P", "ductSize", "40"), "admin"))
-                    .isInstanceOf(FanCardCreationException.class)
+                    .isInstanceOf(DynamicCardCreationException.class)
                     .hasMessageContaining("уже существует");
         }
 
@@ -300,13 +300,13 @@ class FanCardServiceTest {
     @DisplayName("updateFromValues")
     class UpdateTests {
 
-        private FanCardEntity existingCard;
+        private DynamicCardEntity existingCard;
 
         @BeforeEach
         void setUpCard() {
-            existingCard = new FanCardEntity();
+            existingCard = new DynamicCardEntity();
             existingCard.setId(500L);
-            existingCard.setCardType("FAN");
+            existingCard.setCardType("DYNAMIC");
             existingCard.setName("Вентилятор");
             existingCard.setTemplateVersionId(10L);
             existingCard.setProductTemplateId(1L);
@@ -331,7 +331,7 @@ class FanCardServiceTest {
                     .thenReturn(Optional.empty());
             when(fanCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            FanCardEntity result = service.updateFromValues(500L, values, "admin");
+            DynamicCardEntity result = service.updateFromValues(500L, values, "admin");
 
             assertThat(result.getSeries()).isEqualTo("PS");
             assertThat(result.getPoles()).isEqualTo(6);
@@ -354,7 +354,7 @@ class FanCardServiceTest {
                     .thenReturn(Optional.empty());
             when(fanCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            FanCardEntity result = service.updateFromValues(500L, values, "admin");
+            DynamicCardEntity result = service.updateFromValues(500L, values, "admin");
 
             assertThat(result.getPoles()).isNull();
         }
@@ -371,7 +371,7 @@ class FanCardServiceTest {
                     .thenReturn(Optional.empty());
             when(fanCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            FanCardEntity result = service.updateFromValues(500L, values, "admin");
+            DynamicCardEntity result = service.updateFromValues(500L, values, "admin");
 
             assertThat(result.getTemplateVersionId()).isEqualTo(10L);
             assertThat(result.getProductTemplateId()).isEqualTo(1L);
@@ -424,7 +424,7 @@ class FanCardServiceTest {
         @Test
         @DisplayName("Маркировка занята другой карточкой → исключение")
         void markingTakenByAnother() {
-            FanCardEntity anotherCard = new FanCardEntity();
+            DynamicCardEntity anotherCard = new DynamicCardEntity();
             anotherCard.setId(999L);
             anotherCard.setFullMarking("NEW-MARKING");
 
@@ -437,7 +437,7 @@ class FanCardServiceTest {
                     .thenReturn(Optional.of(anotherCard));
 
             assertThatThrownBy(() -> service.updateFromValues(500L, values, "admin"))
-                    .isInstanceOf(FanCardCreationException.class)
+                    .isInstanceOf(DynamicCardCreationException.class)
                     .hasMessageContaining("уже существует");
         }
 
@@ -447,7 +447,7 @@ class FanCardServiceTest {
             when(fanCardRepository.findById(999L)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.updateFromValues(999L, Map.of(), "admin"))
-                    .isInstanceOf(FanCardCreationException.class)
+                    .isInstanceOf(DynamicCardCreationException.class)
                     .hasMessageContaining("не найдена");
         }
 
@@ -459,7 +459,7 @@ class FanCardServiceTest {
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
 
             assertThatThrownBy(() -> service.updateFromValues(500L, Map.of(), "admin"))
-                    .isInstanceOf(FanCardCreationException.class)
+                    .isInstanceOf(DynamicCardCreationException.class)
                     .hasMessageContaining("не является FAN-карточкой");
         }
 
@@ -491,13 +491,13 @@ class FanCardServiceTest {
     @DisplayName("recalculateMarking")
     class RecalculateTests {
 
-        private FanCardEntity existingCard;
+        private DynamicCardEntity existingCard;
 
         @BeforeEach
         void setUpCard() {
-            existingCard = new FanCardEntity();
+            existingCard = new DynamicCardEntity();
             existingCard.setId(500L);
-            existingCard.setCardType("FAN");
+            existingCard.setCardType("DYNAMIC");
             existingCard.setTemplateVersionId(10L);
             existingCard.setProductTemplateId(1L);
             existingCard.setSeries("P");
@@ -517,7 +517,7 @@ class FanCardServiceTest {
                     .thenReturn(Optional.empty());
             when(fanCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            FanCardEntity result = service.recalculateMarking(500L, "admin");
+            DynamicCardEntity result = service.recalculateMarking(500L, "admin");
 
             assertThat(result.getFullMarking()).isEqualTo("NEW");
             assertThat(result.getSeries()).isEqualTo("P");
@@ -550,7 +550,7 @@ class FanCardServiceTest {
             when(fanCardRepository.findById(500L)).thenReturn(Optional.of(existingCard));
 
             assertThatThrownBy(() -> service.recalculateMarking(500L, "admin"))
-                    .isInstanceOf(FanCardCreationException.class)
+                    .isInstanceOf(DynamicCardCreationException.class)
                     .hasMessageContaining("нет привязки к версии шаблона");
         }
     }

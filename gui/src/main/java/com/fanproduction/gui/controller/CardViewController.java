@@ -160,7 +160,7 @@ public class CardViewController {
     }
 
     private boolean isFan() {
-        return "FAN".equals(card.getCardType());
+        return "DYNAMIC".equals(card.getCardType());
     }
 
     // ==========================================================

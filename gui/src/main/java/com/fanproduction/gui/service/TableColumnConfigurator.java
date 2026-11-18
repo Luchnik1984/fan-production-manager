@@ -88,7 +88,7 @@ public class TableColumnConfigurator {
                 columns.add(createStringColumn("Масса (кг)", "weightKg", 80));
                 break;
 
-            case "FAN":
+            case "DYNAMIC":
                 columns.add(createStringColumn("Производитель", "manufacturer", 120));
                 columns.add(createStringColumn("Серия", "series", 80));
                 columns.add(createStringColumn("Типоразмер", "size", 80));

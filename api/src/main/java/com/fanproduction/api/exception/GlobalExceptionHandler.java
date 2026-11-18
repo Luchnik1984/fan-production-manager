@@ -191,7 +191,7 @@ public class GlobalExceptionHandler {
         if (errorMsg.contains("axial_wheel_card")) return "Осевое колесо";
         if (errorMsg.contains("cup_card")) return "Стакан";
         if (errorMsg.contains("accessory_card")) return "Комплектующее";
-        if (errorMsg.contains("fan_card")) return "Вентилятор";
+        if (errorMsg.contains("dynamic_card")) return "Вентилятор";
         return "Изделие";
     }
 
