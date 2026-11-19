@@ -71,6 +71,9 @@ public class TemplateTreeController {
     private Parent templateDetailView;
     private TemplateDetailController templateDetailController;
 
+    /** Единственный экземпляр контекстного меню (переиспользуется). */
+    private final ContextMenu contextMenu = new ContextMenu();
+
     // ==========================================================
     // ИНИЦИАЛИЗАЦИЯ
     // ==========================================================
@@ -126,6 +129,7 @@ public class TemplateTreeController {
      * Типы, не привязанные ни к одному разделу, попадают в узел «Без раздела».
      */
     private void applyTree(List<ProductSectionDto> sections, List<ProductTypeDto> unassignedTypes) {
+        contextMenu.hide();
         TreeItem<Object> root = new TreeItem<>("Типы продукции");
         root.setExpanded(true);
 
@@ -374,6 +378,7 @@ public class TemplateTreeController {
                 } else if (item instanceof ProductSectionDto section) {
                     setText("📁 " + section.getName());
                     setStyle(sectionStyle());
+                    installDragSource(this, "SECTION|" + section.getId());
                     installSectionDropTarget(this, section);
                 } else if (item instanceof ProductTypeDto type) {
                     setText(type.getDisplayName());
@@ -492,71 +497,100 @@ public class TemplateTreeController {
     // ==========================================================
 
     private void setupContextMenu() {
+        // Одно меню на всё дерево: раньше создавалось новое на каждый ПКМ,
+        // и старые окна не закрывались при клике в сторону.
         hierarchyTree.setOnContextMenuRequested(event -> {
+            contextMenu.hide();
+
             TreeItem<Object> item = hierarchyTree.getSelectionModel().getSelectedItem();
-            if (item == null || item.getValue() == null) {
+            if (item == null || item.getValue() == null || item.getValue() instanceof String) {
                 return;
             }
 
-            Object value = item.getValue();
-            ContextMenu menu = new ContextMenu();
-
-            if (value instanceof ProductSectionDto section) {
-                MenuItem createSub = new MenuItem("Создать подраздел");
-                createSub.setOnAction(e -> showSectionDialog(null, section.getId()));
-
-                MenuItem createType = new MenuItem("Создать тип в разделе");
-                createType.setOnAction(e -> showTypeDialog(null, section.getId()));
-
-                MenuItem rename = new MenuItem("Переименовать раздел");
-                rename.setOnAction(e -> showSectionDialog(section, section.getParentId()));
-
-                MenuItem delete = new MenuItem("Удалить раздел");
-                delete.setOnAction(e -> handleDeleteSection(section));
-
-                menu.getItems().addAll(createSub, createType, new SeparatorMenuItem(), rename, delete);
-            } else if (value instanceof ProductTypeDto type) {
-                MenuItem createChild = new MenuItem("Создать вид");
-                createChild.setOnAction(e -> handleCreateSpecies(type));
-
-                MenuItem edit = new MenuItem("Редактировать");
-                edit.setOnAction(e -> handleEditType(type));
-
-                MenuItem delete = new MenuItem("Удалить");
-                delete.setOnAction(e -> handleDeleteType(type));
-
-                menu.getItems().addAll(createChild, edit, delete);
-            } else if (value instanceof ProductSpeciesDto species) {
-                MenuItem createChild = new MenuItem("Создать серию");
-                createChild.setOnAction(e -> handleCreateSeries(species));
-
-                MenuItem edit = new MenuItem("Редактировать");
-                edit.setOnAction(e -> handleEditSpecies(species));
-
-                MenuItem delete = new MenuItem("Удалить");
-                delete.setOnAction(e -> handleDeleteSpecies(species));
-
-                menu.getItems().addAll(createChild, edit, delete);
-            } else if (value instanceof ProductSeriesDto series) {
-                MenuItem openTemplate = new MenuItem("Открыть шаблон");
-                openTemplate.setOnAction(e -> loadTemplateDetail(series));
-
-                MenuItem openRule = new MenuItem("⚙ Открыть редактор правила");
-                openRule.setOnAction(e -> handleOpenRuleEditorFromTree(series));
-
-                MenuItem edit = new MenuItem("Редактировать");
-                edit.setOnAction(e -> handleEditSeries(series));
-
-                MenuItem delete = new MenuItem("Удалить");
-                delete.setOnAction(e -> handleDeleteSeries(series));
-
-                menu.getItems().addAll(openTemplate, openRule, edit, delete);
+            contextMenu.getItems().setAll(buildMenuItems(item.getValue()));
+            if (!contextMenu.getItems().isEmpty()) {
+                contextMenu.show(hierarchyTree, event.getScreenX(), event.getScreenY());
             }
+            event.consume();
+        });
 
-            if (!menu.getItems().isEmpty()) {
-                menu.show(hierarchyTree, event.getScreenX(), event.getScreenY());
+        // Клик левой кнопкой мимо меню — закрываем его
+        hierarchyTree.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, event -> {
+            if (event.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
+                contextMenu.hide();
             }
         });
+    }
+
+    /**
+     * Пункты контекстного меню для выбранного узла дерева.
+     */
+    private List<MenuItem> buildMenuItems(Object value) {
+        if (value instanceof ProductSectionDto section) {
+            MenuItem createSub = new MenuItem("Создать подраздел");
+            createSub.setOnAction(e -> showSectionDialog(null, section.getId()));
+
+            MenuItem createType = new MenuItem("Создать тип в разделе");
+            createType.setOnAction(e -> showTypeDialog(null, section.getId()));
+
+            MenuItem rename = new MenuItem("Переименовать раздел");
+            rename.setOnAction(e -> showSectionDialog(section, section.getParentId()));
+
+            MenuItem moveToRoot = new MenuItem("Переместить в корень");
+            moveToRoot.setDisable(section.getParentId() == null);
+            moveToRoot.setOnAction(e -> runAsync(
+                    () -> ProductSectionClient.move(section.getId(), null), "Раздел перемещён в корень"));
+
+            MenuItem delete = new MenuItem("Удалить раздел");
+            delete.setOnAction(e -> handleDeleteSection(section));
+
+            return List.of(createSub, createType, new SeparatorMenuItem(),
+                    rename, moveToRoot, new SeparatorMenuItem(), delete);
+        }
+
+        if (value instanceof ProductTypeDto type) {
+            MenuItem createChild = new MenuItem("Создать вид");
+            createChild.setOnAction(e -> handleCreateSpecies(type));
+
+            MenuItem edit = new MenuItem("Редактировать");
+            edit.setOnAction(e -> handleEditType(type));
+
+            MenuItem delete = new MenuItem("Удалить");
+            delete.setOnAction(e -> handleDeleteType(type));
+
+            return List.of(createChild, edit, delete);
+        }
+
+        if (value instanceof ProductSpeciesDto species) {
+            MenuItem createChild = new MenuItem("Создать серию");
+            createChild.setOnAction(e -> handleCreateSeries(species));
+
+            MenuItem edit = new MenuItem("Редактировать");
+            edit.setOnAction(e -> handleEditSpecies(species));
+
+            MenuItem delete = new MenuItem("Удалить");
+            delete.setOnAction(e -> handleDeleteSpecies(species));
+
+            return List.of(createChild, edit, delete);
+        }
+
+        if (value instanceof ProductSeriesDto series) {
+            MenuItem openTemplate = new MenuItem("Открыть шаблон");
+            openTemplate.setOnAction(e -> loadTemplateDetail(series));
+
+            MenuItem openRule = new MenuItem("⚙ Открыть редактор правила");
+            openRule.setOnAction(e -> handleOpenRuleEditorFromTree(series));
+
+            MenuItem edit = new MenuItem("Редактировать");
+            edit.setOnAction(e -> handleEditSeries(series));
+
+            MenuItem delete = new MenuItem("Удалить");
+            delete.setOnAction(e -> handleDeleteSeries(series));
+
+            return List.of(openTemplate, openRule, edit, delete);
+        }
+
+        return List.of();
     }
 
     // ==========================================================
