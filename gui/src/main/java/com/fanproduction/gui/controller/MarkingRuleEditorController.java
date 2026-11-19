@@ -1,6 +1,6 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.gui.client.FanTemplateVersionClient;
+import com.fanproduction.gui.client.ProductTemplateVersionClient;
 import com.fanproduction.gui.dialog.ConditionEditDialog;
 import com.fanproduction.gui.dialog.FieldBlockEditDialog;
 import com.fanproduction.gui.dialog.LiteralEditDialog;
@@ -9,8 +9,8 @@ import com.fanproduction.gui.dialog.DslReferenceDialog;
 import com.fanproduction.gui.dto.fan.MarkingRuleDto;
 import com.fanproduction.gui.dto.fan.MarkingRuleElementDto;
 import com.fanproduction.gui.dto.fan.RuleElementType;
-import com.fanproduction.gui.dto.request.fan.UpdateFanTemplateVersionRequest;
-import com.fanproduction.gui.dto.response.FanTemplateVersionDto;
+import com.fanproduction.gui.dto.request.fan.UpdateProductTemplateVersionRequest;
+import com.fanproduction.gui.dto.response.ProductTemplateVersionDto;
 import com.fanproduction.gui.util.TemplateControllerHelper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -80,7 +80,7 @@ public class MarkingRuleEditorController {
     // ==========================================================
 
     private final ObservableList<MarkingRuleElementDto> blocks = FXCollections.observableArrayList();
-    private FanTemplateVersionDto version;
+    private ProductTemplateVersionDto version;
     /** Compact-режим: используется во вложенных редакторах (THEN/ELSE в ConditionEditDialog). */
     private boolean compactMode = false;
     /** DataFormat для drag-and-drop блоков правила (передаём индекс блока). */
@@ -91,7 +91,7 @@ public class MarkingRuleEditorController {
     // INIT
     // ==========================================================
 
-    public void init(FanTemplateVersionDto version, Runnable onSaved) {
+    public void init(ProductTemplateVersionDto version, Runnable onSaved) {
         this.version = version;
         this.onSaved = onSaved;
 
@@ -397,9 +397,9 @@ public class MarkingRuleEditorController {
 
         MarkingRuleDto rule = new MarkingRuleDto(new ArrayList<>(blocks));
         TemplateControllerHelper.runAsync(owner(),
-                () -> FanTemplateVersionClient.updateDraft(
+                () -> ProductTemplateVersionClient.updateDraft(
                         version.getId(),
-                        new UpdateFanTemplateVersionRequest(null, rule)),
+                        new UpdateProductTemplateVersionRequest(null, rule)),
                 "Правило сохранено",
                 () -> {
                     saveButton.setDisable(false);

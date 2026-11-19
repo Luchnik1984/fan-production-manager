@@ -1,17 +1,17 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.gui.client.FanTemplateClient;
-import com.fanproduction.gui.client.FanTemplateVersionClient;
-import com.fanproduction.gui.client.FanTypeClient;
-import com.fanproduction.gui.dto.request.fan.CloneFanTemplateRequest;
-import com.fanproduction.gui.dto.request.fan.CreateFanTemplateRequest;
-import com.fanproduction.gui.dto.request.fan.CreateFanTemplateVersionRequest;
-import com.fanproduction.gui.dto.request.fan.UpdateFanTemplateRequest;
-import com.fanproduction.gui.dto.response.FanSeriesDto;
-import com.fanproduction.gui.dto.response.FanTemplateDto;
-import com.fanproduction.gui.dto.response.FanTemplateVersionDto;
-import com.fanproduction.gui.dto.response.FanTypeDto;
-import com.fanproduction.gui.util.FanTreeBuilder;
+import com.fanproduction.gui.client.ProductTemplateClient;
+import com.fanproduction.gui.client.ProductTemplateVersionClient;
+import com.fanproduction.gui.client.ProductTypeClient;
+import com.fanproduction.gui.dto.request.fan.CloneProductTemplateRequest;
+import com.fanproduction.gui.dto.request.fan.CreateProductTemplateRequest;
+import com.fanproduction.gui.dto.request.fan.CreateProductTemplateVersionRequest;
+import com.fanproduction.gui.dto.request.fan.UpdateProductTemplateRequest;
+import com.fanproduction.gui.dto.response.ProductSeriesDto;
+import com.fanproduction.gui.dto.response.ProductTemplateDto;
+import com.fanproduction.gui.dto.response.ProductTemplateVersionDto;
+import com.fanproduction.gui.dto.response.ProductTypeDto;
+import com.fanproduction.gui.util.ProductTreeBuilder;
 import com.fanproduction.gui.util.TemplateControllerHelper;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
@@ -33,7 +33,7 @@ import java.util.Objects;
  * <p>
  * Отвечает за:
  * <ul>
- *   <li>Загрузку шаблона по выбранной серии ({@link #showForSeries(FanSeriesDto)}).</li>
+ *   <li>Загрузку шаблона по выбранной серии ({@link #showForSeries(ProductSeriesDto)}).</li>
  *   <li>Список версий с их статусами.</li>
  *   <li>Управление жизненным циклом версий (publish / deprecate / archive / delete / create).</li>
  *   <li>Клонирование шаблона для другой серии.</li>
@@ -45,7 +45,7 @@ import java.util.Objects;
  * <b>Race condition:</b> при быстром клике по разным сериям загрузки могут
  * завершаться в произвольном порядке. Поле {@link #generation} защищает от
  * «устаревшего» результата: применяется только результат последнего вызова
- * {@link #showForSeries(FanSeriesDto)}.
+ * {@link #showForSeries(ProductSeriesDto)}.
  * <p>
  * Общие утилиты ({@code runAsync}, {@code showAlert}, {@code buildDialog},
  * {@code confirm}) — из {@link TemplateControllerHelper}.
@@ -71,17 +71,19 @@ public class TemplateDetailController {
     @javafx.fxml.FXML private Button openRuleEditorButton;
     @javafx.fxml.FXML private Button previewButton;
 
-    @javafx.fxml.FXML private TableView<FanTemplateVersionDto> versionsTable;
-    @javafx.fxml.FXML private TableColumn<FanTemplateVersionDto, String> versionColumn;
-    @javafx.fxml.FXML private TableColumn<FanTemplateVersionDto, String> statusColumn;
-    @javafx.fxml.FXML private TableColumn<FanTemplateVersionDto, String> createdAtColumn;
-    @javafx.fxml.FXML private TableColumn<FanTemplateVersionDto, String> publishedAtColumn;
-    @javafx.fxml.FXML private TableColumn<FanTemplateVersionDto, String> createdByColumn;
+    @javafx.fxml.FXML private TableView<ProductTemplateVersionDto> versionsTable;
+    @javafx.fxml.FXML private TableColumn<ProductTemplateVersionDto, String> versionColumn;
+    @javafx.fxml.FXML private TableColumn<ProductTemplateVersionDto, String> statusColumn;
+    @javafx.fxml.FXML private TableColumn<ProductTemplateVersionDto, String> createdAtColumn;
+    @javafx.fxml.FXML private TableColumn<ProductTemplateVersionDto, String> publishedAtColumn;
+    @javafx.fxml.FXML private TableColumn<ProductTemplateVersionDto, String> createdByColumn;
 
     @javafx.fxml.FXML private Button createVersionButton;
     @javafx.fxml.FXML private Button publishButton;
     @javafx.fxml.FXML private Button deprecateButton;
     @javafx.fxml.FXML private Button archiveButton;
+    @javafx.fxml.FXML private Button restoreButton;
+    @javafx.fxml.FXML private Button undeprecateButton;
     @javafx.fxml.FXML private Button deleteVersionButton;
     @javafx.fxml.FXML private Button cloneButton;
     @javafx.fxml.FXML private Label statusLabel;
@@ -93,10 +95,10 @@ public class TemplateDetailController {
     private static final DateTimeFormatter DATE_FORMATTER =
             DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
-    private final ObservableList<FanTemplateVersionDto> versionsList = FXCollections.observableArrayList();
+    private final ObservableList<ProductTemplateVersionDto> versionsList = FXCollections.observableArrayList();
 
-    private FanSeriesDto currentSeries;
-    private FanTemplateDto currentTemplate;
+    private ProductSeriesDto currentSeries;
+    private ProductTemplateDto currentTemplate;
 
     /** Поколение загрузок — защита от race condition при быстром клике. */
     private long generation = 0L;
@@ -168,7 +170,7 @@ public class TemplateDetailController {
      * Потокобезопасен, можно вызывать из FX-потока (что делает
      * {@link TemplateTreeController}). Сама загрузка — в фоне.
      */
-    public void showForSeries(FanSeriesDto series) {
+    public void showForSeries(ProductSeriesDto series) {
         if (series == null) {
             return;
         }
@@ -194,11 +196,11 @@ public class TemplateDetailController {
     // АСИНХРОННАЯ ЗАГРУЗКА
     // ==========================================================
 
-    private void loadAsync(FanSeriesDto series, long myGeneration) {
+    private void loadAsync(ProductSeriesDto series, long myGeneration) {
         try {
-            FanTemplateDto template;
+            ProductTemplateDto template;
             try {
-                template = FanTemplateClient.getTemplateBySeries(series.getId());
+                template = ProductTemplateClient.getTemplateBySeries(series.getId());
             } catch (Exception e) {
                 String msg = e.getMessage();
                 if (msg != null && msg.contains("не найден")) {
@@ -211,7 +213,7 @@ public class TemplateDetailController {
                 throw e;
             }
 
-            List<FanTemplateVersionDto> versions = FanTemplateClient.getVersionsByTemplate(template.getId());
+            List<ProductTemplateVersionDto> versions = ProductTemplateClient.getVersionsByTemplate(template.getId());
             Platform.runLater(() -> {
                 if (myGeneration != generation) return;
                 showTemplateState(template, versions);
@@ -242,7 +244,7 @@ public class TemplateDetailController {
         statusLabel.setText("Нет шаблона");
     }
 
-    private void showTemplateState(FanTemplateDto template, List<FanTemplateVersionDto> versions) {
+    private void showTemplateState(ProductTemplateDto template, List<ProductTemplateVersionDto> versions) {
         this.currentTemplate = template;
 
         templateNameLabel.setText(template.getName());
@@ -250,7 +252,7 @@ public class TemplateDetailController {
 
         versionsList.setAll(versions);
 
-        FanTemplateVersionDto currentVersion = versions.stream()
+        ProductTemplateVersionDto currentVersion = versions.stream()
                 .filter(v -> Objects.equals(v.getId(), template.getCurrentVersionId()))
                 .findFirst().orElse(null);
         if (currentVersion != null) {
@@ -274,7 +276,7 @@ public class TemplateDetailController {
     // ==========================================================
 
     private void updateButtonsState() {
-        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         boolean hasSelection = selected != null;
         String status = hasSelection ? selected.getStatus() : null;
 
@@ -288,6 +290,8 @@ public class TemplateDetailController {
         publishButton.setDisable(!"DRAFT".equals(status));
         deprecateButton.setDisable(!"LEGACY".equals(status));
         archiveButton.setDisable(!"DEPRECATED".equals(status));
+        restoreButton.setDisable(!"ARCHIVED".equals(status));
+        undeprecateButton.setDisable(!"DEPRECATED".equals(status));
         deleteVersionButton.setDisable(!("DRAFT".equals(status) || "ARCHIVED".equals(status)));
 
         openFieldsEditorButton.setDisable(!"DRAFT".equals(status));
@@ -336,8 +340,8 @@ public class TemplateDetailController {
             String name = nameField.getText().trim();
             String description = descField.getText().trim();
 
-            runAsync(() -> FanTemplateClient.createTemplate(
-                    new CreateFanTemplateRequest(
+            runAsync(() -> ProductTemplateClient.createTemplate(
+                    new CreateProductTemplateRequest(
                             currentSeries.getId(),
                             name,
                             description.isEmpty() ? null : description,
@@ -374,9 +378,9 @@ public class TemplateDetailController {
             String name = nameField.getText().trim();
             String description = descField.getText().trim();
 
-            runAsync(() -> FanTemplateClient.updateTemplate(
+            runAsync(() -> ProductTemplateClient.updateTemplate(
                             currentTemplate.getId(),
-                            new UpdateFanTemplateRequest(name,
+                            new UpdateProductTemplateRequest(name,
                                     description.isEmpty() ? null : description)),
                     "Шаблон обновлён");
         });
@@ -398,61 +402,115 @@ public class TemplateDetailController {
         if (currentTemplate == null) return;
 
         Dialog<ButtonType> dialog = buildDialog("Создать версию");
+
         Label info = new Label(
                 "Будет создана новая DRAFT-версия. Поля и правило маркировки\n" +
-                        "скопируются из текущей опубликованной версии (если есть).");
+                        "копируются из выбранного источника. Исходная версия не меняется.");
         info.setWrapText(true);
-        dialog.getDialogPane().setContent(info);
+
+        ComboBox<String> sourceCombo = new ComboBox<>();
+        sourceCombo.getItems().add("Автоматически: из текущей/последней версии");
+        for (ProductTemplateVersionDto version : versionsList) {
+            sourceCombo.getItems().add(
+                    "На основе v" + version.getVersion() + " [" + version.getStatus() + "]");
+        }
+        sourceCombo.getSelectionModel().selectFirst();
+        sourceCombo.setMaxWidth(Double.MAX_VALUE);
+
+        VBox content = new VBox(10, info, new Label("Источник:"), sourceCombo);
+        content.setPrefWidth(420);
+        dialog.getDialogPane().setContent(content);
 
         dialog.showAndWait().ifPresent(button -> {
             if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) return;
-            runAsync(() -> FanTemplateClient.createNewVersion(
-                            currentTemplate.getId(),
-                            new CreateFanTemplateVersionRequest(null, null)),
-                    "Версия создана");
+
+            int index = sourceCombo.getSelectionModel().getSelectedIndex();
+            if (index <= 0) {
+                runAsync(() -> ProductTemplateClient.createNewVersion(
+                                currentTemplate.getId(),
+                                new CreateProductTemplateVersionRequest(null, null)),
+                        "Версия создана");
+            } else {
+                Long sourceVersionId = versionsList.get(index - 1).getId();
+                runAsync(() -> ProductTemplateClient.createVersionFrom(
+                                currentTemplate.getId(), sourceVersionId),
+                        "Версия создана на основе выбранной");
+            }
         });
     }
 
     @javafx.fxml.FXML
     private void handlePublish() {
-        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         if (selected == null || !"DRAFT".equals(selected.getStatus())) return;
 
         if (!confirm("Опубликовать версию v" + selected.getVersion() + "?",
                 "Предыдущая PUBLISHED (если была) станет LEGACY.")) return;
 
-        runAsync(() -> FanTemplateVersionClient.publishVersion(selected.getId()),
+        runAsync(() -> ProductTemplateVersionClient.publishVersion(selected.getId()),
                 "Версия опубликована");
     }
 
     @javafx.fxml.FXML
     private void handleDeprecate() {
-        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         if (selected == null || !"LEGACY".equals(selected.getStatus())) return;
 
         if (!confirm("Пометить версию v" + selected.getVersion() + " как устаревшую?",
                 "Новые карточки по этой версии создавать будет нельзя. " +
                         "Существующие карточки продолжат работать")) return;
 
-        runAsync(() -> FanTemplateVersionClient.deprecateVersion(selected.getId()),
+        runAsync(() -> ProductTemplateVersionClient.deprecateVersion(selected.getId()),
                 "Версия помечена как DEPRECATED");
     }
 
     @javafx.fxml.FXML
     private void handleArchive() {
-        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         if (selected == null || !"DEPRECATED".equals(selected.getStatus())) return;
 
         if (!confirm("Архивировать версию v" + selected.getVersion() + "?",
                 "Версия будет скрыта из UI. Существующие карточки продолжат работать.")) return;
 
-        runAsync(() -> FanTemplateVersionClient.archiveVersion(selected.getId()),
+        runAsync(() -> ProductTemplateVersionClient.archiveVersion(selected.getId()),
                 "Версия архивирована");
+    }
+
+    /**
+     * Восстановить версию из архива: ARCHIVED → DEPRECATED.
+     */
+    @javafx.fxml.FXML
+    private void handleRestore() {
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        if (selected == null || !"ARCHIVED".equals(selected.getStatus())) return;
+
+        if (!confirm("Восстановить версию v" + selected.getVersion() + " из архива?",
+                "Версия вернётся в статус DEPRECATED. Дальше её можно снова " +
+                        "сделать LEGACY кнопкой «Снять деприкейт».")) return;
+
+        runAsync(() -> ProductTemplateVersionClient.restoreVersion(selected.getId()),
+                "Версия восстановлена из архива");
+    }
+
+    /**
+     * Снять деприкейт: DEPRECATED → LEGACY.
+     */
+    @javafx.fxml.FXML
+    private void handleUndeprecate() {
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        if (selected == null || !"DEPRECATED".equals(selected.getStatus())) return;
+
+        if (!confirm("Снять деприкейт с версии v" + selected.getVersion() + "?",
+                "Версия станет LEGACY — по ней снова можно создавать карточки. " +
+                        "Действует ограничение: не больше 20 активных версий на шаблон.")) return;
+
+        runAsync(() -> ProductTemplateVersionClient.undeprecateVersion(selected.getId()),
+                "Деприкейт снят");
     }
 
     @javafx.fxml.FXML
     private void handleDeleteVersion() {
-        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         if (selected == null) return;
         String status = selected.getStatus();
         if (!"DRAFT".equals(status) && !"ARCHIVED".equals(status)) return;
@@ -460,7 +518,7 @@ public class TemplateDetailController {
         if (!confirm("Удалить версию v" + selected.getVersion() + "?",
                 "Это действие необратимо.")) return;
 
-        runAsync(() -> FanTemplateVersionClient.deleteVersion(selected.getId()),
+        runAsync(() -> ProductTemplateVersionClient.deleteVersion(selected.getId()),
                 "Версия удалена");
     }
 
@@ -487,11 +545,11 @@ public class TemplateDetailController {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setText(null);
-                } else if (item instanceof FanTypeDto t) {
+                } else if (item instanceof ProductTypeDto t) {
                     setText("📁 " + t.getDisplayName());
-                } else if (item instanceof com.fanproduction.gui.dto.response.FanSpeciesDto s) {
+                } else if (item instanceof com.fanproduction.gui.dto.response.ProductSpeciesDto s) {
                     setText("  📁 " + s.getDisplayName());
-                } else if (item instanceof FanSeriesDto s) {
+                } else if (item instanceof ProductSeriesDto s) {
                     setText("    📄 " + s.getDisplayName());
                 } else {
                     setText(item.toString());
@@ -518,8 +576,8 @@ public class TemplateDetailController {
 
         new Thread(() -> {
             try {
-                List<FanTypeDto> types = FanTypeClient.getTree();
-                TreeItem<Object> root = FanTreeBuilder.buildTree(types);
+                List<ProductTypeDto> types = ProductTypeClient.getTree();
+                TreeItem<Object> root = ProductTreeBuilder.buildTree(types);
                 Platform.runLater(() -> treeView.setRoot(root));
             } catch (Exception e) {
                 Platform.runLater(() -> errorLabel.setText(
@@ -532,19 +590,19 @@ public class TemplateDetailController {
         okButton.setDisable(true);
         treeView.getSelectionModel().selectedItemProperty().addListener(
                 (obs, o, n) -> okButton.setDisable(
-                        n == null || !(n.getValue() instanceof FanSeriesDto)));
+                        n == null || !(n.getValue() instanceof ProductSeriesDto)));
 
         dialog.showAndWait().ifPresent(button -> {
             if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) return;
 
             TreeItem<Object> sel = treeView.getSelectionModel().getSelectedItem();
-            if (sel == null || !(sel.getValue() instanceof FanSeriesDto targetSeries)) return;
+            if (sel == null || !(sel.getValue() instanceof ProductSeriesDto targetSeries)) return;
 
             String newName = nameField.getText().trim();
 
-            runAsync(() -> FanTemplateClient.cloneTemplate(
+            runAsync(() -> ProductTemplateClient.cloneTemplate(
                             currentTemplate.getId(),
-                            new CloneFanTemplateRequest(
+                            new CloneProductTemplateRequest(
                                     targetSeries.getId(),
                                     newName.isEmpty() ? null : newName)),
                     "Шаблон клонирован");
@@ -553,7 +611,7 @@ public class TemplateDetailController {
 
     @javafx.fxml.FXML
     private void handleOpenFieldsEditor() {
-        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         if (selected == null || !"DRAFT".equals(selected.getStatus())) return;
 
         try {
@@ -587,7 +645,7 @@ public class TemplateDetailController {
 
     @javafx.fxml.FXML
     private void handleOpenRuleEditor() {
-        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         if (selected == null || !"DRAFT".equals(selected.getStatus())) return;
 
         try {
@@ -621,7 +679,7 @@ public class TemplateDetailController {
 
     @javafx.fxml.FXML
     private void handlePreview() {
-        FanTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
         if (selected == null) return;
 
         try {

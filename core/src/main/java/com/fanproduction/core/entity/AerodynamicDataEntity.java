@@ -7,7 +7,7 @@ import lombok.AllArgsConstructor;
 
 /**
  * Аэродинамическая характеристика вентилятора.
- * Связь: один вентилятор (FanCardEntity) — много точек характеристики.
+ * Связь: один вентилятор (DynamicCardEntity) — много точек характеристики.
  *
  * Позволяет хранить несколько точек (расход, давление, мощность)
  * для построения графика характеристики.
@@ -24,9 +24,9 @@ public class AerodynamicDataEntity {
     private Long id;
 
     /**
-     * Ссылка на карточку вентилятора (FanCardEntity)
+     * Ссылка на карточку вентилятора (DynamicCardEntity)
      */
-    @Column(name = "fan_card_id", nullable = false)
+    @Column(name = "dynamic_card_id", nullable = false)
     private Long fanCardId;
 
     /**

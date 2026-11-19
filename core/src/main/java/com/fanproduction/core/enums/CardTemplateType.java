@@ -3,14 +3,15 @@ package com.fanproduction.core.enums;
 import lombok.Getter;
 
 /**
- * Типы карточек продукции.
+ * Классы карточек продукции.
  * <p>
- * Для системных карточек (MOTOR, MOTOR_WHEEL, RADIAL_WHEEL, AXIAL_WHEEL, CUP, ACCESSORY)
- * используется жёстко заданный набор полей и логика в конфигураторах.
+ * Четыре системных типа (MOTOR, MOTOR_WHEEL, RADIAL_WHEEL, AXIAL_WHEEL) имеют
+ * жёстко заданный набор полей и собственную сущность (JOINED-наследование).
  * <p>
- * Для FAN — все вентиляторы (осевые, радиальные, канальные, крышные, струйные и др.)
- * создаются через конструктор шаблонов. Поля и правило маркировки определяются
- * шаблоном, привязанным к конкретной серии.
+ * {@link #DYNAMIC} — все карточки, создаваемые по шаблону: вентиляторы, клапаны,
+ * стаканы, козырьки, отводы и адаптеры. Поля и правило маркировки определяются
+ * шаблоном, а конкретный вид продукции — ссылкой {@code product_type_id}
+ * в {@code dynamic_card}.
  */
 @Getter
 public enum CardTemplateType {
@@ -18,9 +19,7 @@ public enum CardTemplateType {
     MOTOR_WHEEL("Мотор-колесо", "motorWheel"),
     RADIAL_WHEEL("Колесо радиальное", "radialWheel"),
     AXIAL_WHEEL("Колесо осевое", "axialWheel"),
-    FAN("Вентилятор", "fan"),
-    CUP("Стакан", "cup"),
-    ACCESSORY("Комплектующее", "accessory");
+    DYNAMIC("Изделие по шаблону", "dynamic");
 
     private final String displayName;
     private final String entityName;

@@ -24,7 +24,7 @@ public class CardFormConfigurator {
         configurators.put("MOTOR_WHEEL", new MotorWheelCardConfigurator());
         configurators.put("RADIAL_WHEEL", new RadialWheelCardConfigurator());
         configurators.put("AXIAL_WHEEL", new AxialWheelCardConfigurator());
-        configurators.put("FAN", new FanCardConfigurator());
+        configurators.put("DYNAMIC", new FanCardConfigurator());
     }
 
     /**

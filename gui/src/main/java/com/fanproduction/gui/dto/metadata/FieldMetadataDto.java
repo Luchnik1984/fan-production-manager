@@ -12,7 +12,7 @@ import java.util.Map;
  * <p>
  * Используется как для системных карточек (жёстко прописанные поля),
  * так и для FAN-карточек (поля загружаются с сервера через
- * {@code /api/fan-template-versions/{id}/form}).
+ * {@code /api/product-template-versions/{id}/form}).
  */
 @Data
 public class FieldMetadataDto {

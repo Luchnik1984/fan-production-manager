@@ -1,6 +1,6 @@
 package com.fanproduction.services.impl;
 
-import com.fanproduction.core.entity.product.FanCardEntity;
+import com.fanproduction.core.entity.product.DynamicCardEntity;
 import com.fanproduction.core.entity.product.MotorCardEntity;
 import com.fanproduction.core.enums.AuditAction;
 import com.fanproduction.core.enums.CardTemplateType;
@@ -8,7 +8,7 @@ import com.fanproduction.core.event.AuditEvent;
 import com.fanproduction.core.security.CurrentUserProvider;
 import com.fanproduction.repositories.product.*;
 import com.fanproduction.services.ComponentService;
-import com.fanproduction.services.FanCardService;
+import com.fanproduction.services.DynamicCardService;
 import com.fanproduction.services.MaterialService;
 import com.fanproduction.services.ProductCardValidationService;
 import com.fanproduction.services.factory.ProductCardFactory;
@@ -48,8 +48,8 @@ class ProductCardServiceFANTest {
     @Mock private MotorWheelCardRepository motorWheelCardRepository;
     @Mock private RadialWheelCardRepository radialWheelCardRepository;
     @Mock private AxialWheelCardRepository axialWheelCardRepository;
-    @Mock private FanCardRepository fanCardRepository;
-    @Mock private FanCardService fanCardService;
+    @Mock private DynamicCardRepository fanCardRepository;
+    @Mock private DynamicCardService fanCardService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private CurrentUserProvider currentUserProvider;
     @Mock private ComponentService componentService;
@@ -88,11 +88,11 @@ class ProductCardServiceFANTest {
     class CreateTests {
 
         @Test
-        @DisplayName("FAN: делегирует в FanCardService.createFromTemplate")
+        @DisplayName("FAN: делегирует в DynamicCardService.createFromTemplate")
         void createFanDelegates() {
-            FanCardEntity expected = new FanCardEntity();
+            DynamicCardEntity expected = new DynamicCardEntity();
             expected.setId(500L);
-            expected.setCardType("FAN");
+            expected.setCardType("DYNAMIC");
             expected.setFullMarking("VRK-PatAIR-P-40-20-4-220");
 
             Map<String, Object> fields = new HashMap<>();
@@ -103,7 +103,7 @@ class ProductCardServiceFANTest {
             when(fanCardService.createFromTemplate(eq(10L), any(), eq("admin@test")))
                     .thenReturn(expected);
 
-            var result = service.createCard(CardTemplateType.FAN, fields, "admin@test");
+            var result = service.createCard(CardTemplateType.DYNAMIC, fields, "admin@test");
 
             assertThat(result).isSameAs(expected);
             verify(fanCardService).createFromTemplate(eq(10L), any(), eq("admin@test"));
@@ -115,7 +115,7 @@ class ProductCardServiceFANTest {
         void createFanWithoutTemplateVersionId() {
             Map<String, Object> fields = Map.of("series", "P");
 
-            assertThatThrownBy(() -> service.createCard(CardTemplateType.FAN, fields, "admin"))
+            assertThatThrownBy(() -> service.createCard(CardTemplateType.DYNAMIC, fields, "admin"))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("templateVersionId");
 
@@ -124,8 +124,8 @@ class ProductCardServiceFANTest {
 
         @Test
         @DisplayName("FAN: templateVersionId как строка → парсится в Long")
-        void createFanTemplateVersionIdAsString() {
-            FanCardEntity expected = new FanCardEntity();
+        void createProductTemplateVersionIdAsString() {
+            DynamicCardEntity expected = new DynamicCardEntity();
             expected.setId(500L);
 
             Map<String, Object> fields = new HashMap<>();
@@ -135,7 +135,7 @@ class ProductCardServiceFANTest {
             when(fanCardService.createFromTemplate(eq(10L), any(), eq("admin")))
                     .thenReturn(expected);
 
-            var result = service.createCard(CardTemplateType.FAN, fields, "admin");
+            var result = service.createCard(CardTemplateType.DYNAMIC, fields, "admin");
 
             assertThat(result).isSameAs(expected);
         }
@@ -182,15 +182,15 @@ class ProductCardServiceFANTest {
     class UpdateTests {
 
         @Test
-        @DisplayName("FAN: делегирует в FanCardService.updateFromValues")
+        @DisplayName("FAN: делегирует в DynamicCardService.updateFromValues")
         void updateFanDelegates() {
-            FanCardEntity existing = new FanCardEntity();
+            DynamicCardEntity existing = new DynamicCardEntity();
             existing.setId(500L);
-            existing.setCardType("FAN");
+            existing.setCardType("DYNAMIC");
 
-            FanCardEntity updated = new FanCardEntity();
+            DynamicCardEntity updated = new DynamicCardEntity();
             updated.setId(500L);
-            updated.setCardType("FAN");
+            updated.setCardType("DYNAMIC");
             updated.setFullMarking("NEW-MARKING");
 
             Map<String, Object> fields = Map.of("series", "PS");

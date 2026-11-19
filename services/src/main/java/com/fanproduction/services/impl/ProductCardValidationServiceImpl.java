@@ -25,9 +25,10 @@ public class ProductCardValidationServiceImpl implements ProductCardValidationSe
     /**
      * Обязательные поля для каждого типа карточки.
      * <p>
-     * FAN — не валидируется здесь (валидация в FanCardService).
-     * RADIAL_WHEEL, AXIAL_WHEEL, CUP, ACCESSORY — на первом этапе
-     * не валидируются (усложнено вариантами использования).
+     * DYNAMIC — не валидируется здесь (обязательные поля задаёт шаблон,
+     * проверка в DynamicCardService).
+     * RADIAL_WHEEL, AXIAL_WHEEL — на первом этапе не валидируются
+     * (усложнено вариантами использования).
      */
     private static final Map<CardTemplateType, List<String>> REQUIRED_FIELDS = Map.of(
             CardTemplateType.MOTOR, List.of(

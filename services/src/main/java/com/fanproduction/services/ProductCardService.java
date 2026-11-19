@@ -90,11 +90,12 @@ public interface ProductCardService {
     List<String> getAssemblyUnitUsageInfo(Long cardId);
 
     /**
-     * Получить FAN-карточки с фильтром по имени типа вентилятора.
+     * Получить динамические карточки с фильтром по легаси-имени типа
+     * вентилятора.
      * <p>
      * Например, {@code fanType = "Вентилятор канальный"}.
      */
-    Page<BaseProductCard> getFanCardsByFanType(String fanType, Pageable pageable);
+    Page<BaseProductCard> getDynamicCardsByFanType(String fanType, Pageable pageable);
 
     /**
      * Создать карточку продукции со связями (компоненты и материалы)

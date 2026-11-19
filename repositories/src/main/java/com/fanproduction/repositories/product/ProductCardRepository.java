@@ -1,7 +1,7 @@
 package com.fanproduction.repositories.product;
 
 import com.fanproduction.core.entity.product.BaseProductCard;
-import com.fanproduction.core.entity.product.FanCardEntity;
+import com.fanproduction.core.entity.product.DynamicCardEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -58,42 +58,42 @@ public interface ProductCardRepository extends JpaRepository<BaseProductCard, Lo
     /**
      * Подсчитать количество вентиляторов, использующих электродвигатель
      */
-    @Query("SELECT COUNT(f) FROM FanCardEntity f WHERE f.motorId = :motorId")
+    @Query("SELECT COUNT(f) FROM DynamicCardEntity f WHERE f.motorId = :motorId")
     long countFanCardsUsingMotor(@Param("motorId") Long motorId);
 
     /**
      * Подсчитать количество вентиляторов, использующих мотор-колесо
      */
-    @Query("SELECT COUNT(f) FROM FanCardEntity f WHERE f.motorWheelId = :motorWheelId")
+    @Query("SELECT COUNT(f) FROM DynamicCardEntity f WHERE f.motorWheelId = :motorWheelId")
     long countFanCardsUsingMotorWheel(@Param("motorWheelId") Long motorWheelId);
 
     /**
      * Подсчитать количество вентиляторов, использующих радиальное колесо
      */
-    @Query("SELECT COUNT(f) FROM FanCardEntity f WHERE f.radialWheelId = :radialWheelId")
+    @Query("SELECT COUNT(f) FROM DynamicCardEntity f WHERE f.radialWheelId = :radialWheelId")
     long countFanCardsUsingRadialWheel(@Param("radialWheelId") Long radialWheelId);
 
     /**
      * Подсчитать количество вентиляторов, использующих осевое колесо
      */
-    @Query("SELECT COUNT(f) FROM FanCardEntity f WHERE f.axialWheelId = :axialWheelId")
+    @Query("SELECT COUNT(f) FROM DynamicCardEntity f WHERE f.axialWheelId = :axialWheelId")
     long countFanCardsUsingAxialWheel(@Param("axialWheelId") Long axialWheelId);
 
     /**
      * Найти все вентиляторы, использующие данный сборочный узел
      * (для получения списка использования)
      */
-    @Query("SELECT f FROM FanCardEntity f WHERE f.motorId = :unitId")
-    List<FanCardEntity> findFanCardsByMotorId(@Param("unitId") Long unitId);
+    @Query("SELECT f FROM DynamicCardEntity f WHERE f.motorId = :unitId")
+    List<DynamicCardEntity> findFanCardsByMotorId(@Param("unitId") Long unitId);
 
-    @Query("SELECT f FROM FanCardEntity f WHERE f.motorWheelId = :unitId")
-    List<FanCardEntity> findFanCardsByMotorWheelId(@Param("unitId") Long unitId);
+    @Query("SELECT f FROM DynamicCardEntity f WHERE f.motorWheelId = :unitId")
+    List<DynamicCardEntity> findFanCardsByMotorWheelId(@Param("unitId") Long unitId);
 
-    @Query("SELECT f FROM FanCardEntity f WHERE f.radialWheelId = :unitId")
-    List<FanCardEntity> findFanCardsByRadialWheelId(@Param("unitId") Long unitId);
+    @Query("SELECT f FROM DynamicCardEntity f WHERE f.radialWheelId = :unitId")
+    List<DynamicCardEntity> findFanCardsByRadialWheelId(@Param("unitId") Long unitId);
 
-    @Query("SELECT f FROM FanCardEntity f WHERE f.axialWheelId = :unitId")
-    List<FanCardEntity> findFanCardsByAxialWheelId(@Param("unitId") Long unitId);
+    @Query("SELECT f FROM DynamicCardEntity f WHERE f.axialWheelId = :unitId")
+    List<DynamicCardEntity> findFanCardsByAxialWheelId(@Param("unitId") Long unitId);
 }
 
 

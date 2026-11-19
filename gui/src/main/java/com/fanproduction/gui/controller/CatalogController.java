@@ -2,12 +2,13 @@ package com.fanproduction.gui.controller;
 
 import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.gui.client.ProductCardClient;
-import com.fanproduction.gui.client.FanTypeClient;
-import com.fanproduction.gui.component.FanTemplateSelectionDialog;
+import com.fanproduction.gui.client.ProductTypeClient;
+import com.fanproduction.gui.component.CardCreationDialog;
 import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fanproduction.gui.dto.CatalogFilterOption;
-import com.fanproduction.gui.dto.response.FanTypeShortDto;
+import com.fanproduction.gui.dto.response.ProductTypeDto;
+import com.fanproduction.gui.dto.response.ProductTypeShortDto;
 import com.fanproduction.gui.service.TableColumnConfigurator;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -64,7 +65,7 @@ public class CatalogController {
     private int totalElements = 0;
     private static final int PAGE_SIZE = 20;
     private String currentCardTypeFilter = null;
-    private String currentFanTypeFilter = null;
+    private String currentProductTypeFilter = null;
 
     @FXML
     private void initialize() {
@@ -80,7 +81,7 @@ public class CatalogController {
 
         // Системные типы (кроме FAN)
         for (CardTemplateType type : CardTemplateType.values()) {
-            if (type == CardTemplateType.FAN) continue;
+            if (type == CardTemplateType.DYNAMIC) continue;
             typeFilterComboBox.getItems().add(
                     new CatalogFilterOption(type.getDisplayName(), type.name(), null));
         }
@@ -90,34 +91,45 @@ public class CatalogController {
         typeFilterComboBox.valueProperty().addListener((obs, old, newVal) -> {
             if (newVal !=null) {
                 currentCardTypeFilter = newVal.cardType();
-                currentFanTypeFilter = newVal.fanType();
+                currentProductTypeFilter = newVal.fanType();
             } else {
                 currentCardTypeFilter = null;
-                currentFanTypeFilter = null;
+                currentProductTypeFilter = null;
             }
             handleSearch();
         });
 
         // Асинхронно подгружаем типы вентиляторов
-        loadFanTypesIntoFilter();
+        loadProductTypesIntoFilter();
     }
 
     /**
-     * Асинхронно загрузить динамические типы вентиляторов и добавить в ComboBox.
+     * Асинхронно загрузить динамические типы продукции и добавить в ComboBox.
+     * <p>
+     * Системные типы (MOTOR, MOTOR_WHEEL, RADIAL_WHEEL, AXIAL_WHEEL) уже
+     * добавлены из {@link CardTemplateType}, поэтому здесь пропускаются —
+     * иначе в фильтре появлялись дубли вида «Колесо осевое» и
+     * «Колесо осевое (AW)».
      */
-    private void loadFanTypesIntoFilter() {
+    private void loadProductTypesIntoFilter() {
         new Thread(() -> {
             try {
-                List<FanTypeShortDto> fanTypes = FanTypeClient.getShortList();
+                List<ProductTypeDto> productTypes = ProductTypeClient.getAllTypes();
                 Platform.runLater(() -> {
-                    for (FanTypeShortDto ft : fanTypes) {
+                    for (ProductTypeDto type : productTypes) {
+                        if (type.getSystemCardType() != null) {
+                            continue;
+                        }
+                        String filterValue = type.getName() != null && !type.getName().isBlank()
+                                ? type.getName()
+                                : type.getDesignation();
                         typeFilterComboBox.getItems().add(
-                                new CatalogFilterOption(ft.getDisplayName(), "FAN", ft.getFilterValue()));
+                                new CatalogFilterOption(type.getDisplayName(), "DYNAMIC", filterValue));
                     }
                 });
             } catch (Exception e) {
-                // Не критично — просто не будет FAN-типов в списке
-                System.err.println("Не удалось загрузить типы вентиляторов: " + e.getMessage());
+                // Не критично — просто в фильтре не будет динамических типов
+                log.warn("Не удалось загрузить типы продукции для фильтра: {}", e.getMessage());
             }
         }).start();
     }
@@ -128,7 +140,7 @@ public class CatalogController {
         new Thread(() -> {
             try {
                 ApiResponse<Map<String, Object>> response = ProductCardClient.getAllCards(
-                        currentPage, PAGE_SIZE, currentCardTypeFilter, currentFanTypeFilter);
+                        currentPage, PAGE_SIZE, currentCardTypeFilter, currentProductTypeFilter);
 
                 Platform.runLater(() -> {
                     if (response.isSuccess() && response.getData() != null) {
@@ -200,7 +212,7 @@ public class CatalogController {
         Map<String, Object> fields = dto.getFields();
 
         // FAN: используем fanType (имя типа из шаблона) + fullMarking
-        if ("FAN".equals(cardType)) {
+        if ("DYNAMIC".equals(cardType)) {
             String fanType = fields != null ? (String) fields.get("fanType") : null;
             String fullMarking = fields != null ? (String) fields.get("fullMarking") : null;
 
@@ -254,7 +266,7 @@ public class CatalogController {
                  "MOTOR_WHEEL",
                  "AXIAL_WHEEL",
                  "RADIAL_WHEEL",
-                 "FAN",
+                 "DYNAMIC",
                  "CUP" -> true;
             default -> false;
         };
@@ -358,82 +370,60 @@ public class CatalogController {
     @FXML
     private void handleCreate() {
         Stage ownerStage = (Stage) productsTable.getScene().getWindow();
-
-        List<String> typeNames = Arrays.stream(CardTemplateType.values())
-                .map(CardTemplateType::getDisplayName)
-                .collect(Collectors.toList());
-        ChoiceDialog<String> typeDialog = new ChoiceDialog<>("Электродвигатель", typeNames);
-
-        typeDialog.setTitle("Создание карточки");
-        typeDialog.setHeaderText("Выберите тип создаваемой карточки");
-        typeDialog.setContentText("Тип продукции:");
-
-        typeDialog.showAndWait().ifPresent(russianType -> {
-            String cardType = CardTemplateType.fromDisplayName(russianType).name();
-            if (cardType == null) {
-                showAlert("Ошибка", "Неизвестный тип продукции", Alert.AlertType.ERROR);
-                return;
-            }
-
-            if ("FAN".equals(cardType)) {
-                // FAN — сначала выбираем серию и версию шаблона
-                openFanSelectionDialog(ownerStage);
-            } else {
-                // Системные карточки — открываем форму как раньше
-                CardFormController form = new CardFormController(
-                        ownerStage,
-                        cardType,
-                        null,
-                        this::handleRefresh
-                );
-                form.show();
-            }
-        });
+        openCardCreationDialog(ownerStage);
     }
 
     /**
-     * Открыть диалог выбора версии FAN-шаблона и создать FAN-карточку.
+     * Единый диалог создания карточки: тип → вид → серия → версия шаблона,
+     * либо «форма по умолчанию» для системных типов.
      * <p>
      * Защита от устаревших версий: между выбором версии и открытием формы
-     * проверяем, что версия всё ещё в статусе PUBLISHED или LEGACY. Если статус
-     * изменился (например, кто-то параллельно опубликовал новую версию и старая
-     * стала LEGACY, или её архивировали) — показываем предупреждение и переоткрываем
-     * диалог выбора.
+     * проверяем, что версия всё ещё в статусе PUBLISHED или LEGACY.
      */
-    private void openFanSelectionDialog(Stage ownerStage) {
-        FanTemplateSelectionDialog selectionDialog = new FanTemplateSelectionDialog(ownerStage);
-        selectionDialog.show();
+    private void openCardCreationDialog(Stage ownerStage) {
+        CardCreationDialog dialog = new CardCreationDialog(ownerStage);
+        dialog.show();
 
-        Long selectedVersionId = selectionDialog.getSelectedVersionId();
-        if (selectedVersionId == null) {
+        String cardType = dialog.getCardType();
+        if (cardType == null) {
             return; // пользователь отменил
         }
 
-        // Проверить актуальный статус версии перед созданием карточки
+        Long selectedVersionId = dialog.getSelectedVersionId();
+        if (selectedVersionId == null) {
+            // Системный тип — фиксированная форма, шаблон не нужен
+            CardFormController form = new CardFormController(
+                    ownerStage,
+                    cardType,
+                    null,
+                    this::handleRefresh
+            );
+            form.show();
+            return;
+        }
+
         String status = checkVersionStatus(selectedVersionId);
         if (status == null) {
-            // Версия не найдена — вероятно, удалена
             showAlert("Ошибка",
                     "Выбранная версия шаблона больше не существует. Выберите другую.",
                     Alert.AlertType.WARNING);
-            openFanSelectionDialog(ownerStage);
+            openCardCreationDialog(ownerStage);
             return;
         }
 
         if (!"PUBLISHED".equals(status) && !"LEGACY".equals(status)) {
-            // Статус изменился — версия больше не доступна для создания карточек
             showAlert("Версия недоступна",
                     "Статус выбранной версии изменился на " + status + ".\n" +
                             "Создавать карточки можно только по версиям PUBLISHED или LEGACY.\n" +
                             "Выберите другую версию.",
                     Alert.AlertType.WARNING);
-            openFanSelectionDialog(ownerStage);
+            openCardCreationDialog(ownerStage);
             return;
         }
 
         CardFormController form = new CardFormController(
                 ownerStage,
-                "FAN",
+                "DYNAMIC",
                 null,
                 selectedVersionId,
                 this::handleRefresh
@@ -449,8 +439,8 @@ public class CatalogController {
      */
     private String checkVersionStatus(Long versionId) {
         try {
-            com.fanproduction.gui.dto.response.FanTemplateVersionDto version =
-                    com.fanproduction.gui.client.FanTemplateVersionClient.getVersionById(versionId);
+            com.fanproduction.gui.dto.response.ProductTemplateVersionDto version =
+                    com.fanproduction.gui.client.ProductTemplateVersionClient.getVersionById(versionId);
             return version != null ? version.getStatus() : null;
         } catch (Exception e) {
             log.warn("Не удалось проверить статус версии {}: {}", versionId, e.getMessage());

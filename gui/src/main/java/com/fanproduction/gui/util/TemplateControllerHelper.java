@@ -1,6 +1,6 @@
 package com.fanproduction.gui.util;
 
-import com.fanproduction.gui.client.FanTemplateVersionClient;
+import com.fanproduction.gui.client.ProductTemplateVersionClient;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
@@ -260,7 +260,7 @@ public final class TemplateControllerHelper {
 
         new Thread(() -> {
             try {
-                List<String> errors = FanTemplateVersionClient.validateVersion(versionId);
+                List<String> errors = ProductTemplateVersionClient.validateVersion(versionId);
                 javafx.application.Platform.runLater(() -> {
                     if (validateButton != null) validateButton.setDisable(false);
                     if (onStatusChange != null) onStatusChange.accept(baseStatus);

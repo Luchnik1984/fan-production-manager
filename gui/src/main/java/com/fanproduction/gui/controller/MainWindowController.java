@@ -141,8 +141,8 @@ public class MainWindowController {
         Tab homeTab = createHomeTab();
         tabPane.getTabs().add(homeTab);
 
-        // Вкладка "Журнал" — доступна всем
-        Tab journalTab = createPlaceholderTab("Журнал", "Производственный журнал");
+        // Вкладка "Журнал производства" — доступна всем
+        Tab journalTab = createPlaceholderTab("Журнал производства", "Производственный журнал");
         tabPane.getTabs().add(journalTab);
 
         // Вкладка "Карточки" — доступна всем

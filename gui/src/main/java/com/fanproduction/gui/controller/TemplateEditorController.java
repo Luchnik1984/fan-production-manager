@@ -1,10 +1,10 @@
 package com.fanproduction.gui.controller;
 
-import com.fanproduction.gui.client.FanTemplateVersionClient;
+import com.fanproduction.gui.client.ProductTemplateVersionClient;
 import com.fanproduction.gui.dialog.FieldEditDialog;
 import com.fanproduction.gui.dto.fan.FieldDefinitionDto;
-import com.fanproduction.gui.dto.request.fan.UpdateFanTemplateVersionRequest;
-import com.fanproduction.gui.dto.response.FanTemplateVersionDto;
+import com.fanproduction.gui.dto.request.fan.UpdateProductTemplateVersionRequest;
+import com.fanproduction.gui.dto.response.ProductTemplateVersionDto;
 import com.fanproduction.gui.util.TemplateControllerHelper;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -27,7 +27,7 @@ import java.util.List;
  * Открывается из {@link TemplateDetailController} по кнопке «📝 Редактор полей»
  * в отдельном {@code Stage} (WINDOW_MODAL).
  * <p>
- * Работает с {@link FanTemplateVersionDto#getFieldsJson()} через промежуточный
+ * Работает с {@link ProductTemplateVersionDto#getFieldsJson()} через промежуточный
  * список {@link #fieldsList}. Сохранение — через {@code updateDraft}
  * (fieldsJson обновляется, markingRuleJson не меняется).
  * <p>
@@ -65,7 +65,7 @@ public class TemplateEditorController {
     // ==========================================================
 
     private final ObservableList<FieldDefinitionDto> fieldsList = FXCollections.observableArrayList();
-    private FanTemplateVersionDto version;
+    private ProductTemplateVersionDto version;
     private Runnable onSaved;
 
     // ==========================================================
@@ -78,7 +78,7 @@ public class TemplateEditorController {
      * @param version DRAFT-версия (fieldsJson берётся оттуда)
      * @param onSaved колбэк после успешного сохранения (для перезагрузки панели шаблона)
      */
-    public void init(FanTemplateVersionDto version, Runnable onSaved) {
+    public void init(ProductTemplateVersionDto version, Runnable onSaved) {
         this.version = version;
         this.onSaved = onSaved;
 
@@ -275,9 +275,9 @@ public class TemplateEditorController {
 
         List<FieldDefinitionDto> snapshot = new ArrayList<>(fieldsList);
         TemplateControllerHelper.runAsync(owner(),
-                () -> FanTemplateVersionClient.updateDraft(
+                () -> ProductTemplateVersionClient.updateDraft(
                         version.getId(),
-                        new UpdateFanTemplateVersionRequest(snapshot, null)),
+                        new UpdateProductTemplateVersionRequest(snapshot, null)),
                 "Черновик сохранён",
                 () -> {
                     saveButton.setDisable(false);

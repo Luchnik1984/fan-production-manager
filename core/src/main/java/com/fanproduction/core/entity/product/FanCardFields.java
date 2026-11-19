@@ -6,14 +6,14 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Метаданные полей {@link FanCardEntity}.
+ * Метаданные полей {@link DynamicCardEntity}.
  * <p>
  * Содержит множество «системных» полей — тех, что хранятся в отдельных колонках
- * таблицы {@code fan_card}. Все остальные поля карточки идут в {@code dynamic_fields}
+ * таблицы {@code dynamic_card}. Все остальные поля карточки идут в {@code dynamic_fields}
  * (JSONB).
  * <p>
  * Множество вычисляется **автоматически** через reflection при загрузке класса.
- * Это гарантирует синхронизацию с {@link FanCardEntity}: добавили поле — оно
+ * Это гарантирует синхронизацию с {@link DynamicCardEntity}: добавили поле — оно
  * автоматически становится системным. Никакой ручной поддержки списка.
  * <p>
  * Исключения:
@@ -27,7 +27,7 @@ import java.util.Set;
 public final class FanCardFields {
 
     /**
-     * Множество системных полей {@link FanCardEntity} (все {@code declaredFields},
+     * Множество системных полей {@link DynamicCardEntity} (все {@code declaredFields},
      * кроме {@code dynamicFields}).
      */
     public static final Set<String> SYSTEM_FIELDS = computeSystemFields();
@@ -38,7 +38,7 @@ public final class FanCardFields {
 
     private static Set<String> computeSystemFields() {
         Set<String> result = new HashSet<>();
-        for (Field field : FanCardEntity.class.getDeclaredFields()) {
+        for (Field field : DynamicCardEntity.class.getDeclaredFields()) {
             String name = field.getName();
 
             // dynamicFields хранит пользовательские поля — не системное

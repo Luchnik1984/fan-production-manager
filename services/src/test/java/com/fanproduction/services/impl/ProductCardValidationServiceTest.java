@@ -138,9 +138,9 @@ class ProductCardValidationServiceTest {
     // ==========================================================
 
     @Test
-    @DisplayName("FAN: не валидируется здесь (валидация в FanCardService)")
+    @DisplayName("FAN: не валидируется здесь (валидация в DynamicCardService)")
     void fanNotValidated() {
-        assertThatCode(() -> service.validateForCreate(CardTemplateType.FAN, Map.of()))
+        assertThatCode(() -> service.validateForCreate(CardTemplateType.DYNAMIC, Map.of()))
                 .doesNotThrowAnyException();
     }
 
@@ -159,16 +159,9 @@ class ProductCardValidationServiceTest {
     }
 
     @Test
-    @DisplayName("CUP: не валидируется")
-    void cupNotValidated() {
-        assertThatCode(() -> service.validateForCreate(CardTemplateType.CUP, Map.of()))
-                .doesNotThrowAnyException();
-    }
-
-    @Test
-    @DisplayName("ACCESSORY: не валидируется")
-    void accessoryNotValidated() {
-        assertThatCode(() -> service.validateForCreate(CardTemplateType.ACCESSORY, Map.of()))
+    @DisplayName("DYNAMIC: не валидируется здесь — обязательные поля задаёт шаблон")
+    void dynamicNotValidated() {
+        assertThatCode(() -> service.validateForCreate(CardTemplateType.DYNAMIC, Map.of()))
                 .doesNotThrowAnyException();
     }
 
