@@ -2,6 +2,7 @@ package com.fanproduction.services.factory;
 
 import com.fanproduction.core.entity.product.*;
 import com.fanproduction.core.enums.CardTemplateType;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
@@ -27,6 +28,7 @@ import java.util.function.Function;
  * Метод {@link #applyFields} публичен: используется для обновления существующей
  * карточки (не создаёт новую сущность с тем же id).
  */
+@Slf4j
 @Component
 public class ProductCardFactory {
 
@@ -108,7 +110,7 @@ public class ProductCardFactory {
                     field.set(card, convertedValue);
                 }
             } catch (Exception e) {
-                System.err.println("Failed to set field: " + fieldName + " - " + e.getMessage());
+                log.warn("Не удалось установить поле {}: {}", fieldName, e.getMessage());
             }
         }
     }

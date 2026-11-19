@@ -5,6 +5,8 @@ import com.fanproduction.core.enums.AuditAction;
 import com.fanproduction.core.event.AuditEvent;
 import com.fanproduction.repositories.product.DynamicCardRepository;
 import com.fanproduction.services.exception.DynamicCardCreationException;
+import com.fanproduction.template.entity.ProductSeries;
+import com.fanproduction.template.entity.ProductSpecies;
 import com.fanproduction.template.entity.ProductTemplate;
 import com.fanproduction.template.entity.ProductTemplateVersion;
 import com.fanproduction.template.enums.FieldType;
@@ -13,6 +15,8 @@ import com.fanproduction.template.enums.TemplateStatus;
 import com.fanproduction.template.model.FieldDefinition;
 import com.fanproduction.template.model.MarkingRule;
 import com.fanproduction.template.model.MarkingRuleElement;
+import com.fanproduction.template.repository.ProductSeriesRepository;
+import com.fanproduction.template.repository.ProductSpeciesRepository;
 import com.fanproduction.template.repository.ProductTemplateRepository;
 import com.fanproduction.template.repository.ProductTemplateVersionRepository;
 import com.fanproduction.template.service.MarkingEngine;
@@ -55,6 +59,12 @@ class DynamicCardServiceTest {
 
     @Mock
     private ProductTemplateVersionRepository productTemplateVersionRepository;
+
+    @Mock
+    private ProductSeriesRepository productSeriesRepository;
+
+    @Mock
+    private ProductSpeciesRepository productSpeciesRepository;
 
     @Mock
     private MarkingEngine markingEngine;
@@ -110,6 +120,50 @@ class DynamicCardServiceTest {
     @Nested
     @DisplayName("createFromTemplate")
     class CreateTests {
+
+        @Test
+        @DisplayName("Тип продукции определяется по шаблону: серия → вид → тип")
+        void resolvesProductTypeId() {
+            ProductSeries series = new ProductSeries();
+            series.setId(100L);
+            series.setSpeciesId(50L);
+
+            ProductSpecies species = new ProductSpecies();
+            species.setId(50L);
+            species.setTypeId(7L);
+
+            when(productSeriesRepository.findById(100L)).thenReturn(Optional.of(series));
+            when(productSpeciesRepository.findById(50L)).thenReturn(Optional.of(species));
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("M");
+            when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
+                    .thenReturn(Optional.empty());
+            when(fanCardRepository.save(any(DynamicCardEntity.class)))
+                    .thenAnswer(inv -> inv.getArgument(0));
+
+            DynamicCardEntity result = service.createFromTemplate(10L, Map.of("series", "P", "ductSize", "40-20"), "admin");
+
+            assertThat(result.getProductTypeId()).isEqualTo(7L);
+        }
+
+        @Test
+        @DisplayName("Без серии в шаблоне тип продукции остаётся пустым")
+        void noSeries_noProductType() {
+            template.setSeriesId(null);
+
+            when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+            when(productTemplateRepository.findById(1L)).thenReturn(Optional.of(template));
+            when(markingEngine.evaluate(any(), any(), any(), anyLong())).thenReturn("M");
+            when(fanCardRepository.findByFullMarkingIgnoreCase(anyString()))
+                    .thenReturn(Optional.empty());
+            when(fanCardRepository.save(any(DynamicCardEntity.class)))
+                    .thenAnswer(inv -> inv.getArgument(0));
+
+            DynamicCardEntity result = service.createFromTemplate(10L, Map.of("series", "P", "ductSize", "40-20"), "admin");
+
+            assertThat(result.getProductTypeId()).isNull();
+        }
 
         @Test
         @DisplayName("Успешное создание карточки")
@@ -460,7 +514,7 @@ class DynamicCardServiceTest {
 
             assertThatThrownBy(() -> service.updateFromValues(500L, Map.of(), "admin"))
                     .isInstanceOf(DynamicCardCreationException.class)
-                    .hasMessageContaining("не является FAN-карточкой");
+                    .hasMessageContaining("не является динамической");
         }
 
         @Test
