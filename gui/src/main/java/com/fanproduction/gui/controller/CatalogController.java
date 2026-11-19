@@ -7,6 +7,7 @@ import com.fanproduction.gui.component.ProductTemplateSelectionDialog;
 import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fanproduction.gui.dto.CatalogFilterOption;
+import com.fanproduction.gui.dto.response.ProductTypeDto;
 import com.fanproduction.gui.dto.response.ProductTypeShortDto;
 import com.fanproduction.gui.service.TableColumnConfigurator;
 import javafx.application.Platform;
@@ -103,21 +104,32 @@ public class CatalogController {
     }
 
     /**
-     * Асинхронно загрузить динамические типы вентиляторов и добавить в ComboBox.
+     * Асинхронно загрузить динамические типы продукции и добавить в ComboBox.
+     * <p>
+     * Системные типы (MOTOR, MOTOR_WHEEL, RADIAL_WHEEL, AXIAL_WHEEL) уже
+     * добавлены из {@link CardTemplateType}, поэтому здесь пропускаются —
+     * иначе в фильтре появлялись дубли вида «Колесо осевое» и
+     * «Колесо осевое (AW)».
      */
     private void loadProductTypesIntoFilter() {
         new Thread(() -> {
             try {
-                List<ProductTypeShortDto> fanTypes = ProductTypeClient.getShortList();
+                List<ProductTypeDto> productTypes = ProductTypeClient.getAllTypes();
                 Platform.runLater(() -> {
-                    for (ProductTypeShortDto ft : fanTypes) {
+                    for (ProductTypeDto type : productTypes) {
+                        if (type.getSystemCardType() != null) {
+                            continue;
+                        }
+                        String filterValue = type.getName() != null && !type.getName().isBlank()
+                                ? type.getName()
+                                : type.getDesignation();
                         typeFilterComboBox.getItems().add(
-                                new CatalogFilterOption(ft.getDisplayName(), "DYNAMIC", ft.getFilterValue()));
+                                new CatalogFilterOption(type.getDisplayName(), "DYNAMIC", filterValue));
                     }
                 });
             } catch (Exception e) {
-                // Не критично — просто не будет FAN-типов в списке
-                System.err.println("Не удалось загрузить типы вентиляторов: " + e.getMessage());
+                // Не критично — просто в фильтре не будет динамических типов
+                log.warn("Не удалось загрузить типы продукции для фильтра: {}", e.getMessage());
             }
         }).start();
     }

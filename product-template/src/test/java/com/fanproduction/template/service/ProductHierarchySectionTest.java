@@ -195,6 +195,54 @@ class ProductHierarchySectionTest {
     }
 
     @Nested
+    @DisplayName("Перемещение типа в раздел")
+    class MoveTypeToSection {
+
+        @Test
+        @DisplayName("тип переносится в указанный раздел")
+        void movesType() {
+            ProductType type = type(10L, null, "VRK-PatAIR");
+            ProductSection target = section(2L, null, "Вентиляторы", 20);
+
+            when(productTypeRepository.findById(10L)).thenReturn(Optional.of(type));
+            when(productSectionRepository.findById(2L)).thenReturn(Optional.of(target));
+            when(productTypeRepository.save(any(ProductType.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            var result = service.moveTypeToSection(10L, 2L, "admin@test");
+
+            assertThat(result.sectionId()).isEqualTo(2L);
+            assertThat(type.getSectionId()).isEqualTo(2L);
+            verify(productTypeRepository).save(type);
+        }
+
+        @Test
+        @DisplayName("несуществующий раздел — ошибка")
+        void unknownSection_throws() {
+            when(productTypeRepository.findById(10L))
+                    .thenReturn(Optional.of(type(10L, null, "VRK-PatAIR")));
+            when(productSectionRepository.findById(404L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.moveTypeToSection(10L, 404L, "admin@test"))
+                    .isInstanceOf(TemplateValidationException.class)
+                    .hasMessageContaining("Раздел не найден");
+
+            verify(productTypeRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("перемещение в «без раздела» очищает sectionId")
+        void moveToNoSection() {
+            ProductType type = type(10L, 2L, "VRK-PatAIR");
+            when(productTypeRepository.findById(10L)).thenReturn(Optional.of(type));
+            when(productTypeRepository.save(any(ProductType.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            var result = service.moveTypeToSection(10L, null, "admin@test");
+
+            assertThat(result.sectionId()).isNull();
+        }
+    }
+
+    @Nested
     @DisplayName("Удаление раздела")
     class Delete {
 

@@ -297,6 +297,30 @@ public class ProductHierarchyServiceImpl implements ProductHierarchyService {
 
     @Override
     @Transactional
+    public ProductTypeDto moveTypeToSection(Long typeId, Long sectionId, String updatedBy) {
+        ProductType type = productTypeRepository.findById(typeId)
+                .orElseThrow(() -> new TemplateValidationException("Тип не найден: " + typeId));
+
+        ProductSection targetSection = null;
+        if (sectionId != null) {
+            targetSection = productSectionRepository.findById(sectionId)
+                    .orElseThrow(() -> new TemplateValidationException("Раздел не найден: " + sectionId));
+        }
+
+        type.setSectionId(sectionId);
+        ProductType saved = productTypeRepository.save(type);
+
+        String target = targetSection != null ? targetSection.getName() : "«без раздела»";
+        publishAudit(updatedBy, AuditAction.TEMPLATE_UPDATE,
+                "Тип продукции '" + saved.getDesignation() + "' перемещён в раздел " + target);
+
+        log.info("Тип продукции перемещён: typeId={}, sectionId={}", typeId, sectionId);
+
+        return toTypeDto(saved, null);
+    }
+
+    @Override
+    @Transactional
     public ProductTypeDto updateType(Long id, String name, String designation, String updatedBy) {
         ProductType type = productTypeRepository.findById(id)
                 .orElseThrow(() -> new TemplateValidationException("Тип не найден: " + id));

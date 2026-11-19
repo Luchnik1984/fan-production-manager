@@ -94,6 +94,19 @@ public class ProductTypeController extends BaseController {
     }
 
     /**
+     * Переместить тип в другой раздел (drag-and-drop в дереве).
+     * <p>
+     * {@code sectionId} не задан — тип убирается из разделов.
+     */
+    @PutMapping("/{id}/section")
+    public ApiResponse<ProductTypeDto> moveToSection(
+            @PathVariable Long id,
+            @RequestParam(required = false) Long sectionId) {
+        ProductTypeDto moved = productHierarchyService.moveTypeToSection(id, sectionId, getCurrentUser());
+        return ApiResponse.success("Тип перемещён", moved);
+    }
+
+    /**
      * Удалить тип.
      */
     @DeleteMapping("/{id}")

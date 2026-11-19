@@ -1,32 +1,39 @@
 package com.fanproduction.gui.controller;
 
+import com.fanproduction.gui.client.ProductSectionClient;
 import com.fanproduction.gui.client.ProductSeriesClient;
 import com.fanproduction.gui.client.ProductSpeciesClient;
 import com.fanproduction.gui.client.ProductTypeClient;
 import com.fanproduction.gui.client.ProductTemplateClient;
+import com.fanproduction.gui.dto.request.fan.CreateProductSectionRequest;
 import com.fanproduction.gui.dto.request.fan.CreateProductSeriesRequest;
 import com.fanproduction.gui.dto.request.fan.CreateProductSpeciesRequest;
 import com.fanproduction.gui.dto.request.fan.CreateProductTypeRequest;
+import com.fanproduction.gui.dto.request.fan.UpdateProductSectionRequest;
 import com.fanproduction.gui.dto.request.fan.UpdateProductSeriesRequest;
 import com.fanproduction.gui.dto.request.fan.UpdateProductSpeciesRequest;
 import com.fanproduction.gui.dto.request.fan.UpdateProductTypeRequest;
+import com.fanproduction.gui.dto.response.ProductSectionDto;
 import com.fanproduction.gui.dto.response.ProductSeriesDto;
 import com.fanproduction.gui.dto.response.ProductSpeciesDto;
 import com.fanproduction.gui.dto.response.ProductTypeDto;
 import com.fanproduction.gui.dto.response.ProductTemplateDto;
 import com.fanproduction.gui.dto.response.ProductTemplateVersionDto;
-import com.fanproduction.gui.util.ProductTreeBuilder;
 import com.fanproduction.gui.util.TemplateControllerHelper;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Window;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -95,8 +102,12 @@ public class TemplateTreeController {
 
         new Thread(() -> {
             try {
-                List<ProductTypeDto> tree = ProductTypeClient.getTree();
-                Platform.runLater(() -> applyTree(tree));
+                List<ProductSectionDto> sections = ProductSectionClient.getTree();
+                List<ProductTypeDto> allTypes = ProductTypeClient.getAllTypes();
+                List<ProductTypeDto> unassigned = allTypes.stream()
+                        .filter(type -> type.getSectionId() == null)
+                        .toList();
+                Platform.runLater(() -> applyTree(sections, unassigned));
             } catch (Exception e) {
                 log.warn("Не удалось загрузить дерево: {}", e.getMessage());
                 Platform.runLater(() -> {
@@ -109,11 +120,87 @@ public class TemplateTreeController {
         }, "TemplateTree-loader").start();
     }
 
-    private void applyTree(List<ProductTypeDto> types) {
-        TreeItem<Object> root = ProductTreeBuilder.buildTree(types);
+    /**
+     * Построить дерево: «Типы продукции» → Разделы → Типы → Виды → Серии.
+     * <p>
+     * Типы, не привязанные ни к одному разделу, попадают в узел «Без раздела».
+     */
+    private void applyTree(List<ProductSectionDto> sections, List<ProductTypeDto> unassignedTypes) {
+        TreeItem<Object> root = new TreeItem<>("Типы продукции");
+        root.setExpanded(true);
+
+        if (sections != null) {
+            sections.forEach(section -> root.getChildren().add(buildSectionItem(section)));
+        }
+
+        if (unassignedTypes != null && !unassignedTypes.isEmpty()) {
+            TreeItem<Object> noSection = new TreeItem<>("Без раздела");
+            unassignedTypes.stream()
+                    .sorted(Comparator.comparing(this::typeSortKey))
+                    .forEach(type -> noSection.getChildren().add(buildTypeItem(type)));
+            root.getChildren().add(noSection);
+        }
+
         hierarchyTree.setRoot(root);
-        hierarchyTree.setShowRoot(false);
-        statusLabel.setText("Типов: " + (types != null ? types.size() : 0));
+        hierarchyTree.setShowRoot(true);
+
+        int typeCount = countTypes(sections) + (unassignedTypes != null ? unassignedTypes.size() : 0);
+        statusLabel.setText("Разделов: " + (sections != null ? sections.size() : 0)
+                + ", типов: " + typeCount);
+    }
+
+    private TreeItem<Object> buildSectionItem(ProductSectionDto section) {
+        TreeItem<Object> item = new TreeItem<>(section);
+
+        if (section.getSections() != null) {
+            section.getSections().forEach(child -> item.getChildren().add(buildSectionItem(child)));
+        }
+        if (section.getTypes() != null) {
+            section.getTypes().stream()
+                    .sorted(Comparator.comparing(this::typeSortKey))
+                    .forEach(type -> item.getChildren().add(buildTypeItem(type)));
+        }
+
+        item.setExpanded(true);
+        return item;
+    }
+
+    private TreeItem<Object> buildTypeItem(ProductTypeDto type) {
+        TreeItem<Object> item = new TreeItem<>(type);
+
+        if (type.getSpecies() != null) {
+            type.getSpecies().forEach(species -> {
+                TreeItem<Object> speciesItem = new TreeItem<>(species);
+                if (species.getSeries() != null) {
+                    species.getSeries().forEach(series ->
+                            speciesItem.getChildren().add(new TreeItem<>(series)));
+                }
+                item.getChildren().add(speciesItem);
+            });
+        }
+
+        return item;
+    }
+
+    /**
+     * Ключ сортировки типов: человекочитаемое имя, а не код обозначения
+     * (иначе «AW, ED, MW, RW» выглядит случайным порядком).
+     */
+    private String typeSortKey(ProductTypeDto type) {
+        String key = type.getDisplayName();
+        return key != null ? key.toLowerCase() : "";
+    }
+
+    private int countTypes(List<ProductSectionDto> sections) {
+        if (sections == null) {
+            return 0;
+        }
+        int count = 0;
+        for (ProductSectionDto section : sections) {
+            count += section.getTypes() != null ? section.getTypes().size() : 0;
+            count += countTypes(section.getSections());
+        }
+        return count;
     }
 
     /**
@@ -236,18 +323,62 @@ public class TemplateTreeController {
     // CELL FACTORY + СЛУШАТЕЛЬ ВЫБОРА
     // ==========================================================
 
+    /**
+     * Корневой узел «Типы продукции» принимает разделы — так подраздел можно
+     * вернуть на верхний уровень перетаскиванием.
+     */
+    private void installRootDropTarget(TreeCell<Object> cell) {
+        cell.setOnDragOver(event -> {
+            String payload = event.getDragboard().getString();
+            if (payload != null && payload.startsWith("SECTION|")) {
+                event.acceptTransferModes(TransferMode.MOVE);
+            }
+            event.consume();
+        });
+
+        cell.setOnDragDropped(event -> {
+            String payload = event.getDragboard().getString();
+            boolean handled = false;
+            if (payload != null && payload.startsWith("SECTION|")) {
+                Long id = Long.valueOf(payload.split("\\|")[1]);
+                runAsync(() -> ProductSectionClient.move(id, null), "Раздел перемещён в корень");
+                handled = true;
+            }
+            event.setDropCompleted(handled);
+            event.consume();
+        });
+    }
+
     private void setupTreeCellFactory() {
         hierarchyTree.setCellFactory(tv -> new TreeCell<>() {
             @Override
             protected void updateItem(Object item, boolean empty) {
                 super.updateItem(item, empty);
+
+                // Сбрасываем состояние DnD при переиспользовании ячейки
+                setOnDragDetected(null);
+                setOnDragOver(null);
+                setOnDragDropped(null);
+                setOnDragExited(null);
+
                 if (empty || item == null) {
                     setText(null);
                     setGraphic(null);
                     setStyle("");
+                } else if (item instanceof String title) {
+                    setText(title);
+                    setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #333;");
+                    if ("Типы продукции".equals(title)) {
+                        installRootDropTarget(this);
+                    }
+                } else if (item instanceof ProductSectionDto section) {
+                    setText("📁 " + section.getName());
+                    setStyle(sectionStyle());
+                    installSectionDropTarget(this, section);
                 } else if (item instanceof ProductTypeDto type) {
                     setText(type.getDisplayName());
                     setStyle("-fx-font-weight: bold;");
+                    installDragSource(this, "TYPE|" + type.getId());
                 } else if (item instanceof ProductSpeciesDto species) {
                     setText(species.getDisplayName());
                     setStyle("-fx-text-fill: #444;");
@@ -259,6 +390,69 @@ public class TemplateTreeController {
                     setStyle("");
                 }
             }
+        });
+    }
+
+    private String sectionStyle() {
+        return "-fx-font-weight: bold; -fx-text-fill: #2b5797;";
+    }
+
+    /**
+     * Сделать узел перетаскиваемым. В Dragboard кладётся строка
+     * {@code TYPE|<id>} или {@code SECTION|<id>}.
+     */
+    private void installDragSource(TreeCell<Object> cell, String payload) {
+        cell.setOnDragDetected(event -> {
+            Dragboard board = cell.startDragAndDrop(TransferMode.MOVE);
+            ClipboardContent content = new ClipboardContent();
+            content.putString(payload);
+            board.setContent(content);
+            event.consume();
+        });
+    }
+
+    /**
+     * Раздел принимает перетаскиваемые типы (перенос типа в раздел)
+     * и разделы (перенос подраздела, в том числе в корень через узел
+     * «Типы продукции» — см. {@link #installRootDropTarget}).
+     */
+    private void installSectionDropTarget(TreeCell<Object> cell, ProductSectionDto section) {
+        cell.setOnDragOver(event -> {
+            String payload = event.getDragboard().getString();
+            if (payload != null && (payload.startsWith("TYPE|") || payload.startsWith("SECTION|"))) {
+                event.acceptTransferModes(TransferMode.MOVE);
+                cell.setStyle("-fx-background-color: #dbeafe; " + sectionStyle());
+            }
+            event.consume();
+        });
+
+        cell.setOnDragExited(event -> {
+            cell.setStyle(sectionStyle());
+            event.consume();
+        });
+
+        cell.setOnDragDropped(event -> {
+            String payload = event.getDragboard().getString();
+            boolean handled = false;
+
+            if (payload != null && payload.contains("|")) {
+                String[] parts = payload.split("\\|");
+                Long id = Long.valueOf(parts[1]);
+
+                if (payload.startsWith("TYPE|")) {
+                    runAsync(() -> ProductTypeClient.moveToSection(id, section.getId()),
+                            "Тип перемещён в раздел «" + section.getName() + "»");
+                    handled = true;
+                } else if (payload.startsWith("SECTION|") && !id.equals(section.getId())) {
+                    runAsync(() -> ProductSectionClient.move(id, section.getId()),
+                            "Раздел перемещён");
+                    handled = true;
+                }
+            }
+
+            cell.setStyle(sectionStyle());
+            event.setDropCompleted(handled);
+            event.consume();
         });
     }
 
@@ -279,6 +473,7 @@ public class TemplateTreeController {
     }
 
     private String describeNode(Object value) {
+        if (value instanceof ProductSectionDto) return "раздел";
         if (value instanceof ProductTypeDto) return "тип";
         if (value instanceof ProductSpeciesDto) return "вид";
         return "элемент";
@@ -297,14 +492,6 @@ public class TemplateTreeController {
     // ==========================================================
 
     private void setupContextMenu() {
-        ContextMenu menu = new ContextMenu();
-
-        MenuItem createChild = new MenuItem("Создать …");
-        MenuItem edit = new MenuItem("Редактировать");
-        MenuItem delete = new MenuItem("Удалить");
-        MenuItem openTemplate = new MenuItem("Открыть шаблон");
-        MenuItem openRule = new MenuItem("⚙ Открыть редактор правила");
-
         hierarchyTree.setOnContextMenuRequested(event -> {
             TreeItem<Object> item = hierarchyTree.getSelectionModel().getSelectedItem();
             if (item == null || item.getValue() == null) {
@@ -312,25 +499,56 @@ public class TemplateTreeController {
             }
 
             Object value = item.getValue();
-            menu.getItems().clear();
+            ContextMenu menu = new ContextMenu();
 
-            if (value instanceof ProductTypeDto type) {
-                createChild.setText("Создать вид");
+            if (value instanceof ProductSectionDto section) {
+                MenuItem createSub = new MenuItem("Создать подраздел");
+                createSub.setOnAction(e -> showSectionDialog(null, section.getId()));
+
+                MenuItem createType = new MenuItem("Создать тип в разделе");
+                createType.setOnAction(e -> showTypeDialog(null, section.getId()));
+
+                MenuItem rename = new MenuItem("Переименовать раздел");
+                rename.setOnAction(e -> showSectionDialog(section, section.getParentId()));
+
+                MenuItem delete = new MenuItem("Удалить раздел");
+                delete.setOnAction(e -> handleDeleteSection(section));
+
+                menu.getItems().addAll(createSub, createType, new SeparatorMenuItem(), rename, delete);
+            } else if (value instanceof ProductTypeDto type) {
+                MenuItem createChild = new MenuItem("Создать вид");
                 createChild.setOnAction(e -> handleCreateSpecies(type));
+
+                MenuItem edit = new MenuItem("Редактировать");
                 edit.setOnAction(e -> handleEditType(type));
+
+                MenuItem delete = new MenuItem("Удалить");
                 delete.setOnAction(e -> handleDeleteType(type));
+
                 menu.getItems().addAll(createChild, edit, delete);
             } else if (value instanceof ProductSpeciesDto species) {
-                createChild.setText("Создать серию");
+                MenuItem createChild = new MenuItem("Создать серию");
                 createChild.setOnAction(e -> handleCreateSeries(species));
+
+                MenuItem edit = new MenuItem("Редактировать");
                 edit.setOnAction(e -> handleEditSpecies(species));
+
+                MenuItem delete = new MenuItem("Удалить");
                 delete.setOnAction(e -> handleDeleteSpecies(species));
+
                 menu.getItems().addAll(createChild, edit, delete);
-            }else if (value instanceof ProductSeriesDto series) {
-                edit.setOnAction(e -> handleEditSeries(series));
-                delete.setOnAction(e -> handleDeleteSeries(series));
+            } else if (value instanceof ProductSeriesDto series) {
+                MenuItem openTemplate = new MenuItem("Открыть шаблон");
                 openTemplate.setOnAction(e -> loadTemplateDetail(series));
+
+                MenuItem openRule = new MenuItem("⚙ Открыть редактор правила");
                 openRule.setOnAction(e -> handleOpenRuleEditorFromTree(series));
+
+                MenuItem edit = new MenuItem("Редактировать");
+                edit.setOnAction(e -> handleEditSeries(series));
+
+                MenuItem delete = new MenuItem("Удалить");
+                delete.setOnAction(e -> handleDeleteSeries(series));
 
                 menu.getItems().addAll(openTemplate, openRule, edit, delete);
             }
@@ -342,16 +560,65 @@ public class TemplateTreeController {
     }
 
     // ==========================================================
+    // РАЗДЕЛ
+    // ==========================================================
+
+    private void showSectionDialog(ProductSectionDto existing, Long parentId) {
+        Dialog<ButtonType> dialog = buildDialog(
+                existing == null ? "Создать раздел" : "Переименовать раздел");
+
+        TextField nameField = new TextField();
+        if (existing != null) {
+            nameField.setText(existing.getName());
+        }
+        nameField.setPromptText("Например, Рабочие колёса");
+
+        GridPane grid = buildGrid();
+        grid.add(new Label("Наименование:*"), 0, 0);
+        grid.add(nameField, 1, 0);
+        dialog.getDialogPane().setContent(grid);
+
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(
+                dialog.getDialogPane().getButtonTypes().get(0));
+        okButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            if (nameField.getText().trim().isEmpty()) {
+                showAlert("Ошибка", "Наименование раздела обязательно", Alert.AlertType.WARNING);
+                event.consume();
+            }
+        });
+
+        dialog.showAndWait().ifPresent(button -> {
+            if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) return;
+
+            String name = nameField.getText().trim();
+            runAsync(() -> {
+                if (existing == null) {
+                    ProductSectionClient.create(name, parentId, null);
+                } else {
+                    ProductSectionClient.update(existing.getId(), name, existing.getSortOrder());
+                }
+            }, existing == null ? "Раздел создан" : "Раздел переименован");
+        });
+    }
+
+    private void handleDeleteSection(ProductSectionDto section) {
+        if (confirmDelete("Удалить раздел «" + section.getName() + "»?",
+                "Раздел с подразделами или типами продукции удалить нельзя.")) {
+            runAsync(() -> ProductSectionClient.delete(section.getId()), "Раздел удалён");
+        }
+    }
+
+    // ==========================================================
     // ТИП
     // ==========================================================
 
     @javafx.fxml.FXML
     private void handleCreateType() {
-        showTypeDialog(null);
+        showTypeDialog(null, null);
     }
 
     private void handleEditType(ProductTypeDto type) {
-        showTypeDialog(type);
+        showTypeDialog(type, null);
     }
 
     private void handleDeleteType(ProductTypeDto type) {
@@ -361,7 +628,7 @@ public class TemplateTreeController {
         }
     }
 
-    private void showTypeDialog(ProductTypeDto existing) {
+    private void showTypeDialog(ProductTypeDto existing, Long sectionId) {
         Dialog<ButtonType> dialog = buildDialog(
                 existing == null ? "Создать тип" : "Редактировать тип");
 
@@ -404,7 +671,7 @@ public class TemplateTreeController {
             runAsync(() -> {
                 if (existing == null) {
                     ProductTypeClient.createType(new CreateProductTypeRequest(
-                            name.isEmpty() ? null : name, designation));
+                            name.isEmpty() ? null : name, designation, sectionId));
                 } else {
                     ProductTypeClient.updateType(existing.getId(),
                             new UpdateProductTypeRequest(

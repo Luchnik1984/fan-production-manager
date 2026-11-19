@@ -9,6 +9,9 @@ public record CreateProductTypeRequest(
 
         @NotBlank(message = "Обозначение типа обязательно")
         @Size(max = 50, message = "Обозначение не длиннее 50 символов")
-        String designation
+        String designation,
+
+        /** Раздел продукции, в который создаётся тип (null — без раздела). */
+        Long sectionId
 ) {
 }

@@ -52,7 +52,7 @@ public class ProductTemplateSelectionDialog {
         this.dialog = new Stage();
         dialog.initModality(Modality.WINDOW_MODAL);
         dialog.initOwner(owner);
-        dialog.setTitle("Выбор шаблона вентилятора");
+        dialog.setTitle("Выбор шаблона продукции");
         dialog.setResizable(true);
 
         treeView = new TreeView<>();
@@ -94,7 +94,7 @@ public class ProductTemplateSelectionDialog {
         HBox buttons = new HBox(10, selectButton, cancelButton);
         buttons.setPadding(new Insets(10, 0, 0, 0));
 
-        VBox leftBox = new VBox(5, new Label("Серия:"), treeView);
+        VBox leftBox = new VBox(5, new Label("Изделие:"), treeView);
         VBox rightBox = new VBox(5, new Label("Версия шаблона:"), versionsList);
         HBox.setHgrow(leftBox, Priority.ALWAYS);
         HBox.setHgrow(rightBox, Priority.ALWAYS);
@@ -129,8 +129,13 @@ public class ProductTemplateSelectionDialog {
         new Thread(() -> {
             try {
                 List<ProductTypeDto> tree = ProductTypeClient.getTree();
+                // Системные типы (двигатели, колёса) создаются по хардкод-форме,
+                // шаблонов у них нет — в этом диалоге они только мешают.
+                List<ProductTypeDto> dynamicOnly = tree.stream()
+                        .filter(t -> t.getSystemCardType() == null)
+                        .toList();
                 Platform.runLater(() -> {
-                    TreeItem<Object> rootItem = ProductTreeBuilder.buildTree(tree);
+                    TreeItem<Object> rootItem = ProductTreeBuilder.buildTree(dynamicOnly);
                     treeView.setRoot(rootItem);
                     treeView.setCellFactory(tv -> new TreeCell<>() {
                         @Override
@@ -149,7 +154,7 @@ public class ProductTemplateSelectionDialog {
                             }
                         }
                     });
-                    statusLabel.setText("Выберите серию");
+                    statusLabel.setText("Выберите изделие");
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> statusLabel.setText("Ошибка загрузки: " + e.getMessage()));
@@ -166,7 +171,7 @@ public class ProductTemplateSelectionDialog {
         }
 
         selectedSeriesId = series.getId();
-        statusLabel.setText("Загрузка шаблона для серии " + series.getDisplayName() + "...");
+        statusLabel.setText("Загрузка шаблона для изделия " + series.getDisplayName() + "...");
         versionsList.getItems().clear();
         selectButton.setDisable(true);
 
@@ -174,7 +179,7 @@ public class ProductTemplateSelectionDialog {
             try {
                 ProductTemplateDto template = ProductTemplateClient.getTemplateBySeries(selectedSeriesId);
                 if (template == null) {
-                    Platform.runLater(() -> statusLabel.setText("Для серии нет шаблона"));
+                    Platform.runLater(() -> statusLabel.setText("Для изделия нет шаблона"));
                     return;
                 }
                 selectedTemplate = template;

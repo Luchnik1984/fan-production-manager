@@ -21,6 +21,12 @@ public class ProductTypeDto {
     private String designation;
     private String displayName;
     private Boolean isSystem;
+    /** Раздел продукции, к которому относится тип (null — не распределён). */
+    private Long sectionId;
+    /** Префикс номера изделия (ED, MW, RW, AW, VRK). */
+    private String codePrefix;
+    /** Хардкод-тип: MOTOR, MOTOR_WHEEL, RADIAL_WHEEL, AXIAL_WHEEL; null — динамический. */
+    private String systemCardType;
     private LocalDateTime createdAt;
     private String createdBy;
     private List<ProductSpeciesDto> species;

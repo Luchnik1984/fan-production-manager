@@ -109,6 +109,21 @@ public interface ProductHierarchyService {
     ProductTypeDto createType(String name, String designation, Long sectionId, String createdBy);
 
     /**
+     * Переместить тип продукции в другой раздел.
+     * <p>
+     * Используется drag-and-drop в дереве конструктора и кнопкой
+     * «Переместить в раздел…». Смена раздела не влияет на виды, серии
+     * и шаблоны типа.
+     *
+     * @param typeId    ID типа продукции
+     * @param sectionId новый раздел ({@code null} — убрать из разделов)
+     * @param updatedBy email администратора (для аудита)
+     * @throws com.fanproduction.template.exception.TemplateValidationException
+     *         если тип или раздел не найдены
+     */
+    ProductTypeDto moveTypeToSection(Long typeId, Long sectionId, String updatedBy);
+
+    /**
      * Обновить тип.
      */
     ProductTypeDto updateType(Long id, String name, String designation, String updatedBy);

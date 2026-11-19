@@ -39,6 +39,23 @@ public class ProductTypeClient {
     }
 
     /**
+     * Переместить тип продукции в раздел (drag-and-drop в дереве).
+     *
+     * @param typeId    ID типа
+     * @param sectionId ID раздела; {@code null} — убрать из разделов
+     */
+    public static void moveToSection(Long typeId, Long sectionId) throws Exception {
+        String path = BASE_PATH + "/" + typeId + "/section"
+                + (sectionId != null ? "?sectionId=" + sectionId : "");
+        TypeReference<ApiResponse<ProductTypeDto>> typeRef = new TypeReference<>() {
+        };
+        ApiResponse<ProductTypeDto> response = ApiClient.put(path, null, typeRef);
+        if (!response.isSuccess()) {
+            throw new RuntimeException(response.getMessage());
+        }
+    }
+
+    /**
      * Дерево Тип → Вид → Серия.
      */
     public static List<ProductTypeDto> getTree() throws Exception {
