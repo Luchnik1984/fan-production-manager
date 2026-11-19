@@ -153,6 +153,24 @@ public class ProductTemplateClient {
      * Если {@code request == null} или его поля null — сервер скопирует
      * из текущей версии (автокопирование в ProductTemplateServiceImpl).
      */
+    /**
+     * Создать DRAFT-версию на основе выбранной версии (LEGACY/DEPRECATED/ARCHIVED).
+     * <p>
+     * Исходная версия не меняется — это позволяет «отредактировать старую
+     * версию», не нарушая иммутабельность.
+     */
+    public static ProductTemplateVersionDto createVersionFrom(Long templateId,
+                                                              Long sourceVersionId) throws Exception {
+        TypeReference<ApiResponse<ProductTemplateVersionDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateVersionDto> response = ApiClient.post(
+                BASE_PATH + "/" + templateId + "/versions?sourceVersionId=" + sourceVersionId,
+                null, typeRef);
+        if (response.isSuccess() && response.getData() != null) {
+            return response.getData();
+        }
+        throw new RuntimeException("Не удалось создать версию: " + response.getMessage());
+    }
+
     public static ProductTemplateVersionDto createNewVersion(Long templateId,
                                                          CreateProductTemplateVersionRequest request) throws Exception {
         TypeReference<ApiResponse<ProductTemplateVersionDto>> typeRef = new TypeReference<>() {};

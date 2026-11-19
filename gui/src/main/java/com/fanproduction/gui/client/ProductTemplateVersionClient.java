@@ -118,6 +118,32 @@ public class ProductTemplateVersionClient {
         throw new RuntimeException("Не удалось архивировать версию: " + response.getMessage());
     }
 
+    /**
+     * Восстановить версию из архива: ARCHIVED → DEPRECATED.
+     */
+    public static ProductTemplateVersionDto restoreVersion(Long versionId) throws Exception {
+        TypeReference<ApiResponse<ProductTemplateVersionDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateVersionDto> response = ApiClient.post(
+                BASE_PATH + "/" + versionId + "/restore", null, typeRef);
+        if (response.isSuccess() && response.getData() != null) {
+            return response.getData();
+        }
+        throw new RuntimeException("Не удалось восстановить версию: " + response.getMessage());
+    }
+
+    /**
+     * Снять деприкейт: DEPRECATED → LEGACY.
+     */
+    public static ProductTemplateVersionDto undeprecateVersion(Long versionId) throws Exception {
+        TypeReference<ApiResponse<ProductTemplateVersionDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateVersionDto> response = ApiClient.post(
+                BASE_PATH + "/" + versionId + "/un-deprecate", null, typeRef);
+        if (response.isSuccess() && response.getData() != null) {
+            return response.getData();
+        }
+        throw new RuntimeException("Не удалось снять деприкейт: " + response.getMessage());
+    }
+
     public static void deleteVersion(Long versionId) throws Exception {
         ApiClient.deleteWithCheck(BASE_PATH + "/" + versionId);
     }

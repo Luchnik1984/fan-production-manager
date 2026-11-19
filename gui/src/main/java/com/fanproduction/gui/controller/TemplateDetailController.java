@@ -82,6 +82,8 @@ public class TemplateDetailController {
     @javafx.fxml.FXML private Button publishButton;
     @javafx.fxml.FXML private Button deprecateButton;
     @javafx.fxml.FXML private Button archiveButton;
+    @javafx.fxml.FXML private Button restoreButton;
+    @javafx.fxml.FXML private Button undeprecateButton;
     @javafx.fxml.FXML private Button deleteVersionButton;
     @javafx.fxml.FXML private Button cloneButton;
     @javafx.fxml.FXML private Label statusLabel;
@@ -288,6 +290,8 @@ public class TemplateDetailController {
         publishButton.setDisable(!"DRAFT".equals(status));
         deprecateButton.setDisable(!"LEGACY".equals(status));
         archiveButton.setDisable(!"DEPRECATED".equals(status));
+        restoreButton.setDisable(!"ARCHIVED".equals(status));
+        undeprecateButton.setDisable(!"DEPRECATED".equals(status));
         deleteVersionButton.setDisable(!("DRAFT".equals(status) || "ARCHIVED".equals(status)));
 
         openFieldsEditorButton.setDisable(!"DRAFT".equals(status));
@@ -398,18 +402,40 @@ public class TemplateDetailController {
         if (currentTemplate == null) return;
 
         Dialog<ButtonType> dialog = buildDialog("Создать версию");
+
         Label info = new Label(
                 "Будет создана новая DRAFT-версия. Поля и правило маркировки\n" +
-                        "скопируются из текущей опубликованной версии (если есть).");
+                        "копируются из выбранного источника. Исходная версия не меняется.");
         info.setWrapText(true);
-        dialog.getDialogPane().setContent(info);
+
+        ComboBox<String> sourceCombo = new ComboBox<>();
+        sourceCombo.getItems().add("Автоматически: из текущей/последней версии");
+        for (ProductTemplateVersionDto version : versionsList) {
+            sourceCombo.getItems().add(
+                    "На основе v" + version.getVersion() + " [" + version.getStatus() + "]");
+        }
+        sourceCombo.getSelectionModel().selectFirst();
+        sourceCombo.setMaxWidth(Double.MAX_VALUE);
+
+        VBox content = new VBox(10, info, new Label("Источник:"), sourceCombo);
+        content.setPrefWidth(420);
+        dialog.getDialogPane().setContent(content);
 
         dialog.showAndWait().ifPresent(button -> {
             if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) return;
-            runAsync(() -> ProductTemplateClient.createNewVersion(
-                            currentTemplate.getId(),
-                            new CreateProductTemplateVersionRequest(null, null)),
-                    "Версия создана");
+
+            int index = sourceCombo.getSelectionModel().getSelectedIndex();
+            if (index <= 0) {
+                runAsync(() -> ProductTemplateClient.createNewVersion(
+                                currentTemplate.getId(),
+                                new CreateProductTemplateVersionRequest(null, null)),
+                        "Версия создана");
+            } else {
+                Long sourceVersionId = versionsList.get(index - 1).getId();
+                runAsync(() -> ProductTemplateClient.createVersionFrom(
+                                currentTemplate.getId(), sourceVersionId),
+                        "Версия создана на основе выбранной");
+            }
         });
     }
 
@@ -448,6 +474,38 @@ public class TemplateDetailController {
 
         runAsync(() -> ProductTemplateVersionClient.archiveVersion(selected.getId()),
                 "Версия архивирована");
+    }
+
+    /**
+     * Восстановить версию из архива: ARCHIVED → DEPRECATED.
+     */
+    @javafx.fxml.FXML
+    private void handleRestore() {
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        if (selected == null || !"ARCHIVED".equals(selected.getStatus())) return;
+
+        if (!confirm("Восстановить версию v" + selected.getVersion() + " из архива?",
+                "Версия вернётся в статус DEPRECATED. Дальше её можно снова " +
+                        "сделать LEGACY кнопкой «Снять деприкейт».")) return;
+
+        runAsync(() -> ProductTemplateVersionClient.restoreVersion(selected.getId()),
+                "Версия восстановлена из архива");
+    }
+
+    /**
+     * Снять деприкейт: DEPRECATED → LEGACY.
+     */
+    @javafx.fxml.FXML
+    private void handleUndeprecate() {
+        ProductTemplateVersionDto selected = versionsTable.getSelectionModel().getSelectedItem();
+        if (selected == null || !"DEPRECATED".equals(selected.getStatus())) return;
+
+        if (!confirm("Снять деприкейт с версии v" + selected.getVersion() + "?",
+                "Версия станет LEGACY — по ней снова можно создавать карточки. " +
+                        "Действует ограничение: не больше 20 активных версий на шаблон.")) return;
+
+        runAsync(() -> ProductTemplateVersionClient.undeprecateVersion(selected.getId()),
+                "Деприкейт снят");
     }
 
     @javafx.fxml.FXML

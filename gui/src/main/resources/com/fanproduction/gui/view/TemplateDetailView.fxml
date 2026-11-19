@@ -90,6 +90,12 @@
                 <Button fx:id="deleteVersionButton" text="🗑 Удалить"
                         onAction="#handleDeleteVersion" minWidth="120"/>
             </HBox>
+            <HBox spacing="8">
+                <Button fx:id="restoreButton" text="♻ Восстановить из архива"
+                        onAction="#handleRestore" minWidth="200"/>
+                <Button fx:id="undeprecateButton" text="↩ Снять деприкейт"
+                        onAction="#handleUndeprecate" minWidth="180"/>
+            </HBox>
         </VBox>
     </VBox>
 </VBox>
