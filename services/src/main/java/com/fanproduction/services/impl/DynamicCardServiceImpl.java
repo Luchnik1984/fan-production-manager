@@ -12,6 +12,10 @@ import com.fanproduction.template.entity.ProductTemplateVersion;
 import com.fanproduction.template.enums.TemplateStatus;
 import com.fanproduction.template.model.FieldDefinition;
 import com.fanproduction.template.model.MarkingRule;
+import com.fanproduction.template.entity.ProductSeries;
+import com.fanproduction.template.entity.ProductSpecies;
+import com.fanproduction.template.repository.ProductSeriesRepository;
+import com.fanproduction.template.repository.ProductSpeciesRepository;
 import com.fanproduction.template.repository.ProductTemplateRepository;
 import com.fanproduction.template.repository.ProductTemplateVersionRepository;
 import com.fanproduction.template.service.MarkingEngine;
@@ -29,7 +33,7 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Реализация сервиса FAN-карточек.
+ * Реализация сервиса карточек, создаваемых по шаблону (dynamic_card).
  */
 @Slf4j
 @Service
@@ -50,15 +54,36 @@ public class DynamicCardServiceImpl implements DynamicCardService {
      * Управляются отдельными методами (миграция карточки на новую версию).
      */
     private static final Set<String> TECHNICAL_FIELDS = Set.of(
-            "templateVersionId",
+            "templateVersionId", "productTypeId",
             "productTemplateId"
     );
 
     private final DynamicCardRepository fanCardRepository;
     private final ProductTemplateRepository productTemplateRepository;
     private final ProductTemplateVersionRepository productTemplateVersionRepository;
+    private final ProductSeriesRepository productSeriesRepository;
+    private final ProductSpeciesRepository productSpeciesRepository;
     private final MarkingEngine markingEngine;
     private final ApplicationEventPublisher eventPublisher;
+
+    /**
+     * Определить тип продукции по шаблону:
+     * шаблон → серия → вид → тип.
+     * <p>
+     * Нужен, чтобы у карточки была прямая ссылка {@code product_type_id}
+     * (миграция V34), а не только косвенная через шаблон.
+     *
+     * @return ID типа продукции или {@code null}, если цепочка не полная
+     */
+    private Long resolveProductTypeId(ProductTemplate template) {
+        if (template.getSeriesId() == null) {
+            return null;
+        }
+        return productSeriesRepository.findById(template.getSeriesId())
+                .flatMap((ProductSeries series) -> productSpeciesRepository.findById(series.getSpeciesId()))
+                .map(ProductSpecies::getTypeId)
+                .orElse(null);
+    }
 
     // ==========================================================
     // CREATE
@@ -82,9 +107,11 @@ public class DynamicCardServiceImpl implements DynamicCardService {
         card.setCardType("DYNAMIC");
         card.setTemplateVersionId(templateVersionId);
         card.setProductTemplateId(template.getId());
+
         card.setCreatedBy(createdBy);
 
         applyValuesToCard(card, values, "Вентилятор " + template.getName());
+        card.setProductTypeId(resolveProductTypeId(template));
 
         String marking = computeMarking(card, rule, fields, values, templateVersionId);
         ensureMarkingUnique(marking, null);
@@ -96,9 +123,9 @@ public class DynamicCardServiceImpl implements DynamicCardService {
         DynamicCardEntity saved = fanCardRepository.save(card);
 
         publishAudit(createdBy, AuditAction.CREATE_CARD,
-                "Создана FAN-карточка: " + marking);
+                "Создана карточка по шаблону: " + marking);
 
-        log.info("FAN-карточка создана: id={}, templateVersionId={}, marking={}",
+        log.info("Карточка по шаблону создана: id={}, templateVersionId={}, marking={}",
                 saved.getId(), templateVersionId, marking);
 
         return saved;
@@ -136,11 +163,11 @@ public class DynamicCardServiceImpl implements DynamicCardService {
         DynamicCardEntity saved = fanCardRepository.save(card);
 
         String auditDetails = oldMarking != null && !oldMarking.equals(newMarking)
-                ? "Обновлена FAN-карточка: маркировка '" + oldMarking + "' → '" + newMarking + "'"
-                : "Обновлена FAN-карточка: " + newMarking;
+                ? "Обновлена карточка по шаблону: маркировка '" + oldMarking + "' → '" + newMarking + "'"
+                : "Обновлена карточка по шаблону: " + newMarking;
         publishAudit(updatedBy, AuditAction.UPDATE_CARD, auditDetails);
 
-        log.info("FAN-карточка обновлена: id={}, marking={}", cardId, newMarking);
+        log.info("Карточка по шаблону обновлена: id={}, marking={}", cardId, newMarking);
 
         return saved;
     }
@@ -171,11 +198,11 @@ public class DynamicCardServiceImpl implements DynamicCardService {
         DynamicCardEntity saved = fanCardRepository.save(card);
 
         String auditDetails = oldMarking != null && !oldMarking.equals(newMarking)
-                ? "Пересчитана маркировка FAN-карточки: '" + oldMarking + "' → '" + newMarking + "'"
-                : "Пересчитана маркировка FAN-карточки: " + newMarking;
+                ? "Пересчитана маркировка карточки: '" + oldMarking + "' → '" + newMarking + "'"
+                : "Пересчитана маркировка карточки: " + newMarking;
         publishAudit(updatedBy, AuditAction.UPDATE_CARD, auditDetails);
 
-        log.info("Маркировка FAN-карточки пересчитана: id={}, marking={}", cardId, newMarking);
+        log.info("Маркировка карточки пересчитана: id={}, marking={}", cardId, newMarking);
 
         return saved;
     }
@@ -191,7 +218,7 @@ public class DynamicCardServiceImpl implements DynamicCardService {
 
         if (!"DYNAMIC".equals(card.getCardType())) {
             throw new DynamicCardCreationException(
-                    "Карточка не является FAN-карточкой: " + card.getCardType());
+                    "Карточка не является динамической: " + card.getCardType());
         }
         return card;
     }
