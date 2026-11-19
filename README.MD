@@ -114,8 +114,9 @@ mvn -pl gui clean compile exec:java "-Dexec.mainClass=com.fanproduction.gui.Logi
 java -jar gui/target/gui-0.0.1-SNAPSHOT.jar
 mvn clean package -DskipTests
 ```
-
-
+```bash
+mvn -pl gui clean compile exec:java "-Dexec.mainClass=com.fanproduction.gui.LoginApplication"
+```
 
 ## Синхронизация клиентских DTO с серверными
 
