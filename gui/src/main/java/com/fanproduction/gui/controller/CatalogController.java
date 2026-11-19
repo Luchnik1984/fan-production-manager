@@ -3,7 +3,7 @@ package com.fanproduction.gui.controller;
 import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.gui.client.ProductCardClient;
 import com.fanproduction.gui.client.ProductTypeClient;
-import com.fanproduction.gui.component.ProductTemplateSelectionDialog;
+import com.fanproduction.gui.component.CardCreationDialog;
 import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.ProductCardDto;
 import com.fanproduction.gui.dto.CatalogFilterOption;
@@ -370,76 +370,54 @@ public class CatalogController {
     @FXML
     private void handleCreate() {
         Stage ownerStage = (Stage) productsTable.getScene().getWindow();
-
-        List<String> typeNames = Arrays.stream(CardTemplateType.values())
-                .map(CardTemplateType::getDisplayName)
-                .collect(Collectors.toList());
-        ChoiceDialog<String> typeDialog = new ChoiceDialog<>("Электродвигатель", typeNames);
-
-        typeDialog.setTitle("Создание карточки");
-        typeDialog.setHeaderText("Выберите тип создаваемой карточки");
-        typeDialog.setContentText("Тип продукции:");
-
-        typeDialog.showAndWait().ifPresent(russianType -> {
-            String cardType = CardTemplateType.fromDisplayName(russianType).name();
-            if (cardType == null) {
-                showAlert("Ошибка", "Неизвестный тип продукции", Alert.AlertType.ERROR);
-                return;
-            }
-
-            if ("DYNAMIC".equals(cardType)) {
-                // FAN — сначала выбираем серию и версию шаблона
-                openFanSelectionDialog(ownerStage);
-            } else {
-                // Системные карточки — открываем форму как раньше
-                CardFormController form = new CardFormController(
-                        ownerStage,
-                        cardType,
-                        null,
-                        this::handleRefresh
-                );
-                form.show();
-            }
-        });
+        openCardCreationDialog(ownerStage);
     }
 
     /**
-     * Открыть диалог выбора версии FAN-шаблона и создать FAN-карточку.
+     * Единый диалог создания карточки: тип → вид → серия → версия шаблона,
+     * либо «форма по умолчанию» для системных типов.
      * <p>
      * Защита от устаревших версий: между выбором версии и открытием формы
-     * проверяем, что версия всё ещё в статусе PUBLISHED или LEGACY. Если статус
-     * изменился (например, кто-то параллельно опубликовал новую версию и старая
-     * стала LEGACY, или её архивировали) — показываем предупреждение и переоткрываем
-     * диалог выбора.
+     * проверяем, что версия всё ещё в статусе PUBLISHED или LEGACY.
      */
-    private void openFanSelectionDialog(Stage ownerStage) {
-        ProductTemplateSelectionDialog selectionDialog = new ProductTemplateSelectionDialog(ownerStage);
-        selectionDialog.show();
+    private void openCardCreationDialog(Stage ownerStage) {
+        CardCreationDialog dialog = new CardCreationDialog(ownerStage);
+        dialog.show();
 
-        Long selectedVersionId = selectionDialog.getSelectedVersionId();
-        if (selectedVersionId == null) {
+        String cardType = dialog.getCardType();
+        if (cardType == null) {
             return; // пользователь отменил
         }
 
-        // Проверить актуальный статус версии перед созданием карточки
+        Long selectedVersionId = dialog.getSelectedVersionId();
+        if (selectedVersionId == null) {
+            // Системный тип — фиксированная форма, шаблон не нужен
+            CardFormController form = new CardFormController(
+                    ownerStage,
+                    cardType,
+                    null,
+                    this::handleRefresh
+            );
+            form.show();
+            return;
+        }
+
         String status = checkVersionStatus(selectedVersionId);
         if (status == null) {
-            // Версия не найдена — вероятно, удалена
             showAlert("Ошибка",
                     "Выбранная версия шаблона больше не существует. Выберите другую.",
                     Alert.AlertType.WARNING);
-            openFanSelectionDialog(ownerStage);
+            openCardCreationDialog(ownerStage);
             return;
         }
 
         if (!"PUBLISHED".equals(status) && !"LEGACY".equals(status)) {
-            // Статус изменился — версия больше не доступна для создания карточек
             showAlert("Версия недоступна",
                     "Статус выбранной версии изменился на " + status + ".\n" +
                             "Создавать карточки можно только по версиям PUBLISHED или LEGACY.\n" +
                             "Выберите другую версию.",
                     Alert.AlertType.WARNING);
-            openFanSelectionDialog(ownerStage);
+            openCardCreationDialog(ownerStage);
             return;
         }
 
