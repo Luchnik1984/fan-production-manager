@@ -9,7 +9,12 @@ import com.fanproduction.gui.util.TemplateControllerHelper;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import com.fanproduction.gui.client.FieldPresetClient;
+import com.fanproduction.gui.dto.response.FieldPresetDto;
+import com.fanproduction.gui.dto.response.ProductTemplateVersionDto;
 import javafx.scene.control.Alert;
+import javafx.scene.control.ChoiceDialog;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
@@ -59,6 +64,8 @@ public class TemplateEditorController {
     @javafx.fxml.FXML private Button saveButton;
     @javafx.fxml.FXML private Button validateButton;
     @javafx.fxml.FXML private Button closeButton;
+    @javafx.fxml.FXML private Button applyPresetButton;
+    @javafx.fxml.FXML private Button saveAsPresetButton;
 
     // ==========================================================
     // СОСТОЯНИЕ
@@ -298,6 +305,77 @@ public class TemplateEditorController {
                 "Полей: " + fieldsList.size(),
                 statusLabel::setText,
                 null);
+    }
+
+    /**
+     * US10.6: применить пресет к текущему DRAFT — сервер добавит недостающие поля.
+     */
+    @javafx.fxml.FXML
+    private void handleApplyPreset() {
+        if (version == null) {
+            return;
+        }
+        try {
+            List<FieldPresetDto> presets = FieldPresetClient.getAll();
+            if (presets.isEmpty()) {
+                showAlert("Пресеты", "Список пресетов пуст", Alert.AlertType.INFORMATION);
+                return;
+            }
+            List<String> names = presets.stream()
+                    .map(p -> p.getName() + (Boolean.TRUE.equals(p.getIsSystem()) ? "  (системный)" : ""))
+                    .toList();
+            ChoiceDialog<String> dialog = new ChoiceDialog<>(names.get(0), names);
+            dialog.setTitle("Применить пресет");
+            dialog.setHeaderText("Добавятся только поля, которых ещё нет в шаблоне");
+            dialog.setContentText("Пресет:");
+
+            if (dialog.showAndWait().isEmpty()) {
+                return;
+            }
+            int index = names.indexOf(dialog.getResult());
+            if (index < 0) {
+                return;
+            }
+
+            ProductTemplateVersionDto updated = FieldPresetClient.applyToVersion(
+                    presets.get(index).getId(), version.getId());
+
+            fieldsList.setAll(updated.getFieldsJson().stream().map(this::copyField).toList());
+            normalizeDisplayOrders();
+            statusLabel.setText("Полей: " + fieldsList.size() + " (пресет применён)");
+        } catch (Exception e) {
+            showAlert("Ошибка", e.getMessage(), Alert.AlertType.ERROR);
+        }
+    }
+
+    /**
+     * US10.6: сохранить текущий набор полей как пользовательский пресет.
+     */
+    @javafx.fxml.FXML
+    private void handleSaveAsPreset() {
+        if (fieldsList.isEmpty()) {
+            showAlert("Пресет", "В шаблоне нет полей — сохранять нечего", Alert.AlertType.WARNING);
+            return;
+        }
+
+        TextInputDialog dialog = new TextInputDialog("Мой пресет");
+        dialog.setTitle("Сохранить как пресет");
+        dialog.setHeaderText("Текущие поля (" + fieldsList.size() + ") будут сохранены как пресет");
+        dialog.setContentText("Название пресета:");
+
+        dialog.showAndWait().ifPresent(name -> {
+            String clean = name.trim();
+            if (clean.isEmpty()) {
+                return;
+            }
+            try {
+                FieldPresetDto created = FieldPresetClient.create(clean, null,
+                        new java.util.ArrayList<>(fieldsList));
+                statusLabel.setText("Пресет «" + created.getName() + "» сохранён");
+            } catch (Exception e) {
+                showAlert("Ошибка", e.getMessage(), Alert.AlertType.ERROR);
+            }
+        });
     }
 
     @javafx.fxml.FXML

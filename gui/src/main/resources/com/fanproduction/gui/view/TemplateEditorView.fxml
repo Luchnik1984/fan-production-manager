@@ -41,6 +41,9 @@
         <Button fx:id="moveUpButton" text="▲ Вверх" onAction="#handleMoveUp"/>
         <Button fx:id="moveDownButton" text="▼ Вниз" onAction="#handleMoveDown"/>
         <Separator/>
+        <Button fx:id="applyPresetButton" text="📋 Применить пресет" onAction="#handleApplyPreset"/>
+        <Button fx:id="saveAsPresetButton" text="💾 Сохранить как пресет" onAction="#handleSaveAsPreset"/>
+        <Separator/>
         <Region HBox.hgrow="ALWAYS"/>
         <Button fx:id="saveButton" text="💾 Сохранить черновик" onAction="#handleSave"
                 style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;"/>
