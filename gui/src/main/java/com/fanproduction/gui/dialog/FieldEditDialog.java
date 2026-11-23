@@ -107,6 +107,9 @@ public class FieldEditDialog {
     private final TextField hintField = new TextField();
     private final TextField orderField = new TextField();
 
+    /** Группа (секция) формы — редактируемый список типовых значений. */
+    private final ComboBox<String> groupCombo = new ComboBox<>();
+
     // --- COMBOBOX ---
     private final TextField optionsField = new TextField();
 
@@ -164,6 +167,7 @@ public class FieldEditDialog {
         this.isKeyDuplicate = isKeyDuplicate != null ? isKeyDuplicate : key -> false;
         this.templateFields = templateFields != null ? templateFields : List.of();
         this.templateFieldKeysCache.addAll(FieldKeysCatalog.collect(this.templateFields));
+        this.groupCombo.setValue(existing != null ? existing.getGroup() : null);
 
         this.dialog = TemplateControllerHelper.buildDialog(
                 isNew ? "Добавить поле" : "Редактировать поле: " + existing.getKey(), owner);
@@ -247,6 +251,13 @@ public class FieldEditDialog {
         orderField.setText(String.valueOf(displayOrder));
         orderField.setPrefWidth(100);
 
+        // Группа (секция) формы: типовые значения + возможность ввести своё
+        groupCombo.setEditable(true);
+        groupCombo.getItems().setAll("Основные", "Электрика", "Исполнение",
+                "Комплектующие", "Аэродинамика", "Габариты");
+        groupCombo.setPrefWidth(220);
+        groupCombo.getEditor().setPromptText("Например, Электрика");
+
         grid.add(new Label("Ключ поля:*"), 0, row);
         grid.add(keyField, 1, row++);
         grid.add(new Label("Наименование:*"), 0, row);
@@ -261,6 +272,8 @@ public class FieldEditDialog {
         grid.add(hintField, 1, row++);
         grid.add(new Label("Порядок отображения:"), 0, row);
         grid.add(orderField, 1, row++);
+        grid.add(new Label("Группа (секция):"), 0, row);
+        grid.add(groupCombo, 1, row++);
 
         typeDictionaryLabel = new Label();
         typeDictionaryLabel.setWrapText(true);
@@ -827,6 +840,7 @@ public class FieldEditDialog {
         } catch (NumberFormatException e) {
             dto.setDisplayOrder(displayOrder);
         }
+        dto.setGroup(emptyToNull(groupCombo.getEditor().getText()));
 
         if (type == FieldType.COMBOBOX) {
             dto.setOptions(parseList(optionsField.getText()));

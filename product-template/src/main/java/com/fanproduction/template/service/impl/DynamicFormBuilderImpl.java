@@ -140,7 +140,8 @@ public class DynamicFormBuilderImpl implements DynamicFormBuilder {
                 def.pullFrom(),
                 def.visibleIf(),
                 def.requiredIf(),
-                def.onSelect()
+                def.onSelect(),
+                def.groupOrDefault()
         );
     }
 }

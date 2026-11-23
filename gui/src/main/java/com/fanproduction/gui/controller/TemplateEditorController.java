@@ -342,6 +342,7 @@ public class TemplateEditorController {
         dto.setOnSelect(src.getOnSelect());
         dto.setDisplayOrder(src.getDisplayOrder());
         dto.setFormula(src.getFormula());
+        dto.setGroup(src.getGroup());
         return dto;
     }
 }

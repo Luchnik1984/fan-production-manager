@@ -31,6 +31,11 @@ public record DynamicFormFieldDto(
         Map<String, String> pullFrom,
         Condition visibleIf,
         Condition requiredIf,
-        OnSelectAction onSelect
+        OnSelectAction onSelect,
+        /**
+         * Группа (секция) формы; никогда не {@code null} — поля без группы
+         * попадают в «Основные».
+         */
+        String group
 ) {
 }

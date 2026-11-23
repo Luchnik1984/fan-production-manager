@@ -334,7 +334,23 @@ public class CardFormController {
         }
         row++;
 
+        // Секции формы (US10.6): поля с одинаковой группой идут подряд,
+        // при смене группы печатается заголовок. Поля без группы — «Основные».
+        String currentGroup = "Основные";
+
         for (FieldMetadataDto field : fields) {
+            String fieldGroup = field.getGroup() == null || field.getGroup().isBlank()
+                    ? "Основные"
+                    : field.getGroup();
+            if (!fieldGroup.equals(currentGroup)) {
+                Label groupLabel = new Label(fieldGroup);
+                groupLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; "
+                        + "-fx-text-fill: #2b5797; -fx-padding: 14 0 2 0;");
+                grid.add(groupLabel, 0, row, 2, 1);
+                row++;
+                currentGroup = fieldGroup;
+            }
+
             if ("separator".equals(field.getType())) {
                 Separator separator = new Separator();
                 separator.setPadding(new Insets(10, 0, 5, 0));

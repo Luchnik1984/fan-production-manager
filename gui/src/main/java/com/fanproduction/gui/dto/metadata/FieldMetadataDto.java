@@ -86,6 +86,9 @@ public class FieldMetadataDto {
     /** Порядок отображения (для FAN — из шаблона). */
     private Integer displayOrder;
 
+    /** Группа (секция) формы: «Основные», «Электрика», «Исполнение». */
+    private String group;
+
     /** Все опции для COMPUTED (не используется в GUI напрямую). */
     private List<String> optionsList;
 }

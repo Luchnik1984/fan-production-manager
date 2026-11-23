@@ -35,4 +35,6 @@ public class DynamicFormFieldDto {
     private ConditionDto visibleIf;
     private ConditionDto requiredIf;
     private OnSelectActionDto onSelect;
+    /** Группа (секция) формы; null = «Основные». */
+    private String group;
 }
