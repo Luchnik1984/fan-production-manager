@@ -13,6 +13,8 @@ import com.fanproduction.gui.client.FieldPresetClient;
 import com.fanproduction.gui.dto.response.FieldPresetDto;
 import com.fanproduction.gui.dto.response.ProductTemplateVersionDto;
 import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.Button;
@@ -337,8 +339,27 @@ public class TemplateEditorController {
                 return;
             }
 
+            // Если поля уже есть — спрашиваем режим: добавить или заменить
+            boolean replace = false;
+            if (!fieldsList.isEmpty()) {
+                Alert modeDialog = new Alert(Alert.AlertType.CONFIRMATION);
+                modeDialog.setTitle("Применить пресет");
+                modeDialog.setHeaderText("В шаблоне уже " + fieldsList.size() + " полей");
+                modeDialog.setContentText("Добавить недостающие поля пресета или заменить все поля?");
+                ButtonType merge = new ButtonType("Добавить недостающие", ButtonBar.ButtonData.OK_DONE);
+                ButtonType replaceAll = new ButtonType("Заменить все", ButtonBar.ButtonData.OTHER);
+                ButtonType cancel = new ButtonType("Отмена", ButtonBar.ButtonData.CANCEL_CLOSE);
+                modeDialog.getButtonTypes().setAll(merge, replaceAll, cancel);
+
+                java.util.Optional<ButtonType> choice = modeDialog.showAndWait();
+                if (choice.isEmpty() || choice.get() == cancel) {
+                    return;
+                }
+                replace = (choice.get() == replaceAll);
+            }
+
             ProductTemplateVersionDto updated = FieldPresetClient.applyToVersion(
-                    presets.get(index).getId(), version.getId());
+                    presets.get(index).getId(), version.getId(), replace);
 
             fieldsList.setAll(updated.getFieldsJson().stream().map(this::copyField).toList());
             normalizeDisplayOrders();

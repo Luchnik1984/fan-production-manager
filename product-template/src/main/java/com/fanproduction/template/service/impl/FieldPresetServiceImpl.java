@@ -120,6 +120,13 @@ public class FieldPresetServiceImpl implements FieldPresetService {
     @Override
     @Transactional
     public ProductTemplateVersionDto applyToVersion(Long versionId, Long presetId, String updatedBy) {
+        return applyToVersion(versionId, presetId, false, updatedBy);
+    }
+
+    @Override
+    @Transactional
+    public ProductTemplateVersionDto applyToVersion(Long versionId, Long presetId,
+                                                    boolean replace, String updatedBy) {
         ProductTemplateVersion version = productTemplateVersionRepository.findById(versionId)
                 .orElseThrow(() -> new TemplateValidationException("Версия шаблона не найдена: " + versionId));
 
@@ -130,9 +137,11 @@ public class FieldPresetServiceImpl implements FieldPresetService {
 
         FieldPreset preset = findPresetOrThrow(presetId);
 
-        List<FieldDefinition> current = version.getFieldsJson() != null
-                ? new ArrayList<>(version.getFieldsJson())
-                : new ArrayList<>();
+        List<FieldDefinition> current = replace
+                ? new ArrayList<>()
+                : (version.getFieldsJson() != null
+                        ? new ArrayList<>(version.getFieldsJson())
+                        : new ArrayList<>());
 
         Set<String> existingKeys = current.stream()
                 .map(FieldDefinition::key)
@@ -152,10 +161,12 @@ public class FieldPresetServiceImpl implements FieldPresetService {
         version.setFieldsJson(current);
         ProductTemplateVersion saved = productTemplateVersionRepository.save(version);
 
+        String mode = replace ? "режим замены" : "режим добавления";
         publishAudit(updatedBy, "К версии v" + saved.getVersion() + " применён пресет '"
-                + preset.getName() + "': добавлено полей — " + added);
+                + preset.getName() + "' (" + mode + "): добавлено полей — " + added);
 
-        log.info("Пресет применён: versionId={}, presetId={}, added={}", versionId, presetId, added);
+        log.info("Пресет применён: versionId={}, presetId={}, replace={}, added={}",
+                versionId, presetId, replace, added);
 
         return toVersionDto(saved);
     }

@@ -51,11 +51,13 @@ public final class FieldPresetClient {
      * <p>
      * Сервер добавляет только недостающие поля; существующие не меняются.
      */
-    public static ProductTemplateVersionDto applyToVersion(Long presetId, Long versionId) throws Exception {
+    public static ProductTemplateVersionDto applyToVersion(Long presetId, Long versionId,
+                                                           boolean replace) throws Exception {
         TypeReference<ApiResponse<ProductTemplateVersionDto>> typeRef = new TypeReference<>() {
         };
-        ApiResponse<ProductTemplateVersionDto> response = ApiClient.post(
-                BASE_PATH + "/" + presetId + "/apply-to-version/" + versionId, null, typeRef);
+        String path = BASE_PATH + "/" + presetId + "/apply-to-version/" + versionId
+                + (replace ? "?replace=true" : "");
+        ApiResponse<ProductTemplateVersionDto> response = ApiClient.post(path, null, typeRef);
         if (response.isSuccess() && response.getData() != null) {
             return response.getData();
         }

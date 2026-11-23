@@ -140,6 +140,7 @@ public class TemplateTreeController {
         if (unassignedTypes != null && !unassignedTypes.isEmpty()) {
             TreeItem<Object> noSection = new TreeItem<>("Без раздела");
             unassignedTypes.stream()
+                    .filter(type -> type.getSystemCardType() == null)
                     .sorted(Comparator.comparing(this::typeSortKey))
                     .forEach(type -> noSection.getChildren().add(buildTypeItem(type)));
             root.getChildren().add(noSection);
@@ -161,6 +162,7 @@ public class TemplateTreeController {
         }
         if (section.getTypes() != null) {
             section.getTypes().stream()
+                    .filter(type -> type.getSystemCardType() == null) // у хардкод-типов шаблонов нет
                     .sorted(Comparator.comparing(this::typeSortKey))
                     .forEach(type -> item.getChildren().add(buildTypeItem(type)));
         }

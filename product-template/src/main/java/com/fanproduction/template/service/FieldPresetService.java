@@ -62,4 +62,12 @@ public interface FieldPresetService {
      *         если версия не найдена, не в статусе DRAFT или пресет не найден
      */
     ProductTemplateVersionDto applyToVersion(Long versionId, Long presetId, String updatedBy);
+
+    /**
+     * Применить пресет к DRAFT-версии шаблона с выбором режима.
+     *
+     * @param replace {@code true} — заменить все поля полями пресета;
+     *                {@code false} — добавить только недостающие (по {@code key})
+     */
+    ProductTemplateVersionDto applyToVersion(Long versionId, Long presetId, boolean replace, String updatedBy);
 }

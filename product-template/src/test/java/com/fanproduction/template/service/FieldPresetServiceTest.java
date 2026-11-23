@@ -101,6 +101,40 @@ class FieldPresetServiceTest {
         }
 
         @Test
+        @DisplayName("режим замены: поля шаблона заменяются полями пресета")
+        void replaceMode() {
+            ProductTemplateVersion v = version(TemplateStatus.DRAFT,
+                    List.of(field("oldField1"), field("oldField2")));
+            FieldPreset p = preset(1L, "Осевое колесо", true,
+                    List.of(field("size"), field("bladeCount")));
+
+            when(productTemplateVersionRepository.findById(100L)).thenReturn(Optional.of(v));
+            when(fieldPresetRepository.findById(1L)).thenReturn(Optional.of(p));
+            when(productTemplateVersionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            ProductTemplateVersionDto result = service.applyToVersion(100L, 1L, true, "admin@test");
+
+            assertThat(result.fieldsJson()).extracting(FieldDefinition::key)
+                    .containsExactly("size", "bladeCount");
+        }
+
+        @Test
+        @DisplayName("режим добавления (по умолчанию) сохраняет существующие поля")
+        void mergeModeKeepsExisting() {
+            ProductTemplateVersion v = version(TemplateStatus.DRAFT, List.of(field("oldField")));
+            FieldPreset p = preset(1L, "Осевое колесо", true, List.of(field("size")));
+
+            when(productTemplateVersionRepository.findById(100L)).thenReturn(Optional.of(v));
+            when(fieldPresetRepository.findById(1L)).thenReturn(Optional.of(p));
+            when(productTemplateVersionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            ProductTemplateVersionDto result = service.applyToVersion(100L, 1L, "admin@test");
+
+            assertThat(result.fieldsJson()).extracting(FieldDefinition::key)
+                    .containsExactly("oldField", "size");
+        }
+
+        @Test
         @DisplayName("повторное применение идемпотентно")
         void idempotent() {
             ProductTemplateVersion v = version(TemplateStatus.DRAFT,

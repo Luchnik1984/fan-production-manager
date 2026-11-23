@@ -84,10 +84,12 @@ public class FieldPresetController extends BaseController {
      */
     @PostMapping("/{id}/apply-to-version/{versionId}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<ProductTemplateVersionDto> applyToVersion(@PathVariable Long id,
-                                                                 @PathVariable Long versionId) {
+    public ApiResponse<ProductTemplateVersionDto> applyToVersion(
+            @PathVariable Long id,
+            @PathVariable Long versionId,
+            @RequestParam(defaultValue = "false") boolean replace) {
         ProductTemplateVersionDto version = fieldPresetService.applyToVersion(
-                versionId, id, getCurrentUser());
-        return ApiResponse.success("Пресет применён", version);
+                versionId, id, replace, getCurrentUser());
+        return ApiResponse.success(replace ? "Поля заменены пресетом" : "Пресет применён", version);
     }
 }
