@@ -9,6 +9,7 @@
     <!-- Верхняя панель действий -->
     <ToolBar>
         <Button fx:id="createTypeButton" text="➕ Создать тип" onAction="#handleCreateType"/>
+        <Button fx:id="createByPresetButton" text="🧩 Новое изделие по пресету" onAction="#handleCreateByPreset"/>
         <Separator/>
         <Button fx:id="refreshButton" text="🔄 Обновить" onAction="#handleRefresh"/>
         <Region HBox.hgrow="ALWAYS"/>

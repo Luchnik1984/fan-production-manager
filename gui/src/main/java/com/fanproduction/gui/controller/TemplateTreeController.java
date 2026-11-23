@@ -1,10 +1,12 @@
 package com.fanproduction.gui.controller;
 
+import com.fanproduction.gui.client.FieldPresetClient;
 import com.fanproduction.gui.client.ProductSectionClient;
 import com.fanproduction.gui.client.ProductSeriesClient;
 import com.fanproduction.gui.client.ProductSpeciesClient;
 import com.fanproduction.gui.client.ProductTypeClient;
 import com.fanproduction.gui.client.ProductTemplateClient;
+import com.fanproduction.gui.dto.request.fan.CreateProductTemplateRequest;
 import com.fanproduction.gui.dto.request.fan.CreateProductSectionRequest;
 import com.fanproduction.gui.dto.request.fan.CreateProductSeriesRequest;
 import com.fanproduction.gui.dto.request.fan.CreateProductSpeciesRequest;
@@ -13,6 +15,7 @@ import com.fanproduction.gui.dto.request.fan.UpdateProductSectionRequest;
 import com.fanproduction.gui.dto.request.fan.UpdateProductSeriesRequest;
 import com.fanproduction.gui.dto.request.fan.UpdateProductSpeciesRequest;
 import com.fanproduction.gui.dto.request.fan.UpdateProductTypeRequest;
+import com.fanproduction.gui.dto.response.FieldPresetDto;
 import com.fanproduction.gui.dto.response.ProductSectionDto;
 import com.fanproduction.gui.dto.response.ProductSeriesDto;
 import com.fanproduction.gui.dto.response.ProductSpeciesDto;
@@ -651,6 +654,114 @@ public class TemplateTreeController {
     @javafx.fxml.FXML
     private void handleCreateType() {
         showTypeDialog(null, null);
+    }
+
+    /**
+     * US10.6: мастер «Новое изделие по пресету».
+     * <p>
+     * Создаёт всю цепочку за один раз: тип → вид → серия → шаблон,
+     * затем применяет к DRAFT-версии выбранный пресет полей.
+     */
+    @javafx.fxml.FXML
+    private void handleCreateByPreset() {
+        try {
+            List<FieldPresetDto> presets = FieldPresetClient.getAll();
+            if (presets.isEmpty()) {
+                showAlert("Пресеты", "Список пресетов пуст. Создайте пресет в редакторе полей.",
+                        Alert.AlertType.INFORMATION);
+                return;
+            }
+            List<ProductSectionDto> sections = ProductSectionClient.getAll();
+
+            ComboBox<String> presetCombo = new ComboBox<>();
+            presets.forEach(p -> presetCombo.getItems().add(p.getName()));
+            presetCombo.getSelectionModel().selectFirst();
+            presetCombo.setMaxWidth(Double.MAX_VALUE);
+
+            ComboBox<String> sectionCombo = new ComboBox<>();
+            sections.forEach(s -> sectionCombo.getItems().add(s.getName()));
+            if (!sections.isEmpty()) {
+                sectionCombo.getSelectionModel().selectFirst();
+            }
+            sectionCombo.setMaxWidth(Double.MAX_VALUE);
+
+            TextField typeNameField = new TextField();
+            typeNameField.setPromptText("Например, Колесо осевое");
+            TextField designationField = new TextField();
+            designationField.setPromptText("Например, AW");
+            TextField speciesField = new TextField();
+            speciesField.setPromptText("Можно оставить пустым");
+            TextField seriesField = new TextField();
+            seriesField.setPromptText("Например, AW-1");
+            TextField templateNameField = new TextField();
+            templateNameField.setPromptText("По умолчанию — «Шаблон <серия>»");
+
+            Dialog<ButtonType> dialog = buildDialog("Новое изделие по пресету");
+            GridPane grid = buildGrid();
+            int row = 0;
+            grid.add(new Label("Пресет:*"), 0, row);
+            grid.add(presetCombo, 1, row++);
+            grid.add(new Label("Раздел:"), 0, row);
+            grid.add(sectionCombo, 1, row++);
+            grid.add(new Label("Наименование типа:*"), 0, row);
+            grid.add(typeNameField, 1, row++);
+            grid.add(new Label("Обозначение типа:*"), 0, row);
+            grid.add(designationField, 1, row++);
+            grid.add(new Label("Вид:"), 0, row);
+            grid.add(speciesField, 1, row++);
+            grid.add(new Label("Серия:*"), 0, row);
+            grid.add(seriesField, 1, row++);
+            grid.add(new Label("Шаблон:"), 0, row);
+            grid.add(templateNameField, 1, row++);
+            dialog.getDialogPane().setContent(grid);
+
+            Button okButton = (Button) dialog.getDialogPane().lookupButton(
+                    dialog.getDialogPane().getButtonTypes().get(0));
+            okButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+                if (designationField.getText().trim().isEmpty()
+                        || seriesField.getText().trim().isEmpty()) {
+                    showAlert("Ошибка", "Обозначение типа и серия обязательны", Alert.AlertType.WARNING);
+                    event.consume();
+                }
+            });
+
+            dialog.showAndWait().ifPresent(button -> {
+                if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) return;
+
+                FieldPresetDto preset = presets.get(presetCombo.getSelectionModel().getSelectedIndex());
+                Long sectionId = sections.isEmpty() ? null
+                        : sections.get(sectionCombo.getSelectionModel().getSelectedIndex()).getId();
+                String typeName = typeNameField.getText().trim();
+                String designation = designationField.getText().trim();
+                String speciesName = speciesField.getText().trim();
+                String seriesName = seriesField.getText().trim();
+                String templateName = templateNameField.getText().trim().isEmpty()
+                        ? "Шаблон " + seriesName
+                        : templateNameField.getText().trim();
+
+                runAsync(() -> {
+                    ProductTypeDto type = ProductTypeClient.createType(new CreateProductTypeRequest(
+                            typeName.isEmpty() ? null : typeName, designation, sectionId));
+
+                    ProductSpeciesDto species = ProductSpeciesClient.createSpecies(
+                            new CreateProductSpeciesRequest(type.getId(),
+                                    speciesName.isEmpty() ? null : speciesName));
+
+                    ProductSeriesDto series = ProductSeriesClient.createSeries(
+                            new CreateProductSeriesRequest(species.getId(), seriesName));
+
+                    ProductTemplateDto template = ProductTemplateClient.createTemplate(
+                            new CreateProductTemplateRequest(series.getId(), templateName, null, null, null));
+
+                    ProductTemplateVersionDto draft = ProductTemplateClient.getDraftVersion(template.getId());
+                    if (draft != null) {
+                        FieldPresetClient.applyToVersion(preset.getId(), draft.getId(), false);
+                    }
+                }, "Изделие создано по пресету «" + preset.getName() + "»");
+            });
+        } catch (Exception e) {
+            showAlert("Ошибка", "Не удалось открыть мастер: " + e.getMessage(), Alert.AlertType.ERROR);
+        }
     }
 
     private void handleEditType(ProductTypeDto type) {
