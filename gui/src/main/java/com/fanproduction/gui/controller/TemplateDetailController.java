@@ -87,6 +87,7 @@ public class TemplateDetailController {
     @javafx.fxml.FXML private Button deleteVersionButton;
     @javafx.fxml.FXML private Button cloneButton;
     @javafx.fxml.FXML private Button exportButton;
+    @javafx.fxml.FXML private Button deleteTemplateButton;
     @javafx.fxml.FXML private Button importButton;
     @javafx.fxml.FXML private Label statusLabel;
 
@@ -307,6 +308,7 @@ public class TemplateDetailController {
         cloneButton.setDisable(!hasTemplate);
         exportButton.setDisable(!hasTemplate);
         importButton.setDisable(currentSeries == null);
+        deleteTemplateButton.setDisable(!hasTemplate);
         editTemplateButton.setDisable(!hasTemplate);
         refreshButton.setDisable(currentSeries == null);
     }
@@ -534,6 +536,27 @@ public class TemplateDetailController {
     // ==========================================================
     // CLONE
     // ==========================================================
+    /**
+     * US10.6i: удалить шаблон целиком (вместе с версиями).
+     * <p>
+     * После удаления панель переключается в состояние «нет шаблона» —
+     * оттуда шаблон можно создать заново или импортировать из JSON.
+     */
+    @javafx.fxml.FXML
+    private void handleDeleteTemplate() {
+        if (currentTemplate == null) {
+            return;
+        }
+        if (!confirm("Удалить шаблон «" + currentTemplate.getName() + "»?",
+                "Шаблон будет удалён вместе со всеми версиями. "
+                        + "Карточки, созданные по нему, останутся на своих версиях. "
+                        + "Действие необратимо.")) {
+            return;
+        }
+        runAsync(() -> ProductTemplateClient.deleteTemplate(currentTemplate.getId()),
+                "Шаблон удалён");
+    }
+
     /**
      * US10.6: экспорт шаблона в JSON-файл.
      */

@@ -269,10 +269,19 @@ public class ProductHierarchyServiceImpl implements ProductHierarchyService {
     public ProductTypeDto createType(String name, String designation, Long sectionId, String createdBy) {
         validateNotEmpty(designation, "Обозначение типа");
 
-        if (productTypeRepository.existsByDesignationIgnoreCase(designation)) {
+        productTypeRepository.findByDesignationIgnoreCase(designation.trim()).ifPresent(existing -> {
+            if (existing.getSystemCardType() != null) {
+                String label = existing.getName() != null && !existing.getName().isBlank()
+                        ? existing.getName()
+                        : existing.getDesignation();
+                throw new TemplateValidationException(
+                        "Обозначение '" + designation.trim() + "' занято системным типом «" + label
+                                + "». Он создаётся по фиксированной форме и в конструкторе шаблонов "
+                                + "не отображается — выберите другое обозначение.");
+            }
             throw new TemplateValidationException(
                     "Тип с обозначением '" + designation.trim() + "' уже существует");
-        }
+        });
 
         if (sectionId != null && !productSectionRepository.existsById(sectionId)) {
             throw new TemplateValidationException("Раздел не найден: " + sectionId);
