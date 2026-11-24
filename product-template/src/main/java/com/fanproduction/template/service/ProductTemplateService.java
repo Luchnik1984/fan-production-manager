@@ -31,6 +31,26 @@ public interface ProductTemplateService {
 
     ProductTemplateDto updateTemplate(Long id, String name, String description, String updatedBy);
 
+    /**
+     * Экспорт шаблона: поля и правило маркировки текущей версии
+     * (или последней по номеру, если текущей нет).
+     *
+     * @param templateId ID шаблона
+     */
+    com.fanproduction.template.dto.TemplateExchangeDto exportTemplate(Long templateId);
+
+    /**
+     * Импорт шаблона в указанную серию: создаёт логический шаблон
+     * и первую DRAFT-версию с полями и правилом из файла.
+     *
+     * @param seriesId  серия, к которой привязать шаблон
+     * @param dto       содержимое шаблона
+     * @param createdBy email автора
+     */
+    ProductTemplateDto importTemplate(Long seriesId,
+                                      com.fanproduction.template.dto.TemplateExchangeDto dto,
+                                      String createdBy);
+
     void deleteTemplate(Long id, String deletedBy);
 
     // ========== Version ==========
