@@ -1,6 +1,7 @@
 package com.fanproduction.api.dto.request.fan;
 
 import com.fanproduction.template.model.FieldDefinition;
+import com.fanproduction.template.model.MarkingRule;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
@@ -23,6 +24,9 @@ public record CreateFieldPresetRequest(
         String description,
 
         @NotEmpty(message = "Пресет должен содержать хотя бы одно поле")
-        List<FieldDefinition> fields
+        List<FieldDefinition> fields,
+
+        /** Правило маркировки (US10.7.3), необязательно. */
+        MarkingRule markingRule
 ) {
 }

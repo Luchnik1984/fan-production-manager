@@ -53,7 +53,9 @@ public class FieldPresetServiceImpl implements FieldPresetService {
     @Override
     @Transactional
     public FieldPresetDto create(String name, String description,
-                                 List<FieldDefinition> fields, String createdBy) {
+                                 List<FieldDefinition> fields,
+                                 com.fanproduction.template.model.MarkingRule markingRule,
+                                 String createdBy) {
         String cleanName = validateName(name);
         if (fieldPresetRepository.existsByNameIgnoreCase(cleanName)) {
             throw new TemplateValidationException("Пресет с названием '" + cleanName + "' уже существует");
@@ -66,6 +68,9 @@ public class FieldPresetServiceImpl implements FieldPresetService {
         preset.setName(cleanName);
         preset.setDescription(description);
         preset.setFieldsJson(fields);
+        preset.setMarkingRuleJson(markingRule != null
+                ? markingRule
+                : com.fanproduction.template.model.MarkingRule.empty());
         preset.setIsSystem(false);
         preset.setCreatedBy(createdBy);
 
@@ -79,7 +84,9 @@ public class FieldPresetServiceImpl implements FieldPresetService {
     @Override
     @Transactional
     public FieldPresetDto update(Long id, String name, String description,
-                                 List<FieldDefinition> fields, String updatedBy) {
+                                 List<FieldDefinition> fields,
+                                 com.fanproduction.template.model.MarkingRule markingRule,
+                                 String updatedBy) {
         FieldPreset preset = findPresetOrThrow(id);
         guardSystem(preset, "изменить");
 
@@ -99,6 +106,9 @@ public class FieldPresetServiceImpl implements FieldPresetService {
                 throw new TemplateValidationException("Пресет должен содержать хотя бы одно поле");
             }
             preset.setFieldsJson(fields);
+        }
+        if (markingRule != null) {
+            preset.setMarkingRuleJson(markingRule);
         }
 
         FieldPreset saved = fieldPresetRepository.save(preset);
@@ -159,9 +169,21 @@ public class FieldPresetServiceImpl implements FieldPresetService {
         }
 
         version.setFieldsJson(current);
+
+        // US10.7.3: правило из пресета применяется, только если у версии его нет —
+        // чтобы не перетереть работу администратора
+        boolean ruleApplied = false;
+        if (isRuleEmpty(version.getMarkingRuleJson()) && !isRuleEmpty(preset.getMarkingRuleJson())) {
+            version.setMarkingRuleJson(preset.getMarkingRuleJson());
+            ruleApplied = true;
+        }
+
         ProductTemplateVersion saved = productTemplateVersionRepository.save(version);
 
         String mode = replace ? "режим замены" : "режим добавления";
+        if (ruleApplied) {
+            mode += ", правило маркировки скопировано";
+        }
         publishAudit(updatedBy, "К версии v" + saved.getVersion() + " применён пресет '"
                 + preset.getName() + "' (" + mode + "): добавлено полей — " + added);
 
@@ -187,6 +209,11 @@ public class FieldPresetServiceImpl implements FieldPresetService {
         }
     }
 
+    /** Правило пустое, если в нём нет ни одного элемента. */
+    private boolean isRuleEmpty(com.fanproduction.template.model.MarkingRule rule) {
+        return rule == null || rule.sequence() == null || rule.sequence().isEmpty();
+    }
+
     private String validateName(String name) {
         if (name == null || name.trim().isEmpty()) {
             throw new TemplateValidationException("Название пресета обязательно");
@@ -205,6 +232,7 @@ public class FieldPresetServiceImpl implements FieldPresetService {
                 preset.getName(),
                 preset.getDescription(),
                 preset.getFieldsJson(),
+                preset.getMarkingRuleJson(),
                 preset.getIsSystem(),
                 preset.getCreatedAt(),
                 preset.getCreatedBy()

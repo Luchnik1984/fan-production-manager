@@ -10,6 +10,8 @@ import com.fanproduction.template.enums.TemplateStatus;
 import com.fanproduction.template.exception.TemplateValidationException;
 import com.fanproduction.template.model.FieldDefinition;
 import com.fanproduction.template.model.MarkingRule;
+import com.fanproduction.template.model.MarkingRuleElement;
+import com.fanproduction.template.enums.RuleElementType;
 import com.fanproduction.template.repository.FieldPresetRepository;
 import com.fanproduction.template.repository.ProductTemplateVersionRepository;
 import com.fanproduction.template.service.impl.FieldPresetServiceImpl;
@@ -197,7 +199,7 @@ class FieldPresetServiceTest {
             when(fieldPresetRepository.findById(1L))
                     .thenReturn(Optional.of(preset(1L, "Осевое колесо", true, List.of(field("a")))));
 
-            assertThatThrownBy(() -> service.update(1L, "Новое имя", null, null, "admin@test"))
+            assertThatThrownBy(() -> service.update(1L, "Новое имя", null, null, null, "admin@test"))
                     .isInstanceOf(TemplateValidationException.class)
                     .hasMessageContaining("системный");
         }
@@ -212,7 +214,7 @@ class FieldPresetServiceTest {
         void duplicateName_throws() {
             when(fieldPresetRepository.existsByNameIgnoreCase("Осевое колесо")).thenReturn(true);
 
-            assertThatThrownBy(() -> service.create("Осевое колесо", null, List.of(field("a")), "admin@test"))
+            assertThatThrownBy(() -> service.create("Осевое колесо", null, List.of(field("a")), null, "admin@test"))
                     .isInstanceOf(TemplateValidationException.class)
                     .hasMessageContaining("уже существует");
 
@@ -224,7 +226,7 @@ class FieldPresetServiceTest {
         void emptyFields_throws() {
             when(fieldPresetRepository.existsByNameIgnoreCase("Пустой")).thenReturn(false);
 
-            assertThatThrownBy(() -> service.create("Пустой", null, List.of(), "admin@test"))
+            assertThatThrownBy(() -> service.create("Пустой", null, List.of(), null, "admin@test"))
                     .isInstanceOf(TemplateValidationException.class)
                     .hasMessageContaining("хотя бы одно поле");
         }
@@ -240,7 +242,7 @@ class FieldPresetServiceTest {
             });
 
             FieldPresetDto created = service.create("Мой пресет", "описание",
-                    List.of(field("a"), field("b")), "admin@test");
+                    List.of(field("a"), field("b")), null, "admin@test");
 
             assertThat(created.id()).isEqualTo(5L);
             assertThat(created.isSystem()).isFalse();

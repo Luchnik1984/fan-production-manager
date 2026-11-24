@@ -1,6 +1,7 @@
 package com.fanproduction.template.entity;
 
 import com.fanproduction.template.model.FieldDefinition;
+import com.fanproduction.template.model.MarkingRule;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -50,6 +51,14 @@ public class FieldPreset {
     private List<FieldDefinition> fieldsJson;
 
     /**
+     * Правило маркировки в формате версии шаблона (US10.7.3).
+     * Применяется вместе с полями, если у версии правило ещё пустое.
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "marking_rule_json", nullable = false, columnDefinition = "jsonb")
+    private MarkingRule markingRuleJson;
+
+    /**
      * Системный пресет — нельзя изменить или удалить.
      */
     @Column(name = "is_system", nullable = false)
@@ -69,6 +78,9 @@ public class FieldPreset {
         }
         if (fieldsJson == null) {
             fieldsJson = List.of();
+        }
+        if (markingRuleJson == null) {
+            markingRuleJson = MarkingRule.empty();
         }
     }
 }

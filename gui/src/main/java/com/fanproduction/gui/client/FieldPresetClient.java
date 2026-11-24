@@ -1,6 +1,7 @@
 package com.fanproduction.gui.client;
 
 import com.fanproduction.gui.dto.fan.FieldDefinitionDto;
+import com.fanproduction.gui.dto.fan.MarkingRuleDto;
 import com.fanproduction.gui.dto.response.ApiResponse;
 import com.fanproduction.gui.dto.response.FieldPresetDto;
 import com.fanproduction.gui.dto.response.ProductTemplateVersionDto;
@@ -35,8 +36,9 @@ public final class FieldPresetClient {
      * Создать пресет из набора полей.
      */
     public static FieldPresetDto create(String name, String description,
-                                        List<FieldDefinitionDto> fields) throws Exception {
-        CreatePresetRequest request = new CreatePresetRequest(name, description, fields);
+                                        List<FieldDefinitionDto> fields,
+                                        MarkingRuleDto markingRule) throws Exception {
+        CreatePresetRequest request = new CreatePresetRequest(name, description, fields, markingRule);
         TypeReference<ApiResponse<FieldPresetDto>> typeRef = new TypeReference<>() {
         };
         ApiResponse<FieldPresetDto> response = ApiClient.post(BASE_PATH, request, typeRef);
@@ -68,6 +70,7 @@ public final class FieldPresetClient {
      * Тело запроса создания пресета.
      */
     public record CreatePresetRequest(String name, String description,
-                                      List<FieldDefinitionDto> fields) {
+                                      List<FieldDefinitionDto> fields,
+                                      MarkingRuleDto markingRule) {
     }
 }

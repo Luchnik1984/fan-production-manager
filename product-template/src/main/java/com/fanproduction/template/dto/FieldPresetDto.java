@@ -1,6 +1,7 @@
 package com.fanproduction.template.dto;
 
 import com.fanproduction.template.model.FieldDefinition;
+import com.fanproduction.template.model.MarkingRule;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -13,6 +14,7 @@ public record FieldPresetDto(
         String name,
         String description,
         List<FieldDefinition> fields,
+        MarkingRule markingRule,
         Boolean isSystem,
         LocalDateTime createdAt,
         String createdBy

@@ -391,7 +391,8 @@ public class TemplateEditorController {
             }
             try {
                 FieldPresetDto created = FieldPresetClient.create(clean, null,
-                        new java.util.ArrayList<>(fieldsList));
+                        new java.util.ArrayList<>(fieldsList),
+                        version != null ? version.getMarkingRuleJson() : null);
                 statusLabel.setText("Пресет «" + created.getName() + "» сохранён");
             } catch (Exception e) {
                 showAlert("Ошибка", e.getMessage(), Alert.AlertType.ERROR);

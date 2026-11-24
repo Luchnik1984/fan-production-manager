@@ -51,7 +51,8 @@ public class FieldPresetController extends BaseController {
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<FieldPresetDto> create(@Valid @RequestBody CreateFieldPresetRequest request) {
         FieldPresetDto created = fieldPresetService.create(
-                request.name(), request.description(), request.fields(), getCurrentUser());
+                request.name(), request.description(), request.fields(),
+                request.markingRule(), getCurrentUser());
         return ApiResponse.success("Пресет создан", created);
     }
 
@@ -63,7 +64,8 @@ public class FieldPresetController extends BaseController {
     public ApiResponse<FieldPresetDto> update(@PathVariable Long id,
                                               @Valid @RequestBody UpdateFieldPresetRequest request) {
         FieldPresetDto updated = fieldPresetService.update(
-                id, request.name(), request.description(), request.fields(), getCurrentUser());
+                id, request.name(), request.description(), request.fields(),
+                request.markingRule(), getCurrentUser());
         return ApiResponse.success("Пресет обновлён", updated);
     }
 

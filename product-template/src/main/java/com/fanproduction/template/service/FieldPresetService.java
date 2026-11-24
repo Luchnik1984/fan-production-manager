@@ -33,14 +33,17 @@ public interface FieldPresetService {
      * @param fields      набор полей
      * @param createdBy   email автора
      */
-    FieldPresetDto create(String name, String description, List<FieldDefinition> fields, String createdBy);
+    FieldPresetDto create(String name, String description,
+                        List<FieldDefinition> fields, com.fanproduction.template.model.MarkingRule markingRule,
+                        String createdBy);
 
     /**
      * Изменить пользовательский пресет.
      * Системные пресеты редактировать нельзя.
      */
     FieldPresetDto update(Long id, String name, String description,
-                          List<FieldDefinition> fields, String updatedBy);
+                          List<FieldDefinition> fields, com.fanproduction.template.model.MarkingRule markingRule,
+                               String updatedBy);
 
     /**
      * Удалить пользовательский пресет.

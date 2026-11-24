@@ -1,6 +1,7 @@
 package com.fanproduction.api.dto.request.fan;
 
 import com.fanproduction.template.model.FieldDefinition;
+import com.fanproduction.template.model.MarkingRule;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -15,6 +16,9 @@ public record UpdateFieldPresetRequest(
         @Size(max = 500, message = "Описание не длиннее 500 символов")
         String description,
 
-        List<FieldDefinition> fields
+        List<FieldDefinition> fields,
+
+        /** Правило маркировки (US10.7.3), необязательно. */
+        MarkingRule markingRule
 ) {
 }
