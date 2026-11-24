@@ -557,10 +557,10 @@ public class TemplateTreeController {
             MenuItem createChild = new MenuItem("Создать вид");
             createChild.setOnAction(e -> handleCreateSpecies(type));
 
-            MenuItem edit = new MenuItem("Редактировать");
+            MenuItem edit = new MenuItem("Редактировать тип");
             edit.setOnAction(e -> handleEditType(type));
 
-            MenuItem delete = new MenuItem("Удалить");
+            MenuItem delete = new MenuItem("Удалить тип");
             delete.setOnAction(e -> handleDeleteType(type));
 
             return List.of(createChild, edit, delete);
@@ -570,10 +570,10 @@ public class TemplateTreeController {
             MenuItem createChild = new MenuItem("Создать серию");
             createChild.setOnAction(e -> handleCreateSeries(species));
 
-            MenuItem edit = new MenuItem("Редактировать");
+            MenuItem edit = new MenuItem("Редактировать вид");
             edit.setOnAction(e -> handleEditSpecies(species));
 
-            MenuItem delete = new MenuItem("Удалить");
+            MenuItem delete = new MenuItem("Удалить вид");
             delete.setOnAction(e -> handleDeleteSpecies(species));
 
             return List.of(createChild, edit, delete);
@@ -586,10 +586,10 @@ public class TemplateTreeController {
             MenuItem openRule = new MenuItem("⚙ Открыть редактор правила");
             openRule.setOnAction(e -> handleOpenRuleEditorFromTree(series));
 
-            MenuItem edit = new MenuItem("Редактировать");
+            MenuItem edit = new MenuItem("Редактировать серию");
             edit.setOnAction(e -> handleEditSeries(series));
 
-            MenuItem delete = new MenuItem("Удалить");
+            MenuItem delete = new MenuItem("Удалить серию");
             delete.setOnAction(e -> handleDeleteSeries(series));
 
             return List.of(openTemplate, openRule, edit, delete);
