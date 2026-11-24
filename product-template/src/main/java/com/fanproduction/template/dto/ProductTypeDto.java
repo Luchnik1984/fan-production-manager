@@ -16,6 +16,7 @@ public record ProductTypeDto(
         String displayName,
         Boolean isSystem,
         Long sectionId,
+        Long cardRoleId,
         String codePrefix,
         String systemCardType,
         LocalDateTime createdAt,

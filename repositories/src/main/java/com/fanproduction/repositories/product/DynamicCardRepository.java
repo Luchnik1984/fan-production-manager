@@ -62,4 +62,7 @@ public interface DynamicCardRepository extends JpaRepository<DynamicCardEntity, 
      * Поиск динамических карточек по типу продукции (product_type).
      */
     Page<DynamicCardEntity> findByProductTypeId(Long productTypeId, Pageable pageable);
+
+    /** Карточки нескольких типов — используется для выбора по роли (US10.7.2). */
+    List<DynamicCardEntity> findByProductTypeIdIn(java.util.Collection<Long> productTypeIds);
 }

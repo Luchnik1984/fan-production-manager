@@ -4,7 +4,6 @@ import com.fanproduction.core.enums.CardTemplateType;
 import com.fanproduction.gui.client.ComponentClient;
 import com.fanproduction.gui.client.MaterialClient;
 import com.fanproduction.gui.client.ProductCardClient;
-import com.fanproduction.gui.configurator.AxialWheelCardConfigurator;
 import com.fanproduction.gui.configurator.CardFieldConfigurator;
 import com.fanproduction.gui.configurator.CardFormConfigurator;
 import com.fanproduction.gui.configurator.FanCardConfigurator;
@@ -178,10 +177,7 @@ public class CardFormController {
 
         // Передаём зависимости в конфигураторы
         CardFieldConfigurator configurator = CardFormConfigurator.getConfigurator(cardType);
-        if (configurator instanceof AxialWheelCardConfigurator) {
-            ((AxialWheelCardConfigurator) configurator).setComponentsController(componentsTabController);
-            ((AxialWheelCardConfigurator) configurator).setParentController(this);
-        } else if (configurator instanceof FanCardConfigurator fanConf) {
+        if (configurator instanceof FanCardConfigurator fanConf) {
             Long versionId = resolveTemplateVersionId();
             fanConf.setTemplateVersionId(versionId);
             fanConf.markInitialized();  // сбрасываем флаг, запоминаем lastAutoMarking
@@ -1150,9 +1146,6 @@ public class CardFormController {
         CardFieldConfigurator configurator = CardFormConfigurator.getConfigurator(cardType);
         if (configurator != null) {
             configurator.refreshFullMarking(fieldControls);
-            if (configurator instanceof AxialWheelCardConfigurator) {
-                ((AxialWheelCardConfigurator) configurator).refreshWheelFormula(fieldControls);
-            }
         }
     }
 

@@ -1,5 +1,6 @@
 package com.fanproduction.gui.controller;
 
+import com.fanproduction.gui.client.CardRoleClient;
 import com.fanproduction.gui.client.FieldPresetClient;
 import com.fanproduction.gui.client.ProductSectionClient;
 import com.fanproduction.gui.client.ProductSeriesClient;
@@ -15,6 +16,7 @@ import com.fanproduction.gui.dto.request.fan.UpdateProductSectionRequest;
 import com.fanproduction.gui.dto.request.fan.UpdateProductSeriesRequest;
 import com.fanproduction.gui.dto.request.fan.UpdateProductSpeciesRequest;
 import com.fanproduction.gui.dto.request.fan.UpdateProductTypeRequest;
+import com.fanproduction.gui.dto.response.CardRoleDto;
 import com.fanproduction.gui.dto.response.FieldPresetDto;
 import com.fanproduction.gui.dto.response.ProductSectionDto;
 import com.fanproduction.gui.dto.response.ProductSeriesDto;
@@ -32,6 +34,8 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Window;
 import lombok.extern.slf4j.Slf4j;
@@ -790,16 +794,45 @@ public class TemplateTreeController {
         nameField.setPromptText("Вентилятор канальный");
         designationField.setPromptText("VRK-PatAIR (обязательно, уникально)");
 
+        // US10.7.2: назначение типа — роль при комплектации
+        ComboBox<CardRoleDto> roleCombo = new ComboBox<>();
+        roleCombo.setMaxWidth(Double.MAX_VALUE);
+        CardRoleDto noRole = new CardRoleDto(null, null, "— не задано —", false, 0);
+        roleCombo.getItems().add(noRole);
+        try {
+            roleCombo.getItems().addAll(CardRoleClient.getAll());
+        } catch (Exception ignored) {
+            // роли не критичны для сохранения типа
+        }
+        CardRoleDto selectedRole = roleCombo.getItems().stream()
+                .filter(r -> existing != null && r.getId() != null
+                        && r.getId().equals(existing.getCardRoleId()))
+                .findFirst().orElse(noRole);
+        roleCombo.getSelectionModel().select(selectedRole);
+
+        Button newRoleButton = new Button("＋ Роль");
+        newRoleButton.setOnAction(e -> {
+            CardRoleDto created = showCreateRoleDialog();
+            if (created != null) {
+                roleCombo.getItems().add(created);
+                roleCombo.getSelectionModel().select(created);
+            }
+        });
+
+        HBox roleBox = new HBox(6, roleCombo, newRoleButton);
+        HBox.setHgrow(roleCombo, Priority.ALWAYS);
+
         GridPane grid = buildGrid();
         int row = 0;
         grid.add(new Label("Наименование:"), 0, row);
         grid.add(nameField, 1, row++);
         grid.add(new Label("Обозначение:*"), 0, row);
         grid.add(designationField, 1, row++);
+        grid.add(new Label("Назначение:"), 0, row);
+        grid.add(roleBox, 1, row++);
 
         dialog.getDialogPane().setContent(grid);
 
-        // Валидация ДО закрытия: пустое designation → диалог остаётся открытым
         Button okButton = (Button) dialog.getDialogPane().lookupButton(
                 dialog.getDialogPane().getButtonTypes().get(0));
         okButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
@@ -814,23 +847,62 @@ public class TemplateTreeController {
 
             String name = nameField.getText().trim();
             String designation = designationField.getText().trim();
+            CardRoleDto role = roleCombo.getSelectionModel().getSelectedItem();
+            Long roleId = role != null ? role.getId() : null;
 
             runAsync(() -> {
+                Long typeId;
                 if (existing == null) {
-                    ProductTypeClient.createType(new CreateProductTypeRequest(
+                    ProductTypeDto created = ProductTypeClient.createType(new CreateProductTypeRequest(
                             name.isEmpty() ? null : name, designation, sectionId));
+                    typeId = created.getId();
                 } else {
                     ProductTypeClient.updateType(existing.getId(),
                             new UpdateProductTypeRequest(
                                     name.isEmpty() ? null : name, designation));
+                    typeId = existing.getId();
+                }
+                if (typeId != null) {
+                    CardRoleClient.assignRole(typeId, roleId);
                 }
             }, existing == null ? "Тип создан" : "Тип обновлён");
         });
     }
 
-    // ==========================================================
-    // ВИД
-    // ==========================================================
+    /**
+     * US10.7.2: диалог создания роли продукции (код + наименование).
+     */
+    private CardRoleDto showCreateRoleDialog() {
+        Dialog<ButtonType> dialog = buildDialog("Новая роль продукции");
+        TextField codeField = new TextField();
+        codeField.setPromptText("VALVE, HEAT_EXCHANGER…");
+        TextField nameField = new TextField();
+        nameField.setPromptText("Клапан");
+
+        GridPane grid = buildGrid();
+        grid.add(new Label("Код:*"), 0, 0);
+        grid.add(codeField, 1, 0);
+        grid.add(new Label("Наименование:*"), 0, 1);
+        grid.add(nameField, 1, 1);
+        dialog.getDialogPane().setContent(grid);
+
+        final CardRoleDto[] result = new CardRoleDto[1];
+        dialog.showAndWait().ifPresent(button -> {
+            if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) return;
+            String code = codeField.getText().trim();
+            String name = nameField.getText().trim();
+            if (code.isEmpty() || name.isEmpty()) {
+                showAlert("Ошибка", "Код и наименование роли обязательны", Alert.AlertType.WARNING);
+                return;
+            }
+            try {
+                result[0] = CardRoleClient.create(code, name);
+            } catch (Exception e) {
+                showAlert("Ошибка", e.getMessage(), Alert.AlertType.ERROR);
+            }
+        });
+        return result[0];
+    }
 
     private void handleCreateSpecies(ProductTypeDto parentType) {
         showSpeciesDialog(parentType.getId(), null);

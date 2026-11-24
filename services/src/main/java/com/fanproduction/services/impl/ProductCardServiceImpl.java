@@ -32,8 +32,6 @@ public class ProductCardServiceImpl implements ProductCardService {
     private final ProductCardRepository productCardRepository;
     private final MotorCardRepository motorCardRepository;
     private final MotorWheelCardRepository motorWheelCardRepository;
-    private final RadialWheelCardRepository radialWheelCardRepository;
-    private final AxialWheelCardRepository axialWheelCardRepository;
     private final ProductCardFactory cardFactory;
     private final DynamicCardService fanCardService;
     private final ApplicationEventPublisher eventPublisher;
@@ -237,12 +235,6 @@ public class ProductCardServiceImpl implements ProductCardService {
         List<MotorWheelCardEntity> motorWheels = motorWheelCardRepository.searchByFields(likePattern);
         results.addAll(motorWheels);
 
-        List<RadialWheelCardEntity> radialWheels = radialWheelCardRepository.searchByFields(likePattern);
-        results.addAll(radialWheels);
-
-        List<AxialWheelCardEntity> axialWheels = axialWheelCardRepository.searchByFields(likePattern);
-        results.addAll(axialWheels);
-
         return results;
     }
 
@@ -262,8 +254,9 @@ public class ProductCardServiceImpl implements ProductCardService {
             switch (cardType) {
                 case "MOTOR" -> count = productCardRepository.countFanCardsUsingMotor(cardId);
                 case "MOTOR_WHEEL" -> count = productCardRepository.countFanCardsUsingMotorWheel(cardId);
-                case "RADIAL_WHEEL" -> count = productCardRepository.countFanCardsUsingRadialWheel(cardId);
-                case "AXIAL_WHEEL" -> count = productCardRepository.countFanCardsUsingAxialWheel(cardId);
+                // US10.7: колёса стали динамическими карточками — проверяем обе ссылки
+                case "DYNAMIC" -> count = productCardRepository.countFanCardsUsingRadialWheel(cardId)
+                        + productCardRepository.countFanCardsUsingAxialWheel(cardId);
                 default -> {
                     return false;
                 }
@@ -290,8 +283,13 @@ public class ProductCardServiceImpl implements ProductCardService {
             switch (cardType) {
                 case "MOTOR" -> fanCards = productCardRepository.findFanCardsByMotorId(cardId);
                 case "MOTOR_WHEEL" -> fanCards = productCardRepository.findFanCardsByMotorWheelId(cardId);
-                case "RADIAL_WHEEL" -> fanCards = productCardRepository.findFanCardsByRadialWheelId(cardId);
-                case "AXIAL_WHEEL" -> fanCards = productCardRepository.findFanCardsByAxialWheelId(cardId);
+                // US10.7: колесо — динамическая карточка; ищем ссылки по обеим колонкам
+                case "DYNAMIC" -> {
+                    List<DynamicCardEntity> used = new ArrayList<>(
+                            productCardRepository.findFanCardsByRadialWheelId(cardId));
+                    used.addAll(productCardRepository.findFanCardsByAxialWheelId(cardId));
+                    fanCards = used;
+                }
                 default -> {
                     return usage;
                 }

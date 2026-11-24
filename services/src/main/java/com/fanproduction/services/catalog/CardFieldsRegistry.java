@@ -2,10 +2,8 @@ package com.fanproduction.services.catalog;
 
 import com.fanproduction.core.dto.FieldInfoDto;
 import com.fanproduction.core.entity.component.ComponentEntity;
-import com.fanproduction.core.entity.product.AxialWheelCardEntity;
 import com.fanproduction.core.entity.product.MotorCardEntity;
 import com.fanproduction.core.entity.product.MotorWheelCardEntity;
-import com.fanproduction.core.entity.product.RadialWheelCardEntity;
 import com.fanproduction.core.enums.CardTemplateType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,8 +23,6 @@ import java.util.Map;
  * <ul>
  *   <li>{@link CardTemplateType#MOTOR} — {@link MotorCardEntity};</li>
  *   <li>{@link CardTemplateType#MOTOR_WHEEL} — {@link MotorWheelCardEntity};</li>
- *   <li>{@link CardTemplateType#RADIAL_WHEEL} — {@link RadialWheelCardEntity};</li>
- *   <li>{@link CardTemplateType#AXIAL_WHEEL} — {@link AxialWheelCardEntity};</li>
  *   <li>{@code "COMPONENT"} — {@link ComponentEntity} (не входит в CardTemplateType).</li>
  * </ul>
  * <p>
@@ -56,15 +52,11 @@ public class CardFieldsRegistry {
     public CardFieldsRegistry() {
         fieldsByType.put(CardTemplateType.MOTOR, motorFields());
         fieldsByType.put(CardTemplateType.MOTOR_WHEEL, motorWheelFields());
-        fieldsByType.put(CardTemplateType.RADIAL_WHEEL, radialWheelFields());
-        fieldsByType.put(CardTemplateType.AXIAL_WHEEL, axialWheelFields());
         componentFields = componentFields();
 
         // Валидация на старте — все поля из реестра должны существовать в сущности
         validateAgainstEntity(MotorCardEntity.class, fieldsByType.get(CardTemplateType.MOTOR));
         validateAgainstEntity(MotorWheelCardEntity.class, fieldsByType.get(CardTemplateType.MOTOR_WHEEL));
-        validateAgainstEntity(RadialWheelCardEntity.class, fieldsByType.get(CardTemplateType.RADIAL_WHEEL));
-        validateAgainstEntity(AxialWheelCardEntity.class, fieldsByType.get(CardTemplateType.AXIAL_WHEEL));
         validateAgainstEntity(ComponentEntity.class, componentFields);
     }
 
@@ -134,47 +126,6 @@ public class CardFieldsRegistry {
         list.add(new FieldInfoDto("voltage", "Напряжение (В)", "INTEGER"));
         list.add(new FieldInfoDto("weightKg", "Масса (кг)", "DOUBLE"));
         list.add(new FieldInfoDto("motorCode", "Код двигателя", "TEXT"));
-        list.add(new FieldInfoDto("fullMarking", "Полная маркировка", "TEXT"));
-        return list;
-    }
-
-    private List<FieldInfoDto> radialWheelFields() {
-        List<FieldInfoDto> list = new ArrayList<>();
-        list.add(new FieldInfoDto("manufacturer", "Производитель", "TEXT"));
-        list.add(new FieldInfoDto("series", "Серия колеса", "TEXT"));
-        list.add(new FieldInfoDto("size", "Размер колеса (мм)", "DOUBLE"));
-        list.add(new FieldInfoDto("marking", "Маркировка", "TEXT"));
-        list.add(new FieldInfoDto("bladeType", "Тип лопаток", "TEXT"));
-        list.add(new FieldInfoDto("bladeMod", "Модификация лопатки", "TEXT"));
-        list.add(new FieldInfoDto("frontDiskMod", "Модификация переднего диска", "TEXT"));
-        list.add(new FieldInfoDto("wheelWidth", "Ширина колеса", "DOUBLE"));
-        list.add(new FieldInfoDto("bladeCount", "Количество лопаток", "INTEGER"));
-        list.add(new FieldInfoDto("bladeLengthCoeff", "Коэф. длины лопатки", "DOUBLE"));
-        list.add(new FieldInfoDto("wheelCode", "Код колеса", "TEXT"));
-        list.add(new FieldInfoDto("wheelFormula", "Формула колеса", "TEXT"));
-        list.add(new FieldInfoDto("diameter", "Диаметр (мм)", "INTEGER"));
-        list.add(new FieldInfoDto("maxSpeedRpm", "Максимальная скорость (об/мин)", "INTEGER"));
-        list.add(new FieldInfoDto("weightKg", "Масса (кг)", "DOUBLE"));
-        list.add(new FieldInfoDto("fullMarking", "Полная маркировка", "TEXT"));
-        return list;
-    }
-
-    private List<FieldInfoDto> axialWheelFields() {
-        List<FieldInfoDto> list = new ArrayList<>();
-        list.add(new FieldInfoDto("manufacturer", "Производитель", "TEXT"));
-        list.add(new FieldInfoDto("series", "Серия колеса", "TEXT"));
-        list.add(new FieldInfoDto("size", "Типоразмер", "DOUBLE"));
-        list.add(new FieldInfoDto("marking", "Маркировка", "TEXT"));
-        list.add(new FieldInfoDto("trimCoefficient", "Коэф. подрезки (%)", "DOUBLE"));
-        list.add(new FieldInfoDto("bladeType", "Тип лопатки", "TEXT"));
-        list.add(new FieldInfoDto("bladeCount", "Количество лопаток", "INTEGER"));
-        list.add(new FieldInfoDto("bladeAngle", "Угол установки", "INTEGER"));
-        list.add(new FieldInfoDto("bladeMaterial", "Материал лопатки", "TEXT"));
-        list.add(new FieldInfoDto("maxBladeCount", "Макс. кол-во лопаток", "INTEGER"));
-        list.add(new FieldInfoDto("wheelDiameter", "Диаметр колеса (мм)", "INTEGER"));
-        list.add(new FieldInfoDto("wheelFormula", "Формула колеса", "TEXT"));
-        list.add(new FieldInfoDto("maxSpeedRpm", "Максимальная скорость (об/мин)", "INTEGER"));
-        list.add(new FieldInfoDto("weightKg", "Масса (кг)", "DOUBLE"));
         list.add(new FieldInfoDto("fullMarking", "Полная маркировка", "TEXT"));
         return list;
     }

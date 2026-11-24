@@ -96,16 +96,14 @@ public interface ProductHierarchyService {
      * @param designation обозначение (обязательное, уникальное)
      * @param createdBy   email создателя (для аудита)
      */
+    /**
+     * Назначить типу роль продукции (US10.7.2). {@code cardRoleId = null} — снять роль.
+     */
+    ProductTypeDto setTypeRole(Long typeId, Long cardRoleId, String updatedBy);
+
     ProductTypeDto createType(String name, String designation, String createdBy);
 
-    /**
-     * Создать тип в конкретном разделе продукции.
-     *
-     * @param name        наименование (может быть пустым)
-     * @param designation обозначение (обязательное, уникальное)
-     * @param sectionId   раздел продукции ({@code null} — не распределён)
-     * @param createdBy   email создателя (для аудита)
-     */
+
     ProductTypeDto createType(String name, String designation, Long sectionId, String createdBy);
 
     /**

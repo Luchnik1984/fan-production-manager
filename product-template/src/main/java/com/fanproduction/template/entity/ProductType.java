@@ -53,6 +53,10 @@ public class ProductType {
     @Column(name = "section_id")
     private Long sectionId;
 
+    /** Роль продукции при комплектации (US10.7.2). */
+    @Column(name = "card_role_id")
+    private Long cardRoleId;
+
     /**
      * Префикс номера изделия для журнала: ED, MW, RW, AW, VRK.
      * Уникальный. Для динамических типов задаётся администратором.

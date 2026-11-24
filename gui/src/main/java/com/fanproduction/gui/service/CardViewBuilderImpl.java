@@ -1,20 +1,17 @@
 package com.fanproduction.gui.service;
 
-import com.fanproduction.gui.client.AxialWheelClient;
 import com.fanproduction.gui.client.ComponentClient;
 import com.fanproduction.gui.client.MotorClient;
 import com.fanproduction.gui.client.MotorWheelClient;
+import com.fanproduction.gui.client.ProductCardClient;
 import com.fanproduction.gui.client.ProductMaterialClient;
-import com.fanproduction.gui.client.RadialWheelClient;
 import com.fanproduction.gui.dto.metadata.FieldMetadataDto;
-import com.fanproduction.gui.dto.response.AxialWheelDto;
 import com.fanproduction.gui.dto.response.ComponentDto;
 import com.fanproduction.gui.dto.response.DynamicFormFieldDto;
 import com.fanproduction.gui.dto.response.DynamicFormMetadataDto;
 import com.fanproduction.gui.dto.response.MotorDto;
 import com.fanproduction.gui.dto.response.MotorWheelDto;
 import com.fanproduction.gui.dto.response.ProductCardDto;
-import com.fanproduction.gui.dto.response.RadialWheelDto;
 import com.fanproduction.gui.dto.view.CardViewField;
 import com.fanproduction.gui.dto.view.CardViewLayout;
 import com.fanproduction.gui.dto.view.CardViewSection;
@@ -443,40 +440,41 @@ public class CardViewBuilderImpl implements CardViewBuilder {
         }
     }
 
+    /** Осевое колесо — динамическая карточка (US10.7.2). */
     private CardViewSubsection buildAxialWheelSection(Long id) {
-        try {
-            AxialWheelDto wheel = AxialWheelClient.getById(id);
-            if (wheel == null) return null;
-
-            List<CardViewField> fields = new ArrayList<>();
-            addIfNotEmpty(fields, "Маркировка", wheel.getFullMarking());
-            addIfNotEmpty(fields, "Типоразмер", formatDouble(wheel.getSize()));
-            addIfNotEmpty(fields, "Диаметр колеса (мм)", formatInt(wheel.getWheelDiameter()));
-            addIfNotEmpty(fields, "Количество лопаток", formatInt(wheel.getBladeCount()));
-            addIfNotEmpty(fields, "Угол установки", formatInt(wheel.getBladeAngle()));
-            addIfNotEmpty(fields, "Материал лопатки", wheel.getBladeMaterial());
-
-            return fields.isEmpty() ? null : new CardViewSubsection("Колесо осевое", fields);
-        } catch (Exception e) {
-            log.warn("Не удалось загрузить AXIAL_WHEEL id={}: {}", id, e.getMessage());
-            return null;
-        }
+        return buildRoleSection(id, "Колесо осевое");
     }
 
+    /** Радиальное колесо — динамическая карточка (US10.7.2). */
     private CardViewSubsection buildRadialWheelSection(Long id) {
+        return buildRoleSection(id, "Колесо радиальное");
+    }
+
+    /**
+     * US10.7.2: колесо стало динамической карточкой, поэтому показываем
+     * её маркировку и все заполненные поля — без знания о конкретных колонках.
+     */
+    private CardViewSubsection buildRoleSection(Long id, String title) {
         try {
-            RadialWheelDto wheel = RadialWheelClient.getById(id);
-            if (wheel == null) return null;
+            var response = ProductCardClient.getCardById(id);
+            if (response == null || !response.isSuccess() || response.getData() == null) {
+                return null;
+            }
+            ProductCardDto card = response.getData();
 
             List<CardViewField> fields = new ArrayList<>();
-            addIfNotEmpty(fields, "Маркировка", wheel.getFullMarking());
-            addIfNotEmpty(fields, "Размер", formatDouble(wheel.getSize()));
-            addIfNotEmpty(fields, "Тип лопаток", wheel.getBladeType());
-            addIfNotEmpty(fields, "Ступица", wheel.getHubType());
+            addIfNotEmpty(fields, "Маркировка", card.getName());
+            if (card.getFields() != null) {
+                card.getFields().forEach((key, value) -> {
+                    if (value != null && !String.valueOf(value).isBlank()) {
+                        addIfNotEmpty(fields, key, String.valueOf(value));
+                    }
+                });
+            }
 
-            return fields.isEmpty() ? null : new CardViewSubsection("Колесо радиальное", fields);
+            return fields.isEmpty() ? null : new CardViewSubsection(title, fields);
         } catch (Exception e) {
-            log.warn("Не удалось загрузить RADIAL_WHEEL id={}: {}", id, e.getMessage());
+            log.warn("Не удалось загрузить карточку \"{}\" id={}: {}", title, id, e.getMessage());
             return null;
         }
     }

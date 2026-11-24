@@ -4,8 +4,6 @@ import com.fanproduction.core.entity.product.BaseProductCard;
 import com.fanproduction.core.entity.product.DynamicCardEntity;
 import com.fanproduction.core.entity.product.MotorCardEntity;
 import com.fanproduction.core.entity.product.MotorWheelCardEntity;
-import com.fanproduction.core.entity.product.RadialWheelCardEntity;
-import com.fanproduction.core.entity.product.AxialWheelCardEntity;
 import com.fanproduction.core.enums.CardTemplateType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -54,10 +52,6 @@ class ProductCardFactoryTest {
                 .isInstanceOf(MotorCardEntity.class);
         assertThat(factory.createCard(CardTemplateType.MOTOR_WHEEL, Map.of()))
                 .isInstanceOf(MotorWheelCardEntity.class);
-        assertThat(factory.createCard(CardTemplateType.RADIAL_WHEEL, Map.of()))
-                .isInstanceOf(RadialWheelCardEntity.class);
-        assertThat(factory.createCard(CardTemplateType.AXIAL_WHEEL, Map.of()))
-                .isInstanceOf(AxialWheelCardEntity.class);
     }
 
     @Test

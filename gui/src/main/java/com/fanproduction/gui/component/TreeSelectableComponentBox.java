@@ -101,52 +101,16 @@ public class TreeSelectableComponentBox {
                         );
                         dialog.show();
                     });
-                } else if ("RADIAL_WHEEL".equals(referenceType)) {
-                    List<RadialWheelDto> items = RadialWheelClient.getAll();
+                } else if ("RADIAL_WHEEL".equals(referenceType) || "AXIAL_WHEEL".equals(referenceType)) {
+                    List<CardSelectionDto> items = CardRoleClient.getCardsByRole(referenceType);
                     Platform.runLater(() -> {
-                        RadialWheelTreeBuilder builder = new RadialWheelTreeBuilder();
+                        CardRoleTreeBuilder builder = new CardRoleTreeBuilder();
                         TreeSelectorDialog dialog = new TreeSelectorDialog(
-                                ownerStage, "Выбор радиального колеса", builder.buildTree(items),
+                                ownerStage, "Выбор комплектующего", builder.buildTree(items),
                                 selected -> {
-                                    if (selected instanceof RadialWheelDto dto) {
+                                    if (selected instanceof CardSelectionDto dto) {
                                         selectedId = dto.getId();
-                                        selectedLabel.setText(dto.getFullMarking());
-                                        selectedLabel.setUserData(selectedId);
-                                        if (onSelect != null) onSelect.accept(selectedId);
-                                    }
-                                },
-                                this::runDialog
-                        );
-                        dialog.show();
-                    });
-                } else if ("MOTOR".equals(referenceType)) {
-                    List<MotorDto> items = MotorClient.getAll();
-                    Platform.runLater(() -> {
-                        MotorTreeBuilder builder = new MotorTreeBuilder();
-                        TreeSelectorDialog dialog = new TreeSelectorDialog(
-                                ownerStage, "Выбор электродвигателя", builder.buildTree(items),
-                                selected -> {
-                                    if (selected instanceof MotorDto dto) {
-                                        selectedId = dto.getId();
-                                        selectedLabel.setText(dto.getFullMarking());
-                                        selectedLabel.setUserData(selectedId);
-                                        if (onSelect != null) onSelect.accept(selectedId);
-                                    }
-                                },
-                                this::runDialog
-                        );
-                        dialog.show();
-                    });
-                } else if ("AXIAL_WHEEL".equals(referenceType)) {
-                    List<AxialWheelDto> items = AxialWheelClient.getAll();
-                    Platform.runLater(() -> {
-                        AxialWheelTreeBuilder builder = new AxialWheelTreeBuilder();
-                        TreeSelectorDialog dialog = new TreeSelectorDialog(
-                                ownerStage, "Выбор осевого колеса", builder.buildTree(items),
-                                selected -> {
-                                    if (selected instanceof AxialWheelDto dto) {
-                                        selectedId = dto.getId();
-                                        selectedLabel.setText(dto.getFullMarking());
+                                        selectedLabel.setText(String.valueOf(dto));
                                         selectedLabel.setUserData(selectedId);
                                         if (onSelect != null) onSelect.accept(selectedId);
                                     }

@@ -47,6 +47,9 @@ public interface ProductTypeRepository extends JpaRepository<ProductType, Long> 
      */
     List<ProductType> findAllBySectionIdOrderByDesignationAsc(Long sectionId);
 
+    /** Типы с указанной ролью продукции (US10.7.2). */
+    List<ProductType> findByCardRoleIdOrderByDesignationAsc(Long cardRoleId);
+
     /**
      * Количество типов в разделе — защита от удаления непустого раздела.
      */

@@ -23,6 +23,9 @@ public class ProductTypeDto {
     private Boolean isSystem;
     /** Раздел продукции, к которому относится тип (null — не распределён). */
     private Long sectionId;
+
+    /** Роль продукции при комплектации (US10.7.2). */
+    private Long cardRoleId;
     /** Префикс номера изделия (ED, MW, RW, AW, VRK). */
     private String codePrefix;
     /** Хардкод-тип: MOTOR, MOTOR_WHEEL, RADIAL_WHEEL, AXIAL_WHEEL; null — динамический. */

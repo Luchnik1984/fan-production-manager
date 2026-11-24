@@ -58,31 +58,6 @@ class CardFieldsRegistryTest {
                         "poles", "voltageCode", "fullMarking");
     }
 
-    // ==========================================================
-    // RADIAL_WHEEL
-    // ==========================================================
-
-    @Test
-    @DisplayName("RADIAL_WHEEL: содержит size и fullMarking")
-    void radialWheelContainsKeyFields() {
-        List<FieldInfoDto> fields = registry.getFields("RADIAL_WHEEL");
-        assertThat(fields).extracting(FieldInfoDto::key)
-                .contains("size", "fullMarking", "bladeType", "wheelFormula");
-    }
-
-    // ==========================================================
-    // AXIAL_WHEEL
-    // ==========================================================
-
-    @Test
-    @DisplayName("AXIAL_WHEEL: содержит size и wheelDiameter")
-    void axialWheelContainsKeyFields() {
-        List<FieldInfoDto> fields = registry.getFields("AXIAL_WHEEL");
-        assertThat(fields).extracting(FieldInfoDto::key)
-                .contains("size", "wheelDiameter", "bladeMaterial", "fullMarking");
-    }
-
-    // ==========================================================
     // COMPONENT
     // ==========================================================
 

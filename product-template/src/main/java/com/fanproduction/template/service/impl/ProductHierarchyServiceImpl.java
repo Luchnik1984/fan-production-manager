@@ -15,6 +15,7 @@ import com.fanproduction.template.exception.TemplateValidationException;
 import com.fanproduction.template.repository.ProductSectionRepository;
 import com.fanproduction.template.repository.ProductSeriesRepository;
 import com.fanproduction.template.repository.ProductSpeciesRepository;
+import com.fanproduction.template.repository.CardRoleRepository;
 import com.fanproduction.template.repository.ProductTypeRepository;
 import com.fanproduction.template.service.ProductHierarchyService;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ import java.util.stream.Collectors;
 public class ProductHierarchyServiceImpl implements ProductHierarchyService {
 
     private final ProductTypeRepository productTypeRepository;
+    private final CardRoleRepository cardRoleRepository;
     private final ProductSpeciesRepository productSpeciesRepository;
     private final ProductSeriesRepository productSeriesRepository;
     private final ProductSectionRepository productSectionRepository;
@@ -256,6 +258,28 @@ public class ProductHierarchyServiceImpl implements ProductHierarchyService {
         ProductType type = productTypeRepository.findById(id)
                 .orElseThrow(() -> new TemplateValidationException("Тип не найден: " + id));
         return toTypeDto(type, null);
+    }
+
+    @Override
+    @Transactional
+    public ProductTypeDto setTypeRole(Long typeId, Long cardRoleId, String updatedBy) {
+        ProductType type = productTypeRepository.findById(typeId)
+                .orElseThrow(() -> new TemplateValidationException("Тип не найден: " + typeId));
+
+        if (cardRoleId != null) {
+            cardRoleRepository.findById(cardRoleId)
+                    .orElseThrow(() -> new TemplateValidationException("Роль не найдена: " + cardRoleId));
+        }
+
+        type.setCardRoleId(cardRoleId);
+        ProductType saved = productTypeRepository.save(type);
+
+        String roleLabel = cardRoleId == null ? "роль снята"
+                : "роль: " + cardRoleRepository.findById(cardRoleId).map(r -> r.getName()).orElse("?");
+        publishAudit(updatedBy, AuditAction.TEMPLATE_UPDATE,
+                "Тип '" + saved.getDesignation() + "': " + roleLabel);
+
+        return toTypeDto(saved, null);
     }
 
     @Override
@@ -689,6 +713,7 @@ public class ProductHierarchyServiceImpl implements ProductHierarchyService {
                 displayName,
                 type.getIsSystem(),
                 type.getSectionId(),
+                type.getCardRoleId(),
                 type.getCodePrefix(),
                 type.getSystemCardType(),
                 type.getCreatedAt(),

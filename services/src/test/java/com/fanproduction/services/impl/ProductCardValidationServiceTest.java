@@ -144,19 +144,6 @@ class ProductCardValidationServiceTest {
                 .doesNotThrowAnyException();
     }
 
-    @Test
-    @DisplayName("RADIAL_WHEEL: не валидируется в первом приближении")
-    void radialWheelNotValidated() {
-        assertThatCode(() -> service.validateForCreate(CardTemplateType.RADIAL_WHEEL, Map.of()))
-                .doesNotThrowAnyException();
-    }
-
-    @Test
-    @DisplayName("AXIAL_WHEEL: не валидируется в первом приближении")
-    void axialWheelNotValidated() {
-        assertThatCode(() -> service.validateForCreate(CardTemplateType.AXIAL_WHEEL, Map.of()))
-                .doesNotThrowAnyException();
-    }
 
     @Test
     @DisplayName("DYNAMIC: не валидируется здесь — обязательные поля задаёт шаблон")

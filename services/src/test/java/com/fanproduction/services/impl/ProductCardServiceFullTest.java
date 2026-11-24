@@ -49,8 +49,6 @@ class ProductCardServiceFullTest {
     @Mock private ProductCardRepository productCardRepository;
     @Mock private MotorCardRepository motorCardRepository;
     @Mock private MotorWheelCardRepository motorWheelCardRepository;
-    @Mock private RadialWheelCardRepository radialWheelCardRepository;
-    @Mock private AxialWheelCardRepository axialWheelCardRepository;
     @Mock private DynamicCardRepository fanCardRepository;
     @Mock private DynamicCardService fanCardService;
     @Mock private ComponentService componentService;
@@ -68,8 +66,6 @@ class ProductCardServiceFullTest {
                 productCardRepository,
                 motorCardRepository,
                 motorWheelCardRepository,
-                radialWheelCardRepository,
-                axialWheelCardRepository,
                 realFactory,
                 fanCardService,
                 eventPublisher,

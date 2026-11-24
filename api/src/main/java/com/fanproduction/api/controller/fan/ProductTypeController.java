@@ -107,6 +107,20 @@ public class ProductTypeController extends BaseController {
     }
 
     /**
+     * Назначить типу роль продукции (US10.7.2).
+     * <p>
+     * Без {@code cardRoleId} роль снимается — тип перестаёт участвовать
+     * в селекторах комплектации.
+     */
+    @PutMapping("/{id}/role")
+    public ApiResponse<ProductTypeDto> setRole(
+            @PathVariable Long id,
+            @RequestParam(required = false) Long cardRoleId) {
+        ProductTypeDto updated = productHierarchyService.setTypeRole(id, cardRoleId, getCurrentUser());
+        return ApiResponse.success("Роль типа обновлена", updated);
+    }
+
+    /**
      * Удалить тип.
      */
     @DeleteMapping("/{id}")
