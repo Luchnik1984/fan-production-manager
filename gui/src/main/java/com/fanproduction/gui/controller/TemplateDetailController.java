@@ -86,6 +86,8 @@ public class TemplateDetailController {
     @javafx.fxml.FXML private Button undeprecateButton;
     @javafx.fxml.FXML private Button deleteVersionButton;
     @javafx.fxml.FXML private Button cloneButton;
+    @javafx.fxml.FXML private Button exportButton;
+    @javafx.fxml.FXML private Button importButton;
     @javafx.fxml.FXML private Label statusLabel;
 
     // ==========================================================
@@ -94,6 +96,10 @@ public class TemplateDetailController {
 
     private static final DateTimeFormatter DATE_FORMATTER =
             DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+
+    /** JSON для экспорта/импорта шаблонов (US10.6). */
+    private static final com.fasterxml.jackson.databind.ObjectMapper JSON_MAPPER =
+            new com.fasterxml.jackson.databind.ObjectMapper();
 
     private final ObservableList<ProductTemplateVersionDto> versionsList = FXCollections.observableArrayList();
 
@@ -299,6 +305,8 @@ public class TemplateDetailController {
         previewButton.setDisable(!hasSelection);
 
         cloneButton.setDisable(!hasTemplate);
+        exportButton.setDisable(!hasTemplate);
+        importButton.setDisable(currentSeries == null);
         editTemplateButton.setDisable(!hasTemplate);
         refreshButton.setDisable(currentSeries == null);
     }
@@ -526,6 +534,62 @@ public class TemplateDetailController {
     // ==========================================================
     // CLONE
     // ==========================================================
+    /**
+     * US10.6: экспорт шаблона в JSON-файл.
+     */
+    @javafx.fxml.FXML
+    private void handleExport() {
+        if (currentTemplate == null) {
+            return;
+        }
+
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Экспорт шаблона");
+        chooser.getExtensionFilters().add(
+                new javafx.stage.FileChooser.ExtensionFilter("JSON", "*.json"));
+        chooser.setInitialFileName("template-" + currentTemplate.getId() + ".json");
+
+        java.io.File file = chooser.showSaveDialog(owner());
+        if (file == null) {
+            return;
+        }
+
+        runAsync(() -> {
+            com.fanproduction.gui.dto.response.TemplateExchangeDto dto =
+                    ProductTemplateClient.exportTemplate(currentTemplate.getId());
+            try (java.io.Writer writer = java.nio.file.Files.newBufferedWriter(
+                    file.toPath(), java.nio.charset.StandardCharsets.UTF_8)) {
+                JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValue(writer, dto);
+            }
+        }, "Шаблон экспортирован: " + file.getName());
+    }
+
+    /**
+     * US10.6: импорт шаблона из JSON-файла в текущую серию.
+     */
+    @javafx.fxml.FXML
+    private void handleImport() {
+        if (currentSeries == null) {
+            return;
+        }
+
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Импорт шаблона");
+        chooser.getExtensionFilters().add(
+                new javafx.stage.FileChooser.ExtensionFilter("JSON", "*.json"));
+
+        java.io.File file = chooser.showOpenDialog(owner());
+        if (file == null) {
+            return;
+        }
+
+        runAsync(() -> {
+            com.fanproduction.gui.dto.response.TemplateExchangeDto dto =
+                    JSON_MAPPER.readValue(file, com.fanproduction.gui.dto.response.TemplateExchangeDto.class);
+            ProductTemplateClient.importTemplate(currentSeries.getId(), dto);
+        }, "Шаблон импортирован: " + file.getName());
+    }
+
     @javafx.fxml.FXML
     private void handleClone() {
         if (currentTemplate == null) return;

@@ -75,6 +75,8 @@
             <HBox spacing="8">
                 <Button fx:id="createVersionButton" text="➕ Создать версию"
                         onAction="#handleCreateVersion" minWidth="170"/>
+                <Button fx:id="exportButton" text="📤 Экспорт" onAction="#handleExport" minWidth="110"/>
+                <Button fx:id="importButton" text="📥 Импорт" onAction="#handleImport" minWidth="110"/>
                 <Button fx:id="cloneButton" text="📋 Клонировать"
                         onAction="#handleClone" minWidth="140"/>
                 <Region HBox.hgrow="ALWAYS"/>
