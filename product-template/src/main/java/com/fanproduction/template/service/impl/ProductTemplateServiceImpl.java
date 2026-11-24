@@ -125,6 +125,58 @@ public class ProductTemplateServiceImpl implements ProductTemplateService {
 
     @Override
     @Transactional
+    public ProductTemplateDto importTemplate(Long seriesId,
+                                             com.fanproduction.template.dto.TemplateExchangeDto dto,
+                                             String createdBy) {
+        if (dto == null) {
+            throw new TemplateValidationException("Пустой файл шаблона");
+        }
+        if (dto.name() == null || dto.name().isBlank()) {
+            throw new TemplateValidationException("В файле не указано наименование шаблона");
+        }
+
+        ProductTemplateDto created = createTemplate(
+                seriesId,
+                dto.name().trim(),
+                dto.description(),
+                dto.fields(),
+                dto.markingRule(),
+                createdBy);
+
+        publishAudit(createdBy, AuditAction.TEMPLATE_CREATE,
+                "Импортирован шаблон '" + created.name() + "' в серию ID=" + seriesId);
+
+        log.info("Шаблон импортирован: id={}, seriesId={}", created.id(), seriesId);
+        return created;
+    }
+
+    @Override
+    public com.fanproduction.template.dto.TemplateExchangeDto exportTemplate(Long templateId) {
+        ProductTemplate template = findTemplateOrThrow(templateId);
+
+        ProductTemplateVersion source = null;
+        if (template.getCurrentVersionId() != null) {
+            source = productTemplateVersionRepository.findById(template.getCurrentVersionId())
+                    .orElse(null);
+        }
+        if (source == null) {
+            List<ProductTemplateVersion> versions =
+                    productTemplateVersionRepository.findByTemplateIdOrderByVersionDesc(templateId);
+            source = versions.isEmpty() ? null : versions.get(0);
+        }
+
+        return new com.fanproduction.template.dto.TemplateExchangeDto(
+                template.getName(),
+                template.getDescription(),
+                source != null && source.getFieldsJson() != null ? source.getFieldsJson() : List.of(),
+                source != null && source.getMarkingRuleJson() != null
+                        ? source.getMarkingRuleJson()
+                        : MarkingRule.empty()
+        );
+    }
+
+    @Override
+    @Transactional
     public ProductTemplateDto updateTemplate(Long id, String name, String description, String updatedBy) {
         ProductTemplate template = findTemplateOrThrow(id);
 

@@ -13,6 +13,7 @@ import com.fanproduction.template.enums.TemplateStatus;
 import com.fanproduction.template.exception.TemplateValidationException;
 import com.fanproduction.template.model.Condition;
 import com.fanproduction.template.model.FieldDefinition;
+import com.fanproduction.template.model.MarkingRule;
 import com.fanproduction.template.repository.ProductSeriesRepository;
 import com.fanproduction.template.repository.ProductSpeciesRepository;
 import com.fanproduction.template.repository.ProductTemplateRepository;
@@ -399,6 +400,30 @@ class DynamicFormBuilderTest {
                 false, null, null, null, null, null, null,
                 null, null, null, null, null, displayOrder, null
         );
+    }
+
+    /**
+     * US10.6: поле без группы попадает в «Основные», с группой — сохраняет её.
+     */
+    @Test
+    @DisplayName("Группа поля передаётся в DTO формы")
+    void groupPassedToDto() {
+        FieldDefinition grouped = new FieldDefinition(
+                "voltage", "Напряжение", FieldType.NUMBER,
+                false, null, null, null, null, null, null,
+                null, null, null, null, null, 1, null, "Электрика");
+        FieldDefinition ungrouped = field("series", 2);
+
+        mockChain();
+        version.setFieldsJson(List.of(grouped, ungrouped));
+        version.setMarkingRuleJson(MarkingRule.empty());
+        when(productTemplateVersionRepository.findById(10L)).thenReturn(Optional.of(version));
+
+        var metadata = builder.buildFormMetadata(10L);
+
+        assertThat(metadata.fields())
+                .extracting(f -> f.key() + "=" + f.group())
+                .containsExactly("voltage=Электрика", "series=Основные");
     }
 
     private static FieldDefinition separatorField(String label, Integer displayOrder) {

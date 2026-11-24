@@ -617,6 +617,7 @@ public class FieldMetadataService {
         target.setVisibleIf(source.getVisibleIf());
         target.setRequiredIf(source.getRequiredIf());
         target.setOnSelect(source.getOnSelect());
+        target.setGroup(source.getGroup());
 
         // Видимость: если есть visibleIf — изначально скрыто до первого вычисления
         target.setVisible(source.getVisibleIf() == null);

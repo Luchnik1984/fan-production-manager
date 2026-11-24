@@ -170,6 +170,28 @@ public class ProductTemplateController extends BaseController {
     // ==========================================================
 
     /**
+     * Экспорт шаблона в переносимый JSON (без id и привязки к серии).
+     */
+    @GetMapping("/{id}/export")
+    public ApiResponse<com.fanproduction.template.dto.TemplateExchangeDto> exportTemplate(
+            @PathVariable Long id) {
+        return ApiResponse.success(productTemplateService.exportTemplate(id));
+    }
+
+    /**
+     * Импорт шаблона в указанную серию: создаётся шаблон и DRAFT-версия
+     * с полями и правилом из файла.
+     */
+    @PostMapping("/import")
+    public ApiResponse<ProductTemplateDto> importTemplate(
+            @RequestParam Long seriesId,
+            @RequestBody com.fanproduction.template.dto.TemplateExchangeDto dto) {
+        ProductTemplateDto imported = productTemplateService.importTemplate(
+                seriesId, dto, getCurrentUser());
+        return ApiResponse.success("Шаблон импортирован", imported);
+    }
+
+    /**
      * Создать новую DRAFT-версию.
      * <p>
      * Запрещено, если у шаблона уже есть DRAFT.

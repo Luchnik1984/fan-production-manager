@@ -67,6 +67,36 @@ public class ProductTemplateClient {
     // TEMPLATE — CREATE / UPDATE / DELETE / CLONE
     // ==========================================================
 
+    /**
+     * Экспорт шаблона: поля и правило текущей версии (US10.6).
+     */
+    public static com.fanproduction.gui.dto.response.TemplateExchangeDto exportTemplate(Long templateId)
+            throws Exception {
+        TypeReference<ApiResponse<com.fanproduction.gui.dto.response.TemplateExchangeDto>> typeRef =
+                new TypeReference<>() {};
+        ApiResponse<com.fanproduction.gui.dto.response.TemplateExchangeDto> response =
+                ApiClient.get(BASE_PATH + "/" + templateId + "/export", typeRef);
+        if (response.isSuccess() && response.getData() != null) {
+            return response.getData();
+        }
+        throw new RuntimeException("Не удалось экспортировать шаблон: " + response.getMessage());
+    }
+
+    /**
+     * Импорт шаблона в указанную серию (US10.6).
+     */
+    public static ProductTemplateDto importTemplate(Long seriesId,
+                                                    com.fanproduction.gui.dto.response.TemplateExchangeDto dto)
+            throws Exception {
+        TypeReference<ApiResponse<ProductTemplateDto>> typeRef = new TypeReference<>() {};
+        ApiResponse<ProductTemplateDto> response = ApiClient.post(
+                BASE_PATH + "/import?seriesId=" + seriesId, dto, typeRef);
+        if (response.isSuccess() && response.getData() != null) {
+            return response.getData();
+        }
+        throw new RuntimeException("Не удалось импортировать шаблон: " + response.getMessage());
+    }
+
     public static ProductTemplateDto createTemplate(CreateProductTemplateRequest request) throws Exception {
         TypeReference<ApiResponse<ProductTemplateDto>> typeRef = new TypeReference<>() {};
         ApiResponse<ProductTemplateDto> response = ApiClient.post(BASE_PATH, request, typeRef);

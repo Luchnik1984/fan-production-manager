@@ -17,6 +17,8 @@
                     onAction="#handleCreateTemplate"
                     minWidth="180"
                     style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;"/>
+            <Button fx:id="importButton" text="📥 Импорт шаблона"
+                    onAction="#handleImport" minWidth="180"/>
         </VBox>
     </StackPane>
 
@@ -75,6 +77,8 @@
             <HBox spacing="8">
                 <Button fx:id="createVersionButton" text="➕ Создать версию"
                         onAction="#handleCreateVersion" minWidth="170"/>
+                <Button fx:id="exportButton" text="📤 Экспорт шаблона" onAction="#handleExport" minWidth="170"/>
+                <Button fx:id="deleteTemplateButton" text="🗑 Удалить шаблон" onAction="#handleDeleteTemplate" minWidth="170"/>
                 <Button fx:id="cloneButton" text="📋 Клонировать"
                         onAction="#handleClone" minWidth="140"/>
                 <Region HBox.hgrow="ALWAYS"/>
@@ -87,7 +91,7 @@
                         onAction="#handleDeprecate" minWidth="130"/>
                 <Button fx:id="archiveButton" text="📦 В архив"
                         onAction="#handleArchive" minWidth="150"/>
-                <Button fx:id="deleteVersionButton" text="🗑 Удалить"
+                <Button fx:id="deleteVersionButton" text="🗑 Удалить версию"
                         onAction="#handleDeleteVersion" minWidth="120"/>
             </HBox>
             <HBox spacing="8">

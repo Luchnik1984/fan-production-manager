@@ -80,4 +80,7 @@ public class FieldDefinitionDto {
 
     /** Формула (для COMPUTED-полей, DSL). */
     private String formula;
+
+    /** Группа (секция) формы: «Основные», «Электрика», «Исполнение». */
+    private String group;
 }
