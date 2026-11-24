@@ -32,6 +32,8 @@ public record DynamicFormFieldDto(
         Condition visibleIf,
         Condition requiredIf,
         OnSelectAction onSelect,
+        /** Формула DSL для COMPUTED-полей (US10.7.3). */
+        String formula,
         /**
          * Группа (секция) формы; никогда не {@code null} — поля без группы
          * попадают в «Основные».

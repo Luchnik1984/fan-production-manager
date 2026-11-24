@@ -141,6 +141,7 @@ public class DynamicFormBuilderImpl implements DynamicFormBuilder {
                 def.visibleIf(),
                 def.requiredIf(),
                 def.onSelect(),
+                def.formula(),
                 def.groupOrDefault()
         );
     }

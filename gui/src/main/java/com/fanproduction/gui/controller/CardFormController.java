@@ -73,6 +73,9 @@ public class CardFormController {
     private final Map<String, Label> fieldHints = new HashMap<>();
     private FieldVisibilityManager visibilityManager;
 
+    /** Идёт подстановка вычисленных значений — не перезапускать пересчёт (US10.7.3). */
+    private boolean applyingComputed = false;
+
 
     public CardFormController(Stage owner, String cardType, ProductCardDto existingCard, Runnable onSaveCallback) {
         this.stage = new Stage();
@@ -392,8 +395,9 @@ public class CardFormController {
             row++;
         }
 
-        // Для FAN: добавляем поле «Полная маркировка» последним
-        if (isFan) {
+        // Для FAN: добавляем поле «Полная маркировка» последним,
+        // но только если шаблон сам его не объявил (иначе будет дубль)
+        if (isFan && !fieldControls.containsKey("fullMarking")) {
             Label fmLabel = new Label("Полная маркировка *");
             fmLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #B71C1C;");
 
@@ -438,7 +442,81 @@ public class CardFormController {
         initVisibilityManager(fields);
 
         CardFormConfigurator.configure(cardType, fieldControls, fieldLabels, fieldHints, existingCard != null);
+
+        // US10.7.3: вычисляемые поля (COMPUTED) считаем сами — сервер только
+        // проверяет формулу, но не подставляет значения при вводе
+        setupComputedFields(fields);
+
         return grid;
+    }
+
+    /**
+     * US10.7.3: пересчёт COMPUTED-полей при изменении любого поля формы.
+     * <p>
+     * Формулы выполняет сервер (FormulaPreviewClient): DSL один для сервера
+     * и клиента, дублировать парсер не нужно. Первый расчёт запускается сразу
+     * после построения формы, дальше — с задержкой 400 мс после правки.
+     */
+    private void setupComputedFields(List<FieldMetadataDto> fields) {
+        List<FieldMetadataDto> computed = fields.stream()
+                .filter(f -> f.getFormula() != null && !f.getFormula().isBlank())
+                .toList();
+        if (computed.isEmpty()) {
+            return;
+        }
+
+        javafx.animation.PauseTransition debounce =
+                new javafx.animation.PauseTransition(javafx.util.Duration.millis(400));
+        debounce.setOnFinished(e -> recomputeComputedFields(computed));
+
+        Runnable schedule = () -> {
+            if (!applyingComputed) {
+                debounce.playFromStart();
+            }
+        };
+
+        for (Node control : fieldControls.values()) {
+            if (control instanceof TextField tf) {
+                tf.textProperty().addListener((obs, oldV, newV) -> schedule.run());
+            } else if (control instanceof TextArea ta) {
+                ta.textProperty().addListener((obs, oldV, newV) -> schedule.run());
+            } else if (control instanceof ComboBox<?> cb) {
+                cb.valueProperty().addListener((obs, oldV, newV) -> schedule.run());
+            } else if (control instanceof CheckBox ch) {
+                ch.selectedProperty().addListener((obs, oldV, newV) -> schedule.run());
+            }
+        }
+
+        debounce.playFromStart();
+    }
+
+    /** Считает все COMPUTED-поля в фоновом потоке и подставляет результаты. */
+    private void recomputeComputedFields(List<FieldMetadataDto> computed) {
+        final Map<String, Object> values = collectAllValues();
+
+        new Thread(() -> {
+            Map<String, String> results = new LinkedHashMap<>();
+            for (FieldMetadataDto field : computed) {
+                try {
+                    results.put(field.getName(),
+                            com.fanproduction.gui.client.FormulaPreviewClient.preview(
+                                    field.getFormula(), values));
+                } catch (Exception ignored) {
+                    // незаполненные зависимости — нормальная ситуация при вводе
+                }
+            }
+            if (results.isEmpty()) {
+                return;
+            }
+            javafx.application.Platform.runLater(() -> {
+                applyingComputed = true;
+                try {
+                    results.forEach((key, value) -> setFieldValue(key, value, false));
+                } finally {
+                    applyingComputed = false;
+                }
+            });
+        }, "computed-fields").start();
     }
 
     /**

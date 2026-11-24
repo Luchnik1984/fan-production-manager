@@ -35,6 +35,8 @@ public class DynamicFormFieldDto {
     private ConditionDto visibleIf;
     private ConditionDto requiredIf;
     private OnSelectActionDto onSelect;
+    /** Формула DSL для COMPUTED-полей (US10.7.3). */
+    private String formula;
     /** Группа (секция) формы; null = «Основные». */
     private String group;
 }
