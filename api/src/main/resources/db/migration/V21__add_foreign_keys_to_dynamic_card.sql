@@ -1,5 +1,5 @@
 -- ============================================================================
--- V23__add_foreign_keys_to_dynamic_card.sql
+-- V21__add_foreign_keys_to_dynamic_card.sql
 -- Добавление внешних ключей в таблицу dynamic_card.
 -- Выполняется после создания всех связанных таблиц (V16-V21).
 --
@@ -16,15 +16,18 @@ ALTER TABLE dynamic_card ADD CONSTRAINT fk_dynamic_card_motor_wheel
 
 -- ============================================================================
 -- 2. ВНЕШНИЙ КЛЮЧ ДЛЯ radial_wheel_id
+-- US10.7: радиальные колёса стали динамическими карточками, поэтому ключ
+-- ведёт на общий предок base_product_card. Тип карточки проверяет сервис.
 -- ============================================================================
 ALTER TABLE dynamic_card ADD CONSTRAINT fk_dynamic_card_radial_wheel
-    FOREIGN KEY (radial_wheel_id) REFERENCES radial_wheel_card(id) ON DELETE SET NULL;
+    FOREIGN KEY (radial_wheel_id) REFERENCES base_product_card(id) ON DELETE SET NULL;
 
 -- ============================================================================
 -- 3. ВНЕШНИЙ КЛЮЧ ДЛЯ axial_wheel_id
+-- US10.7: аналогично радиальным — осевые колёса теперь dynamic_card.
 -- ============================================================================
 ALTER TABLE dynamic_card ADD CONSTRAINT fk_dynamic_card_axial_wheel
-    FOREIGN KEY (axial_wheel_id) REFERENCES axial_wheel_card(id) ON DELETE SET NULL;
+    FOREIGN KEY (axial_wheel_id) REFERENCES base_product_card(id) ON DELETE SET NULL;
 
 -- ============================================================================
 -- 4. НОВАЯ КОЛОНКА product_template_id — ссылка на логический шаблон

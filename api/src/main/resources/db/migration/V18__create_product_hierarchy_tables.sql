@@ -1,5 +1,5 @@
 -- ============================================================================
--- V20__create_product_hierarchy_tables.sql
+-- V18__create_product_hierarchy_tables.sql
 -- Иерархия продукции: тип → вид → серия.
 --
 -- Все три таблицы — «тонкие» справочники без бизнес-логики.
@@ -34,7 +34,7 @@ CREATE TABLE product_type
 
     CONSTRAINT chk_product_type_system_card_type
         CHECK (system_card_type IS NULL OR system_card_type IN
-                                             ('MOTOR', 'MOTOR_WHEEL', 'RADIAL_WHEEL', 'AXIAL_WHEEL'))
+                                             ('MOTOR', 'MOTOR_WHEEL'))
 );
 
 -- Обозначение типа уникально (регистронезависимо)
@@ -54,23 +54,34 @@ COMMENT ON COLUMN product_type.designation IS 'Обозначение типа, 
 COMMENT ON COLUMN product_type.is_system IS 'Системный тип — нельзя удалять';
 COMMENT ON COLUMN product_type.section_id IS 'Ссылка на раздел продукции';
 COMMENT ON COLUMN product_type.code_prefix IS 'Префикс уникального номера изделия: ED, MW, RW, AW, VRK (VARCHAR(4), уникальный)';
-COMMENT ON COLUMN product_type.system_card_type IS 'Хардкод-тип: MOTOR, MOTOR_WHEEL, RADIAL_WHEEL, AXIAL_WHEEL; NULL для динамических';
+COMMENT ON COLUMN product_type.system_card_type IS 'Хардкод-тип: MOTOR, MOTOR_WHEEL; NULL для динамических (включая колёса с US10.7)';
 COMMENT ON COLUMN product_type.journal_number_rule IS 'Правило нумерации журнала (JSONB), например {"format": "{YYYY}{MM}{TYPE_CODE}{NNNN}"}';
 COMMENT ON COLUMN product_type.journal_columns IS 'Набор столбцов журнала для этого типа (JSONB)';
 
 -- ============================================================================
--- Четыре системных типа продукции
+-- Хардкод-типы продукции (US10.7: осталось два)
 -- До US10 они существовали только как значения enum CardTemplateType;
 -- теперь это записи справочника, на которые ссылается dynamic_card,
 -- журнал и генерация документов.
+--
+-- Колёса (AW, RW) с US10.7 — обычные динамические типы: ниже они создаются
+-- с system_card_type = NULL и получают шаблоны, как остальная продукция.
 -- ============================================================================
 INSERT INTO product_type (name, designation, is_system, section_id, code_prefix, system_card_type,
                           created_at, created_by)
 SELECT v.name, v.designation, TRUE, s.id, v.code_prefix, v.system_card_type, NOW(), 'system'
 FROM (VALUES ('Электродвигатель', 'ED', 'ED', 'MOTOR'),
-             ('Мотор-колесо', 'MW', 'MW', 'MOTOR_WHEEL'),
-             ('Колесо радиальное', 'RW', 'RW', 'RADIAL_WHEEL'),
-             ('Колесо осевое', 'AW', 'AW', 'AXIAL_WHEEL')) AS v(name, designation, code_prefix, system_card_type)
+             ('Мотор-колесо', 'MW', 'MW', 'MOTOR_WHEEL')) AS v(name, designation, code_prefix, system_card_type)
+         CROSS JOIN product_section s
+WHERE s.parent_id IS NULL
+  AND LOWER(s.name) = LOWER('Комплектующие');
+
+-- Колёса — динамические типы (шаблоны создаёт администратор через пресеты)
+INSERT INTO product_type (name, designation, is_system, section_id, code_prefix, system_card_type,
+                          created_at, created_by)
+SELECT v.name, v.designation, FALSE, s.id, v.code_prefix, NULL, NOW(), 'system'
+FROM (VALUES ('Колесо радиальное', 'RW', 'RW'),
+             ('Колесо осевое', 'AW', 'AW')) AS v(name, designation, code_prefix)
          CROSS JOIN product_section s
 WHERE s.parent_id IS NULL
   AND LOWER(s.name) = LOWER('Комплектующие');
