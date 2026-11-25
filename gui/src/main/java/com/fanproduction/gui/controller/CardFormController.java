@@ -76,6 +76,9 @@ public class CardFormController {
     /** Идёт подстановка вычисленных значений — не перезапускать пересчёт (US10.7.3). */
     private boolean applyingComputed = false;
 
+    /** Вычисляемые поля, изменённые вручную: не перезаписываем до смены источников. */
+    private final java.util.Set<String> manuallyEditedComputed = new java.util.HashSet<>();
+
 
     public CardFormController(Stage owner, String cardType, ProductCardDto existingCard, Runnable onSaveCallback) {
         this.stage = new Stage();
@@ -441,6 +444,20 @@ public class CardFormController {
         // Инициализируем visibilityManager и регистрируем все поля с условиями
         initVisibilityManager(fields);
 
+        // US10.7.4d: поля, заполняемые из выбранного компонента (pullFrom),
+        // нельзя править вручную — иначе теряется связь с выбранным компонентом
+        java.util.Set<String> pullTargets = fieldMetadata.values().stream()
+                .filter(f -> f.getPullFrom() != null)
+                .flatMap(f -> f.getPullFrom().values().stream())
+                .collect(java.util.stream.Collectors.toSet());
+        for (String target : pullTargets) {
+            Node node = fieldControls.get(target);
+            if (node instanceof TextField tf) {
+                tf.setEditable(false);
+                tf.setStyle("-fx-background-color: #F0F0F0; -fx-text-fill: #333;");
+            }
+        }
+
         CardFormConfigurator.configure(cardType, fieldControls, fieldLabels, fieldHints, existingCard != null);
 
         // US10.7.3: вычисляемые поля (COMPUTED) считаем сами — сервер только
@@ -474,7 +491,6 @@ public class CardFormController {
         java.util.Set<String> computedKeys = computed.stream()
                 .map(FieldMetadataDto::getName)
                 .collect(java.util.stream.Collectors.toSet());
-        java.util.Set<String> manuallyEdited = new java.util.HashSet<>();
 
         Runnable schedule = () -> {
             if (!applyingComputed) {
@@ -488,10 +504,10 @@ public class CardFormController {
             boolean isComputed = computedKeys.contains(key);
 
             Runnable onEdit = isComputed
-                    ? () -> manuallyEdited.add(key)
+                    ? () -> manuallyEditedComputed.add(key)
                     : () -> {
                         // источники изменились — ручные правки вычисляемых полей сбрасываем
-                        manuallyEdited.clear();
+                        manuallyEditedComputed.clear();
                         schedule.run();
                     };
 
@@ -522,7 +538,10 @@ public class CardFormController {
             }
         }
 
-        debounce.setOnFinished(e -> recomputeComputedFields(computed, manuallyEdited));
+        debounce.setOnFinished(e -> {
+            refreshFullMarkingSafe();
+            recomputeComputedFields(computed, manuallyEditedComputed);
+        });
         debounce.playFromStart();
     }
 
@@ -562,6 +581,7 @@ public class CardFormController {
                 } finally {
                     applyingComputed = false;
                 }
+                refreshFullMarkingSafe();
             });
         }, "computed-fields").start();
     }
@@ -770,6 +790,27 @@ public class CardFormController {
     /**
      *  Метод обновления FullMarking через кнопку.
      */
+    /** Перестроить полную маркировку, не падая при отсутствии конфигуратора. */
+    private void refreshFullMarkingSafe() {
+        try {
+            CardFieldConfigurator configurator = CardFormConfigurator.getConfigurator(cardType);
+            if (configurator != null) {
+                configurator.refreshFullMarking(fieldControls);
+            }
+        } catch (Exception e) {
+            log.debug("refreshFullMarking: {}", e.getMessage());
+        }
+    }
+
+    /** Пересчитать все вычисляемые поля (после сброса ручных правок). */
+    private void refreshAllComputedFields() {
+        List<FieldMetadataDto> computed = fieldMetadata.values().stream()
+                .filter(f -> f.getFormula() != null && !f.getFormula().isBlank())
+                .toList();
+        if (!computed.isEmpty()) {
+            recomputeComputedFields(computed, java.util.Set.of());
+        }
+    }
     private void handleRefreshMarkingButton() {
         CardFieldConfigurator configurator = CardFormConfigurator.getConfigurator(cardType);
         if (configurator == null) {
@@ -778,7 +819,9 @@ public class CardFormController {
         }
 
         try {
-            // Принудительно обновляем
+            // Принудительно обновляем: ручные правки полей сбрасываются
+            manuallyEditedComputed.clear();
+            refreshAllComputedFields();
             configurator.forceSetFullMarking(fieldControls);
 
             showAlert("Успешно", "Полная маркировка восстановлена до автоматического значения", Alert.AlertType.INFORMATION);

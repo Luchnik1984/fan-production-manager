@@ -50,6 +50,23 @@ public final class CardFieldVisibility {
         if (actual instanceof Boolean a && expected instanceof Boolean b) {
             return a.equals(b);
         }
-        return String.valueOf(actual).equals(String.valueOf(expected));
+        return normalize(actual).equals(normalize(expected));
+    }
+
+    /**
+     * Приводит значение к каноническому виду: «F — огнестойкость»,
+     * «F - огнестойкость» и «F» считаются одним значением.
+     */
+    private static String normalize(Object value) {
+        String s = String.valueOf(value).trim();
+        int cut = s.length();
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (Character.isWhitespace(c) || c == '-' || c == '—' || c == '–') {
+                cut = i;
+                break;
+            }
+        }
+        return s.substring(0, cut).toUpperCase();
     }
 }
