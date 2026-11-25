@@ -681,4 +681,38 @@ public class CardViewBuilderImpl implements CardViewBuilder {
             return cardType;
         }
     }
+    /**
+     * Проверка {@code visibleIf} для просмотра карточки (US10.7.4b).
+     * <p>
+     * Повторяет семантику формы: если условие не выполняется, поле
+     * не показывается, даже если значение сохранилось в карточке раньше.
+     */
+    private boolean isVisibleForValues(DynamicFormFieldDto fieldDef, Map<String, Object> values) {
+        var condition = fieldDef.getVisibleIf();
+        if (condition == null) {
+            return true;
+        }
+        Object actual = values.get(condition.getField());
+        String operator = condition.getOperator() != null ? condition.getOperator() : "EQUALS";
+
+        return switch (operator) {
+            case "EMPTY" -> actual == null || String.valueOf(actual).isBlank();
+            case "NOT_EMPTY" -> actual != null && !String.valueOf(actual).isBlank();
+            case "NOT_EQUALS" -> !sameValue(actual, condition.getValue());
+            case "IN" -> condition.getValues() != null
+                    && condition.getValues().stream().anyMatch(v -> sameValue(actual, v));
+            default -> sameValue(actual, condition.getValue());
+        };
+    }
+
+    /** Сравнение «как в форме»: булевы и строки приводятся к строке. */
+    private boolean sameValue(Object actual, Object expected) {
+        if (actual == null || expected == null) {
+            return actual == expected;
+        }
+        if (actual instanceof Boolean a && expected instanceof Boolean b) {
+            return a.equals(b);
+        }
+        return String.valueOf(actual).equals(String.valueOf(expected));
+    }
 }

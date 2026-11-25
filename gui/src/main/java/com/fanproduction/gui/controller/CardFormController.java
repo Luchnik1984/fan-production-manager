@@ -469,34 +469,81 @@ public class CardFormController {
                 new javafx.animation.PauseTransition(javafx.util.Duration.millis(400));
         debounce.setOnFinished(e -> recomputeComputedFields(computed));
 
+        // US10.7.4b: если пользователь правит вычисляемое поле вручную,
+        // его значение не перезаписываем, пока не изменились поля-источники
+        java.util.Set<String> computedKeys = computed.stream()
+                .map(FieldMetadataDto::getName)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Set<String> manuallyEdited = new java.util.HashSet<>();
+
         Runnable schedule = () -> {
             if (!applyingComputed) {
                 debounce.playFromStart();
             }
         };
 
-        for (Node control : fieldControls.values()) {
+        for (Map.Entry<String, Node> entry : fieldControls.entrySet()) {
+            String key = entry.getKey();
+            Node control = entry.getValue();
+            boolean isComputed = computedKeys.contains(key);
+
+            Runnable onEdit = isComputed
+                    ? () -> manuallyEdited.add(key)
+                    : () -> {
+                        // источники изменились — ручные правки вычисляемых полей сбрасываем
+                        manuallyEdited.clear();
+                        schedule.run();
+                    };
+
             if (control instanceof TextField tf) {
-                tf.textProperty().addListener((obs, oldV, newV) -> schedule.run());
+                tf.textProperty().addListener((obs, oldV, newV) -> {
+                    if (!applyingComputed) {
+                        onEdit.run();
+                    }
+                });
             } else if (control instanceof TextArea ta) {
-                ta.textProperty().addListener((obs, oldV, newV) -> schedule.run());
+                ta.textProperty().addListener((obs, oldV, newV) -> {
+                    if (!applyingComputed) {
+                        onEdit.run();
+                    }
+                });
             } else if (control instanceof ComboBox<?> cb) {
-                cb.valueProperty().addListener((obs, oldV, newV) -> schedule.run());
+                cb.valueProperty().addListener((obs, oldV, newV) -> {
+                    if (!applyingComputed) {
+                        onEdit.run();
+                    }
+                });
             } else if (control instanceof CheckBox ch) {
-                ch.selectedProperty().addListener((obs, oldV, newV) -> schedule.run());
+                ch.selectedProperty().addListener((obs, oldV, newV) -> {
+                    if (!applyingComputed) {
+                        onEdit.run();
+                    }
+                });
             }
         }
 
+        debounce.setOnFinished(e -> recomputeComputedFields(computed, manuallyEdited));
         debounce.playFromStart();
     }
 
     /** Считает все COMPUTED-поля в фоновом потоке и подставляет результаты. */
     private void recomputeComputedFields(List<FieldMetadataDto> computed) {
+        recomputeComputedFields(computed, java.util.Set.of());
+    }
+
+    private void recomputeComputedFields(List<FieldMetadataDto> computed,
+                                         java.util.Set<String> skipKeys) {
+        List<FieldMetadataDto> fieldsToCompute = computed.stream()
+                .filter(f -> !skipKeys.contains(f.getName()))
+                .toList();
+        if (fieldsToCompute.isEmpty()) {
+            return;
+        }
         final Map<String, Object> values = collectAllValues();
 
         new Thread(() -> {
             Map<String, String> results = new LinkedHashMap<>();
-            for (FieldMetadataDto field : computed) {
+            for (FieldMetadataDto field : fieldsToCompute) {
                 try {
                     results.put(field.getName(),
                             com.fanproduction.gui.client.FormulaPreviewClient.preview(
