@@ -90,6 +90,31 @@ public class CardViewBuilderImpl implements CardViewBuilder {
         return card.getName();
     }
 
+    /**
+     * US10.7.5a: имя типа продукции по {@code productTypeId} карточки.
+     * <p>
+     * Нужно, чтобы в просмотре было «Колесо осевое», а не «Вентилятор»
+     * для любой карточки, созданной по шаблону.
+     */
+    private String resolveProductTypeName(Map<String, Object> fields) {
+        Object typeId = fields.get("productTypeId");
+        if (typeId == null) {
+            return null;
+        }
+        try {
+            Long id = typeId instanceof Number n ? n.longValue() : Long.valueOf(String.valueOf(typeId));
+            var type = com.fanproduction.gui.client.ProductTypeClient.getTypeById(id);
+            if (type == null) {
+                return null;
+            }
+            return type.getName() != null && !type.getName().isBlank()
+                    ? type.getName()
+                    : type.getDesignation();
+        } catch (Exception e) {
+            log.debug("Не удалось определить тип продукции: {}", e.getMessage());
+            return null;
+        }
+    }
     private List<CardViewField> buildFanHeader(ProductCardDto card) {
         List<CardViewField> header = new ArrayList<>();
         Map<String, Object> fields = card.getFields() != null ? card.getFields() : Map.of();
