@@ -582,6 +582,13 @@ public class CardFormController {
             String key = entry.getKey();
             Node control = entry.getValue();
 
+            // US10.7.4: скрытые поля не сохраняем — иначе значения по умолчанию
+            // (температура, маркировка взрывозащиты) попадают в карточку
+            // при исполнении «C», где этих полей быть не должно
+            if (control != null && !control.isVisible()) {
+                continue;
+            }
+
             if (control instanceof TextField tf) {
                 String text = tf.getText() != null ? tf.getText().trim() : "";
                 if (!text.isEmpty()) values.put(key, text);

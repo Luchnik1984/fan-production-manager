@@ -31,6 +31,10 @@ class PresetFormulaTest {
             "CONCAT(FIELD('bladeType'), '.', FIELD('wheelCode'), '/', FIELD('frontDiskMod'), '.', "
                     + "FIELD('wheelWidth'), '/', FIELD('bladeCount'), '/', FIELD('bladeLengthCoeff'))";
 
+    /** Как в пресетах колёс (US10.7.4). */
+    private static final String FIRE_MARKING =
+            "CONCAT('F-', FIELD('fireResistanceHours'), '/', FIELD('maxTemperature'))";
+
     private final FormulaEngine engine = createEngine();
 
     /** Регистрация функций живёт в {@code @PostConstruct} — вызываем явно. */
@@ -79,5 +83,15 @@ class PresetFormulaTest {
 
         assertThat(engine.evaluateToString(RADIAL_FORMULA, values))
                 .isEqualTo("BC/BI.12U/A.0.03/9/1.03");
+    }
+
+    @Test
+    @DisplayName("маркировка огнестойкости: 2 часа и 400 °C -> F-2/400")
+    void fireResistanceMarking() {
+        Map<String, Object> values = new HashMap<>();
+        values.put("fireResistanceHours", 2);
+        values.put("maxTemperature", 400);
+
+        assertThat(engine.evaluateToString(FIRE_MARKING, values)).isEqualTo("F-2/400");
     }
 }
