@@ -67,6 +67,14 @@ public class FieldControlFactory {
         }
         textField.setPromptText(field.getHint());
 
+        // US10.7.4b: вычисляемое поле редактируемое — значение можно
+        // поправить руками, пересчёт не затрёт правку до изменения источников
+        if ("computed".equalsIgnoreCase(field.getType())) {
+            textField.setEditable(true);
+            textField.setStyle("-fx-background-color: #FFFDE7;");
+            return textField;
+        }
+
         // Если поле только для чтения
         if (field.isReadOnly()) {
             textField.setEditable(false);

@@ -151,6 +151,9 @@ public class CardViewBuilderImpl implements CardViewBuilder {
             if (TECHNICAL_FIELDS.contains(fieldDef.getKey())) continue;
             if (HEADER_FIELDS.contains(fieldDef.getKey())) continue;
 
+            // US10.7.4c: не показываем поля, скрытые условием при текущих значениях
+            if (!CardFieldVisibility.isVisible(fieldDef, fields)) continue;
+
             Object rawValue = fields.get(fieldDef.getKey());
             String formatted = formatValue(rawValue);
             if (formatted == null) continue;
