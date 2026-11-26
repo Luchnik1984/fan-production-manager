@@ -275,11 +275,26 @@ public class DynamicCardServiceImpl implements DynamicCardService {
     private boolean isFieldVisible(FieldDefinition field, Map<String, Object> values) {
         return field.visibleIf() == null || markingEngine.evaluateCondition(field.visibleIf(), values);
     }
-    private void validateRequiredFields(Map<String, Object> values, List<FieldDefinition> fields) {
+    /** Проверка обязательных полей; package-private для тестов (US10.7.5d). */
+    void validateRequiredFields(Map<String, Object> values, List<FieldDefinition> fields) {
         if (values == null) values = Map.of();
 
         for (FieldDefinition field : fields) {
-            if (!field.required()) continue;
+            // US10.7.5d: скрытое поле не может быть обязательным —
+            // при партнёрском колесе хаб и лопасть скрыты и не должны
+            // блокировать сохранение
+            if (!isFieldVisible(field, values)) {
+                continue;
+            }
+
+            boolean required = field.required();
+            if (field.requiredIf() != null) {
+                required = markingEngine.evaluateCondition(field.requiredIf(), values);
+            }
+            if (!required) {
+                continue;
+            }
+
             Object value = values.get(field.key());
             if (value == null || (value instanceof String s && s.isBlank())) {
                 throw new DynamicCardCreationException(
