@@ -271,6 +271,10 @@ public class DynamicCardServiceImpl implements DynamicCardService {
         }
     }
 
+    /** Видимо ли поле при текущих значениях карточки (US10.7.5c). */
+    private boolean isFieldVisible(FieldDefinition field, Map<String, Object> values) {
+        return field.visibleIf() == null || markingEngine.evaluateCondition(field.visibleIf(), values);
+    }
     private void validateRequiredFields(Map<String, Object> values, List<FieldDefinition> fields) {
         if (values == null) values = Map.of();
 
