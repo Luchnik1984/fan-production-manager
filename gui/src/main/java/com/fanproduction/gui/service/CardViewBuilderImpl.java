@@ -79,14 +79,14 @@ public class CardViewBuilderImpl implements CardViewBuilder {
         Map<String, Object> fields = card.getFields();
         if (fields == null) return card.getName();
 
-        String fanType = str(fields.get("fanType"));
+        String typeName = resolveProductTypeName(fields);
         String fullMarking = str(fields.get("fullMarking"));
 
-        if (fanType != null && fullMarking != null) {
-            return fanType + " " + fullMarking;
+        if (typeName != null && fullMarking != null) {
+            return typeName + " " + fullMarking;
         }
-        if (fanType != null) return fanType;
-        if (fullMarking != null) return "Вентилятор " + fullMarking;
+        if (fullMarking != null) return fullMarking;
+        if (typeName != null) return typeName;
         return card.getName();
     }
 
@@ -119,9 +119,9 @@ public class CardViewBuilderImpl implements CardViewBuilder {
         List<CardViewField> header = new ArrayList<>();
         Map<String, Object> fields = card.getFields() != null ? card.getFields() : Map.of();
 
-        addIfNotEmpty(header, "Тип карточки", "Вентилятор");
-        addIfNotEmpty(header, "Тип вентилятора", str(fields.get("fanType")));
-        addIfNotEmpty(header, "Вид вентилятора", str(fields.get("fanSubtype")));
+        // US10.7.6a: тип карточки — реальный тип продукции, без «Вентилятор»
+        String typeName = resolveProductTypeName(fields);
+        addIfNotEmpty(header, "Тип карточки", typeName != null ? typeName : "Изделие по шаблону");
         addIfNotEmpty(header, "Серия", str(fields.get("series")));
         addIfNotEmpty(header, "Полная маркировка", str(fields.get("fullMarking")));
         addIfNotEmpty(header, "Код", card.getCode());
