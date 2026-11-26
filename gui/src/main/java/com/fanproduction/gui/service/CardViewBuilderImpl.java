@@ -124,7 +124,7 @@ public class CardViewBuilderImpl implements CardViewBuilder {
         addIfNotEmpty(header, "Тип карточки", typeName != null ? typeName : "Изделие по шаблону");
         addIfNotEmpty(header, "Серия", str(fields.get("series")));
         addIfNotEmpty(header, "Полная маркировка", str(fields.get("fullMarking")));
-        addIfNotEmpty(header, "Код", card.getCode());
+        addIfNotEmpty(header, "Артикул", card.getCode());
         if (card.getCreatedAt() != null) {
             addIfNotEmpty(header, "Дата создания", card.getCreatedAt().format(DATE_FORMATTER));
         }
@@ -260,7 +260,7 @@ public class CardViewBuilderImpl implements CardViewBuilder {
         Map<String, Object> fields = card.getFields() != null ? card.getFields() : Map.of();
 
         addIfNotEmpty(header, "Наименование", card.getName());
-        addIfNotEmpty(header, "Код", card.getCode());
+        addIfNotEmpty(header, "Артикул", card.getCode());
         addIfNotEmpty(header, "Тип карточки", getCardTypeDisplay(card.getCardType()));
         addIfNotEmpty(header, "Полная маркировка", str(fields.get("fullMarking")));
         if (card.getCreatedAt() != null) {

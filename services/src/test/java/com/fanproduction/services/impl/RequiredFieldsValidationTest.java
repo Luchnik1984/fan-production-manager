@@ -32,7 +32,7 @@ class RequiredFieldsValidationTest {
     private static DynamicCardServiceImpl serviceWithConditionResult(boolean conditionResult) {
         MarkingEngine engine = mock(MarkingEngine.class);
         when(engine.evaluateCondition(any(), any())).thenReturn(conditionResult);
-        return new DynamicCardServiceImpl(null, null, null, null, null, engine, null);
+        return new DynamicCardServiceImpl(null, null, null, null, null, engine, null, null, null);
     }
 
     private static FieldDefinition requiredField(String key, Condition visibleIf) {

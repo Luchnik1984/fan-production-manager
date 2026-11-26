@@ -42,6 +42,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 /**
@@ -71,6 +72,12 @@ class DynamicCardServiceTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private com.fanproduction.template.repository.ProductTypeRepository productTypeRepository;
+
+    @Mock
+    private com.fanproduction.services.article.ArticleGenerator articleGenerator;
 
     @InjectMocks
     private DynamicCardServiceImpl service;
@@ -111,6 +118,8 @@ class DynamicCardServiceTest {
         version.setStatus(TemplateStatus.PUBLISHED);
         version.setFieldsJson(sampleFields);
         version.setMarkingRuleJson(sampleRule);
+
+        lenient().when(articleGenerator.next(anyString())).thenReturn("AW-000001");
     }
 
     // ==========================================================

@@ -1,5 +1,8 @@
 package com.fanproduction.services.impl;
 
+import com.fanproduction.services.article.ArticleGenerator;
+import com.fanproduction.template.entity.ProductType;
+import com.fanproduction.template.repository.ProductTypeRepository;
 import com.fanproduction.core.entity.product.DynamicCardEntity;
 import com.fanproduction.core.entity.product.FanCardFields;
 import com.fanproduction.core.enums.AuditAction;
@@ -65,6 +68,8 @@ public class DynamicCardServiceImpl implements DynamicCardService {
     private final ProductSpeciesRepository productSpeciesRepository;
     private final MarkingEngine markingEngine;
     private final ApplicationEventPublisher eventPublisher;
+    private final ProductTypeRepository productTypeRepository;
+    private final ArticleGenerator articleGenerator;
 
     /**
      * Определить тип продукции по шаблону:
@@ -117,7 +122,7 @@ public class DynamicCardServiceImpl implements DynamicCardService {
         ensureMarkingUnique(marking, null);
 
         card.setFullMarking(marking);
-        card.setCode(generateCode(marking));
+        card.setCode(articleGenerator.next(resolveArticlePrefix(card.getProductTypeId())));
         card.setName(marking);
 
         DynamicCardEntity saved = fanCardRepository.save(card);
@@ -157,7 +162,6 @@ public class DynamicCardServiceImpl implements DynamicCardService {
         ensureMarkingUnique(newMarking, cardId);
 
         card.setFullMarking(newMarking);
-        card.setCode(generateCode(newMarking));
         card.setName(newMarking);
 
         DynamicCardEntity saved = fanCardRepository.save(card);
@@ -192,7 +196,6 @@ public class DynamicCardServiceImpl implements DynamicCardService {
         ensureMarkingUnique(newMarking, cardId);
 
         card.setFullMarking(newMarking);
-        card.setCode(generateCode(newMarking));
         card.setName(newMarking);
 
         DynamicCardEntity saved = fanCardRepository.save(card);
@@ -507,12 +510,16 @@ public class DynamicCardServiceImpl implements DynamicCardService {
     // ВСПОМОГАТЕЛЬНЫЕ
     // ==========================================================
 
-    private String generateCode(String fullMarking) {
-        return fullMarking
-                .toLowerCase()
-                .replaceAll("[^a-z0-9]", "_")
-                .replaceAll("_+", "_");
+    /** Префикс артикула: code_prefix типа продукции (US10.7.7). */
+    private String resolveArticlePrefix(Long productTypeId) {
+        if (productTypeId == null) {
+            return "GEN";
+        }
+        return productTypeRepository.findById(productTypeId)
+                .map(ProductType::getCodePrefix)
+                .orElse("GEN");
     }
+
 
     private void publishAudit(String username, AuditAction action, String details) {
         String actor = (username != null && !username.isBlank()) ? username : "system";
