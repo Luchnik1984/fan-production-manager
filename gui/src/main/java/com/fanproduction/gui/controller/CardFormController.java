@@ -68,6 +68,12 @@ public class CardFormController {
 
     private final Map<String, Node> fieldControls = new HashMap<>();
     private final Map<String, FieldMetadataDto> fieldMetadata = new HashMap<>();
+    /** Заголовки секций формы: группа → Label (US10.7.5b). */
+    private final Map<String, Label> groupHeaders = new HashMap<>();
+
+    /** Поля каждой секции: группа → ключи полей. */
+    private final Map<String, java.util.List<String>> groupFieldKeys = new HashMap<>();
+
     private final Map<String, TextField> referenceFields = new HashMap<>();
     private final Map<String, Label> fieldLabels = new HashMap<>();
     private final Map<String, Label> fieldHints = new HashMap<>();
@@ -179,6 +185,7 @@ public class CardFormController {
         // Пересчитываем видимость после загрузки (для existing-карточки)
         if (visibilityManager != null) {
             visibilityManager.recalcAll(collectAllValues());
+            updateGroupHeaders();
         }
 
         // Передаём зависимости в конфигураторы
@@ -349,6 +356,7 @@ public class CardFormController {
                 groupLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; "
                         + "-fx-text-fill: #2b5797; -fx-padding: 14 0 2 0;");
                 grid.add(groupLabel, 0, row, 2, 1);
+                groupHeaders.putIfAbsent(fieldGroup, groupLabel);
                 row++;
                 currentGroup = fieldGroup;
             }
@@ -385,6 +393,8 @@ public class CardFormController {
 
             grid.add(label, 0, row);
             grid.add(fieldContainer, 1, row);
+            groupFieldKeys.computeIfAbsent(fieldGroup, k -> new java.util.ArrayList<>())
+                    .add(field.getName());
             fieldControls.put(field.getName(), control);
             fieldMetadata.put(field.getName(), field);
             fieldLabels.put(field.getName(), label);
@@ -444,6 +454,19 @@ public class CardFormController {
         // Инициализируем visibilityManager и регистрируем все поля с условиями
         initVisibilityManager(fields);
 
+        // US10.7.5b: партнёрское и фирменное — взаимоисключающие
+        if (fieldControls.get("isPartnerProduction") instanceof CheckBox partner
+                && fieldControls.get("isOwnProduction") instanceof CheckBox own) {
+            partner.selectedProperty().addListener((obs, was, nowOn) -> {
+                if (Boolean.TRUE.equals(nowOn)) own.setSelected(false);
+            });
+            own.selectedProperty().addListener((obs, was, nowOn) -> {
+                if (Boolean.TRUE.equals(nowOn)) partner.setSelected(false);
+            });
+        }
+
+        updateGroupHeaders();
+
         // US10.7.4d: поля, заполняемые из выбранного компонента (pullFrom),
         // нельзя править вручную — иначе теряется связь с выбранным компонентом
         java.util.Set<String> pullTargets = fieldMetadata.values().stream()
@@ -474,6 +497,23 @@ public class CardFormController {
      * и клиента, дублировать парсер не нужно. Первый расчёт запускается сразу
      * после построения формы, дальше — с задержкой 400 мс после правки.
      */
+    /**
+     * US10.7.5b: заголовок секции виден, только если в ней есть
+     * хотя бы одно видимое поле. Иначе при партнёрском колесе
+     * оставались пустые заголовки «Хаб» и «Лопатка».
+     */
+    private void updateGroupHeaders() {
+        groupHeaders.forEach((group, label) -> {
+            java.util.List<String> keys = groupFieldKeys.getOrDefault(group, java.util.List.of());
+            boolean anyVisible = keys.stream().anyMatch(key -> {
+                Node node = fieldControls.get(key);
+                return node != null && node.isVisible();
+            });
+            label.setVisible(anyVisible);
+            label.setManaged(anyVisible);
+        });
+    }
+
     private void setupComputedFields(List<FieldMetadataDto> fields) {
         List<FieldMetadataDto> computed = fields.stream()
                 .filter(f -> f.getFormula() != null && !f.getFormula().isBlank())
@@ -613,6 +653,7 @@ public class CardFormController {
 
         // Первичный пересчёт — на основе текущих значений
         visibilityManager.recalcAll(collectAllValues());
+            updateGroupHeaders();
     }
 
     /**
@@ -637,6 +678,7 @@ public class CardFormController {
     private void recalcVisibility() {
         if (visibilityManager == null) return;
         visibilityManager.recalcAll(collectAllValues());
+            updateGroupHeaders();
     }
 
     /**
