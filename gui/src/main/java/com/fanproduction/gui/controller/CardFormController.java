@@ -518,6 +518,17 @@ public class CardFormController {
         List<FieldMetadataDto> computed = fields.stream()
                 .filter(f -> f.getFormula() != null && !f.getFormula().isBlank())
                 .toList();
+        // US10.7.5h: сохранённые значения вычисляемых полей не перезаписываем
+        // при открытии карточки — иначе ручная правка формулы теряется
+        if (existingCard != null) {
+            for (FieldMetadataDto f : computed) {
+                Node node = fieldControls.get(f.getName());
+                if (node instanceof TextField tf && tf.getText() != null && !tf.getText().isBlank()) {
+                    manuallyEditedComputed.add(f.getName());
+                }
+            }
+        }
+
         if (computed.isEmpty()) {
             return;
         }
@@ -552,8 +563,14 @@ public class CardFormController {
             Runnable onEdit = isComputed
                     ? () -> manuallyEditedComputed.add(key)
                     : () -> {
-                        // источники изменились — ручные правки вычисляемых полей сбрасываем
-                        manuallyEditedComputed.clear();
+                        // US10.7.5h: сбрасываем ручную правку только у вычисляемых полей,
+                        // которые зависят от изменённого поля
+                        for (FieldMetadataDto f : computed) {
+                            String formula = f.getFormula();
+                            if (formula != null && formula.contains("FIELD('" + key + "')")) {
+                                manuallyEditedComputed.remove(f.getName());
+                            }
+                        }
                         schedule.run();
                     };
 
