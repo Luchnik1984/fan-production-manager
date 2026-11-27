@@ -243,10 +243,6 @@ public class ComponentServiceImpl extends BaseValidationService implements Compo
         ComponentEntity existing = componentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Компонент не найден: " + id));
 
-        System.out.println("=== DEBUG VENDOR CODE COMPARISON ===");
-        System.out.println("updated vendorCode: '" + updated.getVendorCode() + "'");
-        System.out.println("existing vendorCode: '" + existing.getVendorCode() + "'");
-        System.out.println("Are they equal? " + updated.getVendorCode().equals(existing.getVendorCode()));
 
         // ========== ПРОВЕРКА УНИКАЛЬНОСТИ designation (если изменилось) ==========
         String newDesignation = updated.getDesignation();

@@ -316,7 +316,7 @@ public class MaterialServiceImpl extends BaseValidationService implements Materi
 
         if (updated.getVendorCode() != null) {
             // Проверка уникальности артикула
-            if (!updated.getVendorCode().equals(existing.getVendorCode())) {
+            if (!java.util.Objects.equals(updated.getVendorCode(), existing.getVendorCode())) {
                 checkUniqueOnUpdate(
                         () -> materialRepository.findByVendorCode(updated.getVendorCode()),
                         id,
