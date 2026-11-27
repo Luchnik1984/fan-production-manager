@@ -541,6 +541,12 @@ public class CardFormController {
         for (Map.Entry<String, Node> entry : fieldControls.entrySet()) {
             String key = entry.getKey();
             Node control = entry.getValue();
+            // «Полная маркировка» управляется конфигуратором: её программное
+            // обновление не должно сбрасывать ручные правки вычисляемых полей
+            if ("fullMarking".equals(key)) {
+                continue;
+            }
+
             boolean isComputed = computedKeys.contains(key);
 
             Runnable onEdit = isComputed
