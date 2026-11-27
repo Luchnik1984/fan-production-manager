@@ -160,7 +160,14 @@ public class MarkingContext {
             return value != null && !value.isEmpty() ? value : null;
         }
 
-        // 2. COMPUTED-поле с формулой
+        // 2. Прямое значение из values — важнее формулы:
+        //    пользователь мог отредактировать вычисляемое поле вручную (US10.7.5f)
+        Object direct = values.get(key);
+        if (direct != null) {
+            return FormulaFunctions.toStringValue(direct);
+        }
+
+        // 3. COMPUTED-поле с формулой
         FieldDefinition field = fieldsByKey.get(key);
         if (field != null
                 && field.type() == FieldType.COMPUTED
@@ -168,13 +175,6 @@ public class MarkingContext {
                 && !field.formula().isBlank()) {
             return formulaEngine.evaluateFieldDefinition(field, values);
         }
-
-        // 3. Прямое значение из values
-        Object direct = values.get(key);
-        if (direct != null) {
-            return FormulaFunctions.toStringValue(direct);
-        }
-
         // 4. Системное вычисляемое поле
         if (computedFieldsLibrary.isRegistered(key)) {
             return computedFieldsLibrary.evaluate(key, values);

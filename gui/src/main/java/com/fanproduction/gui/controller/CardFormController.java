@@ -579,7 +579,6 @@ public class CardFormController {
         }
 
         debounce.setOnFinished(e -> {
-            refreshFullMarkingSafe();
             recomputeComputedFields(computed, manuallyEditedComputed);
         });
         debounce.playFromStart();
@@ -596,6 +595,7 @@ public class CardFormController {
                 .filter(f -> !skipKeys.contains(f.getName()))
                 .toList();
         if (fieldsToCompute.isEmpty()) {
+            refreshFullMarkingSafe();
             return;
         }
         final Map<String, Object> values = collectAllValues();
