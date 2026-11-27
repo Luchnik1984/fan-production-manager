@@ -69,6 +69,7 @@ public class FanCardConfigurator implements CardFieldConfigurator {
             tf.textProperty().addListener((obs, o, n) -> {
                 if (initializing) return;
                 if (updatingFromPreview) return;   // ← программное обновление
+                if (!tf.isFocused()) return;   // программные изменения — не ручная правка
                 if (n != null && !n.equals(lastAutoMarking)) {
                     manualOverride = true;
                     log.debug("MANUAL OVERRIDE: '{}' != '{}'", n, lastAutoMarking);
@@ -103,23 +104,8 @@ public class FanCardConfigurator implements CardFieldConfigurator {
 
         log.info("markInitialized: currentMarking='{}'", currentMarking);
 
-        if (!currentMarking.isEmpty() && templateVersionId != null && fieldControlsRef != null) {
-            Map<String, Object> values = collectValues(fieldControlsRef, "fullMarking");
-            new Thread(() -> {
-                try {
-                    String preview = ProductTemplateVersionClient.previewMarking(templateVersionId, values);
-                    if (preview != null && !preview.equals(currentMarking)) {
-                        manualOverride = true;
-                        log.info("markInitialized: MANUAL OVERRIDE, preview='{}' != current='{}'",
-                                preview, currentMarking);
-                    } else {
-                        log.debug("markInitialized: маркировка автоматическая");
-                    }
-                } catch (Exception e) {
-                    log.warn("markInitialized: preview failed: {}", e.getMessage());
-                }
-            }).start();
-        }
+        // US10.7.5e: сохранённая маркировка считается автоматической.
+        // Раньше несовпадение с preview включало manualOverride навсегда,
     }
 
     // ==========================================================
